@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing - CustomSite</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    .pricing-toggle-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+    .toggle-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--gray);
+    }
+    .toggle-label.active { color: var(--primary); }
+    .toggle-switch {
+      position: relative;
+      width: 52px;
+      height: 28px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--gray-light);
+      border-radius: 34px;
+      transition: .3s;
+    }
+    .toggle-slider:before {
+      content: "";
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background: white;
+      border-radius: 50%;
+      transition: .3s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(24px); }
+    .save-badge {
+      background: var(--success);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-full);
+    }
+    .plan-detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 3rem;
+    }
+    .plan-detail-table th {
+      padding: 1rem;
+      text-align: center;
+      font-weight: 700;
+      background: var(--light);
+    }
+    .plan-detail-table th:first-child { text-align: left; }
+    .plan-detail-table td {
+      padding: 0.875rem 1rem;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      font-size: 0.9rem;
+    }
+    .plan-detail-table td:first-child {
+      color: var(--dark-3);
+      font-weight: 500;
+    }
+    .plan-detail-table td:not(:first-child) {
+      text-align: center;
+      color: var(--gray);
+    }
+    .plan-detail-table tr:hover td { background: rgba(99,102,241,0.02); }
+    .check { color: var(--success); font-weight: 700; }
+    .dash { color: var(--gray-light); }
+    .faq-section { background: var(--light); }
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+    .faq-item {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .faq-item h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 0.75rem;
+    }
+    .faq-item p {
+      font-size: 0.9rem;
+      color: var(--gray);
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar scrolled" id="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo" style="color: var(--dark)">
+        <span class="logo-icon">CS</span>
+        CustomSite
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="portfolio.html">Portfolio</a></li>
+        <li><a href="pricing.html" class="active">Pricing</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="section-tag">Transparent Pricing</span>
+      <h1>Simple, Honest Pricing</h1>
+      <p>No hidden fees. No confusing tiers. Just clear pricing for great websites.</p>
+    </div>
+  </section>
+
+  <!-- MAIN PRICING SECTION -->
+  <section class="section">
+    <div class="container">
+
+      <!-- Monthly/Yearly Toggle -->
+      <div class="pricing-toggle-wrapper">
+        <span class="toggle-label active">Monthly</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="pricingToggle" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">Yearly <span class="save-badge">Save 20%</span></span>
+      </div>
+
+      <!-- Pricing Cards -->
+      <div class="pricing-cards">
+        <div class="price-card" data-plan="starter">
+          <div class="price-label">Starter</div>
+          <div style="margin-bottom:0.5rem">
+            <span style="font-size:2rem;font-weight:900;color:var(--dark)">$799</span>
+            <span style="color:var(--gray);font-size:0.85rem"> one-time build</span>
+          </div>
+          <div class="price-maintenance" style="margin-bottom:1rem">
+            Maintenance: <strong class="maintenance-price">$49/mo</strong>
+          </div>
+          <ul class="price-features">
+            <li>Up to 5 custom pages</li>
+            <li>Mobile-first responsive design</li>
+            <li>Contact form with email</li>
+            <li>Google Analytics setup</li>
+            <li>Basic on-page SEO</li>
+            <li>Google Maps integration</li>
+            <li>2 rounds of revisions</li>
+            <li>1 month free support</li>
+          </ul>
+          <a href="contact.html" class="btn btn-outline" style="width:100%;margin-top:1.5rem">Get Started</a>
+        </div>
+
+        <div class="price-card price-card-featured" data-plan="business">
+          <div class="price-badge">Most Popular</div>
+          <div class="price-label">Business</div>
+          <div style="margin-bottom:0.5rem">
+            <span style="font-size:2rem;font-weight:900;color:var(--white)">$1,499</span>
+            <span style="color:rgba(255,255,255,0.6);font-size:0.85rem"> one-time build</span>
+          </div>
+          <div class="price-maintenance" style="margin-bottom:1rem">
+            Maintenance: <strong class="maintenance-price">$79/mo</strong>
+          </div>
+          <ul class="price-features">
+            <li>Up to 10 custom pages</li>
+            <li>Premium custom design</li>
+            <li>Blog or CMS system</li>
+            <li>Advanced SEO package</li>
+            <li>Email newsletter setup</li>
+            <li>Social media integration</li>
+            <li>4 rounds of revisions</li>
+            <li>3 months free support</li>
+          </ul>
+          <a href="contact.html" class="btn btn-primary" style="width:100%;margin-top:1.5rem">Get Started</a>
+        </div>
+
+        <div class="price-card" data-plan="ecommerce">
+          <div class="price-label">E-Commerce</div>
+          <div style="margin-bottom:0.5rem">
+            <span style="font-size:2rem;font-weight:900;color:var(--dark)">$2,499</span>
+            <span style="color:var(--gray);font-size:0.85rem"> one-time build</span>
+          </div>
+          <div class="price-maintenance" style="margin-bottom:1rem">
+            Maintenance: <strong class="maintenance-price">$99/mo</strong>
+          </div>
+          <ul class="price-features">
+            <li>Unlimited product pages</li>
+            <li>Secure checkout (Stripe)</li>
+            <li>Inventory management</li>
+            <li>Order management system</li>
+            <li>Abandoned cart recovery</li>
+            <li>Product reviews system</li>
+            <li>Unlimited revisions</li>
+            <li>6 months free support</li>
+          </ul>
+          <a href="contact.html" class="btn btn-outline" style="width:100%;margin-top:1.5rem">Get Started</a>
+        </div>
+      </div>
+
+      <!-- Feature Comparison Table -->
+      <table class="plan-detail-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Starter</th>
+            <th>Business</th>
+            <th>E-Commerce</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Custom domain setup</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+          <tr><td>SSL certificate</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+          <tr><td>Mobile responsive</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+          <tr><td>Contact forms</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+          <tr><td>Blog / CMS</td><td class="dash">No</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+          <tr><td>E-commerce store</td><td class="dash">No</td><td class="dash">No</td><td class="check">Yes</td></tr>
+          <tr><td>Online payments</td><td class="dash">No</td><td class="dash">No</td><td class="check">Yes</td></tr>
+          <tr><td>Inventory system</td><td class="dash">No</td><td class="dash">No</td><td class="check">Yes</td></tr>
+          <tr><td>Advanced SEO</td><td class="dash">No</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+          <tr><td>Email newsletter</td><td class="dash">No</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+          <tr><td>Priority support</td><td class="dash">No</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- MAINTENANCE PLANS -->
+  <section class="section" style="background:var(--light)">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">After Launch</span>
+        <h2 class="section-title">Maintenance Plans</h2>
+        <p class="section-subtitle">Keep your site fast, secure, and up-to-date. Cancel anytime.</p>
+      </div>
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-icon">$49</div>
+          <h3>Starter Care - $49/mo</h3>
+          <p>Hosting, SSL, daily backups, security monitoring, uptime alerts, and up to 1 hour of content updates per month.</p>
+        </div>
+        <div class="service-card" style="border-color:var(--primary)">
+          <div class="service-icon">$79</div>
+          <h3>Business Care - $79/mo</h3>
+          <p>Everything in Starter plus up to 3 hours of updates, plugin updates, performance optimization, and monthly reports.</p>
+        </div>
+        <div class="service-card">
+          <div class="service-icon">$99</div>
+          <h3>E-Commerce Care - $99/mo</h3>
+          <p>Everything in Business plus store updates, product management support, order issue resolution, and payment gateway maintenance.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section faq-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Common Questions</span>
+        <h2 class="section-title">Frequently Asked Questions</h2>
+      </div>
+      <div class="faq-grid">
+        <div class="faq-item">
+          <h4>How long does it take to build a website?</h4>
+          <p>Most sites are completed within 1-3 weeks depending on complexity. E-commerce sites may take 3-5 weeks. We will give you an exact timeline during our initial call.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Do I own my website?</h4>
+          <p>Yes, 100%. Once you pay the build fee, the website is yours. If you ever cancel maintenance, you can take the files and host it anywhere you want.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Is the maintenance plan required?</h4>
+          <p>No, it is optional. But we strongly recommend it for security, backups, and keeping your site running smoothly.</p>
+        </div>
+        <div class="faq-item">
+          <h4>What if I need more pages or features?</h4>
+          <p>No problem. We can add extra pages for $75-$150 each depending on complexity, or custom features starting at $200.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Do you build on WordPress?</h4>
+          <p>Yes! We use WordPress, Shopify, or custom HTML/CSS depending on what is best for your needs. We will recommend the right platform.</p>
+        </div>
+        <div class="faq-item">
+          <h4>What is your payment policy?</h4>
+          <p>50% deposit to start, 50% on delivery. For larger projects we can do milestone-based payments.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-banner">
+    <div class="container cta-content">
+      <h2>Not sure which plan is right for you?</h2>
+      <p>Book a free 15-minute consultation call and we will figure it out together.</p>
+      <div class="cta-actions">
+        <a href="contact.html" class="btn btn-white btn-lg">Get a Free Quote</a>
+        <a href="tel:+15555555555" class="btn btn-outline-white btn-lg">Call Us Now</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="logo logo-light"><span class="logo-icon">CS</span> CustomSite</a>
+        <p>Professional web design and development for businesses of all sizes.</p>
+      </div>
+      <div class="footer-col"><h4>Services</h4><ul>
+        <li><a href="pricing.html">Business Websites</a></li>
+        <li><a href="pricing.html">E-Commerce</a></li>
+        <li><a href="pricing.html">Maintenance Plans</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Company</h4><ul>
+        <li><a href="portfolio.html">Portfolio</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Contact</h4><ul>
+        <li><a href="tel:+15555555555">(555) 555-5555</a></li>
+        <li><a href="mailto:hello@customsite.com">hello@customsite.com</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+        <p>2025 CustomSite. All rights reserved.</p>
+        <div class="footer-legal"><a href="#">Privacy</a><a href="#">Terms</a></div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+  </html>
