@@ -1,17 +1,11 @@
 // ============================================
 // CustomSite - Main JavaScript
 // ============================================
-// TODO for Cursor:
-// - Add form validation with real-time feedback
-// - Integrate EmailJS or similar for contact form
-// - Add Stripe payment integration for billing
-// - Build out client portal authentication (Firebase/Supabase)
-// - Add analytics tracking (Google Analytics 4)
-// - Build invoice generation system
-// - Add live chat widget integration
-// ============================================
 
 'use strict';
+
+const AUTH_TOKEN_KEY = 'customsite_access_token';
+const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 
 // ============================================
 // NAVBAR - Scroll behavior + mobile menu
@@ -34,7 +28,8 @@
 
   // Mobile hamburger toggle
   if (hamburger && navLinks) {
-    hamburger.addEventListener('click', () => {
+    hamburger.addEventListener('click', (e) => {
+      e.stopPropagation();
       navLinks.classList.toggle('open');
       hamburger.setAttribute('aria-expanded',
         navLinks.classList.contains('open') ? 'true' : 'false'
@@ -122,8 +117,7 @@
 })();
 
 // ============================================
-// CONTACT FORM - Basic handler
-// TODO for Cursor: Replace with real backend/EmailJS submission
+// CONTACT FORM — POST /api/contact
 // ============================================
 (function initContactForm() {
   const form = document.getElementById('contactForm');
@@ -135,44 +129,52 @@
     const submitBtn = form.querySelector('[type="submit"]');
     const originalText = submitBtn.textContent;
 
-    // Get form data
-    const data = {
+    const serviceSelect = form.querySelector('#service');
+    const budgetSelect = form.querySelector('#budget');
+    const timelineSelect = form.querySelector('#timeline');
+
+    const payload = {
       name: form.querySelector('#name')?.value.trim(),
       email: form.querySelector('#email')?.value.trim(),
-      phone: form.querySelector('#phone')?.value.trim(),
-      service: form.querySelector('#service')?.value,
-      budget: form.querySelector('#budget')?.value,
+      phone: form.querySelector('#phone')?.value.trim() || '',
+      company: form.querySelector('#company')?.value.trim() || '',
+      service_type: serviceSelect?.options[serviceSelect.selectedIndex]?.text?.trim() || '',
+      budget: budgetSelect?.options[budgetSelect.selectedIndex]?.text?.trim() || '',
+      timeline: timelineSelect?.options[timelineSelect.selectedIndex]?.text?.trim() || '',
       message: form.querySelector('#message')?.value.trim(),
+      current_url: form.querySelector('#currentSite')?.value.trim() || '',
     };
 
-    // Basic validation
-    if (!data.name || !data.email || !data.message) {
+    if (!payload.name || !payload.email || !payload.message) {
       showFormMessage(form, 'Please fill in all required fields.', 'error');
       return;
     }
 
-    if (!isValidEmail(data.email)) {
+    if (!isValidEmail(payload.email)) {
       showFormMessage(form, 'Please enter a valid email address.', 'error');
       return;
     }
 
-    // Show loading state
     submitBtn.textContent = 'Sending...';
     submitBtn.disabled = true;
 
     try {
-      // TODO for Cursor: Replace this with actual API call
-      // Example: await fetch('/api/contact', { method: 'POST', body: JSON.stringify(data), headers: {'Content-Type': 'application/json'} })
-      // Or use EmailJS: await emailjs.send('SERVICE_ID', 'TEMPLATE_ID', data);
-
-      // Simulate API delay for now
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      showFormMessage(form, 'Message sent! We will get back to you within 24 hours.', 'success');
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+      showFormMessage(form, 'Thanks — your message was sent. We will reply within one business day.', 'success');
       form.reset();
     } catch (error) {
       console.error('Form submission error:', error);
-      showFormMessage(form, 'Something went wrong. Please try calling us directly.', 'error');
+      showFormMessage(form,
+        error.message || 'Something went wrong. Please email hello@customsite.online directly.',
+        'error');
     } finally {
       submitBtn.textContent = originalText;
       submitBtn.disabled = false;
@@ -181,8 +183,7 @@
 })();
 
 // ============================================
-// CLIENT PORTAL LOGIN
-// TODO for Cursor: Implement with Firebase Auth or Supabase
+// CLIENT PORTAL LOGIN — POST /api/auth/login
 // ============================================
 (function initPortalLogin() {
   const loginForm = document.getElementById('portalLoginForm');
@@ -204,20 +205,102 @@
     submitBtn.disabled = true;
 
     try {
-      // TODO for Cursor: Replace with Firebase/Supabase auth
-      // Example Firebase: await signInWithEmailAndPassword(auth, email, password);
-      // Example Supabase: await supabase.auth.signInWithPassword({ email, password });
-
-      // Placeholder - redirect to dashboard after login
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+      if (data.access_token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, data.access_token);
+      }
+      if (data.refresh_token) {
+        localStorage.setItem(AUTH_REFRESH_KEY, data.refresh_token);
+      }
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('Login error:', error);
-      showFormMessage(loginForm, 'Invalid email or password. Please try again.', 'error');
-      submitBtn.textContent = 'Sign In';
+      showFormMessage(loginForm, error.message || 'Invalid email or password.', 'error');
+    } finally {
+      submitBtn.textContent = 'Sign In to Portal';
       submitBtn.disabled = false;
     }
   });
+})();
+
+// ============================================
+// STRIPE CHECKOUT — build fee (pricing + home)
+// ============================================
+(function initStripeCheckout() {
+  document.querySelectorAll('.js-stripe-checkout').forEach((el) => {
+    el.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const planId = el.getAttribute('data-plan');
+      if (!planId) return;
+      const prev = el.textContent;
+      el.textContent = 'Redirecting…';
+      el.setAttribute('aria-busy', 'true');
+      try {
+        const res = await fetch('/api/payments/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || 'Could not start checkout');
+        }
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        throw new Error('No checkout URL');
+      } catch (err) {
+        alert(err.message || 'Checkout failed. Configure Stripe and price IDs on the server.');
+      } finally {
+        el.textContent = prev;
+        el.removeAttribute('aria-busy');
+      }
+    });
+  });
+})();
+
+// ============================================
+// PROTECTED PAGES — dashboard / admin
+// ============================================
+(function initProtectedPages() {
+  const path = window.location.pathname || '';
+  const isDash = path.endsWith('dashboard.html');
+  const isAdmin = path.endsWith('admin.html');
+  if (!isDash && !isAdmin) return;
+
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!token) {
+    window.location.replace('client-portal.html');
+    return;
+  }
+
+  fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+    .then((r) => {
+      if (!r.ok) throw new Error();
+      return r.json();
+    })
+    .then((data) => {
+      if (isAdmin && data.user && data.user.role !== 'admin') {
+        window.location.replace('dashboard.html');
+      }
+      if (isDash && data.user && data.user.role === 'admin') {
+        window.location.replace('admin.html');
+      }
+    })
+    .catch(() => {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_REFRESH_KEY);
+      window.location.replace('client-portal.html');
+    });
 })();
 
 // ============================================

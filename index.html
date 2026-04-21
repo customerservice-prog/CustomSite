@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CustomSite - Professional Web Design and Development</title>
+  <meta name="description" content="CustomSite designs and builds fast, mobile-friendly websites for small businesses — from first draft to hosting and ongoing care." />
+  <meta property="og:title" content="CustomSite — Professional Web Design" />
+  <meta property="og:description" content="We build websites that grow your business." />
+  <meta property="og:url" content="https://customsite.online/" />
+  <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
+  <meta property="og:type" content="website" />
+  <title>CustomSite — Professional Web Design and Development</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -24,7 +31,7 @@
         <li><a href="contact.html">Contact</a></li>
         <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
       </ul>
-      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
     </div>
@@ -53,16 +60,16 @@
       </div>
       <div class="hero-stats">
         <div class="stat">
-          <span class="stat-number" data-target="150">0</span><span>+</span>
-          <span class="stat-label">Sites Built</span>
+          <span class="stat-number" data-target="40">0</span><span class="stat-suffix">+</span>
+          <span class="stat-label">Projects delivered</span>
         </div>
         <div class="stat">
-          <span class="stat-number" data-target="98">0</span><span>%</span>
-          <span class="stat-label">Happy Clients</span>
+          <span class="stat-number" data-target="5">0</span><span class="stat-suffix">+</span>
+          <span class="stat-label">Years building sites</span>
         </div>
         <div class="stat">
-          <span class="stat-number" data-target="5">0</span><span>yr</span>
-          <span class="stat-label">Experience</span>
+          <span class="stat-number stat-number--text">24h</span>
+          <span class="stat-label">Typical first reply (weekdays)</span>
         </div>
       </div>
     </div>
@@ -163,7 +170,7 @@
             <li>2 revision rounds</li>
           </ul>
           <div class="price-maintenance">+ $49/mo maintenance optional</div>
-          <a href="contact.html" class="btn btn-outline">Get Started</a>
+          <a href="#" class="btn btn-outline js-stripe-checkout" data-plan="starter">Get Started</a>
         </div>
         <div class="price-card price-card-featured">
           <div class="price-badge">Most Popular</div>
@@ -178,7 +185,7 @@
             <li>4 revision rounds</li>
           </ul>
           <div class="price-maintenance">+ $79/mo maintenance optional</div>
-          <a href="contact.html" class="btn btn-primary">Get Started</a>
+          <a href="#" class="btn btn-primary js-stripe-checkout" data-plan="business">Get Started</a>
         </div>
         <div class="price-card">
           <div class="price-label">E-Commerce</div>
@@ -192,7 +199,7 @@
             <li>Unlimited revisions</li>
           </ul>
           <div class="price-maintenance">+ $99/mo maintenance optional</div>
-          <a href="contact.html" class="btn btn-outline">Get Started</a>
+          <a href="#" class="btn btn-outline js-stripe-checkout" data-plan="ecommerce">Get Started</a>
         </div>
       </div>
       <div class="pricing-cta">
@@ -201,46 +208,26 @@
     </div>
   </section>
 
-  <!-- TESTIMONIALS -->
-  <section class="section testimonials" id="testimonials">
+  <!-- WHY CUSTOMSITE -->
+  <section class="section testimonials" id="why-us">
     <div class="container">
       <div class="section-header">
-        <span class="section-tag">Client Love</span>
-        <h2 class="section-title">What Our Clients Say</h2>
+        <span class="section-tag">Why CustomSite</span>
+        <h2 class="section-title">What you can expect</h2>
+        <p class="section-subtitle">Straightforward process, clear pricing, and a site you can actually update and rely on.</p>
       </div>
       <div class="testimonials-grid">
         <div class="testimonial-card">
-          <div class="stars">5 Stars</div>
-          <p>CustomSite built our restaurant website in under 2 weeks. We now get 30+ online reservations a week through it. Incredible ROI.</p>
-          <div class="testimonial-author">
-            <div class="author-avatar">MR</div>
-            <div>
-              <strong>Marco Rivera</strong>
-              <span>Owner, Bella Roma Restaurant</span>
-            </div>
-          </div>
+          <div class="stars">01</div>
+          <p>We start with your goals and audience — not a cookie-cutter template. You get a structure and design that fit how you sell and how people find you.</p>
         </div>
         <div class="testimonial-card">
-          <div class="stars">5 Stars</div>
-          <p>I called them on a Tuesday, had a mockup by Thursday, and my store was live the following Monday. These guys are the real deal.</p>
-          <div class="testimonial-author">
-            <div class="author-avatar">SJ</div>
-            <div>
-              <strong>Sarah Johnson</strong>
-              <span>Founder, Bloom Boutique</span>
-            </div>
-          </div>
+          <div class="stars">02</div>
+          <p>Fast load times, mobile-first layout, and clean SEO basics come standard. You should not need a developer to understand what you are paying for.</p>
         </div>
         <div class="testimonial-card">
-          <div class="stars">5 Stars</div>
-          <p>The monthly maintenance plan is worth every penny. They handle everything — updates, backups, even my Google Business profile.</p>
-          <div class="testimonial-author">
-            <div class="author-avatar">DK</div>
-            <div>
-              <strong>David Kim</strong>
-              <span>Realtor, Kim Properties</span>
-            </div>
-          </div>
+          <div class="stars">03</div>
+          <p>After launch, optional maintenance keeps hosting, backups, and security on track — so your site stays fast and available.</p>
         </div>
       </div>
     </div>
@@ -252,7 +239,7 @@
       <h2>Ready to Get Your Website Built?</h2>
       <p>Call us or fill out a quick form. We will get back to you within 24 hours.</p>
       <div class="cta-actions">
-        <a href="tel:+15555555555" class="btn btn-white btn-lg">Call Us Now</a>
+        <a href="mailto:hello@customsite.online" class="btn btn-white btn-lg">Email hello@customsite.online</a>
         <a href="contact.html" class="btn btn-outline-white btn-lg">Get a Free Quote</a>
       </div>
     </div>
@@ -289,14 +276,14 @@
       <div class="footer-col">
         <h4>Contact</h4>
         <ul>
-          <li><a href="tel:+15555555555">(555) 555-5555</a></li>
-          <li><a href="mailto:hello@customsite.com">hello@customsite.com</a></li>
+          <li><a href="mailto:hello@customsite.online">hello@customsite.online</a></li>
+          <li><a href="contact.html">Project inquiry form</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
       <div class="container">
-        <p>2025 CustomSite. All rights reserved.</p>
+        <p>2026 CustomSite. All rights reserved.</p>
         <div class="footer-legal">
           <a href="#">Privacy Policy</a>
           <a href="#">Terms of Service</a>

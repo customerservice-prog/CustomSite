@@ -1,0 +1,72 @@
+'use strict';
+
+const express = require('express');
+const { getService } = require('../lib/supabase');
+const { sendLeadNotification, sendLeadConfirmation } = require('../lib/email');
+
+const router = express.Router();
+
+router.post('/', async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      company,
+      service_type,
+      budget,
+      timeline,
+      message,
+      current_url,
+    } = req.body || {};
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Name is required' });
+    }
+    if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, error: 'Valid email is required' });
+    }
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+
+    const row = {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: (phone && String(phone).trim()) || null,
+      company: (company && String(company).trim()) || null,
+      service_type: (service_type && String(service_type).trim()) || null,
+      budget: (budget && String(budget).trim()) || null,
+      timeline: (timeline && String(timeline).trim()) || null,
+      message: message.trim(),
+      current_url: (current_url && String(current_url).trim()) || null,
+      status: 'New',
+    };
+
+    const supabase = getService();
+    const { data, error } = await supabase.from('leads').insert(row).select('id').single();
+
+    if (error) {
+      console.error('leads insert', error);
+      return res.status(500).json({ success: false, error: 'Could not save lead' });
+    }
+
+    try {
+      await sendLeadNotification(row);
+    } catch (e) {
+      console.error('sendLeadNotification', e);
+    }
+    try {
+      await sendLeadConfirmation(row.email, row.name);
+    } catch (e) {
+      console.error('sendLeadConfirmation', e);
+    }
+
+    return res.json({ success: true, id: data.id });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+module.exports = router;

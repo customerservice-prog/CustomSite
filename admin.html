@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Admin — CustomSite</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    .adm-wrap { padding-top: 5rem; min-height: 100vh; background: var(--light); padding-bottom: 4rem; }
+    .adm-card { background: var(--white); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid rgba(0,0,0,0.06); overflow-x: auto; }
+    .adm-card h2 { font-size: 1.15rem; margin-bottom: 1rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    th { font-weight: 700; color: var(--dark-3); }
+    select.status-sel { padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.12); }
+  </style>
+</head>
+<body>
+  <nav class="navbar scrolled" id="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo" style="color:var(--dark)"><span class="logo-icon">CS</span> CustomSite Admin</a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="dashboard.html">Client view</a></li>
+        <li><a href="#" id="admLogout">Log out</a></li>
+      </ul>
+      <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="adm-wrap container">
+    <h1 class="section-title" style="margin-bottom:1.5rem">Admin</h1>
+
+    <div class="adm-card">
+      <h2>Leads</h2>
+      <table id="leadsTable">
+        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Created</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="adm-card">
+      <h2>Clients</h2>
+      <table id="clientsTable">
+        <thead><tr><th>Email</th><th>Name</th><th>Company</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="adm-card">
+      <h2>Create client account</h2>
+      <p style="color:var(--gray);font-size:0.9rem;margin-bottom:1rem">Creates a Supabase Auth user and sends a welcome email with a temporary password.</p>
+      <form id="createClientForm" class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;align-items:flex-end">
+        <div class="form-group">
+          <label for="newEmail">Email</label>
+          <input type="email" id="newEmail" required />
+        </div>
+        <div class="form-group">
+          <label for="newName">Full name</label>
+          <input type="text" id="newName" />
+        </div>
+        <div class="form-group">
+          <label for="newCo">Company</label>
+          <input type="text" id="newCo" />
+        </div>
+        <button type="submit" class="btn btn-primary">Create client</button>
+      </form>
+    </div>
+
+    <div class="adm-card">
+      <h2>Invoices</h2>
+      <table id="invTable">
+        <thead><tr><th>Amount</th><th>Status</th><th>Due</th><th>Created</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script>
+(function () {
+  const token = localStorage.getItem('customsite_access_token');
+  if (!token) return;
+
+  const hdr = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+  document.getElementById('admLogout').addEventListener('click', function (e) {
+    e.preventDefault();
+    localStorage.removeItem('customsite_access_token');
+    localStorage.removeItem('customsite_refresh_token');
+    location.href = 'client-portal.html';
+  });
+
+  function loadLeads() {
+    fetch('/api/admin/leads', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var tb = document.querySelector('#leadsTable tbody');
+        tb.innerHTML = '';
+        (data.leads || []).forEach(function (L) {
+          var tr = document.createElement('tr');
+          var sel = document.createElement('select');
+          sel.className = 'status-sel';
+          ['New','Contacted','Proposal Sent','Closed Won','Closed Lost'].forEach(function (s) {
+            var o = document.createElement('option');
+            o.value = s; o.textContent = s;
+            if (L.status === s) o.selected = true;
+            sel.appendChild(o);
+          });
+          sel.addEventListener('change', function () {
+            fetch('/api/admin/leads/' + L.id, {
+              method: 'PATCH',
+              headers: hdr,
+              body: JSON.stringify({ status: sel.value }),
+            }).catch(function () { alert('Update failed'); });
+          });
+          tr.innerHTML = '<td>' + escapeHtml(L.name) + '</td><td>' + escapeHtml(L.email) + '</td><td></td><td>' + new Date(L.created_at).toLocaleDateString() + '</td>';
+          tr.children[2].appendChild(sel);
+          tb.appendChild(tr);
+        });
+      });
+  }
+
+  function loadClients() {
+    fetch('/api/admin/clients', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var tb = document.querySelector('#clientsTable tbody');
+        tb.innerHTML = '';
+        (data.clients || []).forEach(function (c) {
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>' + escapeHtml(c.email) + '</td><td>' + escapeHtml(c.full_name || '') + '</td><td>' + escapeHtml(c.company || '') + '</td>';
+          tb.appendChild(tr);
+        });
+      });
+  }
+
+  function loadInvoices() {
+    fetch('/api/admin/invoices', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var tb = document.querySelector('#invTable tbody');
+        tb.innerHTML = '';
+        (data.invoices || []).forEach(function (inv) {
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>$' + Number(inv.amount).toFixed(2) + '</td><td>' + escapeHtml(inv.status) + '</td><td>' + (inv.due_date || '—') + '</td><td>' + new Date(inv.created_at).toLocaleDateString() + '</td>';
+          tb.appendChild(tr);
+        });
+      });
+  }
+
+  document.getElementById('createClientForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var body = {
+      email: document.getElementById('newEmail').value.trim(),
+      full_name: document.getElementById('newName').value.trim(),
+      company: document.getElementById('newCo').value.trim(),
+    };
+    fetch('/api/admin/clients', { method: 'POST', headers: hdr, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok) throw new Error(x.j.error || 'Failed');
+        alert('Client created.');
+        document.getElementById('createClientForm').reset();
+        loadClients();
+      })
+      .catch(function (err) { alert(err.message); });
+  });
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  loadLeads();
+  loadClients();
+  loadInvoices();
+})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Client Dashboard — CustomSite</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    .dash-wrap { padding-top: 5rem; min-height: 100vh; background: var(--light); }
+    .dash-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+    .dash-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    .dash-card { background: var(--white); border-radius: var(--radius-lg); padding: 1.5rem; border: 1px solid rgba(0,0,0,0.06); box-shadow: var(--shadow-sm); }
+    .dash-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--dark); }
+    .phase-badge { display: inline-block; padding: 0.35rem 0.85rem; border-radius: var(--radius-full); background: rgba(99,102,241,0.12); color: var(--primary); font-weight: 700; font-size: 0.85rem; text-transform: capitalize; }
+    .timeline-item { border-left: 3px solid var(--primary); padding-left: 1rem; margin-bottom: 1rem; }
+    .timeline-item time { font-size: 0.75rem; color: var(--gray); }
+    .msg-row { padding: 0.75rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 0.9rem; }
+    .msg-row.me { color: var(--primary); font-weight: 600; }
+    .file-link { display: block; color: var(--primary); font-weight: 600; margin: 0.35rem 0; }
+    .inv-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 0.9rem; }
+    .status-pill { font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: var(--radius-full); text-transform: capitalize; }
+    .status-pill.paid { background: #d1fae5; color: #065f46; }
+    .status-pill.pending { background: #fef3c7; color: #92400e; }
+    .status-pill.overdue { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <nav class="navbar scrolled" id="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo" style="color:var(--dark)"><span class="logo-icon">CS</span> CustomSite</a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="#" id="dashLogout">Log out</a></li>
+      </ul>
+      <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="dash-wrap">
+    <div class="container">
+      <div class="dash-header">
+        <div>
+          <span class="section-tag">Client portal</span>
+          <h1 class="section-title" style="margin-bottom:0">Your project</h1>
+        </div>
+      </div>
+
+      <p id="dashEmpty" class="dash-card" style="display:none">No project is linked to your account yet. We will set this up after kickoff.</p>
+
+      <div id="dashContent" style="display:none">
+        <div class="dash-grid">
+          <div class="dash-card">
+            <h3>Project status</h3>
+            <p id="phaseLine"><span class="phase-badge" id="phaseBadge">—</span></p>
+            <p id="projName" style="color:var(--gray);font-size:0.9rem;margin-top:0.5rem"></p>
+          </div>
+          <div class="dash-card">
+            <h3>Invoices</h3>
+            <div id="invoiceList"></div>
+          </div>
+        </div>
+
+        <div class="dash-card" style="margin-top:1.5rem">
+          <h3>Recent updates</h3>
+          <div id="updatesList"></div>
+        </div>
+
+        <div class="dash-grid" style="margin-top:1.5rem">
+          <div class="dash-card">
+            <h3>Files</h3>
+            <div id="filesList"></div>
+          </div>
+          <div class="dash-card">
+            <h3>Messages</h3>
+            <div id="msgThread"></div>
+            <form id="msgForm" style="margin-top:1rem">
+              <div class="form-group">
+                <label for="msgInput">Send a message</label>
+                <textarea id="msgInput" rows="3" placeholder="Ask a question or share feedback…"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">Send</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script>
+(function () {
+  const token = localStorage.getItem('customsite_access_token');
+  if (!token) return;
+
+  document.getElementById('dashLogout').addEventListener('click', function (e) {
+    e.preventDefault();
+    localStorage.removeItem('customsite_access_token');
+    localStorage.removeItem('customsite_refresh_token');
+    location.href = 'client-portal.html';
+  });
+
+  fetch('/api/dashboard', { headers: { Authorization: 'Bearer ' + token } })
+    .then(function (r) {
+      if (!r.ok) throw new Error();
+      return r.json();
+    })
+    .then(function (data) {
+      if (data.isAdmin) {
+        location.replace('admin.html');
+        return;
+      }
+      if (!data.project) {
+        document.getElementById('dashEmpty').style.display = 'block';
+        return;
+      }
+      document.getElementById('dashContent').style.display = 'block';
+      document.getElementById('phaseBadge').textContent = (data.project.status || '').replace(/-/g, ' ');
+      document.getElementById('projName').textContent = data.project.name || '';
+
+      var uEl = document.getElementById('updatesList');
+      uEl.innerHTML = '';
+      (data.updates || []).forEach(function (u) {
+        var d = document.createElement('div');
+        d.className = 'timeline-item';
+        d.innerHTML = '<time>' + new Date(u.created_at).toLocaleString() + '</time><p style="margin-top:0.35rem">' + escapeHtml(u.message) + '</p>';
+        uEl.appendChild(d);
+      });
+      if (!(data.updates || []).length) uEl.innerHTML = '<p style="color:var(--gray)">No updates yet.</p>';
+
+      var fEl = document.getElementById('filesList');
+      fEl.innerHTML = '';
+      (data.files || []).forEach(function (f) {
+        var a = document.createElement('a');
+        a.className = 'file-link';
+        a.href = f.file_url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = f.file_name;
+        fEl.appendChild(a);
+      });
+      if (!(data.files || []).length) fEl.innerHTML = '<p style="color:var(--gray)">No files yet.</p>';
+
+      var invEl = document.getElementById('invoiceList');
+      invEl.innerHTML = '';
+      (data.invoices || []).forEach(function (inv) {
+        var row = document.createElement('div');
+        row.className = 'inv-row';
+        var st = inv.status || 'pending';
+        row.innerHTML = '<span>$' + Number(inv.amount).toFixed(2) + '</span><span class="status-pill ' + st + '">' + st + '</span>';
+        invEl.appendChild(row);
+      });
+      if (!(data.invoices || []).length) invEl.innerHTML = '<p style="color:var(--gray)">No invoices yet.</p>';
+    })
+    .catch(function () {});
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function loadMessages() {
+    fetch('/api/messages', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var el = document.getElementById('msgThread');
+        el.innerHTML = '';
+        (data.messages || []).forEach(function (m) {
+          var d = document.createElement('div');
+          d.className = 'msg-row';
+          d.innerHTML = '<div style="font-size:0.75rem;color:var(--gray)">' + new Date(m.created_at).toLocaleString() + '</div><div>' + escapeHtml(m.content) + '</div>';
+          el.appendChild(d);
+        });
+        if (!(data.messages || []).length) el.innerHTML = '<p style="color:var(--gray)">No messages yet.</p>';
+      });
+  }
+  loadMessages();
+
+  document.getElementById('msgForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var ta = document.getElementById('msgInput');
+    var content = ta.value.trim();
+    if (!content) return;
+    fetch('/api/messages', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: content }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function () {
+        ta.value = '';
+        loadMessages();
+      })
+      .catch(function () { alert('Could not send message'); });
+  });
+})();
+  </script>
+</body>
+</html>

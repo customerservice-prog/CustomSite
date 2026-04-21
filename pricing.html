@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pricing - CustomSite</title>
+  <meta name="description" content="See CustomSite pricing for starter, business, and e-commerce website builds, plus optional maintenance plans. No hidden fees." />
+  <meta property="og:title" content="CustomSite — Professional Web Design" />
+  <meta property="og:description" content="We build websites that grow your business." />
+  <meta property="og:url" content="https://customsite.online/pricing.html" />
+  <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
+  <meta property="og:type" content="website" />
+  <title>Pricing — CustomSite</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="css/styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -106,6 +113,11 @@
       color: var(--gray);
       line-height: 1.7;
     }
+    @media (max-width: 768px) {
+      .faq-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -123,7 +135,7 @@
         <li><a href="contact.html">Contact</a></li>
         <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
       </ul>
-      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+      <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </nav>
 
@@ -170,7 +182,7 @@
             <li>2 rounds of revisions</li>
             <li>1 month free support</li>
           </ul>
-          <a href="contact.html" class="btn btn-outline" style="width:100%;margin-top:1.5rem">Get Started</a>
+          <a href="#" class="btn btn-outline js-stripe-checkout" data-plan="starter" style="width:100%;margin-top:1.5rem">Get Started</a>
         </div>
 
         <div class="price-card price-card-featured" data-plan="business">
@@ -193,7 +205,7 @@
             <li>4 rounds of revisions</li>
             <li>3 months free support</li>
           </ul>
-          <a href="contact.html" class="btn btn-primary" style="width:100%;margin-top:1.5rem">Get Started</a>
+          <a href="#" class="btn btn-primary js-stripe-checkout" data-plan="business" style="width:100%;margin-top:1.5rem">Get Started</a>
         </div>
 
         <div class="price-card" data-plan="ecommerce">
@@ -215,7 +227,7 @@
             <li>Unlimited revisions</li>
             <li>6 months free support</li>
           </ul>
-          <a href="contact.html" class="btn btn-outline" style="width:100%;margin-top:1.5rem">Get Started</a>
+          <a href="#" class="btn btn-outline js-stripe-checkout" data-plan="ecommerce" style="width:100%;margin-top:1.5rem">Get Started</a>
         </div>
       </div>
 
@@ -316,7 +328,7 @@
       <p>Book a free 15-minute consultation call and we will figure it out together.</p>
       <div class="cta-actions">
         <a href="contact.html" class="btn btn-white btn-lg">Get a Free Quote</a>
-        <a href="tel:+15555555555" class="btn btn-outline-white btn-lg">Call Us Now</a>
+        <a href="mailto:hello@customsite.online" class="btn btn-outline-white btn-lg">Email Us</a>
       </div>
     </div>
   </section>
@@ -336,15 +348,16 @@
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
         <li><a href="contact.html">Contact</a></li>
+        <li><a href="client-portal.html">Client Portal</a></li>
       </ul></div>
       <div class="footer-col"><h4>Contact</h4><ul>
-        <li><a href="tel:+15555555555">(555) 555-5555</a></li>
-        <li><a href="mailto:hello@customsite.com">hello@customsite.com</a></li>
+        <li><a href="mailto:hello@customsite.online">hello@customsite.online</a></li>
+        <li><a href="contact.html">Project inquiry</a></li>
       </ul></div>
     </div>
     <div class="footer-bottom">
       <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-        <p>2025 CustomSite. All rights reserved.</p>
+        <p>2026 CustomSite. All rights reserved.</p>
         <div class="footer-legal"><a href="#">Privacy</a><a href="#">Terms</a></div>
       </div>
     </div>

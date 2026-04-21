@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portfolio - CustomSite</title>
+  <meta name="description" content="Browse the types of sites CustomSite builds — business, e-commerce, restaurants, portfolios, and more. Case studies and screenshots are coming soon." />
+  <meta property="og:title" content="CustomSite — Professional Web Design" />
+  <meta property="og:description" content="We build websites that grow your business." />
+  <meta property="og:url" content="https://customsite.online/portfolio.html" />
+  <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
+  <meta property="og:type" content="website" />
+  <title>Portfolio — CustomSite</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="css/styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -92,6 +99,22 @@
       font-size: 0.75rem;
       font-weight: 600;
     }
+    .portfolio-card--soon .portfolio-img-placeholder {
+      flex-direction: column;
+      gap: 0.75rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .coming-soon-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.22);
+      padding: 0.35rem 0.85rem;
+      border-radius: var(--radius-full);
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
   </style>
 </head>
 <body>
@@ -109,15 +132,15 @@
         <li><a href="contact.html">Contact</a></li>
         <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
       </ul>
-      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+      <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </nav>
 
   <section class="page-hero">
     <div class="container">
       <span class="section-tag">Our Work</span>
-      <h1>Sites We Have Built</h1>
-      <p>Every website is custom-built. Here is a sample of what we have created for our clients.</p>
+      <h1>Portfolio</h1>
+      <p>We build custom sites across industries. Detailed case studies and live screenshots are on the way — tell us about your project and we will share relevant examples privately.</p>
     </div>
   </section>
 
@@ -134,169 +157,148 @@
         <button class="filter-btn" data-filter="realestate">Real Estate</button>
       </div>
 
-      <!-- Portfolio Grid -->
-      <!-- TODO for Cursor: Replace placeholder cards with real client portfolio data -->
-      <!-- TODO for Cursor: Add lightbox/modal to view site screenshots fullscreen -->
       <div class="portfolio-grid" id="portfolioGrid">
 
-        <div class="portfolio-card" data-category="restaurant">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">
-            Bella Roma
+        <div class="portfolio-card portfolio-card--soon" data-category="business">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#64748b,#334155)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Business site
           </div>
           <div class="portfolio-info">
-            <div class="portfolio-tag">Restaurant</div>
-            <h3>Bella Roma Italian Restaurant</h3>
-            <p>Full restaurant website with online menu, reservation system, and photo gallery. Increased reservations by 40% in first month.</p>
+            <div class="portfolio-tag">Business</div>
+            <h3>Service &amp; local business</h3>
+            <p>Multi-page sites with services, team, reviews, and clear calls to action — screenshot and client name will appear here.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">WordPress</span>
-                <span class="tech-tag">OpenTable API</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="ecommerce">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">
-            Bloom
+        <div class="portfolio-card portfolio-card--soon" data-category="ecommerce">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Online store
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">E-Commerce</div>
-            <h3>Bloom Boutique Online Store</h3>
-            <p>Complete Shopify store with 200+ products, custom filtering, abandoned cart recovery, and email automation.</p>
+            <h3>Retail &amp; product catalog</h3>
+            <p>Stores with product pages, checkout, and order flows tuned for your platform — details posted when we publish the case study.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">Shopify</span>
-                <span class="tech-tag">Klaviyo</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="realestate">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
-            Kim Realty
+        <div class="portfolio-card portfolio-card--soon" data-category="restaurant">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#f59e0b,#ea580c)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Restaurant
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Restaurant</div>
+            <h3>Menu &amp; hospitality</h3>
+            <p>Menus, hours, location, and reservations or ordering — built around how guests actually book and visit.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card portfolio-card--soon" data-category="portfolio">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#ec4899,#a855f7)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Creative
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Portfolio</div>
+            <h3>Creators &amp; portfolios</h3>
+            <p>Gallery-forward layouts for photographers, artists, and studios — optimized for large imagery and fast loading.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card portfolio-card--soon" data-category="realestate">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#0ea5e9,#0369a1)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Real estate
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">Real Estate</div>
-            <h3>Kim Properties Group</h3>
-            <p>Property listing site with MLS integration, lead capture forms, agent profiles, and neighborhood guides.</p>
+            <h3>Listings &amp; lead capture</h3>
+            <p>Property showcases, agent bios, and forms that feed your CRM — case study coming when we have permission to share.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">Custom CMS</span>
-                <span class="tech-tag">MLS API</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="business">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#10b981,#0ea5e9)">
-            Apex HVAC
+        <div class="portfolio-card portfolio-card--soon" data-category="business">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#14b981,#0d9488)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Professional
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">Business</div>
-            <h3>Apex HVAC Services</h3>
-            <p>Local service company site with service area map, online booking, reviews integration, and Google Ads landing pages.</p>
+            <h3>Professional services</h3>
+            <p>Law, accounting, consulting — trust-building pages, team profiles, and compliant contact paths.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">WordPress</span>
-                <span class="tech-tag">Calendly</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="portfolio">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#f43f5e,#f59e0b)">
-            Alex Lee
-          </div>
-          <div class="portfolio-info">
-            <div class="portfolio-tag">Portfolio</div>
-            <h3>Alex Lee Photography</h3>
-            <p>Stunning photography portfolio with full-screen galleries, client proofing system, and inquiry form with auto-replies.</p>
-            <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">Custom HTML</span>
-                <span class="tech-tag">Lightroom API</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="portfolio-card" data-category="business">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#6366f1,#06b6d4)">
-            LawOffice
-          </div>
-          <div class="portfolio-info">
-            <div class="portfolio-tag">Business</div>
-            <h3>Morrison Law Group</h3>
-            <p>Professional law firm website with practice area pages, attorney profiles, case evaluation form, and Google review integration.</p>
-            <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">WordPress</span>
-                <span class="tech-tag">Custom Design</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="portfolio-card" data-category="ecommerce">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#14b8a6,#3b82f6)">
-            FitGear
+        <div class="portfolio-card portfolio-card--soon" data-category="ecommerce">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#f43f5e,#be123c)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Brand launch
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">E-Commerce</div>
-            <h3>FitGear Sports Equipment</h3>
-            <p>WooCommerce store with product bundles, wholesale pricing tiers, subscription boxes, and Amazon marketplace sync.</p>
+            <h3>Brand &amp; campaign landing</h3>
+            <p>High-converting product and campaign pages with analytics and email capture — write-up in progress.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">WooCommerce</span>
-                <span class="tech-tag">Stripe</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="restaurant">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#84cc16,#06b6d4)">
-            The Spot
+        <div class="portfolio-card portfolio-card--soon" data-category="restaurant">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#84cc16,#65a30d)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Cafe / bar
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">Restaurant</div>
-            <h3>The Spot Sports Bar</h3>
-            <p>Sports bar website with event calendar, weekly specials, online ordering for pickup, and loyalty rewards integration.</p>
+            <h3>Cafe &amp; bar</h3>
+            <p>Events, specials, and mobile-first menus — placeholder until we publish the live example.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">Custom CMS</span>
-                <span class="tech-tag">Toast POS</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="portfolio">
-          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#a855f7,#6366f1)">
-            Studio JM
+        <div class="portfolio-card portfolio-card--soon" data-category="portfolio">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#64748b,#0f172a)">
+            <span class="coming-soon-badge">Coming soon</span>
+            Studio
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">Portfolio</div>
-            <h3>Studio JM Architecture</h3>
-            <p>Architecture firm portfolio with project case studies, team profiles, awards page, and consultation booking system.</p>
+            <h3>Studio &amp; agency</h3>
+            <p>Project grids, case studies, and contact flows for creative businesses — full preview coming soon.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags">
-                <span class="tech-tag">Webflow</span>
-                <span class="tech-tag">Custom Animations</span>
-              </div>
-              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+              <div class="tech-tags"><span class="tech-tag">Case study</span></div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Start a project</a>
             </div>
           </div>
         </div>
@@ -305,27 +307,11 @@
     </div>
   </section>
 
-  <!-- Stats Section -->
   <section class="section" style="background:var(--dark)">
-    <div class="container">
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;text-align:center">
-        <div>
-          <div style="font-size:3rem;font-weight:900;color:var(--primary-light)">150+</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin-top:0.5rem">Websites Built</div>
-        </div>
-        <div>
-          <div style="font-size:3rem;font-weight:900;color:var(--primary-light)">12</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin-top:0.5rem">Industries Served</div>
-        </div>
-        <div>
-          <div style="font-size:3rem;font-weight:900;color:var(--primary-light)">98%</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin-top:0.5rem">Client Satisfaction</div>
-        </div>
-        <div>
-          <div style="font-size:3rem;font-weight:900;color:var(--primary-light)">4.9</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin-top:0.5rem">Average Rating</div>
-        </div>
-      </div>
+    <div class="container" style="max-width:720px;text-align:center">
+      <p style="color:rgba(255,255,255,0.75);font-size:1.1rem;line-height:1.7;margin:0">
+        We are preparing public case studies with real metrics and screenshots. Until then, ask us for examples that match your industry — we are happy to share work privately when NDAs allow.
+      </p>
     </div>
   </section>
 
@@ -357,13 +343,13 @@
         <li><a href="contact.html">Contact</a></li>
       </ul></div>
       <div class="footer-col"><h4>Contact</h4><ul>
-        <li><a href="tel:+15555555555">(555) 555-5555</a></li>
-        <li><a href="mailto:hello@customsite.com">hello@customsite.com</a></li>
+        <li><a href="mailto:hello@customsite.online">hello@customsite.online</a></li>
+        <li><a href="contact.html">Project inquiry</a></li>
       </ul></div>
     </div>
     <div class="footer-bottom">
       <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-        <p>2025 CustomSite. All rights reserved.</p>
+        <p>2026 CustomSite. All rights reserved.</p>
         <div class="footer-legal"><a href="#">Privacy</a><a href="#">Terms</a></div>
       </div>
     </div>
