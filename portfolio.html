@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio - CustomSite</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    .filter-bar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+    }
+    .filter-btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: var(--radius-full);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid rgba(0,0,0,0.1);
+      background: transparent;
+      color: var(--dark-3);
+      transition: var(--transition);
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+    .portfolio-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      transition: var(--transition);
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .portfolio-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-xl);
+    }
+    .portfolio-img-placeholder {
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 800;
+      color: white;
+    }
+    .portfolio-info {
+      padding: 1.5rem;
+    }
+    .portfolio-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+    .portfolio-info h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+    }
+    .portfolio-info p {
+      font-size: 0.85rem;
+      color: var(--gray);
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    .portfolio-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+    }
+    .tech-tags {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+    .tech-tag {
+      background: var(--light);
+      color: var(--dark-3);
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar scrolled" id="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo" style="color:var(--dark)">
+        <span class="logo-icon">CS</span>
+        CustomSite
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="portfolio.html" class="active">Portfolio</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="section-tag">Our Work</span>
+      <h1>Sites We Have Built</h1>
+      <p>Every website is custom-built. Here is a sample of what we have created for our clients.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">All Projects</button>
+        <button class="filter-btn" data-filter="business">Business</button>
+        <button class="filter-btn" data-filter="ecommerce">E-Commerce</button>
+        <button class="filter-btn" data-filter="restaurant">Restaurant</button>
+        <button class="filter-btn" data-filter="portfolio">Portfolio</button>
+        <button class="filter-btn" data-filter="realestate">Real Estate</button>
+      </div>
+
+      <!-- Portfolio Grid -->
+      <!-- TODO for Cursor: Replace placeholder cards with real client portfolio data -->
+      <!-- TODO for Cursor: Add lightbox/modal to view site screenshots fullscreen -->
+      <div class="portfolio-grid" id="portfolioGrid">
+
+        <div class="portfolio-card" data-category="restaurant">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">
+            Bella Roma
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Restaurant</div>
+            <h3>Bella Roma Italian Restaurant</h3>
+            <p>Full restaurant website with online menu, reservation system, and photo gallery. Increased reservations by 40% in first month.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">WordPress</span>
+                <span class="tech-tag">OpenTable API</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card" data-category="ecommerce">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">
+            Bloom
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">E-Commerce</div>
+            <h3>Bloom Boutique Online Store</h3>
+            <p>Complete Shopify store with 200+ products, custom filtering, abandoned cart recovery, and email automation.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">Shopify</span>
+                <span class="tech-tag">Klaviyo</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card" data-category="realestate">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+            Kim Realty
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Real Estate</div>
+            <h3>Kim Properties Group</h3>
+            <p>Property listing site with MLS integration, lead capture forms, agent profiles, and neighborhood guides.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">Custom CMS</span>
+                <span class="tech-tag">MLS API</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card" data-category="business">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#10b981,#0ea5e9)">
+            Apex HVAC
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Business</div>
+            <h3>Apex HVAC Services</h3>
+            <p>Local service company site with service area map, online booking, reviews integration, and Google Ads landing pages.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">WordPress</span>
+                <span class="tech-tag">Calendly</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card" data-category="portfolio">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#f43f5e,#f59e0b)">
+            Alex Lee
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Portfolio</div>
+            <h3>Alex Lee Photography</h3>
+            <p>Stunning photography portfolio with full-screen galleries, client proofing system, and inquiry form with auto-replies.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">Custom HTML</span>
+                <span class="tech-tag">Lightroom API</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card" data-category="business">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#6366f1,#06b6d4)">
+            LawOffice
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Business</div>
+            <h3>Morrison Law Group</h3>
+            <p>Professional law firm website with practice area pages, attorney profiles, case evaluation form, and Google review integration.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">WordPress</span>
+                <span class="tech-tag">Custom Design</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card" data-category="ecommerce">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#14b8a6,#3b82f6)">
+            FitGear
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">E-Commerce</div>
+            <h3>FitGear Sports Equipment</h3>
+            <p>WooCommerce store with product bundles, wholesale pricing tiers, subscription boxes, and Amazon marketplace sync.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">WooCommerce</span>
+                <span class="tech-tag">Stripe</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card" data-category="restaurant">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#84cc16,#06b6d4)">
+            The Spot
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Restaurant</div>
+            <h3>The Spot Sports Bar</h3>
+            <p>Sports bar website with event calendar, weekly specials, online ordering for pickup, and loyalty rewards integration.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">Custom CMS</span>
+                <span class="tech-tag">Toast POS</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-card" data-category="portfolio">
+          <div class="portfolio-img-placeholder" style="background:linear-gradient(135deg,#a855f7,#6366f1)">
+            Studio JM
+          </div>
+          <div class="portfolio-info">
+            <div class="portfolio-tag">Portfolio</div>
+            <h3>Studio JM Architecture</h3>
+            <p>Architecture firm portfolio with project case studies, team profiles, awards page, and consultation booking system.</p>
+            <div class="portfolio-meta">
+              <div class="tech-tags">
+                <span class="tech-tag">Webflow</span>
+                <span class="tech-tag">Custom Animations</span>
+              </div>
+              <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Build mine</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="section" style="background:var(--dark)">
+    <div class="container">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;text-align:center">
+        <div>
+          <div style="font-size:3rem;font-weight:900;color:var(--primary-light)">150+</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin-top:0.5rem">Websites Built</div>
+        </div>
+        <div>
+          <div style="font-size:3rem;font-weight:900;color:var(--primary-light)">12</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin-top:0.5rem">Industries Served</div>
+        </div>
+        <div>
+          <div style="font-size:3rem;font-weight:900;color:var(--primary-light)">98%</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin-top:0.5rem">Client Satisfaction</div>
+        </div>
+        <div>
+          <div style="font-size:3rem;font-weight:900;color:var(--primary-light)">4.9</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin-top:0.5rem">Average Rating</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-banner">
+    <div class="container cta-content">
+      <h2>Ready to Join Our Portfolio?</h2>
+      <p>Tell us about your project and we will build something amazing.</p>
+      <div class="cta-actions">
+        <a href="contact.html" class="btn btn-white btn-lg">Start Your Project</a>
+        <a href="pricing.html" class="btn btn-outline-white btn-lg">View Pricing</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="logo logo-light"><span class="logo-icon">CS</span> CustomSite</a>
+        <p>Professional web design and development for businesses of all sizes.</p>
+      </div>
+      <div class="footer-col"><h4>Services</h4><ul>
+        <li><a href="pricing.html">Business Websites</a></li>
+        <li><a href="pricing.html">E-Commerce</a></li>
+        <li><a href="pricing.html">Maintenance Plans</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Company</h4><ul>
+        <li><a href="portfolio.html">Portfolio</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Contact</h4><ul>
+        <li><a href="tel:+15555555555">(555) 555-5555</a></li>
+        <li><a href="mailto:hello@customsite.com">hello@customsite.com</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+        <p>2025 CustomSite. All rights reserved.</p>
+        <div class="footer-legal"><a href="#">Privacy</a><a href="#">Terms</a></div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
