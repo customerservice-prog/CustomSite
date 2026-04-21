@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact Us - CustomSite</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <nav class="navbar scrolled" id="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo" style="color:var(--dark)">
+        <span class="logo-icon">CS</span>
+        CustomSite
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="portfolio.html">Portfolio</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="contact.html" class="active">Contact</a></li>
+        <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="section-tag">Get In Touch</span>
+      <h1>Let's Build Something Great</h1>
+      <p>Tell us about your project and we will get back to you within 24 hours with a free quote.</p>
+    </div>
+  </section>
+
+  <section class="section contact-section">
+    <div class="container">
+      <div class="contact-grid">
+
+        <!-- Contact Info -->
+        <div class="contact-info">
+          <h3>How can we help?</h3>
+          <p>Whether you need a brand new website, want to redesign an existing one, or just have questions about pricing — we are here to help. No pressure, no commitment.</p>
+
+          <div class="contact-details">
+            <div class="contact-item">
+              <div class="contact-item-icon">TEL</div>
+              <div>
+                <strong>Call Us</strong><br/>
+                <a href="tel:+15555555555" style="color:var(--primary)">(555) 555-5555</a><br/>
+                <small style="color:var(--gray)">Mon-Fri 9am-6pm EST</small>
+              </div>
+            </div>
+            <div class="contact-item">
+              <div class="contact-item-icon">@</div>
+              <div>
+                <strong>Email Us</strong><br/>
+                <a href="mailto:hello@customsite.com" style="color:var(--primary)">hello@customsite.com</a><br/>
+                <small style="color:var(--gray)">We respond within 24 hours</small>
+              </div>
+            </div>
+            <div class="contact-item">
+              <div class="contact-item-icon">CAL</div>
+              <div>
+                <strong>Book a Call</strong><br/>
+                <!-- TODO for Cursor: Add Calendly embed link -->
+                <a href="#" style="color:var(--primary)">Schedule a free 15-min call</a><br/>
+                <small style="color:var(--gray)">Pick a time that works for you</small>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:2rem;padding:1.5rem;background:var(--light);border-radius:var(--radius);border-left:4px solid var(--primary)">
+            <strong style="color:var(--dark)">Typical Response Time</strong>
+            <p style="color:var(--gray);font-size:0.9rem;margin-top:0.5rem">We review all inquiries within 2-4 business hours and send a detailed quote within 24 hours.</p>
+          </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div>
+          <form id="contactForm" style="background:var(--light);padding:2.5rem;border-radius:var(--radius-lg);border:1px solid rgba(0,0,0,0.06)">
+            <h3 style="font-size:1.4rem;font-weight:700;color:var(--dark);margin-bottom:1.75rem">Get a Free Quote</h3>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="name">Your Name *</label>
+                <input type="text" id="name" name="name" placeholder="John Smith" required />
+              </div>
+              <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" placeholder="john@yourcompany.com" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" placeholder="(555) 123-4567" />
+              </div>
+              <div class="form-group">
+                <label for="company">Business Name</label>
+                <input type="text" id="company" name="company" placeholder="Your Business LLC" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="service">What type of website do you need?</label>
+              <select id="service" name="service">
+                <option value="">Select a service...</option>
+                <option value="business">Business Website</option>
+                <option value="ecommerce">E-Commerce Store</option>
+                <option value="restaurant">Restaurant / Food</option>
+                <option value="portfolio">Portfolio / Personal</option>
+                <option value="realestate">Real Estate</option>
+                <option value="landing">Landing Page</option>
+                <option value="redesign">Redesign Existing Site</option>
+                <option value="other">Other / Not Sure</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="budget">Approximate Budget</label>
+              <select id="budget" name="budget">
+                <option value="">Select a budget range...</option>
+                <option value="under500">Under $500</option>
+                <option value="500-1000">$500 - $1,000</option>
+                <option value="1000-2000">$1,000 - $2,000</option>
+                <option value="2000-5000">$2,000 - $5,000</option>
+                <option value="5000+">$5,000+</option>
+                <option value="unsure">Not sure yet</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="timeline">Desired Timeline</label>
+              <select id="timeline" name="timeline">
+                <option value="">Select a timeline...</option>
+                <option value="asap">As soon as possible</option>
+                <option value="2weeks">Within 2 weeks</option>
+                <option value="1month">Within 1 month</option>
+                <option value="3months">Within 3 months</option>
+                <option value="flexible">Flexible</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="message">Tell us about your project *</label>
+              <textarea id="message" name="message" placeholder="Describe your business, what you need on the website, any features or pages you want, and anything else that would help us understand your vision..." required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="currentSite">Current website URL (if you have one)</label>
+              <input type="url" id="currentSite" name="currentSite" placeholder="https://yoursite.com" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%;padding:1rem">
+              Send My Request
+            </button>
+
+            <p style="font-size:0.8rem;color:var(--gray);text-align:center;margin-top:1rem">
+              By submitting this form you agree to our Privacy Policy. We will never share your information.
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Choose Us -->
+  <section class="section" style="background:var(--light)">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Why Us</span>
+        <h2 class="section-title">What Happens After You Contact Us</h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">01</div>
+          <div class="step-icon">24h</div>
+          <h3>Free Quote in 24 Hours</h3>
+          <p>We review your request and send a detailed, no-obligation quote with a project timeline and what's included.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">02</div>
+          <div class="step-icon">YES</div>
+          <h3>You Approve, We Start</h3>
+          <p>Once you approve the quote and pay the 50% deposit, we get to work. You will see a design mockup within 3-5 days.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">03</div>
+          <div class="step-icon">GO!</div>
+          <h3>Review and Launch</h3>
+          <p>You review the site, request any changes, and when you are happy — we launch it. Then ongoing support is yours.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="logo logo-light"><span class="logo-icon">CS</span> CustomSite</a>
+        <p>Professional web design and development for businesses of all sizes.</p>
+      </div>
+      <div class="footer-col"><h4>Services</h4><ul>
+        <li><a href="pricing.html">Business Websites</a></li>
+        <li><a href="pricing.html">E-Commerce</a></li>
+        <li><a href="pricing.html">Maintenance Plans</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Company</h4><ul>
+        <li><a href="portfolio.html">Portfolio</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Contact</h4><ul>
+        <li><a href="tel:+15555555555">(555) 555-5555</a></li>
+        <li><a href="mailto:hello@customsite.com">hello@customsite.com</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+        <p>2025 CustomSite. All rights reserved.</p>
+        <div class="footer-legal"><a href="#">Privacy</a><a href="#">Terms</a></div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
