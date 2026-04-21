@@ -220,7 +220,8 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
       if (data.refresh_token) {
         localStorage.setItem(AUTH_REFRESH_KEY, data.refresh_token);
       }
-      window.location.href = 'dashboard.html';
+      const isAdmin = data.user && data.user.role === 'admin';
+      window.location.href = isAdmin ? 'admin.html' : 'dashboard.html';
     } catch (error) {
       console.error('Login error:', error);
       showFormMessage(loginForm, error.message || 'Invalid email or password.', 'error');

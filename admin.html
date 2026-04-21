@@ -11,11 +11,16 @@
   <style>
     .adm-wrap { padding-top: 5rem; min-height: 100vh; background: var(--light); padding-bottom: 4rem; }
     .adm-card { background: var(--white); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid rgba(0,0,0,0.06); overflow-x: auto; }
-    .adm-card h2 { font-size: 1.15rem; margin-bottom: 1rem; }
+    .adm-card h2 { font-size: 1.15rem; margin-bottom: 0.75rem; }
+    .adm-card .hint { color: var(--gray); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: top; }
     th { font-weight: 700; color: var(--dark-3); }
-    select.status-sel { padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.12); }
+    select.status-sel { padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.12); max-width: 10rem; }
+    .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8rem; }
+    .ops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; align-items: end; }
+    .phase-note { font-size: 0.8rem; color: var(--gray); margin-top: 1rem; }
+    .phase-note a { color: var(--primary); font-weight: 600; }
   </style>
 </head>
 <body>
@@ -24,6 +29,7 @@
       <a href="index.html" class="logo" style="color:var(--dark)"><span class="logo-icon">CS</span> CustomSite Admin</a>
       <ul class="nav-links" id="navLinks">
         <li><a href="dashboard.html">Client view</a></li>
+        <li><a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a></li>
         <li><a href="#" id="admLogout">Log out</a></li>
       </ul>
       <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
@@ -31,12 +37,14 @@
   </nav>
 
   <div class="adm-wrap container">
-    <h1 class="section-title" style="margin-bottom:1.5rem">Admin</h1>
+    <h1 class="section-title" style="margin-bottom:0.5rem">Operations</h1>
+    <p class="phase-note">Use <strong>Launch phases</strong> for Supabase, Stripe, and first admin setup. Building the client’s actual site happens in your design/dev tools; this panel runs the engagement (status, files, billing).</p>
 
     <div class="adm-card">
       <h2>Leads</h2>
+      <p class="hint">Convert a lead to create a <strong>client portal login</strong>, a <strong>project</strong> (from the lead), and mark the lead Closed Won. Welcome email sends a temp password.</p>
       <table id="leadsTable">
-        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Created</th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th></th><th>Created</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -47,12 +55,10 @@
         <thead><tr><th>Email</th><th>Name</th><th>Company</th></tr></thead>
         <tbody></tbody>
       </table>
-    </div>
 
-    <div class="adm-card">
-      <h2>Create client account</h2>
-      <p style="color:var(--gray);font-size:0.9rem;margin-bottom:1rem">Creates a Supabase Auth user and sends a welcome email with a temporary password.</p>
-      <form id="createClientForm" class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;align-items:flex-end">
+      <h2 style="margin-top:1.5rem">Create client account</h2>
+      <p class="hint">Creates Auth user + portal profile + welcome email (temp password).</p>
+      <form id="createClientForm" class="ops-grid">
         <div class="form-group">
           <label for="newEmail">Email</label>
           <input type="email" id="newEmail" required />
@@ -70,11 +76,121 @@
     </div>
 
     <div class="adm-card">
+      <h2>Projects</h2>
+      <p class="hint">One row per engagement. Clients see the <strong>most recent</strong> project on their dashboard.</p>
+      <form id="createProjectForm" class="ops-grid">
+        <div class="form-group">
+          <label for="projClient">Client</label>
+          <select id="projClient" required></select>
+        </div>
+        <div class="form-group">
+          <label for="projName">Project name</label>
+          <input type="text" id="projName" placeholder="e.g. Acme — marketing site" required />
+        </div>
+        <div class="form-group">
+          <label for="projType">Website type</label>
+          <input type="text" id="projType" placeholder="business, ecommerce, landing…" />
+        </div>
+        <div class="form-group">
+          <label for="projPhase">Phase</label>
+          <select id="projPhase">
+            <option value="discovery">Discovery</option>
+            <option value="design">Design</option>
+            <option value="development">Development</option>
+            <option value="review">Review</option>
+            <option value="live">Live</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="projNotes">Internal notes (stack, repo, host)</label>
+          <textarea id="projNotes" rows="2" placeholder="Next.js on Vercel, repo link…"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Create project</button>
+      </form>
+
+      <table id="projectsTable" style="margin-top:1.5rem">
+        <thead><tr><th>Project</th><th>Client</th><th>Phase</th><th>Type</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="adm-card">
+      <h2>Quick actions (selected client)</h2>
+      <p class="hint">Post updates the client sees; upload deliverables to Storage bucket <code>project-files</code>.</p>
+      <div class="ops-grid">
+        <div class="form-group">
+          <label for="actClient">Client</label>
+          <select id="actClient"></select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:1rem">
+        <label for="actUpdate">Post project update</label>
+        <textarea id="actUpdate" rows="2" placeholder="e.g. Homepage mockups ready for review"></textarea>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" id="btnPostUpdate">Post update</button>
+
+      <div class="ops-grid" style="margin-top:1rem">
+        <div class="form-group">
+          <label for="actPhase">Set phase</label>
+          <select id="actPhase">
+            <option value="discovery">Discovery</option>
+            <option value="design">Design</option>
+            <option value="development">Development</option>
+            <option value="review">Review</option>
+            <option value="live">Live</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="btnSetPhase" style="height:fit-content">Apply phase</button>
+      </div>
+
+      <form id="uploadForm" style="margin-top:1rem">
+        <div class="form-group">
+          <label for="actFile">Upload file to client project</label>
+          <input type="file" id="actFile" required />
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">Upload</button>
+      </form>
+    </div>
+
+    <div class="adm-card">
       <h2>Invoices</h2>
-      <table id="invTable">
+      <form id="createInvForm" class="ops-grid">
+        <div class="form-group">
+          <label for="invClient">Client</label>
+          <select id="invClient" required></select>
+        </div>
+        <div class="form-group">
+          <label for="invAmount">Amount (USD)</label>
+          <input type="number" id="invAmount" min="0" step="0.01" required />
+        </div>
+        <div class="form-group">
+          <label for="invDue">Due date</label>
+          <input type="date" id="invDue" />
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="invDesc">Description</label>
+          <input type="text" id="invDesc" placeholder="Deposit / balance / maintenance" />
+        </div>
+        <button type="submit" class="btn btn-primary">Create invoice</button>
+      </form>
+      <table id="invTable" style="margin-top:1.5rem">
         <thead><tr><th>Amount</th><th>Status</th><th>Due</th><th>Created</th></tr></thead>
         <tbody></tbody>
       </table>
+    </div>
+
+    <div class="adm-card">
+      <h2>Message client (project thread)</h2>
+      <p class="hint">Sends a message as you (admin) in the client’s project thread.</p>
+      <div class="form-group">
+        <label for="msgProject">Project ID</label>
+        <input type="text" id="msgProject" placeholder="Copy from Projects table (UUID)" />
+      </div>
+      <div class="form-group">
+        <label for="msgBody">Message</label>
+        <textarea id="msgBody" rows="2"></textarea>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" id="btnAdminMsg">Send</button>
     </div>
   </div>
 
@@ -85,6 +201,7 @@
   if (!token) return;
 
   const hdr = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+  let clientsCache = [];
 
   document.getElementById('admLogout').addEventListener('click', function (e) {
     e.preventDefault();
@@ -92,6 +209,40 @@
     localStorage.removeItem('customsite_refresh_token');
     location.href = 'client-portal.html';
   });
+
+  function fillClientSelects() {
+    var ids = ['projClient', 'actClient', 'invClient'];
+    ids.forEach(function (id) {
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var v = sel.value;
+      sel.innerHTML = '<option value="">Select…</option>';
+      clientsCache.forEach(function (c) {
+        var o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = c.email + (c.company ? ' — ' + c.company : '');
+        sel.appendChild(o);
+      });
+      sel.value = v;
+    });
+  }
+
+  function loadClients(cb) {
+    fetch('/api/admin/clients', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        clientsCache = data.clients || [];
+        var tb = document.querySelector('#clientsTable tbody');
+        tb.innerHTML = '';
+        clientsCache.forEach(function (c) {
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>' + escapeHtml(c.email) + '</td><td>' + escapeHtml(c.full_name || '') + '</td><td>' + escapeHtml(c.company || '') + '</td>';
+          tb.appendChild(tr);
+        });
+        fillClientSelects();
+        if (cb) cb();
+      });
+  }
 
   function loadLeads() {
     fetch('/api/admin/leads', { headers: { Authorization: 'Bearer ' + token } })
@@ -110,28 +261,50 @@
             sel.appendChild(o);
           });
           sel.addEventListener('change', function () {
-            fetch('/api/admin/leads/' + L.id, {
-              method: 'PATCH',
-              headers: hdr,
-              body: JSON.stringify({ status: sel.value }),
-            }).catch(function () { alert('Update failed'); });
+            fetch('/api/admin/leads/' + L.id, { method: 'PATCH', headers: hdr, body: JSON.stringify({ status: sel.value }) })
+              .catch(function () { alert('Update failed'); });
           });
-          tr.innerHTML = '<td>' + escapeHtml(L.name) + '</td><td>' + escapeHtml(L.email) + '</td><td></td><td>' + new Date(L.created_at).toLocaleDateString() + '</td>';
+          var conv = document.createElement('button');
+          conv.type = 'button';
+          conv.className = 'btn btn-outline btn-sm';
+          conv.textContent = 'Convert';
+          conv.title = 'Create client + project from lead';
+          if (L.status === 'Closed Won' || L.status === 'Closed Lost') {
+            conv.disabled = true;
+            conv.textContent = '—';
+            conv.title = '';
+          }
+          conv.addEventListener('click', function () {
+            if (conv.disabled) return;
+            if (!confirm('Create portal user for ' + L.email + ' and a new project?')) return;
+            fetch('/api/admin/leads/' + L.id + '/convert', { method: 'POST', headers: hdr })
+              .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+              .then(function (x) {
+                if (!x.ok) throw new Error(x.j.error || 'Convert failed');
+                alert('Converted. Welcome email sent.');
+                loadLeads();
+                loadClients(loadProjects);
+              })
+              .catch(function (e) { alert(e.message); });
+          });
+          tr.innerHTML = '<td>' + escapeHtml(L.name) + '</td><td>' + escapeHtml(L.email) + '</td><td></td><td></td><td>' + new Date(L.created_at).toLocaleDateString() + '</td>';
           tr.children[2].appendChild(sel);
+          tr.children[3].appendChild(conv);
           tb.appendChild(tr);
         });
       });
   }
 
-  function loadClients() {
-    fetch('/api/admin/clients', { headers: { Authorization: 'Bearer ' + token } })
+  function loadProjects() {
+    fetch('/api/admin/projects', { headers: { Authorization: 'Bearer ' + token } })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        var tb = document.querySelector('#clientsTable tbody');
+        var tb = document.querySelector('#projectsTable tbody');
         tb.innerHTML = '';
-        (data.clients || []).forEach(function (c) {
+        (data.projects || []).forEach(function (p) {
           var tr = document.createElement('tr');
-          tr.innerHTML = '<td>' + escapeHtml(c.email) + '</td><td>' + escapeHtml(c.full_name || '') + '</td><td>' + escapeHtml(c.company || '') + '</td>';
+          var c = p.client || {};
+          tr.innerHTML = '<td>' + escapeHtml(p.name) + '</td><td>' + escapeHtml(c.email || '') + '</td><td>' + escapeHtml(p.status) + '</td><td>' + escapeHtml(p.website_type || '—') + '</td>';
           tb.appendChild(tr);
         });
       });
@@ -153,20 +326,125 @@
 
   document.getElementById('createClientForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    var body = {
-      email: document.getElementById('newEmail').value.trim(),
-      full_name: document.getElementById('newName').value.trim(),
-      company: document.getElementById('newCo').value.trim(),
-    };
-    fetch('/api/admin/clients', { method: 'POST', headers: hdr, body: JSON.stringify(body) })
+    fetch('/api/admin/clients', {
+      method: 'POST',
+      headers: hdr,
+      body: JSON.stringify({
+        email: document.getElementById('newEmail').value.trim(),
+        full_name: document.getElementById('newName').value.trim(),
+        company: document.getElementById('newCo').value.trim(),
+      }),
+    })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (x) {
         if (!x.ok) throw new Error(x.j.error || 'Failed');
         alert('Client created.');
         document.getElementById('createClientForm').reset();
-        loadClients();
+        loadClients(loadProjects);
       })
       .catch(function (err) { alert(err.message); });
+  });
+
+  document.getElementById('createProjectForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var body = {
+      client_id: document.getElementById('projClient').value,
+      name: document.getElementById('projName').value.trim(),
+      status: document.getElementById('projPhase').value,
+      website_type: document.getElementById('projType').value.trim(),
+      internal_notes: document.getElementById('projNotes').value.trim(),
+    };
+    fetch('/api/admin/projects', { method: 'POST', headers: hdr, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok) throw new Error(x.j.error || 'Failed');
+        alert('Project created.');
+        document.getElementById('createProjectForm').reset();
+        loadProjects();
+      })
+      .catch(function (err) { alert(err.message); });
+  });
+
+  document.getElementById('btnPostUpdate').addEventListener('click', function () {
+    var cid = document.getElementById('actClient').value;
+    var msg = document.getElementById('actUpdate').value.trim();
+    if (!cid || !msg) { alert('Select a client and enter an update.'); return; }
+    fetch('/api/admin/projects/' + cid + '/update', { method: 'POST', headers: hdr, body: JSON.stringify({ message: msg }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok) throw new Error(x.j.error || 'Failed');
+        document.getElementById('actUpdate').value = '';
+        alert('Update posted.');
+      })
+      .catch(function (e) { alert(e.message); });
+  });
+
+  document.getElementById('btnSetPhase').addEventListener('click', function () {
+    var cid = document.getElementById('actClient').value;
+    var st = document.getElementById('actPhase').value;
+    if (!cid) { alert('Select a client.'); return; }
+    fetch('/api/admin/projects/' + cid + '/status', { method: 'PATCH', headers: hdr, body: JSON.stringify({ status: st }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok) throw new Error(x.j.error || 'Failed');
+        alert('Phase updated.');
+        loadProjects();
+      })
+      .catch(function (e) { alert(e.message); });
+  });
+
+  document.getElementById('uploadForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var cid = document.getElementById('actClient').value;
+    var f = document.getElementById('actFile').files[0];
+    if (!cid || !f) { alert('Select client and file.'); return; }
+    var fd = new FormData();
+    fd.append('file', f);
+    fetch('/api/admin/projects/' + cid + '/files', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: fd })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok) throw new Error(x.j.error || 'Upload failed');
+        document.getElementById('actFile').value = '';
+        alert('File uploaded.');
+      })
+      .catch(function (err) { alert(err.message); });
+  });
+
+  document.getElementById('createInvForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var due = document.getElementById('invDue').value;
+    fetch('/api/admin/invoices', {
+      method: 'POST',
+      headers: hdr,
+      body: JSON.stringify({
+        client_id: document.getElementById('invClient').value,
+        amount: document.getElementById('invAmount').value,
+        description: document.getElementById('invDesc').value.trim(),
+        due_date: due || null,
+      }),
+    })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok) throw new Error(x.j.error || 'Failed');
+        alert('Invoice created.');
+        document.getElementById('createInvForm').reset();
+        loadInvoices();
+      })
+      .catch(function (err) { alert(err.message); });
+  });
+
+  document.getElementById('btnAdminMsg').addEventListener('click', function () {
+    var pid = document.getElementById('msgProject').value.trim();
+    var content = document.getElementById('msgBody').value.trim();
+    if (!pid || !content) return;
+    fetch('/api/admin/messages', { method: 'POST', headers: hdr, body: JSON.stringify({ project_id: pid, content: content }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok) throw new Error(x.j.error || 'Failed');
+        document.getElementById('msgBody').value = '';
+        alert('Message sent.');
+      })
+      .catch(function (e) { alert(e.message); });
   });
 
   function escapeHtml(s) {
@@ -176,7 +454,7 @@
   }
 
   loadLeads();
-  loadClients();
+  loadClients(function () { loadProjects(); });
   loadInvoices();
 })();
   </script>

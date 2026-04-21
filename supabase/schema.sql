@@ -34,6 +34,8 @@ create table if not exists public.projects (
   status text not null default 'discovery',
   created_at timestamptz not null default now(),
   launched_at timestamptz,
+  website_type text,
+  internal_notes text,
   constraint projects_status_check check (status in ('discovery', 'design', 'development', 'review', 'live'))
 );
 
