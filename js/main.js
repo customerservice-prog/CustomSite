@@ -276,7 +276,8 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
   const path = window.location.pathname || '';
   const isDash = path.endsWith('dashboard.html');
   const isAdmin = path.endsWith('admin.html');
-  if (!isDash && !isAdmin) return;
+  const isSiteBuilder = path.endsWith('site-builder.html');
+  if (!isDash && !isAdmin && !isSiteBuilder) return;
 
   const token = localStorage.getItem(AUTH_TOKEN_KEY);
   if (!token) {
@@ -291,6 +292,9 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
     })
     .then((data) => {
       if (isAdmin && data.user && data.user.role !== 'admin') {
+        window.location.replace('dashboard.html');
+      }
+      if (isSiteBuilder && data.user && data.user.role !== 'admin') {
         window.location.replace('dashboard.html');
       }
       if (isDash && data.user && data.user.role === 'admin') {

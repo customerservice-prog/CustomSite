@@ -11,6 +11,8 @@ const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const messagesRoutes = require('./routes/messages');
 const adminRoutes = require('./routes/admin');
+const siteBuilderRoutes = require('./routes/siteBuilder');
+const previewSiteMiddleware = require('./routes/previewSite');
 const { router: paymentsRoutes, handleWebhook } = require('./routes/payments');
 
 const app = express();
@@ -39,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', siteBuilderRoutes);
 app.use('/api/payments', paymentsRoutes);
 
 app.use(express.static(path.join(__dirname), {

@@ -24,6 +24,18 @@ Follow in order. Each phase unlocks the next.
 
 **Done when:** Tables exist and bucket is created.
 
+Also run **`supabase/migration_site_files.sql`** if you created the DB before the site builder existed (adds `site_files` if missing).
+
+---
+
+## Phase 2b — In-project site builder (HTML/CSS/JS)
+
+1. After `site_files` exists, open **`/site-builder.html`** (admin only).
+2. Pick a **project**, click **Init starter**, edit **`index.html` / `styles.css` / `app.js`**, **Save**.
+3. **Staging preview:** `https://your-domain/preview/<project-uuid>/` (share with client from their dashboard **Open staging preview**).
+
+This stores source in Postgres — not WordPress. For images, use external URLs or upload assets via **Admin → Quick actions → Upload file** and link them in HTML.
+
 ---
 
 ## Phase 3 — Email (Resend)

@@ -56,6 +56,9 @@
             <h3>Project status</h3>
             <p id="phaseLine"><span class="phase-badge" id="phaseBadge">—</span></p>
             <p id="projName" style="color:var(--gray);font-size:0.9rem;margin-top:0.5rem"></p>
+            <p id="stagingPreview" style="margin-top:1rem;display:none">
+              <a href="#" id="stagingLink" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Open staging preview</a>
+            </p>
           </div>
           <div class="dash-card">
             <h3>Invoices</h3>
@@ -119,6 +122,12 @@
       document.getElementById('dashContent').style.display = 'block';
       document.getElementById('phaseBadge').textContent = (data.project.status || '').replace(/-/g, ' ');
       document.getElementById('projName').textContent = data.project.name || '';
+      if (data.previewUrl) {
+        var base = data.previewUrl;
+        if (!base.endsWith('/')) base += '/';
+        document.getElementById('stagingLink').href = base + 'index.html';
+        document.getElementById('stagingPreview').style.display = 'block';
+      }
 
       var uEl = document.getElementById('updatesList');
       uEl.innerHTML = '';

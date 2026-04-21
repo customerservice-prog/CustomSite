@@ -64,11 +64,16 @@ router.get('/', requireAuth, async (req, res) => {
         .order('created_at', { ascending: false }),
     ]);
 
+    const base = process.env.PUBLIC_SITE_URL || '';
+    const previewPath = `/preview/${projectId}`;
+    const previewUrl = base ? `${base.replace(/\/$/, '')}${previewPath}` : previewPath;
+
     return res.json({
       project,
       updates: updates || [],
       files: files || [],
       invoices: invoices || [],
+      previewUrl,
     });
   } catch (e) {
     console.error(e);
