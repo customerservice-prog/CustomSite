@@ -2,254 +2,241 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex" />
   <title>Site builder — CustomSite</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
-  <style>
-    .sb-wrap { display: flex; flex-direction: column; min-height: 100vh; padding-top: 4.5rem; background: #0f172a; color: #e2e8f0; }
-    .sb-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: #1e293b; border-bottom: 1px solid rgba(255,255,255,0.08); position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
-    .sb-toolbar label { font-size: 0.8rem; font-weight: 600; color: #94a3b8; }
-    .sb-toolbar select, .sb-toolbar input { padding: 0.4rem 0.65rem; border-radius: 0.35rem; border: 1px solid rgba(255,255,255,0.12); background: #0f172a; color: #fff; font-size: 0.85rem; max-width: 100%; }
-    .sb-main { display: grid; grid-template-columns: 220px 1fr 42%; gap: 0; flex: 1; min-height: 0; }
-    @media (max-width: 1100px) { .sb-main { grid-template-columns: 1fr; } .sb-preview { min-height: 40vh; } }
-    .sb-files { background: #1e293b; border-right: 1px solid rgba(255,255,255,0.08); overflow-y: auto; padding: 0.75rem; }
-    .sb-files h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin: 0 0 0.5rem; }
-    .sb-files button.file-item { display: block; width: 100%; text-align: left; padding: 0.45rem 0.5rem; border: none; background: transparent; color: #cbd5e1; border-radius: 0.35rem; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
-    .sb-files button.file-item:hover, .sb-files button.file-item.active { background: rgba(99,102,241,0.2); color: #a5b4fc; }
-    .sb-editor { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid rgba(255,255,255,0.08); }
-    .sb-editor .CodeMirror { flex: 1; height: auto !important; min-height: 400px; font-size: 13px; background: #f8fafc !important; }
-    .sb-preview { background: #fff; display: flex; flex-direction: column; min-height: 0; }
-    .sb-preview h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin: 0; padding: 0.5rem 0.75rem; background: #f1f5f9; color: #475569; }
-    .sb-preview iframe { flex: 1; width: 100%; min-height: 400px; border: none; background: #fff; }
-    .btn-sb { padding: 0.45rem 0.85rem; border-radius: 0.35rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; font-family: inherit; }
-    .btn-sb-primary { background: #6366f1; color: #fff; }
-    .btn-sb-ghost { background: rgba(255,255,255,0.08); color: #e2e8f0; }
-    .btn-sb-danger { background: rgba(239,68,68,0.2); color: #fca5a5; }
-    .sb-hint { font-size: 0.75rem; color: #64748b; max-width: 36rem; }
-  </style>
+  <link rel="stylesheet" href="css/site-builder.css" />
 </head>
 <body>
-  <div class="sb-wrap">
-    <div class="sb-toolbar">
-      <a href="admin.html" style="color:#94a3b8;font-weight:600;font-size:0.85rem">← Admin</a>
-      <div>
-        <label for="projPick">Project</label><br/>
-        <select id="projPick"></select>
+  <div id="sbErrorBanner" role="status"></div>
+  <div id="sbApp">
+    <header class="sb-header" id="sbToolbar">
+      <div class="sb-tool sb-row-1">
+        <div class="sb-zone sb-z-left">
+          <a class="sb-a" href="admin.html">← Admin</a>
+          <div>
+            <div class="sb-lbl">Project</div>
+            <select id="sbProject" class="sb-sel" aria-label="Select project"></select>
+          </div>
+          <span class="sb-badge" id="sbPhaseBadge" hidden>—</span>
+        </div>
+        <div class="sb-zone" style="flex: 1; min-width: 0; justify-content: flex-end">
+          <span class="sb-breadcrumb" id="sbBreadcrumb" aria-live="polite"
+            >File: <code id="sbFileLabel">—</code> <span id="sbDirtyMark" class="sb-dirty" hidden title="Unsaved">●</span></span
+          >
+        </div>
       </div>
-      <button type="button" class="btn-sb btn-sb-primary" id="btnSave">Save file</button>
-      <button type="button" class="btn-sb btn-sb-ghost" id="btnNew">New file</button>
-      <button type="button" class="btn-sb btn-sb-ghost" id="btnInit">Init starter (HTML/CSS/JS)</button>
-      <button type="button" class="btn-sb btn-sb-danger" id="btnDel">Delete file</button>
-      <button type="button" class="btn-sb btn-sb-ghost" id="btnRefreshPreview">Refresh preview</button>
-      <span class="sb-hint">Live staging URL: <code id="previewLink" style="color:#a5b4fc"></code></span>
+      <div class="sb-tool sb-row-2">
+        <div class="sb-row2-left">
+          <div class="sb-env" id="sbEnvToggle" role="radiogroup" aria-label="Deployment environment">
+            <label class="sb-env-lbl"
+              ><input type="radio" name="sbenv" value="staging" checked /> Staging</label
+            >
+            <label class="sb-env-lbl"
+              ><input type="radio" name="sbenv" value="production" /> Production</label
+            >
+          </div>
+          <button type="button" class="sb-btn sb-btn-primary" id="sbSave" title="Save file (Ctrl+S)">Save</button>
+          <button type="button" class="sb-btn" id="sbUndo" title="Undo (in editor)">Undo</button>
+          <button type="button" class="sb-btn" id="sbRedo" title="Redo">Redo</button>
+          <button type="button" class="sb-btn" id="sbFormat" title="Format document">Format</button>
+          <label class="sb-btn ghost" style="display: inline-flex; align-items: center; gap: 0.25rem"
+            ><input type="checkbox" id="sbAutoPreview" checked /> <span>Auto preview</span></label
+          >
+          <span class="sb-breadcrumb" id="sbStageLinkWrap" style="max-width: 14rem; display: none"
+            >URL: <a id="sbStageLink" href="#" target="_blank" rel="noopener" title="Local staging preview">—</a></span
+          >
+        </div>
+        <div class="sb-row2-right">
+          <button type="button" class="sb-btn" id="sbToggleSide" title="Toggle files sidebar (Ctrl+B)">Files</button>
+          <button type="button" class="sb-btn" id="sbTogglePreview" title="Toggle live preview panel">Preview</button>
+          <button type="button" class="sb-btn sb-btn-deploy-s" id="sbDeployS" title="Deploy to Railway (staging)">🚀 Staging</button>
+          <button type="button" class="sb-btn sb-btn-deploy-p" id="sbDeployP" title="Deploy to Railway (production)">🚀 Production</button>
+          <button type="button" class="sb-btn" id="sbExport" title="Download project as ZIP">⬇ ZIP</button>
+          <button type="button" class="sb-btn" id="sbSettings" title="Settings (Railway, SEO, domain)" aria-label="Settings">⚙</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="sbTabBar" role="tablist" aria-label="Open files"></div>
+
+    <div id="sbWorkspace">
+      <aside id="sbSidebar">
+        <div id="sbFileHead">
+          <span class="sb-lbl">Files</span>
+          <div>
+            <button type="button" class="sb-btn" id="sbFilePlus" title="New file" aria-label="Add file">+</button>
+            <label class="sb-btn" for="sbFileInputHidden" style="margin-left: 0.2rem" title="Upload image"
+              >⬆</label
+            >
+            <input type="file" id="sbFileInputHidden" accept="image/*" style="position: absolute; opacity: 0; width: 0; height: 0" />
+            <button type="button" class="sb-btn" id="sbInitBtn" title="Init starter">Starter</button>
+          </div>
+        </div>
+        <div class="sb-dz" id="sbDropZone" tabindex="0">Drag image here or use ⬆</div>
+        <input type="text" id="sbNewFileInput" placeholder="path (e.g. about.html) — Enter" autocomplete="off" />
+        <div id="sbFileTree"></div>
+        <div id="sbSubPanels">
+          <h4>Resources</h4>
+          <div class="row" id="sbResLinks">
+            <a data-font href="#">+ Inter (Google)</a>
+            <a data-cdn="lucide" href="#">+ Lucide icons</a>
+            <a data-cdn="fa" href="#">+ Font Awesome</a>
+          </div>
+          <h4>Snippets</h4>
+          <ul class="sb-snippets" id="sbSnippets"></ul>
+        </div>
+      </aside>
+
+      <div id="sbEditCol" style="position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column">
+        <div id="sbEmptyState" style="position: absolute; inset: 0; z-index: 3; pointer-events: none">
+          <p><strong>No files yet</strong></p>
+          <p>Click <b>Starter</b> to pick a template, or <b>+</b> to add a file.</p>
+        </div>
+        <div id="sbImagePreview" aria-hidden="true" style="position: absolute; inset: 0; z-index: 2; pointer-events: none">
+          <img id="sbImgTag" alt="Asset preview" />
+        </div>
+        <div id="sbMonacoHost" style="flex: 1; min-height: 0; position: relative; z-index: 1"></div>
+      </div>
+
+      <aside id="sbPreview" class="sb-m-preview-on">
+        <div id="sbPreviewHead">
+          <span id="sbPreviewUrl" class="url">—</span>
+          <div class="sb-dv" role="group" aria-label="Preview width">
+            <button type="button" class="sb-btn" data-dv="100" title="Desktop">🖥</button>
+            <button type="button" class="sb-btn" data-dv="768" title="Tablet">📱</button>
+            <button type="button" class="sb-btn" data-dv="375" title="Phone">📲</button>
+            <button type="button" class="sb-btn" id="sbOpenTab" title="Open in new tab">↗</button>
+            <button type="button" class="sb-btn" id="sbViewSource" title="View rendered source"> &lt;/&gt; </button>
+            <a class="sb-btn" id="sbPageSpeed" href="#" target="_blank" rel="noopener" title="PageSpeed" style="text-decoration: none; display: inline-flex; align-items: center">⏱</a>
+          </div>
+        </div>
+        <div id="sbPreviewFrameWrap">
+          <div id="sbFrameSizer">
+            <iframe id="sbPreviewFrame" title="Site preview" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe>
+          </div>
+        </div>
+      </aside>
     </div>
-    <div class="sb-main">
-      <aside class="sb-files">
-        <h3>Files</h3>
-        <div id="fileList"></div>
-      </aside>
-      <section class="sb-editor">
-        <textarea id="editor"></textarea>
-      </section>
-      <aside class="sb-preview">
-        <h3>Preview (staging)</h3>
-        <iframe id="previewFrame" title="Preview" sandbox="allow-scripts allow-same-origin"></iframe>
-      </aside>
+
+    <div id="sbLogPanel" aria-label="Deploy log" role="log" hidden>
+      <div id="sbLogBody">Deploy log will appear here after you run a deploy.</div>
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
-  <script src="js/main.js"></script>
-  <script>
-(function () {
-  const token = localStorage.getItem('customsite_access_token');
-  if (!token) return;
+  <div id="sbBottomBar" class="sb-bottombar" role="contentinfo">
+    <button type="button" class="sb-bottombar-btn" id="sbLogToggle" aria-expanded="false" title="Show or hide deploy log (Ctrl+`)">
+      Deploy log
+    </button>
+  </div>
 
-  const hdr = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
-  let projectId = null;
-  let currentPath = 'index.html';
-  let cm = null;
-  let projects = [];
+  <div id="sbContextMenu" class="sb-ctx" role="menu"></div>
 
-  const el = document.getElementById('editor');
-  cm = CodeMirror.fromTextArea(el, {
-    lineNumbers: true,
-    mode: 'htmlmixed',
-    theme: 'default',
-    indentUnit: 2,
-    tabSize: 2,
-  });
-  cm.setSize('100%', '100%');
+  <div id="sbModalBg" class="is-off" data-close="1" aria-hidden="true">
+    <div class="sb-modal" data-stop="1">
+      <h3 id="sbModalTitle">Confirm</h3>
+      <div class="body" id="sbModalBody"></div>
+    </div>
+  </div>
 
-  function modeForPath(p) {
-    if (/\.css$/i.test(p)) return 'css';
-    if (/\.js$/i.test(p)) return 'javascript';
-    return 'htmlmixed';
-  }
+  <div id="sbSourceModal" aria-hidden="true">
+    <div class="box" data-stop="1" style="position: relative">
+      <h3 style="padding: 0.6rem 1rem; margin: 0; border-bottom: 1px solid #1e293b; font-size: 0.9rem">
+        View source
+      </h3>
+      <pre id="sbSourceBody"></pre>
+      <button
+        type="button"
+        class="sb-btn"
+        data-close
+        style="position: absolute; top: 0.4rem; right: 0.4rem; background: #1e293b"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
 
-  function setPreviewLink() {
-    var u = location.origin + '/preview/' + projectId + '/';
-    document.getElementById('previewLink').textContent = u;
-  }
+  <div id="sbInitModal" class="is-off" aria-hidden="true">
+    <div class="sb-modal" data-stop="1" style="max-width: 32rem">
+      <h3>Choose a starter template</h3>
+      <div class="body">
+        <p style="color: #94a3b8; font-size: 0.8rem; margin: 0 0 0.5rem">Overwrites or creates the template files for this project.</p>
+        <div id="sbInitGrid"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem">
+          <button type="button" class="sb-btn" id="sbInitCancel">Cancel</button>
+          <button type="button" class="sb-btn sb-btn-primary" id="sbInitConfirm" disabled>Init project</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  function refreshPreview() {
-    if (!projectId) return;
-    var f = document.getElementById('previewFrame');
-    f.src = '/preview/' + projectId + '/index.html?t=' + Date.now();
-  }
+  <div id="sbCommandPal" class="is-off" aria-hidden="true">
+    <div class="sb-modal" data-stop="1" style="max-width: 26rem; padding: 0">
+      <h3>Command palette (Ctrl+Shift+P)</h3>
+      <div class="body" style="padding: 0 0.5rem 0.5rem">
+        <input type="text" id="sbCommandInput" placeholder="Type a command or search files…" autocomplete="off" />
+        <div id="sbCommandList"></div>
+      </div>
+    </div>
+  </div>
 
-  function loadFileList() {
-    if (!projectId) return;
-    fetch('/api/admin/projects/' + projectId + '/site', { headers: { Authorization: 'Bearer ' + token } })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var box = document.getElementById('fileList');
-        box.innerHTML = '';
-        (data.files || []).forEach(function (f) {
-          var b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'file-item' + (f.path === currentPath ? ' active' : '');
-          b.textContent = f.path;
-          b.addEventListener('click', function () {
-            currentPath = f.path;
-            loadFileContent();
-            loadFileList();
-          });
-          box.appendChild(b);
-        });
-        if (!(data.files || []).length) {
-          box.innerHTML = '<p style="font-size:0.8rem;color:#64748b">No files. Click <strong>Init starter</strong>.</p>';
-        }
-      });
-  }
+  <div id="sbSettingsPanel" class="is-off" aria-hidden="true">
+    <div class="sb-modal sb-modal-settings" data-stop="1">
+      <h3>Settings &amp; project</h3>
+      <div class="body sb-settings-body">
+        <h4 class="sb-lbl" style="margin: 0 0 0.4rem">Railway (optional)</h4>
+        <label>API token</label
+        ><input class="sb-inp" type="password" id="sbRailToken" />
+        <label>Team / workspace ID</label
+        ><input class="sb-inp" type="text" id="sbRailTeam" />
+        <div class="sb-settings-actions">
+          <button type="button" class="sb-btn sb-btn-primary" id="sbTestRail">Test connection</button>
+        </div>
+        <h4>Custom domain (DNS)</h4>
+        <p class="sb-muted" id="sbDomainHint">Point CNAME to your Railway service URL, then check DNS.</p>
+        <input class="sb-inp" type="text" id="sbCustomDomain" placeholder="www.client.com" />
+        <div class="sb-settings-actions">
+          <button type="button" class="sb-btn" id="sbCopyCname">Copy CNAME target</button>
+          <button type="button" class="sb-btn" id="sbDnsCheck">Check DNS</button>
+        </div>
+        <h4>SEO (saved to project)</h4>
+        <div id="sbSeoForm">
+          <label>Page title</label
+          ><input class="sb-inp" type="text" id="seoTitle" data-k="title" />
+          <label>Meta description</label
+          ><textarea class="sb-inp" id="seoDesc" data-k="description" rows="2"></textarea>
+          <label>OG image URL</label
+          ><input class="sb-inp" type="url" id="seoOg" data-k="ogImage" />
+          <label>Canonical URL</label
+          ><input class="sb-inp" type="url" id="seoCanon" data-k="canonical" />
+        </div>
+        <div class="sb-settings-actions">
+          <button type="button" class="sb-btn sb-btn-primary" id="sbSaveSettings">Save project settings</button>
+          <button type="button" class="sb-btn" id="sbApplySeo" title="Inject meta tags into index.html">Apply SEO to index.html</button>
+        </div>
+        <p class="sb-muted" style="margin-top: 0.75rem">Use <strong>Ctrl+Shift+F</strong> to search across all project files.</p>
+      </div>
+    </div>
+  </div>
 
-  function loadFileContent() {
-    if (!projectId) return;
-    fetch('/api/admin/projects/' + projectId + '/site/file?path=' + encodeURIComponent(currentPath), {
-      headers: { Authorization: 'Bearer ' + token },
-    })
-      .then(function (r) {
-        if (r.status === 404) {
-          cm.setValue('');
-          cm.setOption('mode', modeForPath(currentPath));
-          return null;
-        }
-        return r.json();
-      })
-      .then(function (data) {
-        if (!data) return;
-        cm.setValue(data.content || '');
-        cm.setOption('mode', modeForPath(currentPath));
-        cm.refresh();
-      });
-  }
+  <div id="sbFindOverlay" class="is-off" aria-hidden="true" aria-label="Find in files">
+    <div class="sb-modal sb-modal-find" data-stop="1">
+      <h3>Find in files (Ctrl+Shift+F)</h3>
+      <div class="body">
+        <div class="sb-find-row">
+          <input class="sb-inp" type="search" id="sbFindQ" placeholder="Search in all text files…" autocomplete="off" />
+          <button type="button" class="sb-btn sb-btn-primary" id="sbFindRun">Search</button>
+        </div>
+        <div id="sbSearchResults" class="sb-search-results"></div>
+        <button type="button" class="sb-btn" id="sbFindClose" style="margin-top: 0.5rem">Close</button>
+      </div>
+    </div>
+  </div>
 
-  function loadProjects() {
-    fetch('/api/admin/projects', { headers: { Authorization: 'Bearer ' + token } })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        projects = data.projects || [];
-        var sel = document.getElementById('projPick');
-        sel.innerHTML = '<option value="">Select project…</option>';
-        projects.forEach(function (p) {
-          var o = document.createElement('option');
-          o.value = p.id;
-          o.textContent = p.name + ' — ' + (p.client && p.client.email ? p.client.email : '');
-          sel.appendChild(o);
-        });
-        var q = new URLSearchParams(location.search).get('project');
-        if (q) {
-          sel.value = q;
-          projectId = q;
-          setPreviewLink();
-          loadFileList();
-          loadFileContent();
-          refreshPreview();
-        }
-        sel.addEventListener('change', function () {
-          projectId = sel.value || null;
-          currentPath = 'index.html';
-          if (projectId) {
-            setPreviewLink();
-            loadFileList();
-            loadFileContent();
-            refreshPreview();
-          }
-        });
-      });
-  }
-
-  document.getElementById('btnSave').addEventListener('click', function () {
-    if (!projectId) { alert('Select a project.'); return; }
-    fetch('/api/admin/projects/' + projectId + '/site/file', {
-      method: 'PUT',
-      headers: hdr,
-      body: JSON.stringify({ path: currentPath, content: cm.getValue() }),
-    })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (x) {
-        if (!x.ok) throw new Error(x.j.error || 'Save failed');
-        loadFileList();
-        refreshPreview();
-      })
-      .catch(function (e) { alert(e.message); });
-  });
-
-  document.getElementById('btnNew').addEventListener('click', function () {
-    var p = prompt('File path (e.g. about.html or css/main.css):', '');
-    if (!p) return;
-    p = p.replace(/^\//, '').trim();
-    if (p.includes('..')) return;
-    currentPath = p;
-    cm.setValue('');
-    cm.setOption('mode', modeForPath(currentPath));
-    loadFileList();
-  });
-
-  document.getElementById('btnInit').addEventListener('click', function () {
-    if (!projectId) { alert('Select a project.'); return; }
-    if (!confirm('Create or overwrite starter index.html, styles.css, app.js?')) return;
-    fetch('/api/admin/projects/' + projectId + '/site/init', { method: 'POST', headers: hdr })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (x) {
-        if (!x.ok) throw new Error(x.j.error || 'Init failed');
-        currentPath = 'index.html';
-        loadFileList();
-        loadFileContent();
-        refreshPreview();
-      })
-      .catch(function (e) { alert(e.message); });
-  });
-
-  document.getElementById('btnDel').addEventListener('click', function () {
-    if (!projectId || !currentPath) return;
-    if (!confirm('Delete ' + currentPath + '?')) return;
-    fetch('/api/admin/projects/' + projectId + '/site/file?path=' + encodeURIComponent(currentPath), {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + token },
-    })
-      .then(function (r) {
-        if (!r.ok) throw new Error('Delete failed');
-        currentPath = 'index.html';
-        loadFileList();
-        loadFileContent();
-        refreshPreview();
-      })
-      .catch(function (e) { alert(e.message); });
-  });
-
-  document.getElementById('btnRefreshPreview').addEventListener('click', refreshPreview);
-
-  loadProjects();
-})();
-  </script>
+  <script src="js/main.js" defer></script>
+  <script type="module" src="js/site-builder/app.js"></script>
 </body>
 </html>

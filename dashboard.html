@@ -203,7 +203,7 @@
         ta.value = '';
         loadMessages();
       })
-      .catch(function () { alert('Could not send message'); });
+      .catch(function () { showPageToast('Could not send message', 'error'); });
   });
 })();
   </script>

@@ -4,6 +4,26 @@
 
 'use strict';
 
+/** Top-right auto-dismiss toasts (replaces alert() on public pages). */
+function showPageToast(message, type) {
+  const kind = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+  let host = document.getElementById('pageToastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'pageToastHost';
+    host.style.cssText =
+      'position:fixed;top:0.75rem;right:0.75rem;z-index:20000;display:flex;flex-direction:column;gap:0.4rem;max-width:20rem;pointer-events:none';
+    document.body.appendChild(host);
+  }
+  const el = document.createElement('div');
+  const bg = kind === 'success' ? '#15803d' : kind === 'error' ? '#b91c1c' : '#1e3a5f';
+  el.style.cssText = `background:${bg};color:#fff;padding:0.6rem 0.9rem;border-radius:0.4rem;font-size:0.85rem;pointer-events:auto;box-shadow:0 4px 16px rgba(0,0,0,0.25)`;
+  el.setAttribute('role', 'status');
+  el.textContent = message;
+  host.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
 const AUTH_TOKEN_KEY = 'customsite_access_token';
 const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 
@@ -192,6 +212,15 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    if (window.location.protocol === 'file:') {
+      showFormMessage(
+        loginForm,
+        'Open this page from the server: http://localhost:3000/client-portal.html (not a saved file in your browser).',
+        'error'
+      );
+      return;
+    }
+
     const email = loginForm.querySelector('#portalEmail')?.value.trim();
     const password = loginForm.querySelector('#portalPassword')?.value;
     const submitBtn = loginForm.querySelector('[type="submit"]');
@@ -214,9 +243,10 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
       if (!res.ok) {
         throw new Error(data.error || 'Login failed');
       }
-      if (data.access_token) {
-        localStorage.setItem(AUTH_TOKEN_KEY, data.access_token);
+      if (!data.access_token) {
+        throw new Error('No access token returned. Is the server running? Check the terminal for errors.');
       }
+      localStorage.setItem(AUTH_TOKEN_KEY, data.access_token);
       if (data.refresh_token) {
         localStorage.setItem(AUTH_REFRESH_KEY, data.refresh_token);
       }
@@ -226,7 +256,8 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
       console.error('Login error:', error);
       showFormMessage(loginForm, error.message || 'Invalid email or password.', 'error');
     } finally {
-      submitBtn.textContent = 'Sign In to Portal';
+      const agency = new URLSearchParams(window.location.search).get('agency') === '1';
+      submitBtn.textContent = agency ? 'Sign in to admin' : 'Sign In to Portal';
       submitBtn.disabled = false;
     }
   });
@@ -260,7 +291,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
         }
         throw new Error('No checkout URL');
       } catch (err) {
-        alert(err.message || 'Checkout failed. Configure Stripe and price IDs on the server.');
+        showPageToast(err.message || 'Checkout failed. Configure Stripe and price IDs on the server.', 'error');
       } finally {
         el.textContent = prev;
         el.removeAttribute('aria-busy');
@@ -281,7 +312,10 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 
   const token = localStorage.getItem(AUTH_TOKEN_KEY);
   if (!token) {
-    window.location.replace('client-portal.html');
+    const agencyEntry = isAdmin || isSiteBuilder
+      ? 'client-portal.html?agency=1'
+      : 'client-portal.html';
+    window.location.replace(agencyEntry);
     return;
   }
 
@@ -304,8 +338,54 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
     .catch(() => {
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_REFRESH_KEY);
-      window.location.replace('client-portal.html');
+      const agencyEntry = isAdmin || isSiteBuilder
+        ? 'client-portal.html?agency=1'
+        : 'client-portal.html';
+      window.location.replace(agencyEntry);
     });
+})();
+
+// ============================================
+// AGENCY sign-in copy (?agency=1 on client-portal)
+// ============================================
+(function initAgencyPortalCopy() {
+  if (new URLSearchParams(window.location.search).get('agency') !== '1') return;
+  if (!document.getElementById('portalLoginForm')) return;
+
+  const h2 = document.querySelector('.portal-box h2');
+  const sub = document.querySelector('.portal-box .sub');
+  const btn = document.querySelector('#portalLoginForm [type="submit"]');
+  const divider = document.querySelector('.portal-divider span');
+  const preview = document.querySelector('.dashboard-preview');
+
+  if (h2) h2.textContent = 'Agency sign-in';
+  if (sub) {
+    sub.textContent =
+      'Use your team (admin) account. After sign-in you will be taken to the admin panel and the site builder.';
+  }
+  if (btn) btn.textContent = 'Sign in to admin';
+  if (divider) divider.textContent = 'What you can do in admin';
+
+  if (preview) {
+    preview.innerHTML = [
+      { icon: 'LEA', text: 'Review leads, convert to clients, set project status' },
+      { icon: 'BIL', text: 'Create invoices, record payments' },
+      { icon: 'MSG', text: 'Message each client in their project thread' },
+      { icon: 'BUI', text: 'Open the site builder to edit the files for each project' },
+    ]
+      .map(
+        (row) => `
+      <div class="dashboard-feature">
+        <div class="df-icon">${row.icon}</div>
+        <div class="df-text">${row.text}</div>
+      </div>`
+      )
+      .join('');
+  }
+
+  if (document.title) {
+    document.title = document.title.replace('Client Portal', 'Agency sign-in');
+  }
 })();
 
 // ============================================

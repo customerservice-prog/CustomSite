@@ -1,6 +1,7 @@
 'use strict';
 
-const { getService } = require('../lib/supabase');
+const { getService, isSupabaseConfigured } = require('../lib/supabase');
+const devStore = require('../lib/devSiteFileStore');
 
 function mimeForPath(p) {
   const lower = p.toLowerCase();
@@ -40,20 +41,56 @@ async function handlePreview(req, res) {
     return;
   }
 
+  if (!isSupabaseConfigured()) {
+    const data = devStore.getFile(projectId, filePath);
+    if (!data) {
+      res.status(404).type('html').send(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Not found</title></head><body><p>No file <code>${escapeHtml(filePath)}</code>. Open <strong>Site builder</strong> and run <em>Init starter</em> or create this file.</p></body></html>`
+      );
+      return;
+    }
+    res.setHeader('Content-Type', mimeForPath(filePath));
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    if (req.method === 'HEAD') {
+      res.end();
+      return;
+    }
+    if (data.content_encoding === 'base64') {
+      res.send(Buffer.from(String(data.content), 'base64'));
+      return;
+    }
+    res.send(data.content);
+    return;
+  }
+
   const supabase = getService();
-  const { data, error } = await supabase
+  let row;
+  let err;
+  const q1 = await supabase
     .from('site_files')
-    .select('content')
+    .select('content, content_encoding')
     .eq('project_id', projectId)
     .eq('path', filePath)
     .maybeSingle();
+  row = q1.data;
+  err = q1.error;
+  if (err && /content_encoding/.test(String(err.message))) {
+    const q2 = await supabase
+      .from('site_files')
+      .select('content')
+      .eq('project_id', projectId)
+      .eq('path', filePath)
+      .maybeSingle();
+    row = q2.data;
+    err = q2.error;
+  }
 
-  if (error) {
-    console.error(error);
+  if (err) {
+    console.error(err);
     res.status(500).send('Error loading preview');
     return;
   }
-  if (!data) {
+  if (!row) {
     res.status(404).type('html').send(
       `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Not found</title></head><body><p>No file <code>${escapeHtml(filePath)}</code>. Open <strong>Site builder</strong> and run <em>Init starter</em> or create this file.</p></body></html>`
     );
@@ -66,7 +103,11 @@ async function handlePreview(req, res) {
     res.end();
     return;
   }
-  res.send(data.content);
+  if (row.content_encoding === 'base64') {
+    res.send(Buffer.from(String(row.content), 'base64'));
+    return;
+  }
+  res.send(row.content);
 }
 
 function previewSiteMiddleware(req, res, next) {
