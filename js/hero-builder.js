@@ -1,9 +1,9 @@
 /**
- * Hero site-build preview: CSS-driven sequence; clone-replace every 10s to restart.
+ * Hero site-build preview: CSS-driven sequence; clone-replace every 30s to restart.
  * prefers-reduced-motion: static final frame, no loop.
  */
 (function initHeroBuilderLoop() {
-  const LOOP_MS = 10000;
+  const LOOP_MS = 30000;
 
   function restartBuilderAnimation() {
     const el = document.getElementById('hero-builder-preview');
