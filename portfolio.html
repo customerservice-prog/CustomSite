@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Explore site types and layouts CustomSite delivers — business, e-commerce, restaurants, portfolios, and more. See representative previews by industry below." />
+  <meta name="description" content="Premium $10K+ style custom websites by industry — full navigation, brand-grade UI, and conversion-focused layouts. See high-fidelity previews and book a call." />
   <meta property="og:title" content="CustomSite — Professional Web Design" />
   <meta property="og:description" content="We build websites that grow your business." />
   <meta property="og:url" content="https://customsite.online/portfolio.html" />
@@ -90,64 +90,194 @@
       font-size: 0.75rem;
       font-weight: 600;
     }
-    /* Faux “live site” previews — no external images; reads as a finished page */
+    .portfolio-tier {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      margin: 0.15rem 0 0.75rem 0;
+    }
+    /* $10K+ “finished product” — dense, brand-grade mini UI (no image assets) */
     .portfolio-mock {
-      height: 200px;
-      padding: 0.6rem 0.65rem 0.65rem;
+      height: 268px;
+      padding: 10px 10px 12px;
       display: flex;
       align-items: stretch;
     }
     .portfolio-mock__shell {
       flex: 1;
-      background: #fff;
-      border-radius: 10px;
+      background: #f8fafc;
+      border-radius: 12px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+        0 2px 0 rgba(0, 0, 0, 0.05),
+        0 20px 48px -10px rgba(0, 0, 0, 0.55);
     }
     .portfolio-mock__chrome {
       display: flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem 0.5rem;
-      background: linear-gradient(180deg, #f8fafc, #f1f5f9);
-      border-bottom: 1px solid #e2e8f0;
+      gap: 6px;
+      padding: 5px 7px 6px;
+      background: linear-gradient(180deg, #e8ecf2 0%, #dfe5ee 100%);
+      border-bottom: 1px solid #cbd5e1;
     }
-    .portfolio-mock__dots {
-      display: flex;
-      gap: 0.2rem;
-    }
+    .portfolio-mock__dots { display: flex; gap: 3px; }
     .portfolio-mock__dots span {
-      width: 6px;
-      height: 6px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: #cbd5e1;
     }
+    .portfolio-mock__dots span:nth-child(1) { background: #ff5f57; }
+    .portfolio-mock__dots span:nth-child(2) { background: #febc2e; }
+    .portfolio-mock__dots span:nth-child(3) { background: #28c840; }
     .portfolio-mock__url {
       flex: 1;
-      font-size: 0.5rem;
-      color: #64748b;
+      font-size: 5px;
+      color: #475569;
       font-weight: 600;
       text-align: center;
       background: #fff;
-      border-radius: 4px;
-      padding: 0.15rem 0.4rem;
-      border: 1px solid #e2e8f0;
+      border-radius: 3px;
+      padding: 3px 5px;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
     }
     .portfolio-mock__body {
       flex: 1;
-      padding: 0.4rem 0.45rem 0.45rem;
+      min-height: 0;
       display: flex;
       flex-direction: column;
-      gap: 0.3rem;
-      min-height: 0;
+      gap: 0;
+    }
+    .pmb-bnav {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 5px 5px;
+      background: #fff;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .pmb-bnav-mark {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .pmb-bnav-spacer { flex: 1; }
+    .pmb-bnav-pill { height: 2px; border-radius: 1px; background: #e2e8f0; }
+    .pmb-bnav-cta {
+      min-width: 20px;
+      height: 8px;
+      border-radius: 2px;
+      background: #0f172a;
     }
     .pmb-hero {
-      height: 28%;
+      min-height: 0;
       border-radius: 4px;
-      background: var(--pm-accent, var(--primary));
-      opacity: 0.9;
+    }
+    @media (max-width: 600px) {
+      .portfolio-mock { height: 220px; padding: 6px; }
+    }
+    .pmb-hero--mesh {
+      position: relative;
+      border-radius: 0;
+      min-height: 70px;
+      background:
+        linear-gradient(120deg, rgba(255, 255, 255, 0.2) 0%, transparent 55%),
+        var(--m-hero, linear-gradient(128deg, #4f46e5 0%, #7c3aed 55%, #0f172a 100%));
+    }
+    .pmb-hero--mesh::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(99, 102, 241, 0.35) 0%, transparent 45%);
+    }
+    .pmb-hero--mesh > .pmb-hero-in {
+      position: relative;
+      z-index: 1;
+      padding: 6px 6px 7px 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .pmb-badge {
+      display: inline-block;
+      max-width: max-content;
+      font-size: 3px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 2px 4px;
+      border-radius: 2px;
+    }
+    .pmb-ht {
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+    }
+    .pmb-ht.lg { height: 5px; }
+    .pmb-ht.w55 { width: 55%; }
+    .pmb-ht.w70 { width: 70%; }
+    .pmb-ht.w85 { width: 85%; }
+    .pmb-ht.faint {
+      background: rgba(255, 255, 255, 0.55);
+      height: 3px;
+    }
+    .pmb-ctas { display: flex; gap: 2px; margin-top: 2px; }
+    .pmb-cta1 {
+      height: 6px;
+      min-width: 20px;
+      border-radius: 2px;
+      background: #fff;
+      color: #1e1b4b;
+    }
+    .pmb-cta2 { height: 6px; min-width: 16px; border-radius: 2px; background: rgba(0, 0, 0, 0.25); }
+    .pmb-trust {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 5px 3px;
+      background: #fff;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .pmb-trust span {
+      height: 3px;
+      background: #e2e8f0;
+      border-radius: 1px;
+    }
+    .pmb-feats3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+      padding: 4px 5px 3px;
+      flex: 1;
+      min-height: 0;
+      background: #f8fafc;
+    }
+    .pmb-feat {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 3px;
+      padding: 4px 3px 3px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 2px;
+    }
+    .pmb-ico {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #e0e7ff, #a5b4fc);
     }
     .pmb-h1 {
       height: 0.4rem;
@@ -172,7 +302,7 @@
     .pmb-grid2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.25rem;
+      gap: 3px;
       flex: 1;
       min-height: 0;
     }
@@ -183,31 +313,34 @@
     }
     .pmb-cols2 {
       display: grid;
-      grid-template-columns: 1fr 1.2fr;
-      gap: 0.3rem;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 3px;
       flex: 1;
       min-height: 0;
     }
-    .pmb-cols2 .pmb-illus {
-      background: #f1f5f9;
-      border-radius: 3px;
-    }
-    .pmb-cols2 .pmb-text .pmb-p { width: 100%; }
+    .pmb-illus { background: #f1f5f9; border-radius: 3px; }
     .pmb-trio {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 0.2rem;
     }
     .pmb-trio .pmb-tile { min-height: 1.2rem; }
-    .pmb-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-      flex: 1;
-    }
+    .pmb-list { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; }
     .pmb-row { display: flex; align-items: center; gap: 0.3rem; }
     .pmb-avatar { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #cbd5e1; flex-shrink: 0; }
     .pmb-line { flex: 1; height: 0.25rem; background: #f1f5f9; border-radius: 1px; }
+    .pmb-prod {
+      position: relative;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+    .pmb-prod .pmb-pp {
+      height: 32px;
+      background: var(--m-prod, linear-gradient(150deg, #a78bfa, #7c3aed));
+    }
+    .pmb-prod .pmb-pbody { padding: 3px; background: #fff; }
+    .pmb-price { height: 2px; width: 11px; border-radius: 1px; background: #0f172a; margin-top: 1px; }
   </style>
 </head>
 <body>
@@ -233,8 +366,8 @@
   <section class="page-hero">
     <div class="container">
       <span class="section-tag">Our Work</span>
-      <h1>Portfolio</h1>
-      <p>Below are <strong>representative layouts</strong> by industry — the same structure and polish we ship for clients. Want a reference for your niche? Ask us and we will share relevant builds when we can.</p>
+      <h1>Premium custom sites</h1>
+      <p>Each tile is a <strong>high-fidelity live-style preview</strong> — not a wireframe: real navigation, story, and conversion patterns. It represents the <strong>design and build depth</strong> we deliver for serious brands, typically <strong>$10,000+</strong> custom engagements. Ask us for a call or industry-specific walkthroughs.</p>
     </div>
   </section>
 
@@ -254,86 +387,171 @@
       <div class="portfolio-grid" id="portfolioGrid">
 
         <div class="portfolio-card" data-category="business">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#475569 0%,#0f172a 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(160deg,#1e3a5f 0%,#0f172a 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">hometownservices.com</div>
+                <div class="portfolio-mock__url">ridgelineplumbing.co</div>
               </div>
-              <div class="portfolio-mock__body">
-                <div class="pmb-hero" style="background:linear-gradient(100deg,#6366f1,#4f46e5)"></div>
-                <div class="pmb-h1"></div>
-                <div class="pmb-p"></div>
-                <div class="pmb-p short"></div>
-                <div class="pmb-trio" style="margin-top:0.2rem">
-                  <div class="pmb-tile"></div><div class="pmb-tile"></div><div class="pmb-tile"></div>
+              <div class="portfolio-mock__body" style="background:#fff">
+                <div class="pmb-bnav" aria-hidden="true">
+                  <div class="pmb-bnav-mark" style="background:linear-gradient(135deg,#6366f1,#4f46e5)"></div>
+                  <div class="pmb-bnav-pill" style="width:9px"></div>
+                  <div class="pmb-bnav-pill" style="width:6px"></div>
+                  <div class="pmb-bnav-pill" style="width:7px"></div>
+                  <div class="pmb-bnav-pill" style="width:8px"></div>
+                  <div class="pmb-bnav-spacer"></div>
+                  <div class="pmb-bnav-cta" style="background:linear-gradient(90deg,#4f46e5,#7c3aed)"></div>
                 </div>
-                <div class="pmb-btns"><div class="pmb-btn"></div><div class="pmb-btn" style="background:#c7d2fe;width:20%"></div></div>
+                <div class="pmb-hero--mesh" style="--m-hero:linear-gradient(120deg,#312e81 0%,#4338ca 50%,#1e1b4b 100%)">
+                  <div class="pmb-hero-in">
+                    <span class="pmb-badge">Licensed · insured</span>
+                    <div class="pmb-ht lg" style="width:88%"></div>
+                    <div class="pmb-ht w70 faint"></div>
+                    <div class="pmb-ctas">
+                      <div class="pmb-cta1" style="min-width:22px;box-shadow:0 0 0 1px rgba(0,0,0,0.08)"></div>
+                      <div class="pmb-cta2" style="box-shadow:0 0 0 1px rgba(255,255,255,0.2)"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="pmb-trust" aria-hidden="true">
+                  <span style="width:12%"></span><span style="width:9%"></span><span style="width:10%"></span><span style="width:8%"></span>
+                </div>
+                <div class="pmb-feats3" aria-hidden="true">
+                  <div class="pmb-feat">
+                    <div class="pmb-ico" style="background:linear-gradient(145deg,#a5b4fc,#6366f1)"></div>
+                    <div class="pmb-ht" style="height:2px;width:100%"></div>
+                    <div class="pmb-ht faint" style="height:2px;width:75%"></div>
+                  </div>
+                  <div class="pmb-feat">
+                    <div class="pmb-ico" style="background:linear-gradient(145deg,#7dd3fc,#0ea5e9)"></div>
+                    <div class="pmb-ht" style="height:2px;width:100%"></div>
+                    <div class="pmb-ht faint" style="height:2px;width:70%"></div>
+                  </div>
+                  <div class="pmb-feat">
+                    <div class="pmb-ico" style="background:linear-gradient(145deg,#6ee7b7,#10b981)"></div>
+                    <div class="pmb-ht" style="height:2px;width:100%"></div>
+                    <div class="pmb-ht faint" style="height:2px;width:72%"></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">Business</div>
             <h3>Service &amp; local business</h3>
-            <p>Multi-page marketing sites with services, social proof, and CTAs that match how locals search and call.</p>
+            <p class="portfolio-tier">$10K+ build · custom UI &amp; local SEO structure</p>
+            <p>What you are seeing: nav, story-led hero, trust strip, and service modules — the same <strong>layered, conversion-driven</strong> build we ship for high-ticket service brands.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Mobile-first</span></div>
+              <div class="tech-tags"><span class="tech-tag">Brand-grade UI</span><span class="tech-tag">Leads + calls</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
         </div>
 
         <div class="portfolio-card" data-category="ecommerce">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#4f46e5 0%,#6d28d9 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(150deg,#4c1d95 0%,#0f172a 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">shop.brand.com</div>
+                <div class="portfolio-mock__url">atlashomegoods.com</div>
               </div>
-              <div class="portfolio-mock__body">
-                <div class="pmb-grid2" style="margin-top:0">
-                  <div class="pmb-tile" style="min-height:2rem"></div>
-                  <div class="pmb-tile" style="min-height:2rem"></div>
+              <div class="portfolio-mock__body" style="background:#fafafa">
+                <div class="pmb-bnav" aria-hidden="true" style="background:#fff">
+                  <div class="pmb-bnav-mark" style="background:linear-gradient(135deg,#f472b6,#a855f7)"></div>
+                  <div class="pmb-bnav-pill" style="width:8px"></div>
+                  <div class="pmb-bnav-pill" style="width:6px"></div>
+                  <div class="pmb-bnav-pill" style="width:7px"></div>
+                  <div class="pmb-bnav-spacer"></div>
+                  <div class="pmb-bnav-cta" style="background:#0f172a"></div>
                 </div>
-                <div class="pmb-grid2" style="flex:0">
-                  <div class="pmb-tile" style="min-height:1.5rem"></div>
-                  <div class="pmb-tile" style="min-height:1.5rem"></div>
+                <div style="padding:4px 4px 0;flex:1;min-height:0;display:flex;flex-direction:column;gap:3px">
+                  <div class="pmb-grid2" style="flex:1;min-height:0">
+                    <div class="pmb-prod" style="--m-prod:linear-gradient(160deg,#c4b5fd,#7c3aed)">
+                      <div class="pmb-pp"></div>
+                      <div class="pmb-pbody">
+                        <div class="pmb-ht" style="height:2px;width:60%"></div>
+                        <div class="pmb-price" style="background:#7c3aed"></div>
+                      </div>
+                    </div>
+                    <div class="pmb-prod" style="--m-prod:linear-gradient(160deg,#a5b4fc,#4f46e5)">
+                      <div class="pmb-pp"></div>
+                      <div class="pmb-pbody">
+                        <div class="pmb-ht" style="height:2px;width:55%"></div>
+                        <div class="pmb-price" style="background:#4f46e5"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pmb-grid2" style="flex:0;min-height:0">
+                    <div class="pmb-prod" style="--m-prod:linear-gradient(160deg,#fbcfe8,#db2777)">
+                      <div class="pmb-pp" style="height:26px"></div>
+                      <div class="pmb-pbody">
+                        <div class="pmb-ht" style="height:2px;width:50%"></div>
+                        <div class="pmb-price" style="background:#1e1b4b"></div>
+                      </div>
+                    </div>
+                    <div class="pmb-prod" style="--m-prod:linear-gradient(160deg,#fde68a,#d97706)">
+                      <div class="pmb-pp" style="height:26px"></div>
+                      <div class="pmb-pbody">
+                        <div class="pmb-ht" style="height:2px;width:48%"></div>
+                        <div class="pmb-price" style="background:#1e1b4b"></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="pmb-row" style="margin-top:auto"><div class="pmb-line"></div><div class="pmb-btn" style="width:35%;height:0.5rem;background:var(--primary)"></div></div>
+                <div class="pmb-trust" style="background:#0f172a;border-color:#334155">
+                  <span style="width:16%;background:#475569"></span>
+                  <span style="width:12%;background:#64748b"></span>
+                  <div class="pmb-bnav-cta" style="min-width:28px;height:6px;border-radius:2px;background:#fff"></div>
+                </div>
               </div>
             </div>
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">E-Commerce</div>
             <h3>Retail &amp; product catalog</h3>
-            <p>Product grids, clear pricing, and checkout flows that match your platform and fulfillment.</p>
+            <p class="portfolio-tier">$10K+ build · storefront &amp; checkout UX</p>
+            <p>What you are seeing: <strong>catalog density</strong>, product cards, and cart affordances — a real shop layout, not a few boxes. Built to your platform (Shopify, WooCommerce, or custom).</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Checkout-ready</span></div>
+              <div class="tech-tags"><span class="tech-tag">E‑commerce UI</span><span class="tech-tag">Merchandising</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
         </div>
 
         <div class="portfolio-card" data-category="restaurant">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#b45309 0%,#7c2d12 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(150deg,#431407 0%,#0c0a09 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">bistroname.com</div>
+                <div class="portfolio-mock__url">lumierebistro.com</div>
               </div>
-              <div class="portfolio-mock__body">
-                <div class="pmb-hero" style="background:linear-gradient(90deg,#f59e0b,#ea580c);height:24%"></div>
-                <div class="pmb-cols2" style="flex:1">
-                  <div class="pmb-illus">
-                    <div class="pmb-p" style="width:100%;height:0.2rem"></div>
-                    <div class="pmb-p" style="width:80%"></div>
-                    <div class="pmb-p" style="width:90%"></div>
+              <div class="portfolio-mock__body" style="background:#0c0a09">
+                <div class="pmb-bnav" style="background:transparent;border-color:#292524">
+                  <div class="pmb-bnav-mark" style="background:linear-gradient(135deg,#f59e0b,#ea580c)"></div>
+                  <div class="pmb-bnav-pill" style="width:6px;background:#44403c"></div>
+                  <div class="pmb-bnav-pill" style="width:7px;background:#44403c"></div>
+                  <div class="pmb-bnav-spacer"></div>
+                  <div class="pmb-bnav-cta" style="background:#f59e0b;min-width:24px"></div>
+                </div>
+                <div class="pmb-hero--mesh" style="--m-hero:linear-gradient(110deg,#9a3412 0%,#0c0a09 100%);min-height:62px">
+                  <div class="pmb-hero-in" style="text-align:center;align-items:center">
+                    <span class="pmb-badge" style="background:rgba(234,88,12,0.4)">Reservations · events</span>
+                    <div class="pmb-ht" style="width:62%;background:rgba(255,255,255,0.92)"></div>
+                    <div class="pmb-ht w55 faint" style="width:50%"></div>
                   </div>
-                  <div class="pmb-text" style="display:flex;flex-direction:column;gap:0.2rem">
-                    <div class="pmb-line"></div>
-                    <div class="pmb-line" style="width:70%"></div>
-                    <div class="pmb-line" style="width:85%"></div>
-                    <div class="pmb-btns" style="margin-top:0.2rem"><div class="pmb-btn" style="background:var(--primary)"></div></div>
+                </div>
+                <div class="pmb-cols2" style="padding:3px;flex:1;min-height:0;background:#0c0a09;gap:3px">
+                  <div class="pmb-illus" style="background:linear-gradient(180deg,#1c1917,#292524);border-color:#44403c;padding:3px">
+                    <div class="pmb-ht" style="height:2px;width:40%;background:#a8a29e"></div>
+                    <div class="pmb-line" style="background:#44403c;margin-top:1px"></div>
+                    <div class="pmb-line" style="background:#44403c;width:85%"></div>
+                    <div class="pmb-line" style="background:#44403c;width:70%"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:2px;justify-content:center">
+                    <div class="pmb-ht" style="height:2px;width:100%;background:#44403c"></div>
+                    <div class="pmb-ht" style="height:2px;width:80%;background:#57534e"></div>
+                    <div class="pmb-bnav-cta" style="width:100%;height:5px;border-radius:2px;background:linear-gradient(90deg,#ea580c,#f97316)"></div>
                   </div>
                 </div>
               </div>
@@ -342,62 +560,88 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Restaurant</div>
             <h3>Menu &amp; hospitality</h3>
-            <p>Menu blocks, hours, map, and reservations or order links laid out for phones first.</p>
+            <p class="portfolio-tier">$10K+ build · experience-led dining brand</p>
+            <p>What you are seeing: <strong>dark, editorial hospitality UI</strong> with hero, menu module, and booking — the kind of site guests expect from a serious dining room, not a PDF menu.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Menu + map</span></div>
+              <div class="tech-tags"><span class="tech-tag">Reservations</span><span class="tech-tag">Mobile menu</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
         </div>
 
         <div class="portfolio-card" data-category="portfolio">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#86198f 0%,#4c1d95 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(150deg,#1a1025 0%,#030712 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">studio.creative</div>
+                <div class="portfolio-mock__url">lumenatelier.com</div>
               </div>
-              <div class="portfolio-mock__body">
-                <div class="pmb-grid2" style="min-height:3.2rem;flex:1">
-                  <div class="pmb-tile" style="background:linear-gradient(160deg,#f472b6,#a855f7)"></div>
-                  <div class="pmb-tile" style="background:linear-gradient(160deg,#c084fc,#7c3aed)"></div>
+              <div class="portfolio-mock__body" style="background:#030712">
+                <div class="pmb-bnav" style="background:#030712;border-color:#1e293b">
+                  <div class="pmb-bnav-mark" style="background:linear-gradient(135deg,#f0abfc,#a855f7)"></div>
+                  <div class="pmb-bnav-pill" style="width:7px;background:#334155"></div>
+                  <div class="pmb-bnav-pill" style="width:5px;background:#334155"></div>
+                  <div class="pmb-bnav-pill" style="width:6px;background:#334155"></div>
+                  <div class="pmb-bnav-spacer"></div>
+                  <div class="pmb-bnav-cta" style="background:linear-gradient(90deg,#d946ef,#7c3aed)"></div>
                 </div>
-                <div class="pmb-grid2" style="min-height:2rem;flex:0">
-                  <div class="pmb-tile"></div>
-                  <div class="pmb-tile"></div>
+                <div class="pmb-grid2" style="min-height:78px;flex:0;padding:0 2px;gap:2px">
+                  <div class="pmb-tile" style="border:0;min-height:0;background:linear-gradient(160deg,rgba(244,63,94,0.6),rgba(91,33,182,0.9))"></div>
+                  <div class="pmb-tile" style="border:0;min-height:0;background:linear-gradient(200deg,rgba(56,189,248,0.4),rgba(99,102,241,0.85))"></div>
                 </div>
-                <div class="pmb-h1" style="width:40%"></div>
-                <div class="pmb-p short"></div>
+                <div class="pmb-grid2" style="min-height:52px;flex:1;gap:2px;padding:0 2px 3px;min-height:0">
+                  <div class="pmb-tile" style="background:#0f172a;border-color:#1e293b;min-height:0"></div>
+                  <div class="pmb-tile" style="background:#0f172a;border-color:#1e293b;min-height:0"></div>
+                </div>
+                <div style="padding:0 5px 4px;flex:0">
+                  <div class="pmb-ht" style="height:2px;width:32%;background:#e2e8f0;opacity:0.8"></div>
+                  <div class="pmb-ht faint" style="height:2px;width:18%;background:#64748b;margin-top:2px"></div>
+                </div>
               </div>
             </div>
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">Portfolio</div>
             <h3>Creators &amp; studios</h3>
-            <p>Image-led grids, case blocks, and contact flows tuned for big visuals and fast load.</p>
+            <p class="portfolio-tier">$10K+ build · gallery &amp; motion-ready art direction</p>
+            <p>What you are seeing: <strong>editorial grid, negative space, and art-forward tiles</strong> — the look of a contemporary studio site where photography does the selling.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Gallery</span></div>
+              <div class="tech-tags"><span class="tech-tag">Editorial grid</span><span class="tech-tag">Fast load</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
         </div>
 
         <div class="portfolio-card" data-category="realestate">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#0369a1 0%,#0c4a6e 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(150deg,#0c4a6e 0%,#020617 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">keyrealty.com</div>
+                <div class="portfolio-mock__url">hudsonharbor.realty</div>
               </div>
-              <div class="portfolio-mock__body">
-                <div class="pmb-hero" style="height:32%;background:linear-gradient(120deg,#38bdf8,#0284c7)"></div>
-                <div class="pmb-row" style="gap:0.25rem;flex:1;align-items:stretch;min-height:0">
-                  <div class="pmb-tile" style="width:32%;min-height:1.2rem"></div>
-                  <div class="pmb-list" style="flex:1;justify-content:center">
-                    <div class="pmb-line" style="height:0.28rem"></div>
-                    <div class="pmb-line" style="width:75%"></div>
-                    <div class="pmb-line" style="width:50%"></div>
-                    <div class="pmb-btn" style="height:0.4rem;width:50%;align-self:start;margin-top:0.1rem"></div>
+              <div class="portfolio-mock__body" style="background:#f8fafc">
+                <div class="pmb-bnav" style="background:#fff">
+                  <div class="pmb-bnav-mark" style="background:linear-gradient(135deg,#0ea5e9,#0369a1)"></div>
+                  <div class="pmb-bnav-pill" style="width:10px"></div>
+                  <div class="pmb-bnav-pill" style="width:7px"></div>
+                  <div class="pmb-bnav-spacer"></div>
+                  <div class="pmb-bnav-cta" style="background:#0ea5e9"></div>
+                </div>
+                <div style="height:2px;padding:0 3px 2px">
+                  <div class="pmb-ht" style="height:3px;border-radius:2px;width:100%;background:#e0f2fe;box-shadow:0 0 0 1px #bae6fd"></div>
+                </div>
+                <div class="pmb-hero" style="height:32%;min-height:56px;border-radius:4px;margin:0 3px;background:linear-gradient(125deg,#38bdf8 0%,#0284c7 60%,#0c4a6e 100%);box-shadow:0 4px 12px rgba(2,132,199,0.4)"></div>
+                <div class="pmb-row" style="gap:3px;flex:1;align-items:stretch;min-height:0;padding:0 3px 3px">
+                  <div class="pmb-tile" style="width:32%;min-height:0;flex-shrink:0;background:linear-gradient(180deg,#e0f2fe,#fff);border:1px solid #bae6fd">
+                    <div class="pmb-ht" style="height:2px;width:50%;background:#0369a1;margin:2px auto"></div>
+                    <div class="pmb-line" style="background:#cbd5e1"></div>
+                    <div class="pmb-cta1" style="min-width:0;width:100%;height:4px;border-radius:1px;margin-top:2px;background:#0ea5e9"></div>
+                  </div>
+                  <div class="pmb-list" style="flex:1;justify-content:center;gap:2px">
+                    <div class="pmb-ht" style="height:3px;width:100%"></div>
+                    <div class="pmb-line" style="width:80%;height:2px"></div>
+                    <div class="pmb-line" style="width:55%;height:2px"></div>
+                    <div class="pmb-ht" style="height:2px;width:40%;background:#0ea5e9;opacity:0.9"></div>
                   </div>
                 </div>
               </div>
@@ -406,96 +650,130 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Real Estate</div>
             <h3>Listings &amp; lead capture</h3>
-            <p>Listing detail pages, search-friendly structure, and forms wired to your CRM or inbox.</p>
+            <p class="portfolio-tier">$10K+ build · search + lead routing</p>
+            <p>What you are seeing: <strong>search bar, hero property, and listing panel</strong> — structured like a top brokerage site, with clear paths to tour requests and your CRM.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Lead forms</span></div>
+              <div class="tech-tags"><span class="tech-tag">IDX-ready UI</span><span class="tech-tag">Lead flow</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
         </div>
 
         <div class="portfolio-card" data-category="business">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#0d9488 0%,#134e4a 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(150deg,#134e4a 0%,#022c22 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">partners-llc.com</div>
+                <div class="portfolio-mock__url">meridian-legal.com</div>
               </div>
-              <div class="portfolio-mock__body">
-                <div class="pmb-cols2" style="flex:1;min-height:0">
-                  <div class="pmb-text" style="gap:0.2rem;justify-content:center">
-                    <div class="pmb-h1" style="width:90%"></div>
-                    <div class="pmb-p"></div>
-                    <div class="pmb-p" style="width:50%"></div>
+              <div class="portfolio-mock__body" style="background:#fff">
+                <div class="pmb-bnav" aria-hidden="true">
+                  <div class="pmb-bnav-mark" style="background:linear-gradient(135deg,#0d9488,#115e59)"></div>
+                  <div class="pmb-bnav-pill" style="width:8px"></div>
+                  <div class="pmb-bnav-pill" style="width:6px"></div>
+                  <div class="pmb-bnav-pill" style="width:7px"></div>
+                  <div class="pmb-bnav-spacer"></div>
+                  <div class="pmb-bnav-cta" style="background:#0f766e"></div>
+                </div>
+                <div class="pmb-cols2" style="padding:3px;flex:1;min-height:0;gap:3px">
+                  <div style="display:flex;flex-direction:column;gap:2px;justify-content:center;align-items:stretch">
+                    <div class="pmb-ht" style="height:3px;width:100%;background:#0f172a"></div>
+                    <div class="pmb-ht faint" style="height:2px;width:92%"></div>
+                    <div class="pmb-ht faint" style="height:2px;width:78%"></div>
+                    <div class="pmb-bnav-cta" style="width:45%;height:4px;align-self:start;margin-top:1px"></div>
                   </div>
-                  <div class="pmb-illus" style="background:#ecfdf5;border:1px solid #a7f3d0">
-                    <div class="pmb-trio" style="padding:0.2rem">
-                      <div class="pmb-avatar" style="background:#14b8a6"></div>
-                      <div class="pmb-avatar" style="background:#5eead4"></div>
-                      <div class="pmb-avatar" style="background:#0d9488"></div>
+                  <div class="pmb-illus" style="background:linear-gradient(180deg,#ecfdf5,#f0fdfa);border:1px solid #99f6e4">
+                    <div class="pmb-trio" style="display:flex;justify-content:center;gap:2px;padding:3px 2px 0">
+                      <div class="pmb-avatar" style="width:6px;height:6px;background:#14b8a6"></div>
+                      <div class="pmb-avatar" style="width:6px;height:6px;background:#5eead4"></div>
+                      <div class="pmb-avatar" style="width:6px;height:6px;background:#0f766e"></div>
                     </div>
-                    <div class="pmb-p" style="width:80%;margin:0.2rem 0.2rem 0"></div>
-                    <div class="pmb-p short" style="width:50%;margin:0.1rem 0.2rem"></div>
+                    <div class="pmb-ht" style="height:2px;width:80%;margin:1px 3px 0"></div>
+                    <div class="pmb-ht faint" style="height:2px;width:55%;margin:0 3px 3px"></div>
                   </div>
                 </div>
-                <div class="pmb-btns"><div class="pmb-btn" style="background:var(--primary)"></div></div>
+                <div class="pmb-trust" style="background:#f0fdfa">
+                  <span style="width:11%"></span><span style="width:8%"></span><span style="width:9%"></span>
+                  <div class="pmb-ht" style="height:2px;width:14%;background:#0d9488"></div>
+                </div>
               </div>
             </div>
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">Business</div>
             <h3>Professional services</h3>
-            <p>Trust-oriented layouts: practice areas, credentials, team, and clear secure contact paths.</p>
+            <p class="portfolio-tier">$10K+ build · trust, compliance, team</p>
+            <p>What you are seeing: <strong>restrained, authority-led layout</strong> with practice narrative, team panel, and subtle trust — how premium firms present online, not a template blog.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Compliance-safe</span></div>
+              <div class="tech-tags"><span class="tech-tag">Authority UI</span><span class="tech-tag">Secure intake</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
         </div>
 
         <div class="portfolio-card" data-category="ecommerce">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#9f1239 0%,#4c0519 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(150deg,#4c0519 0%,#0f172a 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">drop.brand</div>
+                <div class="portfolio-mock__url">vessel-drop.com</div>
               </div>
-              <div class="portfolio-mock__body" style="justify-content:center;gap:0.5rem">
-                <div class="pmb-hero" style="height:24%;width:100%;background:linear-gradient(95deg,#fb7185,#e11d48)"></div>
-                <div class="pmb-h1" style="width:70%;align-self:center"></div>
-                <div class="pmb-p" style="align-self:center;width:85%"></div>
-                <div class="pmb-btns" style="justify-content:center"><div class="pmb-btn" style="width:45%;background:var(--primary)"></div></div>
+              <div class="portfolio-mock__body" style="background:linear-gradient(180deg,#1a050c,#0f172a)">
+                <div class="pmb-hero--mesh" style="--m-hero:linear-gradient(95deg,#fb7185 0%,#be123c 50%,#431407 100%);min-height:88px;flex:0">
+                  <div class="pmb-hero-in" style="text-align:center;align-items:center;gap:4px">
+                    <span class="pmb-badge" style="background:rgba(0,0,0,0.4)">Limited release</span>
+                    <div class="pmb-ht" style="width:72%"></div>
+                    <div class="pmb-ctas" style="margin-top:1px;justify-content:center">
+                      <div class="pmb-cta1" style="min-width:26px;box-shadow:0 0 0 1px rgba(0,0,0,0.2)"></div>
+                    </div>
+                  </div>
+                </div>
+                <div style="padding:3px;flex:1;display:flex;align-items:center;justify-content:center">
+                  <div class="pmb-ht" style="height:2px;width:48%;background:#fda4af;opacity:0.7"></div>
+                </div>
+                <div class="pmb-trust" style="background:#020617;border-color:#1e293b">
+                  <div class="pmb-ht" style="height:2px;flex:1;background:#334155"></div>
+                  <div class="pmb-bnav-cta" style="min-width:32px;height:5px;border-radius:2px;background:linear-gradient(90deg,#f43f5e,#e11d48)"></div>
+                </div>
               </div>
             </div>
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">E-Commerce</div>
             <h3>Brand &amp; campaign landing</h3>
-            <p>One-page launches with a single goal: signups, pre-orders, or product drops — measured end to end.</p>
+            <p class="portfolio-tier">$10K+ build · launch + conversion testing</p>
+            <p>What you are seeing: <strong>one goal, one hero, one CTA</strong> — a campaign-grade drop page with the visual weight of a national brand launch, tuned for signups and pre-orders.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Conversion</span></div>
+              <div class="tech-tags"><span class="tech-tag">Campaign CRO</span><span class="tech-tag">Analytics</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
         </div>
 
         <div class="portfolio-card" data-category="restaurant">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#4d7c0f 0%,#14532d 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(150deg,#14532d 0%,#022c0f 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">cafe-venue.com</div>
+                <div class="portfolio-mock__url">cindersbar.com</div>
               </div>
-              <div class="portfolio-mock__body">
-                <div class="pmb-row" style="gap:0.2rem;flex:0">
-                  <div class="pmb-tile" style="height:0.5rem;flex:1"></div>
-                  <div class="pmb-tile" style="height:0.5rem;flex:1"></div>
+              <div class="portfolio-mock__body" style="background:#0f1f12">
+                <div class="pmb-bnav" style="background:transparent;border-color:#166534">
+                  <div class="pmb-bnav-mark" style="background:linear-gradient(135deg,#84cc16,#15803d)"></div>
+                  <div class="pmb-bnav-pill" style="width:6px;background:#365314"></div>
+                  <div class="pmb-bnav-pill" style="width:5px;background:#365314"></div>
+                  <div class="pmb-bnav-spacer"></div>
+                  <div class="pmb-bnav-cta" style="background:#4ade80;min-width:20px"></div>
                 </div>
-                <div class="pmb-hero" style="height:30%;background:linear-gradient(90deg,#84cc16,#65a30d)"></div>
-                <div class="pmb-list" style="flex:1;justify-content:center">
-                  <div class="pmb-row" style="width:100%"><div class="pmb-avatar" style="background:#a3e635"></div><div class="pmb-line" style="flex:1"></div></div>
-                  <div class="pmb-row" style="width:100%"><div class="pmb-avatar" style="background:#86efac"></div><div class="pmb-line" style="flex:1;width:80%"></div></div>
-                  <div class="pmb-row" style="width:100%"><div class="pmb-avatar" style="background:#4d7c0f"></div><div class="pmb-line" style="flex:1;width:70%"></div></div>
+                <div class="pmb-row" style="gap:2px;padding:0 3px;flex:0">
+                  <div class="pmb-tile" style="height:4px;flex:1;border-color:#22c55e;background:#14532d"></div>
+                  <div class="pmb-tile" style="height:4px;flex:1;border-color:#22c55e;background:#14532d"></div>
+                </div>
+                <div class="pmb-hero" style="min-height:48px;flex:0;border-radius:3px;margin:0 2px;background:radial-gradient(circle at 30% 20%,#4ade80 0%,transparent 50%),linear-gradient(100deg,#14532d,#052e12)"></div>
+                <div class="pmb-list" style="flex:1;justify-content:center;padding:0 2px;gap:2px;min-height:0">
+                  <div class="pmb-row" style="width:100%"><div class="pmb-avatar" style="width:3px;height:3px;background:#a3e635"></div><div class="pmb-line" style="background:#365314;flex:1;height:1.5px"></div><div class="pmb-ht" style="height:1.5px;width:6px;background:#86efac"></div></div>
+                  <div class="pmb-row" style="width:100%"><div class="pmb-avatar" style="width:3px;height:3px;background:#4ade80"></div><div class="pmb-line" style="background:#365314;flex:1;height:1.5px"></div><div class="pmb-ht" style="height:1.5px;width:5px;background:#86efac"></div></div>
+                  <div class="pmb-row" style="width:100%"><div class="pmb-avatar" style="width:3px;height:3px;background:#166534"></div><div class="pmb-line" style="background:#365314;flex:1;height:1.5px"></div><div class="pmb-ht" style="height:1.5px;width:6px;background:#86efac"></div></div>
                 </div>
               </div>
             </div>
@@ -503,46 +781,51 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Restaurant</div>
             <h3>Cafe &amp; bar</h3>
-            <p>Event strips, hours, and tap-to-call menus for repeat visits and late-night search.</p>
+            <p class="portfolio-tier">$10K+ build · late-night + events UI</p>
+            <p>What you are seeing: <strong>event strip, social hero, and drink-style line list</strong> — a bar site that looks alive on a phone and sells Friday night, not a text PDF.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Events + hours</span></div>
+              <div class="tech-tags"><span class="tech-tag">Events + menu</span><span class="tech-tag">Tap-to-call</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
         </div>
 
         <div class="portfolio-card" data-category="portfolio">
-          <div class="portfolio-mock" style="background:linear-gradient(150deg,#334155 0%,#020617 100%)">
+          <div class="portfolio-mock" style="background:linear-gradient(150deg,#0f172a 0%,#020617 100%)">
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">agency.studio</div>
+                <div class="portfolio-mock__url">vellen-agency.com</div>
               </div>
-              <div class="portfolio-mock__body">
-                <div class="pmb-row" style="flex:0;justify-content:space-between;align-items:center;padding:0.1rem 0">
-                  <div style="width:30%;height:0.3rem;background:#0f172a;border-radius:2px"></div>
-                  <div class="pmb-tiny-nav" style="display:flex;gap:0.15rem">
-                    <div style="width:0.35rem;height:0.2rem;background:#e2e8f0;border-radius:1px"></div>
-                    <div style="width:0.4rem;height:0.2rem;background:#e2e8f0;border-radius:1px"></div>
-                    <div style="width:0.3rem;height:0.2rem;background:#e2e8f0;border-radius:1px"></div>
-                  </div>
+              <div class="portfolio-mock__body" style="background:#020617">
+                <div class="pmb-bnav" style="background:#020617;border-color:#1e293b">
+                  <div class="pmb-bnav-mark" style="width:14px;border-radius:2px;background:linear-gradient(135deg,#fff,#94a3b8)"></div>
+                  <div class="pmb-bnav-pill" style="width:5px;background:#334155"></div>
+                  <div class="pmb-bnav-pill" style="width:4px;background:#334155"></div>
+                  <div class="pmb-bnav-pill" style="width:5px;background:#334155"></div>
+                  <div class="pmb-bnav-pill" style="width:4px;background:#334155"></div>
+                  <div class="pmb-bnav-spacer"></div>
+                  <div class="pmb-bnav-cta" style="background:#fff;min-width:16px"></div>
                 </div>
-                <div class="pmb-hero" style="height:22%;background:linear-gradient(100deg,#64748b,#0f172a)"></div>
-                <div class="pmb-grid2" style="flex:1;min-height:0">
-                  <div class="pmb-tile" style="grid-column:1 / -1;min-height:0.6rem"></div>
-                  <div class="pmb-tile"></div>
-                  <div class="pmb-tile"></div>
+                <div class="pmb-hero" style="height:24%;min-height:44px;border-radius:0;margin:0;background:linear-gradient(120deg,#1e293b 0%,#0f172a 60%,#312e81 100%);box-shadow:inset 0 0 0 1px #334155"></div>
+                <div class="pmb-grid2" style="flex:1;min-height:0;gap:2px;padding:2px;grid-template-columns:1.4fr 1fr">
+                  <div class="pmb-tile" style="grid-column:1;grid-row:1/3;border-color:#1e293b;background:#0f172a;min-height:0"></div>
+                  <div class="pmb-tile" style="border-color:#1e293b;background:linear-gradient(180deg,#1e1b4b,#312e81);min-height:0"></div>
+                  <div class="pmb-tile" style="border-color:#1e293b;background:#0f172a;min-height:0"></div>
                 </div>
-                <div class="pmb-p short" style="align-self:center"></div>
+                <div style="padding:2px 4px 3px;flex:0">
+                  <div class="pmb-ht" style="height:2px;width:28%;background:#e2e8f0"></div>
+                </div>
               </div>
             </div>
           </div>
           <div class="portfolio-info">
             <div class="portfolio-tag">Portfolio</div>
             <h3>Studio &amp; agency</h3>
-            <p>Work index, case rows, and a single strong contact path — for shops selling creative services.</p>
+            <p class="portfolio-tier">$10K+ build · case-study + pitch site</p>
+            <p>What you are seeing: <strong>asymmetric work grid, split hero, and minimal nav</strong> — the “design shop” look buyers expect before they sign a $10K+ statement of work.</p>
             <div class="portfolio-meta">
-              <div class="tech-tags"><span class="tech-tag">Layout preview</span><span class="tech-tag">Case grid</span></div>
+              <div class="tech-tags"><span class="tech-tag">Case study UX</span><span class="tech-tag">New-business pitch</span></div>
               <a href="contact.html" style="color:var(--primary);font-weight:600;font-size:0.85rem">Get a quote</a>
             </div>
           </div>
@@ -555,7 +838,7 @@
   <section class="section" style="background:var(--dark)">
     <div class="container" style="max-width:720px;text-align:center">
       <p style="color:rgba(255,255,255,0.75);font-size:1.1rem;line-height:1.7;margin:0">
-        Want a walkthrough of a build close to your business? <strong>Ask for samples</strong> by industry — we share client-safe examples and metrics when NDA and permissions allow.
+        Expect <strong>five-figure</strong> depth: strategy, custom UI, performance, and launch support. <strong>Book a call</strong> and we will walk you through a build that matches your business — with client-safe examples when NDAs allow.
       </p>
     </div>
   </section>
