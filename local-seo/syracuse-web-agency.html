@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="/js/brand-resolver.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Web Agency in Syracuse, NY | Custom Websites &amp; Digital Solutions</title>
   <meta name="description" content="Syracuse's local web design agency. Custom websites, e-commerce, and SEO built for Central New York businesses. Fast delivery, honest pricing, no templates." />
@@ -11,6 +12,9 @@
   <meta property="og:url" content="https://syracusewebagency.com/" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
+  <meta property="og:site_name" content="Syracuse Web Agency" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="dns-prefetch" href="https://supabase.co" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -39,8 +43,21 @@
       border-bottom: 1px solid rgba(148, 163, 184, 0.15);
     }
     .topnav__inner { display: flex; align-items: center; justify-content: space-between; min-height: 64px; gap: 1rem; flex-wrap: wrap; }
-    .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
-    .logo span { background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .text-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .logo-mark {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #6366f1, #06b6d4);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 900; font-size: 11px; letter-spacing: -0.5px;
+      flex-shrink: 0;
+    }
+    .logo-text {
+      font-size: 1.1rem; font-weight: 800;
+      background: linear-gradient(135deg, #6366f1, #06b6d4);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     .topnav__right { display: flex; align-items: center; gap: 0.75rem 1rem; flex-wrap: wrap; }
     .phone { color: var(--muted); font-size: 0.9rem; font-weight: 600; }
     .phone a { color: var(--text); }
@@ -123,27 +140,33 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "CustomSite",
-    "description": "Syracuse's local web design agency. Custom websites, e-commerce, and SEO built for Central New York businesses.",
-    "url": "https://syracusewebagency.com/",
-    {{JSONLD_COMMUNICATION}}
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Syracuse",
-      "addressRegion": "NY",
-      "addressCountry": "US"
-    },
-    "areaServed": [
-      "Syracuse, NY",
-      "Central New York",
-      "Onondaga County",
-      "Oswego County",
-      "Cayuga County",
-      "Madison County"
-    ],
-    "priceRange": "$799 - $7500",
-    "openingHours": "Mo-Fr 09:00-18:00"
+    "@graph": [
+      {
+        "@type": ["LocalBusiness", "ProfessionalService"],
+        "@id": "https://syracusewebagency.com/#business",
+        "name": "Syracuse Web Agency",
+        "description": "Syracuse's local web design agency. Custom websites for businesses in Syracuse and Central New York. From $799. Live in 3 weeks.",
+        "url": "https://syracusewebagency.com/",
+        {{JSONLD_COMMUNICATION}}
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Syracuse",
+          "addressRegion": "NY",
+          "postalCode": "13201",
+          "addressCountry": "US"
+        },
+        "geo": { "@type": "GeoCoordinates", "latitude": 43.0481, "longitude": -76.1474 },
+        "areaServed": [
+          { "@type": "City", "name": "Syracuse" },
+          { "@type": "AdministrativeArea", "name": "Onondaga County" },
+          { "@type": "AdministrativeArea", "name": "Central New York" }
+        ],
+        "serviceType": ["Web Design", "Web Development", "Local SEO", "E-Commerce"],
+        "priceRange": "$799 - $7500",
+        "openingHours": "Mo-Fr 09:00-18:00",
+        "sameAs": ["https://customsite.online/"]
+      }
+    ]
   }
   </script>
   <script src="../js/main.js" defer></script>
@@ -151,7 +174,10 @@
 <body>
   <header class="topnav">
     <div class="container topnav__inner">
-      <a class="logo" href="https://syracusewebagency.com/"><span>CS</span> CustomSite</a>
+      <a class="logo text-logo" href="https://syracusewebagency.com/" aria-label="Home" id="nav-home-logo">
+        <span class="logo-mark" id="nav-logo-mark">SWA</span>
+        <span class="logo-text" id="nav-brand-name">Syracuse Web Agency</span>
+      </a>
       <div class="topnav__right">
         <span class="phone">{{NAV_CONTACT_LINE}}</span>
         <a class="btn btn--gold" href="https://customsite.online/contact.html" data-book-call="1">Book a free 20-min call</a>
@@ -166,7 +192,7 @@
         <p class="lead">Custom-built websites for local trades, retail, restaurants, and professional services across Syracuse and Central New York. No templates. No surprises. Just sites that work.</p>
         <div class="hero__cta">
           <a class="btn btn--gold" href="https://customsite.online/portfolio.html">See Our Work</a>
-          <a class="btn btn--outline" href="https://customsite.online/contact.html">Talk to Us</a>
+          <a class="btn btn--outline" href="https://customsite.online/contact.html" data-book-call="1">Book a 20-min call</a>
         </div>
       </div>
       <div class="mock" role="img" aria-label="Sample local service website preview">
@@ -367,8 +393,9 @@
 
   <footer class="footer">
     <div class="container" style="text-align:center">
-      <div class="logo" style="justify-content:center"><span>CS</span> CustomSite</div>
-      <p>Syracuse, NY web design agency serving Central New York.</p>
+      <p class="logo-text" style="display:inline-block; margin:0" id="brand-name">Syracuse Web Agency</p>
+      <p id="brand-tagline" style="margin:0.35rem 0 0.5rem; color:var(--muted)">Syracuse&rsquo;s local web design agency</p>
+      <p><span class="brand-city">Syracuse, NY</span> &mdash; web design for Central New York.</p>
       <div class="footer__links">
         <a href="https://customsite.online/">Home</a>
         <a href="https://customsite.online/portfolio.html">Portfolio</a>
@@ -377,7 +404,13 @@
         <a href="https://customsite.online/privacy.html">Privacy</a>
         <a href="https://customsite.online/terms.html">Terms</a>
       </div>
-      <p style="margin:0">© 2026 CustomSite. All rights reserved.</p>
+      <p style="font-size:12px; color:#64748b; margin-top:1rem; max-width:32rem; margin-left:auto; margin-right:auto; line-height:1.5">
+        Also serving Central New York via
+        <a href="https://cnywebagency.com/" rel="noopener">CNY Web Agency</a> ·
+        <a href="https://customsite.online/" rel="noopener">CustomSite.online</a> ·
+        <a href="https://syracusewebdesigner.com/" rel="noopener">Syracuse Web Designer</a>
+      </p>
+      <p style="margin:0.75rem 0 0">© 2026 <span class="cs-footer-brand">CustomSite</span>. All rights reserved.</p>
     </div>
   </footer>
 </body>

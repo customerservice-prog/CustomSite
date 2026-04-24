@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="/js/brand-resolver.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CNY Web Agency | Central New York Web Design &amp; Development</title>
   <meta name="description" content="Central New York's web agency. Custom websites for CNY businesses in Syracuse, Utica, Rome, Oswego, and beyond. Honest pricing, fast delivery. From $799." />
@@ -11,6 +12,8 @@
   <meta property="og:url" content="https://cnywebagency.com/" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
+  <meta property="og:site_name" content="CNY Web Agency" />
+  <link rel="dns-prefetch" href="https://supabase.co" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -23,8 +26,9 @@
     .container { max-width: var(--max); margin: 0 auto; padding: 0 1.25rem; }
     .topnav { position: sticky; top: 0; z-index: 100; background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(148, 163, 184, 0.15); }
     .topnav__inner { display: flex; align-items: center; justify-content: space-between; min-height: 64px; gap: 1rem; flex-wrap: wrap; }
-    .logo { font-size: 1.25rem; font-weight: 800; }
-    .logo span { background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .text-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .logo-mark { width: 36px; height: 36px; background: linear-gradient(135deg, #6366f1, #06b6d4); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 11px; flex-shrink: 0; }
+    .logo-text { font-size: 1.1rem; font-weight: 800; background: linear-gradient(135deg, #6366f1, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .topnav__right { display: flex; align-items: center; gap: 0.75rem 1rem; flex-wrap: wrap; }
     .phone { color: var(--muted); font-size: 0.9rem; font-weight: 600; }
     .phone a { color: var(--text); }
@@ -127,7 +131,10 @@
 <body>
   <header class="topnav">
     <div class="container topnav__inner">
-      <a class="logo" href="https://cnywebagency.com/"><span>CS</span> CustomSite</a>
+      <a class="logo text-logo" href="https://cnywebagency.com/" aria-label="Home">
+        <span class="logo-mark" id="nav-logo-mark">CNY</span>
+        <span class="logo-text" id="nav-brand-name">CNY Web Agency</span>
+      </a>
       <div class="topnav__right">
         <span class="phone">{{NAV_CONTACT_LINE}}</span>
         <a class="btn btn--gold" href="https://customsite.online/contact.html" data-book-call="1">Book a free 20-min call</a>
@@ -362,8 +369,9 @@
 
   <footer class="footer">
     <div class="container" style="text-align:center">
-      <div class="logo" style="justify-content:center"><span>CS</span> CustomSite</div>
-      <p>CNY web design agency: Syracuse base, Central New York reach.</p>
+      <p class="logo-text" style="display:inline-block; margin:0" id="brand-name">CNY Web Agency</p>
+      <p id="brand-tagline" style="margin:0.35rem 0 0.5rem; color:var(--muted)">Central New York&rsquo;s web agency</p>
+      <p><span class="brand-city">Syracuse, NY (serving all of CNY)</span> &mdash; custom websites without out-of-state handoffs.</p>
       <div class="footer__links">
         <a href="https://customsite.online/">Home</a>
         <a href="https://customsite.online/portfolio.html">Portfolio</a>
@@ -372,7 +380,12 @@
         <a href="https://customsite.online/privacy.html">Privacy</a>
         <a href="https://customsite.online/terms.html">Terms</a>
       </div>
-      <p style="margin:0">© 2026 CustomSite. All rights reserved.</p>
+      <p style="font-size:12px; color:#64748b; margin-top:1rem; max-width:32rem; margin-left:auto; margin-right:auto; line-height:1.5">
+        Also in Syracuse: <a href="https://syracusewebagency.com/" rel="noopener">Syracuse Web Agency</a> ·
+        <a href="https://customsite.online/" rel="noopener">CustomSite.online</a> ·
+        <a href="https://syracusewebdesigner.com/" rel="noopener">Syracuse Web Designer</a>
+      </p>
+      <p style="margin:0.75rem 0 0">© 2026 CustomSite. All rights reserved.</p>
     </div>
   </footer>
 </body>

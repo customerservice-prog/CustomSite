@@ -40,6 +40,13 @@ app.use(
 // CORS: CORS_ORIGINS (comma list) or PUBLIC_SITE_URL; reflect any origin in dev if unset.
 app.use(cors(buildCorsOptions()));
 
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.post(
   '/api/payments/webhook',
   express.raw({ type: 'application/json' }),
@@ -61,6 +68,72 @@ app.use('/api/payments', paymentsRoutes);
 app.use('/api', configPublicRoutes);
 
 app.use(previewSiteMiddleware);
+
+function buildSitemapXml(hostname) {
+  const host = String(hostname || 'customsite.online').toLowerCase();
+  const base = `https://${host}`;
+  const isMain = host === 'customsite.online' || host === 'www.customsite.online';
+  const allPages = [
+    { path: '/', priority: '1.0', changefreq: 'weekly' },
+    { path: '/pricing.html', priority: '0.9', changefreq: 'monthly' },
+    { path: '/portfolio.html', priority: '0.8', changefreq: 'monthly' },
+    { path: '/contact.html', priority: '0.8', changefreq: 'monthly' },
+    { path: '/case-studies.html', priority: '0.7', changefreq: 'monthly' },
+    { path: '/agency.html', priority: '0.6', changefreq: 'monthly' },
+    { path: '/privacy.html', priority: '0.3', changefreq: 'yearly' },
+    { path: '/terms.html', priority: '0.3', changefreq: 'yearly' },
+  ];
+  const demoPaths = isMain
+    ? [
+        { path: '/demo-site.html?t=ridgelineplumbing', priority: '0.5', changefreq: 'yearly' },
+        { path: '/partyrental-demo.html', priority: '0.5', changefreq: 'yearly' },
+      ]
+    : [];
+  const pages = allPages.concat(demoPaths);
+  const today = new Date().toISOString().split('T')[0];
+  const escapeLoc = (p) => base + p.replace(/&/g, '&amp;');
+  const urls = pages
+    .map(
+      (p) => `
+  <url>
+    <loc>${escapeLoc(p.path)}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`
+    )
+    .join('');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>`;
+}
+
+function buildRobotsTxt(hostname) {
+  const host = String(hostname || 'customsite.online');
+  return `User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin.html
+Disallow: /client-portal.html
+Disallow: /site-builder.html
+Disallow: /reset-password.html
+Disallow: /dashboard.html
+Disallow: /preview/
+
+Sitemap: https://${host}/sitemap.xml
+`;
+}
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.send(buildSitemapXml(req.hostname));
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(buildRobotsTxt(req.hostname));
+});
 
 /* Local SEO domains (Syracuse / CNY) — host-based landing pages, same deployment */
 const LOCAL_SEO_PAGES = {
@@ -85,13 +158,6 @@ app.use(async (req, res, next) => {
   if (p.length > 1 && p.endsWith('/')) {
     p = p.slice(0, -1);
   }
-  if (p === '/robots.txt') {
-    const base = `https://${host}`;
-    res.type('text/plain');
-    return res.send(
-      `User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`
-    );
-  }
   if (p === '/' || p === '/index.html') {
     try {
       const filePath = path.join(__dirname, 'local-seo', `${slug}.html`);
@@ -102,17 +168,22 @@ app.use(async (req, res, next) => {
     }
     return;
   }
-  if (p === '/sitemap.xml') {
-    return res.type('application/xml').sendFile(path.join(__dirname, 'local-seo', `sitemap-${slug}.xml`), (err) => {
-      if (err) next(err);
-    });
-  }
   return next();
 });
 
-app.use(express.static(path.join(__dirname), {
-  extensions: ['html'],
-}));
+app.use(
+  express.static(path.join(__dirname), {
+    extensions: ['html'],
+    etag: true,
+    setHeaders: (res, filePath) => {
+      if (String(filePath).endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=604800');
+      }
+    },
+  })
+);
 
 app.use((req, res) => {
   if (req.path.startsWith('/api')) {

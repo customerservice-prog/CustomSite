@@ -2,24 +2,87 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="/js/brand-resolver.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Your website is costing you customers — we fix that. Custom sites for Syracuse &amp; CNY businesses. Live in ~3 weeks from $799. Book a free 20-min call." />
-  <meta property="og:title" content="CustomSite — Professional Web Design" />
-  <meta property="og:description" content="We build websites that grow your business." />
+  <title>Web Design &amp; Development for Small Businesses | CustomSite</title>
+  <meta name="description" content="CustomSite builds fast, custom websites for small businesses starting at $799. Based in Syracuse, NY. Mobile-ready, SEO-optimized, live in 3 weeks. Get a free quote." />
+  <link rel="canonical" href="https://customsite.online/" />
+  <meta property="og:title" content="CustomSite — Web Design for Small Businesses" />
+  <meta property="og:description" content="Custom-built websites starting at $799. Fast, mobile-ready, and SEO-optimized. Based in Syracuse, NY. Live in 3 weeks." />
   <meta property="og:url" content="https://customsite.online/" />
-  <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
+  <meta property="og:site_name" content="CustomSite" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="CustomSite — Professional Web Design" />
-  <meta name="twitter:description" content="Custom websites for small businesses. Transparent builds from $799. Hosting and care optional." />
+  <meta name="twitter:title" content="CustomSite — Web Design for Small Businesses" />
+  <meta name="twitter:description" content="Custom websites starting at $799. Live in 3 weeks. Based in Syracuse, NY." />
+  <meta name="twitter:image" content="https://customsite.online/images/og-image.jpg" />
+  <meta name="geo.region" content="US-NY" />
+  <meta name="geo.placename" content="Syracuse, New York" />
+  <meta name="geo.position" content="43.0481;-76.1474" />
+  <meta name="ICBM" content="43.0481, -76.1474" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="image" href="/images/customsite-wordmark-on-light.svg" type="image/svg+xml" />
+  <link rel="dns-prefetch" href="https://supabase.co" />
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"Organization","name":"CustomSite","url":"https://customsite.online/","email":"hello@customsite.online","description":"Web design, development, and optional hosting for small businesses."}
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": ["LocalBusiness", "ProfessionalService"],
+        "@id": "https://customsite.online/#business",
+        "name": "CustomSite",
+        "alternateName": "CustomSite Web Design",
+        "description": "CustomSite builds custom websites for small businesses — fast, mobile-ready, and SEO-optimized. Based in Syracuse, NY. Serving clients nationwide.",
+        "url": "https://customsite.online/",
+        "logo": "https://customsite.online/images/customsite-wordmark-on-dark.svg",
+        "image": "https://customsite.online/images/og-image.jpg",
+        "email": "hello@customsite.online",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Syracuse",
+          "addressRegion": "NY",
+          "postalCode": "13201",
+          "addressCountry": "US"
+        },
+        "geo": { "@type": "GeoCoordinates", "latitude": 43.0481, "longitude": -76.1474 },
+        "areaServed": [
+          { "@type": "City", "name": "Syracuse" },
+          { "@type": "City", "name": "Utica" },
+          { "@type": "City", "name": "Rome" },
+          { "@type": "City", "name": "Oswego" },
+          { "@type": "City", "name": "Auburn" },
+          { "@type": "AdministrativeArea", "name": "Central New York" },
+          { "@type": "AdministrativeArea", "name": "Onondaga County" },
+          { "@type": "Country", "name": "United States" }
+        ],
+        "serviceType": ["Web Design", "Web Development", "E-Commerce Development", "SEO", "Website Maintenance"],
+        "priceRange": "$799 - $7500",
+        "paymentAccepted": "Credit Card, Bank Transfer",
+        "openingHours": "Mo-Fr 09:00-18:00",
+        "hasMap": "https://maps.google.com/?q=Syracuse,NY",
+        "sameAs": []
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://customsite.online/#website",
+        "name": "CustomSite",
+        "url": "https://customsite.online/"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://customsite.online/#breadcrumb",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://customsite.online/" }
+        ]
+      }
+    ]
+  }
   </script>
-  <title>CustomSite — Professional Web Design and Development</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/hero-immersive.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body class="page-home">
@@ -52,8 +115,14 @@
     <div class="hero-dot-grid" aria-hidden="true"></div>
 
     <div class="hero-content">
-      <h1 class="hero-pain-h1">Your website is costing you customers. <span class="hero-pain-h1__fix">We fix that.</span></h1>
-      <p class="hero-subtext">If your site looks dated, loads slow, or hides your phone number, you are losing work to competitors who look more legit online. We build <strong>fast, custom</strong> sites for Syracuse and Central New York — live in about <strong>3 weeks</strong>, from <strong>$799</strong>. No handoff to another state, no platform runaround.</p>
+      <h1 class="hero-pain-h1">
+        <span class="hero-headline__primary">Web design for small businesses</span>
+        <span class="hero-headline__wrap" aria-hidden="true">
+          <span class="hero-typewriter" id="heroTypewriter"></span><span class="typewriter-cursor">|</span>
+        </span>
+      </h1>
+      <p class="hero-subtext">Custom-built websites for businesses in <strong>Syracuse, NY</strong> and beyond. Mobile-ready, fast-loading, and built to rank. From <strong>$799</strong>. Live in <strong>3 weeks</strong>.</p>
+      <p class="hero-pain-kicker">If your site looks dated, loads slow, or hides your number, you are losing work to competitors who look more legit online. <strong>We fix that</strong> — with a real person from first call to launch.</p>
       <p class="hero-founder">Hi, I&rsquo;m <strong>Bryan</strong> — a web designer based in <strong>Syracuse, NY</strong>. I&rsquo;ve shipped <strong>100+</strong> business sites. The next step is a real conversation: book below, or email <a href="mailto:hello@customsite.online">hello@customsite.online</a> and I&rsquo;ll reply. Add your own Google Voice or cell number in the footer when you&rsquo;re ready — people trust a phone line for local work.</p>
       <div class="hero-ctas">
         <a href="contact.html" class="hero-btn-primary" data-book-call="1">Book a free 20-min call &rarr;</a>
@@ -391,9 +460,9 @@
     <div class="container footer-grid">
       <div class="footer-brand">
         <a href="index.html" class="logo logo-light" aria-label="CustomSite home">
-          <img class="logo-stacked" src="images/customsite-stacked-on-dark.svg" width="256" height="96" alt="CustomSite — we build websites that actually work" />
+          <img class="logo-stacked" src="images/customsite-stacked-on-dark.svg" width="256" height="96" alt="CustomSite" />
         </a>
-        <p>Professional web design and development for businesses of all sizes.</p>
+        <p class="footer-brand__line"><span id="brand-name">CustomSite</span> — <span id="brand-tagline">web design and development for small businesses</span></p>
       </div>
       <div class="footer-col">
         <h4>Services</h4>
@@ -427,7 +496,13 @@
     </div>
     <div class="footer-bottom">
       <div class="container">
-        <p>2026 CustomSite. All rights reserved. <span class="footer-locale">Bryan · <strong>Syracuse, NY</strong> &middot; Serving CNY and clients nationwide. <a href="mailto:hello@customsite.online" style="color: inherit">hello@customsite.online</a></span></p>
+        <p>2026 CustomSite. All rights reserved. <span class="footer-locale">Bryan · <strong class="brand-city">Syracuse, NY</strong> &middot; Serving CNY and clients nationwide. <a href="mailto:hello@customsite.online" class="brand-email" style="color: inherit">hello@customsite.online</a></span></p>
+        <p class="footer-related-domains" style="font-size:0.8rem; color:#94a3b8; margin:0.75rem 0 0">
+          Local pages:
+          <a href="https://syracusewebagency.com/" rel="noopener">Syracuse Web Agency</a> ·
+          <a href="https://cnywebagency.com/" rel="noopener">CNY Web Agency</a> ·
+          <a href="https://syracusewebdesigner.com/" rel="noopener">Syracuse Web Designer</a>
+        </p>
         <div class="footer-legal">
           <a href="privacy.html">Privacy Policy</a>
           <a href="terms.html">Terms of Service</a>

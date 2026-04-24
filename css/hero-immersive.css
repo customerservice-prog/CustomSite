@@ -119,6 +119,33 @@
   font-size: 1.05em;
 }
 
+.hero-pain-h1 .hero-headline__primary {
+  display: block;
+}
+.hero-pain-h1 .hero-headline__wrap {
+  display: block;
+  margin-top: 0.35em;
+  font-size: 0.75em;
+  font-weight: 800;
+  line-height: 1.2;
+  min-height: 1.2em;
+}
+.hero-pain-h1 .hero-typewriter,
+.hero-pain-h1 .typewriter-cursor {
+  font-size: 1em;
+}
+
+.hero-pain-kicker {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #94a3b8;
+  max-width: 40rem;
+  margin: 0 auto 1.5rem;
+  text-align: center;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.3s both;
+}
+
 .hero-founder {
   font-size: 0.95rem;
   line-height: 1.65;
