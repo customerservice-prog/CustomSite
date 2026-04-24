@@ -5,6 +5,8 @@ require('./lib/env');
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const { buildCorsOptions } = require('./lib/corsConfig');
 
 const contactRoutes = require('./routes/contact');
 const authRoutes = require('./routes/auth');
@@ -25,13 +27,16 @@ const PORT = process.env.PORT || 3000;
 // Railway, Render, etc. set X-Forwarded-* — needed for correct https:// host in preview URLs
 app.set('trust proxy', 1);
 
-// Reflect request Origin so both http://localhost and http://127.0.0.1 work (single-host API + static).
+// API hardening: disable default CSP/COEP so preview iframes and the site builder keep working; tighten per-route if needed.
 app.use(
-  cors({
-    origin: true,
-    credentials: true,
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
+// CORS: CORS_ORIGINS (comma list) or PUBLIC_SITE_URL; reflect any origin in dev if unset.
+app.use(cors(buildCorsOptions()));
 
 app.post(
   '/api/payments/webhook',
@@ -78,11 +83,15 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`CustomSite server listening on ${PORT}`);
-  if (isDevAuthEnabled() && !isSupabaseConfigured()) {
-    console.log(
-      `  Local dev login: email=${process.env.DEV_ADMIN_EMAIL} (set in .env; no Supabase on this run)`
-    );
-  }
-});
+module.exports = { app };
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`CustomSite server listening on ${PORT}`);
+    if (isDevAuthEnabled() && !isSupabaseConfigured()) {
+      console.log(
+        `  Local dev login: email=${process.env.DEV_ADMIN_EMAIL} (set in .env; no Supabase on this run)`
+      );
+    }
+  });
+}

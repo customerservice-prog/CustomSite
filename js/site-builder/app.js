@@ -5,6 +5,12 @@ import { getRailwaySettings, setRailwaySettings } from './config.js';
 import { api, hasServerError } from './api.js';
 import { initToast, toast } from './toast.js';
 import { initEditor, showModel, setModelLanguage, formatDocument, removeModel } from './editor.js';
+import {
+  openGrapesEditor,
+  mergeGrapesIntoDocument,
+  destroyGrapesEditor,
+  hasGrapesEditor,
+} from './grapesEditor.js';
 
 const TEMPLATE_LABELS = {
   basic: 'Basic HTML / CSS / JS',
@@ -35,6 +41,8 @@ let openTabs = [];
 let activePath = null;
 let autoPreviewT = null;
 const debounceMs = 1500;
+/** @type {'code'|'visual'} */
+let htmlEditMode = 'code';
 
 function isLocalDevHost() {
   const h = location.hostname;
@@ -65,6 +73,87 @@ const TEMPLATE_THUMB = {
 
 function isImageFile(p) {
   return /\.(png|jpe?g|gif|webp|ico)$/i.test(p || '');
+}
+
+function isActiveHtmlFile() {
+  return activePath && /\.html?$/i.test(activePath) && !isImageFile(activePath);
+}
+
+function updateHtmlModeUI() {
+  const box = document.getElementById('sbHtmlMode');
+  if (!box) return;
+  const on = isActiveHtmlFile();
+  box.hidden = !on;
+  box.style.display = on ? '' : 'none';
+}
+
+function setHtmlModeRadios(mode) {
+  const c = document.querySelector('input[name="sbhtmled"][value="code"]');
+  const v = document.querySelector('input[name="sbhtmled"][value="visual"]');
+  if (mode === 'visual') {
+    if (v) v.checked = true;
+  } else if (c) {
+    c.checked = true;
+  }
+}
+
+function leaveVisualMode() {
+  if (htmlEditMode !== 'visual' && !hasGrapesEditor()) {
+    htmlEditMode = 'code';
+    setHtmlModeRadios('code');
+    return;
+  }
+  if (activePath && isActiveHtmlFile() && hasGrapesEditor()) {
+    const base = (mem.get(activePath) || { content: ed ? ed.getValue() : '' }).content;
+    const merged = mergeGrapesIntoDocument(base);
+    mem.set(activePath, { content: merged, encoding: 'utf8' });
+    if (ed) {
+      showModel(ed, activePath, merged);
+      setModelLanguage(ed, activePath);
+    }
+  }
+  destroyGrapesEditor();
+  htmlEditMode = 'code';
+  const mh = document.getElementById('sbMonacoHost');
+  const gh = document.getElementById('sbGrapesHost');
+  if (mh) mh.style.removeProperty('display');
+  if (gh) {
+    gh.style.display = 'none';
+    gh.replaceChildren();
+  }
+  setHtmlModeRadios('code');
+  ed?.layout?.();
+  ed?.focus?.();
+}
+
+async function enterVisualMode() {
+  if (!isActiveHtmlFile() || !ed) return;
+  if (htmlEditMode === 'visual') return;
+  const full = ed.getValue();
+  mem.set(activePath, { content: full, encoding: 'utf8' });
+  const gh = document.getElementById('sbGrapesHost');
+  const mh = document.getElementById('sbMonacoHost');
+  if (!gh) return;
+  mh.style.display = 'none';
+  gh.style.display = 'block';
+  await openGrapesEditor(gh, full, () => {
+    if (!activePath || htmlEditMode !== 'visual') return;
+    const prev = (mem.get(activePath) || { content: '' }).content;
+    const merged = mergeGrapesIntoDocument(prev);
+    mem.set(activePath, { content: merged, encoding: 'utf8' });
+    markDirty(activePath, true);
+    scheduleLivePreview();
+  });
+  htmlEditMode = 'visual';
+  setHtmlModeRadios('visual');
+}
+
+function getHtmlSourceForPreview() {
+  if (!ed || !activePath) return '';
+  if (htmlEditMode === 'visual' && /\.html?$/i.test(activePath)) {
+    return mergeGrapesIntoDocument((mem.get(activePath) || { content: '' }).content);
+  }
+  return ed.getValue();
 }
 
 function phaseClass(st) {
@@ -201,7 +290,7 @@ function liveWritePreview() {
   const ifr = document.getElementById('sbPreviewFrame');
   if (!ifr || !ed || !activePath) return;
   if (!activePath.toLowerCase().endsWith('.html')) return;
-  const html = htmlWithPreviewBase(ed.getValue());
+  const html = htmlWithPreviewBase(getHtmlSourceForPreview());
   try {
     const doc = ifr.contentDocument || (ifr.contentWindow && ifr.contentWindow.document);
     if (!doc) return;
@@ -296,12 +385,17 @@ async function loadFileContent(p) {
 }
 
 async function activatePath(p, reload) {
+  const prev = activePath;
+  if (prev && prev !== p) {
+    leaveVisualMode();
+  }
   if (!p) {
     activePath = null;
     document.getElementById('sbImagePreview')?.classList.remove('is-on');
     document.getElementById('sbMonacoHost')?.style.setProperty('visibility', 'visible');
     setBreadcrumb();
     renderTabs();
+    updateHtmlModeUI();
     return;
   }
   activePath = p;
@@ -327,6 +421,7 @@ async function activatePath(p, reload) {
       const blob = new Blob([en.content], { type: 'text/plain;charset=utf-8' });
       img.src = URL.createObjectURL(blob);
     }
+    updateHtmlModeUI();
     return;
   }
   document.getElementById('sbImagePreview')?.classList.remove('is-on');
@@ -346,6 +441,7 @@ async function activatePath(p, reload) {
   document.querySelectorAll('#sbFileTree .sb-f-item').forEach((el) => {
     el.classList.toggle('is-active', el.dataset.path === p);
   });
+  updateHtmlModeUI();
 }
 
 async function loadFileList() {
@@ -588,8 +684,18 @@ async function saveCurrent() {
     return;
   }
   const c = mem.get(activePath) || { content: '' };
-  c.content = ed.getValue();
-  mem.set(activePath, c);
+  if (htmlEditMode === 'visual' && isActiveHtmlFile()) {
+    const merged = mergeGrapesIntoDocument((mem.get(activePath) || { content: ed.getValue() }).content);
+    c.content = merged;
+    mem.set(activePath, c);
+    if (ed) {
+      showModel(ed, activePath, merged);
+      setModelLanguage(ed, activePath);
+    }
+  } else {
+    c.content = ed.getValue();
+    mem.set(activePath, c);
+  }
   const btn = document.getElementById('sbSave');
   btn.setAttribute('aria-busy', 'true');
   try {
@@ -635,6 +741,16 @@ async function loadProjects() {
 }
 
 async function onProjectPicked(id) {
+  destroyGrapesEditor();
+  htmlEditMode = 'code';
+  const mh = document.getElementById('sbMonacoHost');
+  const gh = document.getElementById('sbGrapesHost');
+  if (mh) mh.style.removeProperty('display');
+  if (gh) {
+    gh.style.display = 'none';
+    gh.replaceChildren();
+  }
+  setHtmlModeRadios('code');
   projectId = id;
   mem.clear();
   dirty.clear();
@@ -971,6 +1087,7 @@ async function main() {
   monacoI = monaco;
   ed = editor;
   ed.onDidChangeModelContent(() => {
+    if (htmlEditMode === 'visual') return;
     if (activePath) {
       if (!isImageFile(activePath)) {
         mem.set(activePath, { content: ed.getValue(), encoding: 'utf8' });
@@ -984,6 +1101,10 @@ async function main() {
 
   document.getElementById('sbSave').addEventListener('click', () => void saveCurrent());
   document.getElementById('sbFormat').addEventListener('click', () => {
+    if (htmlEditMode === 'visual') {
+      toast('Switch to Code mode to format', 'error');
+      return;
+    }
     if (ed) formatDocument(ed);
   });
   document.getElementById('sbUndo')?.addEventListener('click', () => {
@@ -1126,9 +1247,21 @@ async function main() {
     } catch {
       html = '';
     }
-    if (!html && ed) html = ed.getValue();
+    if (!html && ed) {
+      html =
+        htmlEditMode === 'visual' && activePath && /\.html?$/i.test(activePath)
+          ? getHtmlSourceForPreview()
+          : ed.getValue();
+    }
     document.getElementById('sbSourceBody').textContent = html || '';
     document.getElementById('sbSourceModal').classList.add('is-on');
+  });
+  document.querySelectorAll('input[name="sbhtmled"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      if (!r.checked) return;
+      if (r.value === 'visual') void enterVisualMode();
+      else leaveVisualMode();
+    });
   });
   document.getElementById('sbSourceModal')?.addEventListener('click', (e) => {
     if (e.target.hasAttribute('data-close') || e.target.id === 'sbSourceModal') {
@@ -1178,6 +1311,7 @@ async function main() {
     }
   });
   document.getElementById('sbApplySeo')?.addEventListener('click', async () => {
+    if (htmlEditMode === 'visual') leaveVisualMode();
     if (activePath !== 'index.html' || isImageFile('index.html')) {
       const ok = await showConfirm('Open index.html', 'Switch to index.html to apply SEO?');
       if (ok) await activatePath('index.html', true);
@@ -1274,6 +1408,7 @@ async function main() {
     }
     showBanner(isLikelyConnectionError(e) ? connectionHint(e) : m);
   }
+  updateHtmlModeUI();
   window.addEventListener('unhandledrejection', () => {
     /* */
   });

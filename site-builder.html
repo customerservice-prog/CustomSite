@@ -58,6 +58,14 @@
               ><input type="radio" name="sbenv" value="production" /> Production</label
             >
           </div>
+          <div class="sb-env" id="sbHtmlMode" role="radiogroup" aria-label="HTML editor" hidden>
+            <label class="sb-env-lbl"
+              ><input type="radio" name="sbhtmled" value="code" checked /> Code</label
+            >
+            <label class="sb-env-lbl"
+              ><input type="radio" name="sbhtmled" value="visual" /> Visual</label
+            >
+          </div>
           <button type="button" class="sb-btn sb-btn-primary" id="sbSave" title="Save file (Ctrl+S)">Save</button>
           <button type="button" class="sb-btn" id="sbUndo" title="Undo (in editor)">Undo</button>
           <button type="button" class="sb-btn" id="sbRedo" title="Redo">Redo</button>
@@ -119,6 +127,10 @@
           <img id="sbImgTag" alt="Asset preview" />
         </div>
         <div id="sbMonacoHost" style="flex: 1; min-height: 0; position: relative; z-index: 1"></div>
+        <div
+          id="sbGrapesHost"
+          style="display: none; flex: 1; min-height: 0; position: relative; z-index: 1; overflow: hidden"
+        ></div>
       </div>
 
       <aside id="sbPreview" class="sb-m-preview-on">

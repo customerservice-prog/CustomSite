@@ -61,6 +61,21 @@ function devModeApiStub(req, res, next) {
   const m = req.method;
 
   if (m === 'POST' && p === '/api/contact') {
+    const body = req.body || {};
+    const hp = (body.cs_hp_website != null && String(body.cs_hp_website).trim()) || '';
+    if (hp) {
+      return res.json({ success: true, id: 'filtered' });
+    }
+    const { name, email, message } = body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Name is required' });
+    }
+    if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, error: 'Valid email is required' });
+    }
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
     return res.json({ success: true, id: 'local-dev', devMode: true });
   }
 

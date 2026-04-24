@@ -189,10 +189,6 @@
         <h2>Client Portal</h2>
         <p class="sub">Sign in to track your project, view invoices, and request changes. Team accounts open the admin panel after sign-in.</p>
 
-        <!-- Login Form -->
-        <!-- TODO for Cursor: Implement Firebase Auth or Supabase authentication -->
-        <!-- TODO for Cursor: Add "Remember me" checkbox with persistent session -->
-        <!-- TODO for Cursor: Add Google/Apple SSO login options -->
         <form id="portalLoginForm">
           <div class="form-group">
             <label for="portalEmail">Email Address</label>
@@ -201,7 +197,6 @@
           <div class="form-group">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
               <label for="portalPassword" style="margin:0">Password</label>
-              <!-- TODO for Cursor: Implement forgot password flow -->
               <a href="reset-password.html" class="forgot-link">Forgot password?</a>
             </div>
             <input type="password" id="portalPassword" name="password" placeholder="Enter your password" required autocomplete="current-password" />
@@ -247,33 +242,6 @@
       </div>
     </div>
   </div>
-
-  <!-- 
-    TODO for Cursor - CLIENT DASHBOARD (dashboard.html):
-    Build a full client dashboard with:
-    1. Project progress tracker (timeline with milestones)
-    2. Messaging/chat with the team
-    3. Invoice list with Stripe payment integration
-    4. File upload/download area
-    5. Change request form (submits a ticket)
-    6. Site analytics overview (Google Analytics embed)
-    7. Subscription/maintenance plan management
-    8. Account settings (change password, notification preferences)
-    
-    Recommended stack:
-    - Firebase Auth + Firestore for user data
-    - Stripe Customer Portal for billing
-    - Use React or Vue for the dashboard SPA
-    - Store files in Firebase Storage or AWS S3
-    
-    Admin panel (admin.html) for you to manage:
-    - View all clients and their projects
-    - Create/edit projects and assign to clients
-    - Send invoices (Stripe)
-    - Message clients
-    - Track time/work done
-    - View which clients are on maintenance plans
-  -->
 
   <script type="module" src="js/auth-bootstrap.js"></script>
   <script src="js/main.js" defer></script>
