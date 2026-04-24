@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Layout preview — CustomSite</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #4f46e5;
+      --hero: linear-gradient(135deg, #312e81 0%, #4f46e5 50%, #1e1b4b 100%);
+    }
+    body.theme-service { --hero: linear-gradient(135deg, #312e81, #4f46e5, #1e1b4b); --accent: #4f46e5; }
+    body.theme-store { --bg: #fafafa; --hero: linear-gradient(150deg, #4c1d95, #7c3aed); --accent: #7c3aed; }
+    body.theme-dining { --bg: #0c0a09; --text: #fafaf9; --muted: #a8a29e; --hero: linear-gradient(180deg, #431407, #0c0a09); --accent: #f97316; }
+    body.theme-creative { --bg: #030712; --text: #f1f5f9; --muted: #94a3b8; --hero: linear-gradient(160deg, #1a1025, #4c1d95); --accent: #a855f7; }
+    body.theme-realty { --bg: #f8fafc; --hero: linear-gradient(125deg, #0ea5e9, #0369a1, #0c4a6e); --accent: #0284c7; }
+    body.theme-professional { --bg: #f0fdfa; --hero: linear-gradient(145deg, #0d9488, #115e59); --accent: #0f766e; }
+    body.theme-launch { --bg: #0f172a; --text: #fef2f2; --muted: #fda4af; --hero: linear-gradient(100deg, #9f1239, #4c0519, #0f172a); --accent: #f43f5e; }
+    body.theme-cafe { --bg: #052e12; --text: #f0fdf4; --muted: #86efac; --hero: linear-gradient(120deg, #14532d, #166534); --accent: #4ade80; }
+    body.theme-studio { --bg: #020617; --text: #f8fafc; --muted: #94a3b8; --hero: linear-gradient(120deg, #0f172a, #1e1b4b, #312e81); --accent: #e2e8f0; }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.5;
+    }
+    .sample-bar {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      padding: 0.45rem 1rem;
+      font-size: 0.78rem;
+      text-align: center;
+      background: #1e3a5f;
+      color: #e0f2fe;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .sample-bar a { color: #7dd3fc; font-weight: 600; }
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1rem 1.25rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .nav-logo { font-weight: 800; font-size: 1.1rem; }
+    .nav-logo .logo-mark { display: inline-flex; width: 2rem; height: 2rem; align-items: center; justify-content: center; background: var(--accent); color: #fff; border-radius: 0.35rem; font-size: 0.75rem; font-weight: 800; margin-right: 0.35rem; }
+    .nav-links { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-weight: 500; font-size: 0.9rem; }
+    .nav-links a:hover { color: var(--accent); }
+    .hero {
+      min-height: 42vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 3rem 1.25rem 3.5rem;
+      text-align: center;
+      background: var(--hero);
+      color: #fff;
+    }
+    .hero h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; margin: 0 0 0.75rem; line-height: 1.15; }
+    .hero p { max-width: 40rem; margin: 0 auto 1.25rem; opacity: 0.92; font-size: 1rem; }
+    .hero-cta { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+    .btn { display: inline-flex; padding: 0.65rem 1.4rem; border-radius: 0.4rem; font-weight: 600; text-decoration: none; font-size: 0.9rem; border: 2px solid transparent; }
+    .btn-pri { background: #fff; color: #1e1b4b; }
+    .btn-sec { background: rgba(0,0,0,0.2); color: #fff; border-color: rgba(255,255,255,0.3); }
+    body.theme-dining .btn-pri, body.theme-launch .btn-pri, body.theme-cafe .btn-pri, body.theme-creative .btn-pri, body.theme-studio .btn-pri { background: var(--accent); color: #0f172a; }
+    section { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.25rem; }
+    h2 { font-size: 1.35rem; font-weight: 800; margin: 0 0 1rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; }
+    .card { background: rgba(255,255,255,0.7); border-radius: 0.6rem; padding: 1.25rem; border: 1px solid rgba(0,0,0,0.06); }
+    body.theme-dining .card, body.theme-launch .card, body.theme-cafe .card, body.theme-creative .card, body.theme-studio .card {
+      background: rgba(15, 23, 42, 0.4); border-color: rgba(255,255,255,0.08);
+    }
+    .card h3 { font-size: 0.95rem; margin: 0 0 0.4rem; }
+    .card p { margin: 0; font-size: 0.88rem; color: var(--muted); }
+    .band { background: #e0e7ff; padding: 2rem 1.25rem; text-align: center; }
+    body.theme-dining .band, body.theme-launch .band, body.theme-cafe .band { background: rgba(0,0,0,0.3); }
+    .band p { max-width: 32rem; margin: 0 auto; color: #334155; }
+    body.theme-dining .band p, body.theme-launch .band p, body.theme-cafe .band p { color: #e2e8f0; }
+    footer { padding: 2rem 1.25rem 3rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
+    footer a { color: var(--accent); font-weight: 600; }
+    .prods { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
+    .prods .box { background: #fff; border-radius: 0.4rem; padding: 0.5rem; border: 1px solid #e2e8f0; }
+    .prods .ph { height: 100px; border-radius: 0.3rem; background: linear-gradient(145deg, #c4b5fd, #7c3aed); margin-bottom: 0.5rem; }
+    .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+    @media (min-width: 640px) { .gallery { grid-template-columns: repeat(3, 1fr); } }
+    .g-item { aspect-ratio: 4/3; border-radius: 0.4rem; background: linear-gradient(160deg, #94a3b8, #334155); }
+  </style>
+</head>
+<body>
+  <div class="sample-bar" id="sampleBar">Representative <strong>full-page sample</strong> — not a real client site. <a href="portfolio.html">Back to portfolio</a></div>
+  <nav>
+    <div class="nav-logo" id="navLogo"><span id="logoMark" class="logo-mark">C</span><span id="brandName">Brand</span></div>
+    <div class="nav-links" id="navLinks"></div>
+  </nav>
+  <header class="hero" id="hero">
+    <h1 id="heroH">Headline</h1>
+    <p id="heroP">Supporting copy for this layout type.</p>
+    <div class="hero-cta" id="heroCta"></div>
+  </header>
+  <section id="mid">
+    <h2 id="midH">Section</h2>
+    <div class="grid-3" id="midG"></div>
+  </section>
+  <section class="band" id="bandS">
+    <p id="bandP">Trust or secondary message.</p>
+  </section>
+  <div id="extra"></div>
+  <footer>
+    <p id="footN">CustomSite sample layout. <a href="contact.html">Get a real quote</a> · <a href="portfolio.html">Portfolio</a></p>
+  </footer>
+  <script>
+(function () {
+  var T = {
+    service: {
+      brand: 'Ridgeline',
+      nav: ['Services', 'Reviews', 'Contact'],
+      h: 'Plumbing and HVAC, done right the first time.',
+      p: 'Local homeowners trust us for emergency service, clear pricing, and spotless jobs — this layout is built for search, calls, and five-star social proof.',
+      features: [
+        { t: 'Local SEO', b: 'City pages, schema, and Google Business alignment baked in from day one.' },
+        { t: 'Service areas', b: 'Maps, hours, and “call now” above the fold on every phone size.' },
+        { t: 'Trust stack', b: 'Reviews, badges, and team photos in a layout that feels established.' }
+      ],
+      band: 'This is how a $10K+ service business site is structured: story first, then proof, then call.',
+      cta: [['Book service', 'btn-pri'], ['View reviews', 'btn-sec']]
+    },
+    store: {
+      brand: 'Atlas Home',
+      nav: ['Shop', 'Collections', 'Cart'],
+      h: 'Curated goods for modern spaces.',
+      p: 'Product grids, filter-ready structure, and cart UX tuned for your platform — this sample shows full catalog flow.',
+      features: [
+        { t: 'Product cards', b: 'Imagery, price, and variant hooks where shoppers expect them.' },
+        { t: 'Merchandising', b: 'Collections, featured rows, and upsell areas without clutter.' },
+        { t: 'Checkout path', b: 'Clear path to your Stripe, Shopify, or custom checkout.' }
+      ],
+      band: 'E-commerce builds include analytics, email capture, and performance budgets — not a theme with your logo on it.',
+      cta: [['Shop all', 'btn-pri'], ['New arrivals', 'btn-sec']],
+      storeGrid: true
+    },
+    dining: {
+      brand: 'Lumière',
+      nav: ['Menu', 'Wines', 'Book'],
+      h: 'Contemporary bistro, seasonal menu.',
+      p: 'Reservations, events, and wine — presented like a real dining room, not a takeout PDF.',
+      features: [
+        { t: 'Reservations', b: 'Clear booking path and private-event hooks.' },
+        { t: 'Menu UX', b: 'Readable on phones at the table, beautiful on the wall.' },
+        { t: 'Hospitality brand', b: 'Editorial art direction and typography that match your room.' }
+      ],
+      band: 'Restaurants in this range get mobile-first menus, map embeds, and event strips that drive Friday-night traffic.',
+      cta: [['Reserve a table', 'btn-pri'], ['View menu', 'btn-sec']]
+    },
+    creative: {
+      brand: 'Lumen',
+      nav: ['Work', 'About', 'Contact'],
+      h: 'Photography & motion for brands that need to be felt, not just seen.',
+      p: 'A gallery-first layout with case blocks and contact that stays out of the way of the work.',
+      features: [
+        { t: 'Image grid', b: 'Large, fast-loading visuals with art-directed spacing.' },
+        { t: 'Case studies', b: 'Project titles, role, and outcome — optional motion hooks.' },
+        { t: 'Inquiry', b: 'One clear path for agencies and in-house marketing leads.' }
+      ],
+      band: 'Creators in this tier need speed, typography, and a site that makes the work look expensive.',
+      cta: [['View work', 'btn-pri'], ['Start a project', 'btn-sec']],
+      gallery: true
+    },
+    realty: {
+      brand: 'Hudson Harbor',
+      nav: ['Buy', 'Sell', 'Agents'],
+      h: 'Find a home you love — and a team you trust.',
+      p: 'Search, hero listing, and lead forms wired for your market and your CRM. Built for trust and follow-up.',
+      features: [
+        { t: 'Listings', b: 'Detail pages, photos, and virtual tour fields ready to wire to your IDX or manual flow.' },
+        { t: 'Agent bios', b: 'Authority and contact paths that feed serious buyers.' },
+        { t: 'Lead capture', b: 'Framed for tour requests, not generic spam.' }
+      ],
+      band: 'Real estate sites in this class prioritize search, speed, and compliance-friendly contact.',
+      cta: [['Search homes', 'btn-pri'], ['Talk to an agent', 'btn-sec']]
+    },
+    professional: {
+      brand: 'Meridian',
+      nav: ['Practice', 'Attorneys', 'Contact'],
+      h: 'Counsel for complex matters, without the law-firm clutter.',
+      p: 'Calm, authoritative layout: practice areas, team, and a secure, obvious contact path for referrals.',
+      features: [
+        { t: 'Trust', b: 'Restrained typography, credentials, and clear disclaimers where needed.' },
+        { t: 'Intake', b: 'Form flows designed for PII, not a generic “contact us” blurb.' },
+        { t: 'Team', b: 'Bios, headshots, and bar admissions without looking like 2005.' }
+      ],
+      band: 'Professional services sites here are built to convert referrals and look credible to judges, clients, and Google.',
+      cta: [['Request consultation', 'btn-pri'], ['Our team', 'btn-sec']]
+    },
+    launch: {
+      brand: 'Vessel',
+      nav: ['Drop', 'FAQ'],
+      h: 'One product. One page. One goal.',
+      p: 'Campaign and drop launches: urgency, list growth, and analytics — no navigation maze.',
+      features: [
+        { t: 'CRO', b: 'Single CTA, secondary capture, and social proof where it converts.' },
+        { t: 'Speed', b: 'Light critical path, lazy media, and launch-day stability.' },
+        { t: 'Attribution', b: 'UTM, pixels, and event hooks for marketing teams.' }
+      ],
+      band: 'Launch pages are measured like products: we ship with CRO, not “pretty landing page” theater.',
+      cta: [['Join the list', 'btn-pri'], ['Pre-order', 'btn-sec']]
+    },
+    cafe: {
+      brand: 'Cinders',
+      nav: ['Menu', 'Events', 'Order'],
+      h: 'Craft cocktails, late kitchen, and live music Friday.',
+      p: 'Events rail, social hero, and a menu list that works when searchers are already out.',
+      features: [
+        { t: 'Events', b: 'Strip for tonight’s act and this week’s tap takeover.' },
+        { t: 'Menu', b: 'Mobile-first, thumb-friendly, with dietary cues where you need them.' },
+        { t: 'Local', b: 'Map, hours, and tap-to-call for the “where should we go?” search.' }
+      ],
+      band: 'Bars and cafes need identity at a glance and updates that don’t require a web team every week.',
+      cta: [['Tonight’s list', 'btn-pri'], ['Reserve', 'btn-sec']]
+    },
+    studio: {
+      brand: 'Vellen',
+      nav: ['Work', 'Process', 'Start'],
+      h: 'Design systems for product teams that ship under pressure.',
+      p: 'Asymmetric grid, case rows, and a contact path that pre-qualifies good projects.',
+      features: [
+        { t: 'Work index', b: 'Filterable, skimmable, and built for RFPs and Dribbble deep links.' },
+        { t: 'Process', b: 'How you work — in sections clients actually read.' },
+        { t: 'New business', b: 'One strong CTA for the right retainers, not every inquiry.' }
+      ],
+      band: 'Agency sites in this range sell process and taste before the first call — the portfolio is the proof.',
+      cta: [['See work', 'btn-pri'], ['New project', 'btn-sec']],
+      workGrid: true
+    }
+  };
+  var key = (new URLSearchParams(location.search).get('t') || 'service').toLowerCase();
+  if (!T[key]) key = 'service';
+  document.body.className = 'theme-' + key;
+  var d = T[key];
+  document.title = d.brand + ' — sample layout (CustomSite)';
+  document.getElementById('brandName').textContent = d.brand;
+  document.getElementById('logoMark').textContent = (d.brand && d.brand.charAt(0)) || 'C';
+  document.getElementById('navLinks').innerHTML = d.nav.map(function (l) { return '<a href="#">' + l + '</a>'; }).join('');
+  document.getElementById('heroH').textContent = d.h;
+  document.getElementById('heroP').textContent = d.p;
+  document.getElementById('bandP').textContent = d.band;
+  var hc = document.getElementById('heroCta');
+  d.cta.forEach(function (x) {
+    var a = document.createElement('a');
+    a.href = 'contact.html';
+    a.className = 'btn ' + x[1];
+    a.textContent = x[0];
+    hc.appendChild(a);
+  });
+  document.getElementById('midH').textContent =
+    d.storeGrid ? 'Built for catalog & conversion' :
+    d.gallery ? 'How we show the work' :
+    d.workGrid ? 'Case structure' : 'Why this layout works';
+  var mg = document.getElementById('midG');
+  d.features.forEach(function (f) {
+    var el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = '<h3>' + f.t + '</h3><p>' + f.b + '</p>';
+    mg.appendChild(el);
+  });
+  if (d.storeGrid) {
+    var ex = document.getElementById('extra');
+    ex.innerHTML = '<section><h2>Featured</h2><div class="prods">' + [1,2,3,4].map(function() {
+      return '<div class="box"><div class="ph"></div><p style="font-size:0.8rem;margin:0;font-weight:600">Product</p><p style="font-size:0.75rem;color:#64748b;margin:0">$0.00</p></div>';
+    }).join('') + '</div></section>';
+  } else if (d.gallery) {
+    document.getElementById('extra').innerHTML = '<section><h2>Selected work</h2><div class="gallery">' + [1,2,3,4,5,6].map(function() {
+      return '<div class="g-item"></div>';
+    }).join('') + '</div></section>';
+  } else if (d.workGrid) {
+    document.getElementById('extra').innerHTML = '<section><h2>Case index</h2><div class="gallery" style="grid-template-columns:1fr 1fr">' + [1,2,3,4].map(function() {
+      return '<div class="g-item" style="aspect-ratio:16/9"></div>';
+    }).join('') + '</div></section>';
+  }
+})();
+  </script>
+</body>
+</html>
