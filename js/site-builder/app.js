@@ -36,6 +36,25 @@ let activePath = null;
 let autoPreviewT = null;
 const debounceMs = 1500;
 
+function isLocalDevHost() {
+  const h = location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '';
+}
+
+function isLikelyConnectionError(e) {
+  const m = String((e && e.message) || '');
+  if (m.includes('Session expired') || m.includes('Sign in again')) return false;
+  return /could not reach|network|connect|Failed to fetch|Load failed|NetworkError|offline/i.test(m);
+}
+
+function connectionHint(e) {
+  const base = (e && e.message) || 'Could not reach the server.';
+  if (isLocalDevHost()) {
+    return `${base} For local work, run \`npm run dev\` in the project folder.`;
+  }
+  return `${base} On the live site, use the same domain as the API (e.g. customsite.online), sign in with an agency account at /client-portal.html?agency=1, and confirm your host (e.g. Railway) is online.`;
+}
+
 const TEMPLATE_THUMB = {
   basic: 'linear-gradient(135deg,#312e81,#4f46e5)',
   business: 'linear-gradient(135deg,#0f172a,#334155)',
@@ -584,7 +603,9 @@ async function saveCurrent() {
     toast('Saved', 'success');
     refreshPreview();
   } catch (e) {
-    if (String(e.message).includes('connect')) showBanner('Unable to connect to the server. Start the API (npm run dev).');
+    if (isLikelyConnectionError(e)) {
+      showBanner(connectionHint(e));
+    }
     toast(e.message, 'error');
   } finally {
     btn.removeAttribute('aria-busy');
@@ -1246,7 +1267,11 @@ async function main() {
   try {
     await loadProjects();
   } catch (e) {
-    showBanner('Unable to connect to the server. Is `npm run dev` running?');
+    const m = (e && e.message) || '';
+    if (m.includes('Session expired') || m.includes('Sign in again')) {
+      return;
+    }
+    showBanner(isLikelyConnectionError(e) ? connectionHint(e) : m);
   }
   window.addEventListener('unhandledrejection', () => {
     /* */

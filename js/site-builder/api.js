@@ -26,7 +26,8 @@ export async function api(path, options = {}) {
     r = await fetch(path, { ...options, headers });
   } catch (e) {
     serverError = true;
-    throw new Error('Unable to connect to the server. Is the API running?');
+    const reason = e && e.name === 'TypeError' ? ' (network or CORS — often offline, wrong host, or blocked request).' : '';
+    throw new Error('Could not reach the server' + reason);
   }
   serverError = false;
   if (r.status === 401) {
