@@ -83,24 +83,44 @@
         </div>
       </div>
       <div class="hero-visual">
-        <div class="hero-live">
-          <div class="hero-live__chrome" aria-hidden="true">
-            <span class="hero-live__dot"></span><span class="hero-live__dot"></span><span class="hero-live__dot"></span>
-            <span class="hero-live__url">customsite.online / reference layout</span>
+        <div id="hero-builder-preview" class="hero-builder" data-phase="0" data-build="active">
+          <div class="hero-builder__ready" aria-hidden="true">Site Ready ✓</div>
+          <div class="hero-builder__chrome" aria-hidden="true">
+            <div class="hero-builder__dots"><span></span><span></span><span></span></div>
+            <div class="hero-builder__url">
+              <span class="hero-builder__url-text">yourclientsite.com — building…</span>
+              <span class="hero-builder__url-spin" title=""></span>
+            </div>
           </div>
-          <iframe
-            class="hero-live__frame"
-            src="demo-site.html?t=ridgelineplumbing"
-            title="Live reference preview: trade services website layout"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-          ></iframe>
-          <p class="hero-live__caption">
-            <a href="demo-site.html?t=ridgelineplumbing" target="_blank" rel="noopener">Open full preview</a>
-            <span aria-hidden="true"> · </span>
-            <a href="portfolio.html">Browse reference builds</a>
-          </p>
+          <div class="hero-builder__progress" aria-hidden="true"><span class="hero-builder__progress-fill"></span></div>
+          <div class="hero-builder__stage">
+            <div class="hero-builder__page">
+              <span class="hero-builder__cursor" aria-hidden="true"></span>
+              <header class="hero-builder__header">
+                <div class="hero-builder__logo" aria-hidden="true"></div>
+                <nav class="hero-builder__nav" aria-hidden="true">
+                  <span class="hero-builder__nav-link"></span>
+                  <span class="hero-builder__nav-link"></span>
+                  <span class="hero-builder__nav-link"></span>
+                  <span class="hero-builder__nav-link"></span>
+                </nav>
+              </header>
+              <p class="hero-builder__type">Professional. Reliable. Built for You.</p>
+              <div class="hero-builder__heroimg" aria-hidden="true"></div>
+              <div class="hero-builder__feats" aria-hidden="true">
+                <div class="hero-builder__feat"></div>
+                <div class="hero-builder__feat"></div>
+                <div class="hero-builder__feat"></div>
+              </div>
+              <div class="hero-builder__ctabtn" aria-hidden="true">Get started</div>
+            </div>
+          </div>
         </div>
+        <p class="hero-builder__links">
+          <a href="demo-site.html?t=ridgelineplumbing" target="_blank" rel="noopener">Open full preview</a>
+          <span aria-hidden="true"> · </span>
+          <a href="portfolio.html">Browse reference builds</a>
+        </p>
       </div>
     </div>
   </section>
@@ -248,9 +268,9 @@
       <div class="section-header">
         <span class="section-tag">Transparent Pricing</span>
         <h2 class="section-title">Simple, Honest Pricing</h2>
-        <p class="section-subtitle">One-time build fee plus optional monthly maintenance</p>
+        <p class="section-subtitle">Plans from <strong>$799</strong> — up to custom <strong>Enterprise</strong> engagements (from <strong>$7,500</strong>). One-time build fees plus optional maintenance.</p>
       </div>
-      <div class="pricing-cards">
+      <div class="pricing-cards pricing-cards--home">
         <div class="price-card">
           <div class="price-label">Starter</div>
           <div class="price-amount">$799</div>
@@ -293,6 +313,18 @@
           </ul>
           <div class="price-maintenance">+ $99/mo maintenance optional</div>
           <a href="contact.html?tier=ecommerce" class="btn btn-outline">Get Started</a>
+        </div>
+        <div class="price-card price-card-enterprise price-card-enterprise--compact">
+          <div class="price-badge price-badge--enterprise">For large teams &amp; enterprises</div>
+          <div class="price-label">Enterprise</div>
+          <div class="price-amount price-amount--enterprise">From $7,500</div>
+          <div class="price-period">Custom scoped — we quote every project</div>
+          <ul class="price-features">
+            <li>Portals, APIs, multi-location</li>
+            <li>Dedicated PM &amp; SLA care</li>
+            <li>White-glove onboarding</li>
+          </ul>
+          <a href="contact.html?package=enterprise" class="btn btn-enterprise">Request a Consultation</a>
         </div>
       </div>
       <div class="pricing-cta">
@@ -408,7 +440,8 @@
     </div>
   </footer>
 
+  <script src="js/hero-builder.js" defer></script>
   <script type="module" src="js/auth-bootstrap.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/main.js" defer></script>
 </body>
 </html>

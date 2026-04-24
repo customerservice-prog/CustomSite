@@ -117,7 +117,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 // ============================================
 (function initScrollAnimations() {
   const elements = document.querySelectorAll(
-    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .process-timeline__item, .about-founder, .tech-strip__item, .industry-pills'
+    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .process-timeline__item, .about-founder, .tech-strip__item, .industry-pills, .hero-builder'
   );
 
   if (!elements.length || !window.IntersectionObserver) return;
@@ -145,18 +145,26 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 
   const params = new URLSearchParams(window.location.search);
   const rawTier = (params.get('tier') || params.get('package') || '').toLowerCase();
-  const tier = /^(starter|business|ecommerce)$/.test(rawTier) ? rawTier : '';
+  const tier = /^(starter|business|ecommerce|enterprise)$/.test(rawTier) ? rawTier : '';
   if (tier) {
     const msg = form.querySelector('#message');
     if (msg && !String(msg.value).trim()) {
-      const label = tier === 'ecommerce' ? 'e-commerce' : tier;
-      msg.value = `I am interested in the ${label} build tier. `;
+      if (tier === 'enterprise') {
+        msg.value = 'I am interested in an Enterprise engagement (custom scoping) and would like a consultation. ';
+      } else {
+        const label = tier === 'ecommerce' ? 'e-commerce' : tier;
+        msg.value = `I am interested in the ${label} build tier. `;
+      }
     }
     const serviceSelect = form.querySelector('#service');
     if (serviceSelect) {
-      const tierToService = { starter: 'business', business: 'business', ecommerce: 'ecommerce' };
-      const v = tierToService[tier];
-      if (v) serviceSelect.value = v;
+      if (tier === 'enterprise') {
+        serviceSelect.value = 'other';
+      } else {
+        const tierToService = { starter: 'business', business: 'business', ecommerce: 'ecommerce' };
+        const v = tierToService[tier];
+        if (v) serviceSelect.value = v;
+      }
     }
   }
 
@@ -440,6 +448,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
     starter: { monthly: 49, yearly: 470 },
     business: { monthly: 79, yearly: 758 },
     ecommerce: { monthly: 99, yearly: 950 },
+    enterprise: { monthly: 299, yearly: 2990 },
   };
 
   toggle.addEventListener('change', () => {

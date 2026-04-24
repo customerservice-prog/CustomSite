@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="See CustomSite pricing for starter, business, and e-commerce website builds, plus optional maintenance plans. No hidden fees." />
+  <meta name="description" content="CustomSite pricing: Starter through Enterprise, plus optional maintenance. Transparent fees from $799 to custom enterprise quotes from $7,500+." />
   <meta property="og:title" content="CustomSite — Professional Web Design" />
   <meta property="og:description" content="We build websites that grow your business." />
   <meta property="og:url" content="https://customsite.online/pricing.html" />
@@ -146,6 +146,49 @@
       color: var(--gray);
       line-height: 1.7;
     }
+    .pricing-cards-main {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      align-items: stretch;
+    }
+    @media (min-width: 1280px) {
+      .pricing-cards-main { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .price-card-enterprise-page {
+      position: relative;
+      background: linear-gradient(180deg, #0f172a 0%, #0a0f1a 100%) !important;
+      border: 2px solid transparent;
+      color: #f1f5f9;
+      background-image: linear-gradient(180deg, #0f172a, #0a0f1a), linear-gradient(135deg, #f59e0b, #b45309, #fbbf24) !important;
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+    }
+    .price-card-enterprise-page .maintenance-price { color: #fde68a !important; }
+    .price-card-enterprise-page .price-features li {
+      color: rgba(248, 250, 252, 0.92) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+    .price-card-enterprise-page .price-features li::before {
+      background: linear-gradient(135deg, #fbbf24, #d97706) !important;
+    }
+    .price-card-enterprise-page .btn-enterprise {
+      margin-top: 0.5rem;
+    }
+    @keyframes ent-border-shimmer {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.08); }
+    }
+    .price-card-enterprise-page:hover {
+      animation: ent-border-shimmer 2.5s ease infinite;
+    }
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 1rem;
+    }
+    .table-scroll .plan-detail-table { min-width: 720px; }
   </style>
 </head>
 <body>
@@ -191,7 +234,7 @@
       </div>
 
       <!-- Pricing Cards -->
-      <div class="pricing-cards">
+      <div class="pricing-cards pricing-cards-main">
         <div class="price-card" data-plan="starter">
           <div class="price-label">Starter</div>
           <div style="margin-bottom:0.5rem">
@@ -258,9 +301,37 @@
           </ul>
           <a href="contact.html?tier=ecommerce" class="btn btn-outline" data-plan="ecommerce" style="width:100%;margin-top:1.5rem">Get Started</a>
         </div>
+
+        <div class="price-card price-card-enterprise price-card-enterprise-page" data-plan="enterprise">
+          <div class="price-badge price-badge--enterprise" style="top: -0.5rem; white-space: normal; max-width: 14rem; line-height: 1.2; text-align: center; padding: 0.35rem 0.8rem">For large teams &amp; enterprises</div>
+          <div class="price-label" style="margin-top: 1.25rem">Enterprise</div>
+          <div style="margin-bottom:0.5rem; text-align: center">
+            <span class="price-amount--enterprise" style="font-size: 2.15rem; font-weight: 900; display: block; line-height: 1.1">From $7,500</span>
+            <span style="color: rgba(203, 213, 225, 0.95); font-size: 0.88rem; display: block; margin-top: 0.4rem; line-height: 1.4">Custom scoped &mdash; we&rsquo;ll quote your exact project</span>
+          </div>
+          <div class="price-maintenance" style="margin-bottom:1rem; color: rgba(226, 232, 240, 0.9) !important; font-style: normal; font-size: 0.88rem">
+            Maintenance: <strong class="maintenance-price">$299/mo</strong> <span style="color: rgba(156, 163, 175, 0.95)">(custom SLA from)</span>
+          </div>
+          <ul class="price-features" style="text-align: left; margin-bottom: 0.5rem">
+            <li>Fully custom design system (no templates)</li>
+            <li>30+ pages / unlimited sections</li>
+            <li>Custom web app features: booking, portals, dashboards</li>
+            <li>API integrations: CRM, ERP, Salesforce, HubSpot, etc.</li>
+            <li>Performance &amp; Core Web Vitals guarantee</li>
+            <li>Dedicated project manager</li>
+            <li>Priority Slack &amp; email support channel</li>
+            <li>Quarterly strategy review calls</li>
+            <li>12 months priority support included</li>
+            <li>NDA available</li>
+            <li>White-glove onboarding</li>
+            <li>Unlimited revision rounds during build</li>
+          </ul>
+          <a href="contact.html?package=enterprise" class="btn btn-enterprise" data-plan="enterprise" style="width:100%; margin-top: 1.25rem">Request a Consultation</a>
+        </div>
       </div>
 
       <!-- Feature Comparison Table -->
+      <div class="table-scroll">
       <table class="plan-detail-table">
         <thead>
           <tr>
@@ -268,22 +339,29 @@
             <th>Starter</th>
             <th>Business</th>
             <th>E-Commerce</th>
+            <th>Enterprise</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td>Custom domain setup</td><td class="check" title="Included">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
-          <tr><td>SSL certificate</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
-          <tr><td>Mobile responsive</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
-          <tr><td>Contact forms</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
-          <tr><td>Blog / CMS</td><td class="dash" title="Not included">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
-          <tr><td>E-commerce store</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
-          <tr><td>Online payments</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
-          <tr><td>Inventory system</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
-          <tr><td>Advanced SEO</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
-          <tr><td>Email newsletter</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
-          <tr><td>Priority support</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Custom domain setup</td><td class="check" title="Included">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>SSL certificate</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Mobile responsive</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Contact forms</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Blog / CMS</td><td class="dash" title="Not included">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>E-commerce store</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Online payments</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Inventory system</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Advanced SEO</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Email newsletter</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Custom web app</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
+          <tr><td>API integrations</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
+          <tr><td>CRM integration</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Dedicated project manager</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Priority support / SLA</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>NDA available</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
         </tbody>
       </table>
+      </div>
     </div>
   </section>
 
@@ -310,6 +388,11 @@
           <div class="service-icon service-icon--fill" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity="0.45" /></svg></div>
           <h3>E-Commerce Care — $99/mo</h3>
           <p>Everything in Business plus store updates, product support, order help, and payment stack checks.</p>
+        </div>
+        <div class="service-card" style="border: 1px solid rgba(245, 158, 11, 0.45); background: linear-gradient(180deg, #fff 0%, #fffbeb 100%)">
+          <div class="service-icon service-icon--fill" aria-hidden="true" style="color: #b45309"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" fill="none" stroke-width="2" stroke-linejoin="round" /></svg></div>
+          <h3>Enterprise Care &mdash; from $299/mo</h3>
+          <p>Everything in E&minus;Commerce Care plus a dedicated support channel, <strong>guaranteed 4&minus;hour response SLA</strong> (business hours, as defined in your contract), monthly performance reports, quarterly strategy calls, and a named account manager. Custom retainer for larger programs.</p>
         </div>
       </div>
     </div>
