@@ -140,11 +140,49 @@ function getRailwayUrl() {
   return '';
 }
 
+/**
+ * Document base for preview: must match the file's folder in site storage so
+ * relative links (css/, ../assets/) resolve like the live /preview/ URL.
+ */
+function previewBaseHrefForFile(filePath) {
+  if (!projectId) return '';
+  const p = String(filePath || 'index.html').replace(/^\//, '');
+  const i = p.lastIndexOf('/');
+  const dir = i < 0 ? '' : p.slice(0, i);
+  const rel = dir ? `${dir}/` : '';
+  return new URL(`/preview/${projectId}/${rel}`, location.origin).href;
+}
+
+/**
+ * Injects a <base> tag so about:blank document.write() previews still load
+ * the full multi-file site from the preview path (not the agency shell).
+ * Replaces an existing <base> so templates don't point at the wrong origin.
+ */
+function htmlWithPreviewBase(raw) {
+  const baseHref = previewBaseHrefForFile(activePath);
+  if (!baseHref) return String(raw);
+  const tag = `<base href="${baseHref}">`;
+  const str = String(raw);
+  if (/<base\s[^>]*>/i.test(str)) {
+    return str.replace(/<base\s[^>]*>/i, tag);
+  }
+  if (/<head[^>]*>/i.test(str)) {
+    return str.replace(/<head([^>]*)>/i, (m, attrs) => `<head${attrs}>\n${tag}\n`);
+  }
+  if (/<html[^>]*>/i.test(str)) {
+    return str.replace(
+      /<html[^>]*>/i,
+      (m) => `${m}\n<head><meta charset="utf-8" />${tag}</head>`
+    );
+  }
+  return `<!DOCTYPE html><html><head><meta charset="utf-8" />${tag}</head><body>\n${str}\n</body></html>`;
+}
+
 function liveWritePreview() {
   const ifr = document.getElementById('sbPreviewFrame');
   if (!ifr || !ed || !activePath) return;
   if (!activePath.toLowerCase().endsWith('.html')) return;
-  const html = ed.getValue();
+  const html = htmlWithPreviewBase(ed.getValue());
   try {
     const doc = ifr.contentDocument || (ifr.contentWindow && ifr.contentWindow.document);
     if (!doc) return;
