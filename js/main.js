@@ -119,41 +119,14 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 // SCROLL ANIMATIONS - Fade in on scroll
 // ============================================
 (function initScrollAnimations() {
+  // Content visibility must never depend on IntersectionObserver (see April 2026 audit). Mark visible for any legacy CSS.
   function runFadeIn() {
     const elements = document.querySelectorAll(
-      '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .about-founder, .industry-pills, .process-timeline__item, .why-not-fiverr, .results-splash__list li'
+      '.step-card, .service-card, .testimonial-card, .portfolio-card, .price-card, .section-header, .about-founder, .industry-pills, .process-timeline__item, .why-not-fiverr, .results-splash__list li, .results-splash, .pricing-preview, #pricing-preview, .testimonials, #why-us, .tech-strip-section'
     );
-
-    if (!elements.length) return;
-
-    elements.forEach((el) => el.classList.add('fade-in'));
-
-    const revealAll = () => {
-      elements.forEach((el) => el.classList.add('visible'));
-    };
-
-    if (!window.IntersectionObserver) {
-      revealAll();
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.05, rootMargin: '0px 0px 200px 0px' }
-    );
-
-    elements.forEach((el) => observer.observe(el));
-    // Safety net: show content if IntersectionObserver never fires (in-view threshold quirks, some mobile browsers).
-    setTimeout(revealAll, 0);
-    setTimeout(revealAll, 120);
-    setTimeout(revealAll, 2000);
+    elements.forEach((el) => {
+      el.classList.add('fade-in', 'visible');
+    });
   }
 
   if (document.readyState === 'loading') {

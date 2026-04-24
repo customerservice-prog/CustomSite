@@ -1,56 +1,19 @@
 'use strict';
 
-(function initImmersiveHero() {
-  const industryNames = [
-    'HVAC & Home Services',
-    'Party & Event Rentals',
-    'Restaurants & Dining',
-    'Medical & Dental',
-    'Real Estate',
-  ];
-
-  const slides = document.querySelectorAll('.macbook-screen-inner .slide');
-  const labelText = document.querySelector('.screen-label-text');
-  const macbookWrap = document.querySelector('.macbook-wrap');
-
-  if (!slides.length || !macbookWrap) return;
-
-  let currentSlide = 0;
-  let cycleInterval = null;
-
-  function startCycling() {
-    if (cycleInterval) return;
-    cycleInterval = setInterval(() => {
-      slides[currentSlide].classList.remove('active');
-      currentSlide = (currentSlide + 1) % slides.length;
-      slides[currentSlide].classList.add('active');
-      if (labelText) {
-        labelText.style.opacity = '0';
-        setTimeout(() => {
-          labelText.textContent = industryNames[currentSlide];
-          labelText.style.opacity = '1';
-        }, 400);
-      }
-    }, 5000);
+/**
+ * Home hero: restarts the “live build” MacBook animation on an interval
+ * so keyframes run again (replaces old static image slide show).
+ */
+(function initLiveBuilderLoop() {
+  const PERIOD_MS = 6500;
+  function restart() {
+    const el = document.getElementById('live-builder');
+    if (!el || !el.parentNode) return;
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
   }
-
-  function stopCycling() {
-    if (cycleInterval) {
-      clearInterval(cycleInterval);
-      cycleInterval = null;
-    }
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return;
   }
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0].isIntersecting) {
-        startCycling();
-      } else {
-        stopCycling();
-      }
-    },
-    { threshold: 0.1 }
-  );
-
-  observer.observe(macbookWrap);
+  setInterval(restart, PERIOD_MS);
 })();

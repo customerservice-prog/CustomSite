@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="image" href="/images/customsite-wordmark-on-light.svg" type="image/svg+xml" />
   <link rel="dns-prefetch" href="https://supabase.co" />
-  <!-- When you have a real business line: add "telephone": "+1XXXXXXXXXX" to the LocalBusiness object below (E.164). -->
+  <!-- Replace telephone with your real business line in E.164 when ready (Google Voice, etc.). -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -40,6 +40,7 @@
         "logo": "https://customsite.online/images/customsite-wordmark-on-dark.svg",
         "image": "https://customsite.online/images/og-image.jpg",
         "email": "hello@customsite.online",
+        "telephone": "+13155550100",
         "address": {
           "@type": "PostalAddress",
           "addressLocality": "Syracuse",
@@ -151,15 +152,62 @@
             <div class="macbook-notch" aria-hidden="true"></div>
             <div class="macbook-screen">
               <div class="macbook-screen-inner">
-                <div class="slide active" data-industry="HVAC" style="background-image:url('screens/demo-hvac.jpg')"></div>
-                <div class="slide" data-industry="Party Rentals" style="background-image:url('screens/demo-party.jpg')"></div>
-                <div class="slide" data-industry="Restaurant" style="background-image:url('screens/demo-restaurant.jpg')"></div>
-                <div class="slide" data-industry="Dental" style="background-image:url('screens/demo-dental.jpg')"></div>
-                <div class="slide" data-industry="Real Estate" style="background-image:url('screens/demo-realestate.jpg')"></div>
+                <div class="lb-root" id="live-builder">
+                  <div class="lb-canvas" aria-hidden="true">
+                    <div class="lb-nav">
+                      <div class="lb-logo"></div>
+                      <div class="lb-nav-links"><span></span><span></span><span></span><span></span></div>
+                      <div class="lb-nav-cta"></div>
+                    </div>
+                    <div class="lb-hero">
+                      <div class="lb-hero-left">
+                        <div class="lb-h1-line1"></div>
+                        <div class="lb-h1-line2"></div>
+                        <div class="lb-subtitle"></div>
+                        <div class="lb-buttons"><div class="lb-btn-primary"></div><div class="lb-btn-outline"></div></div>
+                      </div>
+                      <div class="lb-hero-right"><div class="lb-hero-img" aria-hidden="true"></div></div>
+                    </div>
+                    <div class="lb-features">
+                      <div class="lb-fcard">
+                        <div class="lb-ficon"></div>
+                        <div class="lb-ftitle"></div>
+                        <div class="lb-ftext"></div>
+                        <div class="lb-ftext lb-ftext--short"></div>
+                      </div>
+                      <div class="lb-fcard">
+                        <div class="lb-ficon lb-ficon-green"></div>
+                        <div class="lb-ftitle"></div>
+                        <div class="lb-ftext"></div>
+                        <div class="lb-ftext lb-ftext--short"></div>
+                      </div>
+                      <div class="lb-fcard">
+                        <div class="lb-ficon lb-ficon-amber"></div>
+                        <div class="lb-ftitle"></div>
+                        <div class="lb-ftext"></div>
+                        <div class="lb-ftext lb-ftext--short"></div>
+                      </div>
+                    </div>
+                    <div class="lb-testimonial">
+                      <div class="lb-avatar" aria-hidden="true"></div>
+                      <div class="lb-tx">
+                        <div class="lb-stars" aria-hidden="true">★★★★★</div>
+                        <div class="lb-quote"></div>
+                        <div class="lb-quote lb-quote--short"></div>
+                      </div>
+                    </div>
+                    <div class="lb-cta-bar">
+                      <div class="lb-cta-text"></div>
+                      <div class="lb-cta-text lb-cta-text--sm"></div>
+                      <div class="lb-cta-btn" aria-hidden="true"><span class="lb-cta-glint"></span></div>
+                    </div>
+                  </div>
+                  <div class="lb-ready-badge" aria-hidden="true">✓ Site Ready</div>
+                </div>
               </div>
               <div class="screen-label">
                 <span class="screen-label-dot" aria-hidden="true"></span>
-                <span class="screen-label-text">HVAC &amp; Home Services</span>
+                <span class="screen-label-text">Live build preview</span>
               </div>
             </div>
           </div>
@@ -487,7 +535,7 @@
         <h4>Contact</h4>
         <ul>
           <li><a href="mailto:hello@customsite.online">hello@customsite.online</a></li>
-          <!-- TODO: PHONE — add <li><a href="tel:+1315...">(315) …</a></li> after your Google Voice / business line is set. -->
+          <!-- PHONE: paste business line here when ready: <li><a href="tel:+1315XXXYYYY">(315) XXX-YYYY</a></li> -->
           <li><a href="contact.html" data-book-call="1">Book 20 min (Calendly)</a></li>
           <li><a href="contact.html">Project inquiry form</a></li>
         </ul>

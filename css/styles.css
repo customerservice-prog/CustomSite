@@ -1192,16 +1192,12 @@ img {
 }
 
 /* === ANIMATIONS === */
-/* Default: fully visible (audit: IntersectionObserver failures left many blocks at opacity:0). JS may add .visible for no-op polish. */
-.fade-in {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-}
-
+/* Always visible: never depend on IntersectionObserver for legibility (April 2026 audit). */
+.fade-in,
 .fade-in.visible {
-  opacity: 1;
-  transform: translateY(0);
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  transition: opacity 0.45s ease, transform 0.45s ease;
 }
 
 /* === UTILITY === */
