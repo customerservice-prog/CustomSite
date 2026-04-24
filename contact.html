@@ -94,6 +94,7 @@
         <!-- Contact Form -->
         <div>
           <form id="contactForm" style="position:relative;background:var(--light);padding:2.5rem;border-radius:var(--radius-lg);border:1px solid rgba(0,0,0,0.06)">
+            <input type="hidden" name="inquiryCity" id="inquiryCity" value="" />
             <h3 style="font-size:1.4rem;font-weight:700;color:var(--dark);margin-bottom:1.75rem">Get a Free Quote</h3>
 
             <div class="form-row">
@@ -257,6 +258,24 @@
     </div>
   </footer>
 
+  <script>
+    (function () {
+      try {
+        var c = new URLSearchParams(window.location.search).get('city');
+        if (!c) return;
+        c = String(c).replace(/[<>"&]/g, '').trim().slice(0, 80);
+        if (!c) return;
+        var hid = document.getElementById('inquiryCity');
+        if (hid) hid.value = c;
+        var m = document.getElementById('message');
+        if (m && String(m.value).indexOf('City / area:') < 0) {
+          m.value = 'City / area: ' + c + '.\n\n' + m.value;
+        }
+      } catch (e) {
+        /* */
+      }
+    })();
+  </script>
   <script src="js/main.js"></script>
 </body>
 </html>

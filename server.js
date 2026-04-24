@@ -60,6 +60,42 @@ app.use('/api', configPublicRoutes);
 
 app.use(previewSiteMiddleware);
 
+/* Local SEO domains (Syracuse / CNY) — host-based landing pages, same deployment */
+const LOCAL_SEO_PAGES = {
+  'syracusewebagency.com': 'syracuse-web-agency',
+  'www.syracusewebagency.com': 'syracuse-web-agency',
+  'cnywebagency.com': 'cny-web-agency',
+  'www.cnywebagency.com': 'cny-web-agency',
+  'syracusewebdesigner.com': 'syracuse-web-designer',
+  'www.syracusewebdesigner.com': 'syracuse-web-designer',
+};
+
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return next();
+  }
+  const host = String(req.hostname || '').toLowerCase();
+  const slug = LOCAL_SEO_PAGES[host];
+  if (!slug) {
+    return next();
+  }
+  let p = req.path || '/';
+  if (p.length > 1 && p.endsWith('/')) {
+    p = p.slice(0, -1);
+  }
+  if (p === '/' || p === '/index.html') {
+    return res.sendFile(path.join(__dirname, 'public', `${slug}.html`), (err) => {
+      if (err) next(err);
+    });
+  }
+  if (p === '/sitemap.xml') {
+    return res.type('application/xml').sendFile(path.join(__dirname, 'public', `sitemap-${slug}.xml`), (err) => {
+      if (err) next(err);
+    });
+  }
+  return next();
+});
+
 app.use(express.static(path.join(__dirname), {
   extensions: ['html'],
 }));
