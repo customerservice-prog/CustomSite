@@ -22,6 +22,81 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+/** Public origin for <base> — trust proxy in server.js + optional PUBLIC_SITE_URL */
+function originFromRequest(req) {
+  const env = process.env.PUBLIC_SITE_URL;
+  if (env) {
+    try {
+      return new URL(env).origin;
+    } catch {
+      /* */
+    }
+  }
+  const rawProto = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const proto = String(rawProto).split(',')[0].trim();
+  const rawHost = req.get('x-forwarded-host') || req.get('host') || '';
+  const host = String(rawHost).split(',')[0].trim();
+  if (!host) return null;
+  return `${proto}://${host}`;
+}
+
+/**
+ * Trailing slash required: relative `href="css/x.css"` resolves under /preview/{id}/.
+ * Nested `src/pages/foo.html` uses base /preview/{id}/src/pages/
+ */
+function previewBaseForFilePath(origin, projectId, filePath) {
+  if (!origin) return null;
+  const p = filePath.replace(/^\//, '');
+  const i = p.lastIndexOf('/');
+  const rel = i < 0 ? '' : `${p.slice(0, i)}/`;
+  return `${origin}/preview/${projectId}/${rel}`;
+}
+
+function injectHtmlBaseIfNeeded(html, baseHref) {
+  if (!baseHref) return html;
+  const str = String(html);
+  const safe = String(baseHref).replace(/"/g, '&quot;');
+  const tag = `<base href="${safe}" data-cs-preview-base="1">`;
+  if (/<base\s[^>]*\/?>/i.test(str)) {
+    return str.replace(/<base\s[^>]*\/?>/i, tag);
+  }
+  if (/<head[^>]*>/i.test(str)) {
+    return str.replace(/<head([^>]*)>/i, (m, attrs) => `<head${attrs}>\n${tag}\n`);
+  }
+  if (/<html[^>]*>/i.test(str)) {
+    return str.replace(
+      /<html[^>]*>/i,
+      (m) => `${m}\n<head><meta charset="utf-8" />${tag}</head>`
+    );
+  }
+  return `<!DOCTYPE html><html><head><meta charset="utf-8" />${tag}</head><body>\n${str}\n</body></html>`;
+}
+
+/**
+ * @param {object} data - { content, content_encoding? }
+ * @param {import('http').IncomingMessage} req
+ */
+function buildPreviewResponseBody(data, filePath, projectId, req) {
+  const enc = data.content_encoding === 'base64' ? 'base64' : 'utf8';
+  const isHtml = filePath.toLowerCase().endsWith('.html');
+
+  if (enc === 'base64' && !isHtml) {
+    return Buffer.from(String(data.content), 'base64');
+  }
+
+  if (!isHtml) {
+    return enc === 'base64' ? Buffer.from(String(data.content), 'base64') : data.content;
+  }
+
+  const raw =
+    enc === 'base64'
+      ? Buffer.from(String(data.content), 'base64').toString('utf8')
+      : String(data.content);
+  const origin = originFromRequest(req);
+  const base = previewBaseForFilePath(origin, projectId, filePath);
+  return injectHtmlBaseIfNeeded(raw, base);
+}
+
 async function handlePreview(req, res) {
   const raw = req.path.slice('/preview/'.length);
   const segments = raw.split('/').filter(Boolean);
@@ -55,11 +130,12 @@ async function handlePreview(req, res) {
       res.end();
       return;
     }
-    if (data.content_encoding === 'base64') {
-      res.send(Buffer.from(String(data.content), 'base64'));
+    const out = buildPreviewResponseBody(data, filePath, projectId, req);
+    if (Buffer.isBuffer(out)) {
+      res.send(out);
       return;
     }
-    res.send(data.content);
+    res.send(out);
     return;
   }
 
@@ -103,11 +179,12 @@ async function handlePreview(req, res) {
     res.end();
     return;
   }
-  if (row.content_encoding === 'base64') {
-    res.send(Buffer.from(String(row.content), 'base64'));
+  const out = buildPreviewResponseBody(row, filePath, projectId, req);
+  if (Buffer.isBuffer(out)) {
+    res.send(out);
     return;
   }
-  res.send(row.content);
+  res.send(out);
 }
 
 function previewSiteMiddleware(req, res, next) {

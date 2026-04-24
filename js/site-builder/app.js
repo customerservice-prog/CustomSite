@@ -1111,7 +1111,8 @@ async function main() {
     if (f) void doUpload(f);
   });
   document.getElementById('sbOpenTab')?.addEventListener('click', () => {
-    const u = getRailwayUrl() || stagingPreviewUrl();
+    // Same-origin /preview/ must come first (actual builder preview). Railway URL is a deployed copy, if any.
+    const u = stagingPreviewUrl() || getRailwayUrl();
     if (u) window.open(u, '_blank', 'noopener');
   });
   document.getElementById('sbViewSource')?.addEventListener('click', () => {

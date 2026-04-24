@@ -21,6 +21,9 @@ const { isDevAuthEnabled } = require('./lib/devAuth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Railway, Render, etc. set X-Forwarded-* — needed for correct https:// host in preview URLs
+app.set('trust proxy', 1);
+
 // Reflect request Origin so both http://localhost and http://127.0.0.1 work (single-host API + static).
 app.use(
   cors({
