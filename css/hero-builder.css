@@ -1,4 +1,4 @@
-/* Hero builder — service-business site mock: Summit Comfort Heating & Air (30s loop, clone restart) */
+/* Hero builder — Summit Comfort mock. Warm amber/rust palette (distinct from site indigo/cyan). */
 #hero-builder-preview.hb-widget {
   position: relative;
   display: flex;
@@ -7,8 +7,8 @@
   max-width: 100%;
   height: 420px;
   border-radius: 12px;
-  background: #0f1117;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: #18110c;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(251, 191, 36, 0.12), 0 0 40px -12px rgba(234, 88, 12, 0.15);
   overflow: visible;
   margin: 0 auto;
   z-index: 1;
@@ -48,7 +48,7 @@
 
 .hb-chrome {
   height: 36px;
-  background: #1e2030;
+  background: #2a1f18;
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -75,7 +75,7 @@
   width: 300px;
   max-width: calc(100% - 48px);
   height: 20px;
-  background: #2a2d3e;
+  background: #3d2c22;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -92,7 +92,7 @@
   width: 7px;
   height: 8px;
   margin-top: -4px;
-  border: 1.5px solid #64748b;
+  border: 1.5px solid #a89080;
   border-radius: 1px 1px 2px 2px;
   box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.2) inset;
 }
@@ -103,13 +103,13 @@
   right: 0.5px;
   top: -2px;
   height: 3px;
-  border: 1.5px solid #64748b;
+  border: 1.5px solid #a89080;
   border-bottom: 0;
   border-radius: 2px 2px 0 0;
 }
 .hb-addr-text {
   font: 11px/1 ui-monospace, "Cascadia Code", "Consolas", monospace;
-  color: #8b8fa8;
+  color: #c4a99a;
   text-align: center;
   flex: 1;
   min-width: 0;
@@ -121,7 +121,7 @@
   width: 10px;
   height: 10px;
   margin-top: -5px;
-  border: 2px solid #6366f1;
+  border: 2px solid #f59e0b;
   border-top-color: transparent;
   border-radius: 50%;
   animation: hb-wait-spin 0.8s linear infinite, hb-wait-vanish 0.35s 16.5s both;
@@ -153,7 +153,7 @@
 
 .hb-progress-track {
   height: 3px;
-  background: #1a1d2e;
+  background: #2a1f1a;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -161,7 +161,7 @@
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, #6366f1, #06b6d4);
+  background: linear-gradient(90deg, #f59e0b, #ea580c);
   border-radius: 0 1px 1px 0;
   animation: hb-prog 16.5s linear 0s both;
 }
@@ -170,7 +170,7 @@
 }
 
 .hb-canvas {
-  background: #fff;
+  background: #fffbf5;
   height: calc(100% - 36px - 3px);
   min-height: 0;
   overflow: hidden;
@@ -186,7 +186,7 @@
 
 .hb-nav {
   flex: 0 0 36px;
-  background: #1e293b;
+  background: #3d2a1f;
   display: flex;
   align-items: center;
   padding: 0 8px;
@@ -203,7 +203,7 @@
 .hb-nav-logo {
   width: 24px;
   height: 16px;
-  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  background: linear-gradient(135deg, #f59e0b, #dc2626);
   border-radius: 3px;
   flex-shrink: 0;
   transform-origin: center;
@@ -219,7 +219,7 @@
 .hb-nav-name {
   font-size: 7.5px;
   font-weight: 800;
-  color: #f8fafc;
+  color: #fff5eb;
   letter-spacing: 0.01em;
   white-space: nowrap;
   max-width: 80px;
@@ -238,7 +238,7 @@
 .hb-nav-link {
   font-size: 5.5px;
   font-weight: 600;
-  color: #cbd5e1;
+  color: #d4c4b8;
   line-height: 1;
   padding: 2px 2px 1px;
   border-radius: 2px;
@@ -261,10 +261,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #4f46e5;
+  background: #ea580c;
   border-radius: 4px;
   flex-shrink: 0;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15) inset;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset;
   animation: hb-fade-in 0.4s 1.2s both;
 }
 @keyframes hb-pill-snap {
@@ -311,7 +311,7 @@
 
 .hb-hero {
   flex: 0 0 124px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
+  background: linear-gradient(135deg, #1a0f0a 0%, #2d1a10 50%, #1a0f0a 100%);
   padding: 8px 10px 10px;
   display: flex;
   gap: 8px;
@@ -339,7 +339,7 @@
   line-height: 1.2;
   letter-spacing: -0.02em;
   font-size: 8.5px;
-  color: #f1f5f9;
+  color: #fff7ed;
   text-wrap: balance;
 }
 .hb-h1-line {
@@ -349,7 +349,7 @@
 }
 .hb-h1-line1 { animation-delay: 2.1s; }
 .hb-h1-line2 {
-  color: #5eead4;
+  color: #fbbf24;
   margin-top: 1px;
   animation-delay: 3.78s;
 }
@@ -358,7 +358,7 @@
   max-width: 100%;
   font-size: 5.5px;
   line-height: 1.32;
-  color: #94a3b8;
+  color: #b89f8f;
   font-weight: 500;
   animation: hb-subin 0.45s 5.25s both;
 }
@@ -381,14 +381,14 @@
   white-space: nowrap;
 }
 .hb-btn-pri {
-  background: #4f46e5;
+  background: #ea580c;
   color: #fff;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12) inset;
 }
 .hb-btn-sec {
-  border: 1px solid #64748b;
-  background: rgba(15, 23, 42, 0.35);
-  color: #e2e8f0;
+  border: 1px solid #a18a7a;
+  background: rgba(40, 24, 16, 0.45);
+  color: #fff0e5;
   font-weight: 700;
   box-sizing: border-box;
   letter-spacing: 0.01em;
@@ -435,10 +435,10 @@
   max-width: 170px;
   min-height: 92px;
   background:
-    linear-gradient(152deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.2) 40%, transparent 60%),
-    linear-gradient(135deg, #312e81 0%, #0d9488 45%, #0284c7 100%);
+    linear-gradient(152deg, rgba(26, 15, 10, 0.65) 0%, rgba(40, 24, 16, 0.25) 40%, transparent 60%),
+    linear-gradient(135deg, #7c2d12 0%, #f59e0b 42%, #b45309 100%);
   border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(6, 182, 212, 0.28);
+  box-shadow: 0 8px 20px rgba(234, 88, 12, 0.32);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -454,8 +454,8 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.88);
+  color: #431407;
+  background: rgba(255, 250, 240, 0.94);
   padding: 2px 4px 1px;
   border-radius: 3px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -465,9 +465,9 @@
   margin: 0;
   font-size: 5.5px;
   font-weight: 800;
-  color: #f8fafc;
+  color: #fff8f0;
   line-height: 1.2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   animation: hb-heroart-inner 0.45s 2.2s both;
 }
 .hb-hero-art__sub {
@@ -475,8 +475,8 @@
   font-size: 4.5px;
   line-height: 1.3;
   font-weight: 500;
-  color: rgba(241, 245, 249, 0.92);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  color: rgba(255, 243, 230, 0.95);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
   animation: hb-heroart-inner 0.45s 2.3s both;
 }
 @keyframes hb-heroart-inner {
@@ -502,9 +502,9 @@
 
 .hb-trust {
   flex: 0 0 26px;
-  background: #f1f5f9;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
+  background: #fff2e5;
+  border-top: 1px solid #fed7aa;
+  border-bottom: 1px solid #fed7aa;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -526,7 +526,7 @@
   width: 14px;
   height: 14px;
   border-radius: 4px;
-  background: #e2e8f0;
+  background: #fed7aa;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -534,11 +534,11 @@
   font-size: 8px;
   line-height: 1;
   font-weight: 800;
-  color: #0f172a;
+  color: #7c2d12;
 }
-.hb-trust-item:nth-child(1) .hb-trust-ico { background: #93c5fd; color: #0c4a6e; }
-.hb-trust-item:nth-child(2) .hb-trust-ico { background: #86efac; color: #14532d; }
-.hb-trust-item:nth-child(3) .hb-trust-ico { background: #fcd34d; color: #713f12; }
+.hb-trust-item:nth-child(1) .hb-trust-ico { background: #ffedd5; color: #9a3412; }
+.hb-trust-item:nth-child(2) .hb-trust-ico { background: #d9f99d; color: #3f6212; }
+.hb-trust-item:nth-child(3) .hb-trust-ico { background: #fef08a; color: #854d0e; }
 .hb-trust-txt {
   display: flex;
   flex-direction: column;
@@ -550,7 +550,7 @@
   display: block;
   font-size: 5.5px;
   font-weight: 800;
-  color: #0f172a;
+  color: #422006;
   line-height: 1.1;
   letter-spacing: 0.01em;
   animation: hb-linex 0.3s both;
@@ -560,7 +560,7 @@
   display: block;
   font-size: 4.5px;
   font-weight: 500;
-  color: #64748b;
+  color: #7c4f3a;
   line-height: 1.1;
   margin-top: 1px;
   animation: hb-linex 0.28s both;
@@ -595,17 +595,17 @@
 
 .hb-features {
   flex: 0 0 72px;
-  background: #fff;
+  background: #fffaf3;
   padding: 5px 8px 6px;
   display: flex;
   gap: 6px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #fed7aa;
 }
 .hb-fcard {
   flex: 1;
   min-width: 0;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
   border-radius: 8px;
   padding: 4px 5px 5px;
   animation: hb-card-up 0.5s both;
@@ -624,18 +624,18 @@
   font-size: 8px;
   font-weight: 800;
   line-height: 1;
-  color: #0f172a;
+  color: #431407;
   animation: hb-mic 0.35s both;
   transform-origin: 50% 100%;
 }
-.hb-fcard:nth-child(1) .hb-fcard-ico { background: #dbeafe; animation-delay: 7.14s; }
-.hb-fcard:nth-child(2) .hb-fcard-ico { background: #dcfce7; animation-delay: 7.77s; }
+.hb-fcard:nth-child(1) .hb-fcard-ico { background: #ffedd5; animation-delay: 7.14s; }
+.hb-fcard:nth-child(2) .hb-fcard-ico { background: #fed7aa; animation-delay: 7.77s; }
 .hb-fcard:nth-child(3) .hb-fcard-ico { background: #fef3c7; animation-delay: 8.4s; }
 .hb-fcard-title {
   margin: 2px 0 0;
   font-size: 5.5px;
   font-weight: 800;
-  color: #0f172a;
+  color: #422006;
   line-height: 1.2;
   letter-spacing: 0.01em;
   animation: hb-mic2 0.3s both;
@@ -649,7 +649,7 @@
   font-size: 4.5px;
   line-height: 1.2;
   font-weight: 500;
-  color: #64748b;
+  color: #7c4f3a;
   max-height: 2.4em;
   overflow: hidden;
   animation: hb-mic2 0.32s both;
@@ -691,8 +691,8 @@
 
 .hb-tquote {
   flex: 0 0 66px;
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
+  background: #fff2e2;
+  border-top: 1px solid #fdba74;
   padding: 5px 8px 6px;
   display: flex;
   align-items: flex-start;
@@ -703,7 +703,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #f59e0b, #9a3412);
   flex-shrink: 0;
   animation: hb-ava-bloom 0.5s 9.2s both;
   display: flex;
@@ -740,7 +740,7 @@
 .hb-tq-name {
   font-size: 5px;
   font-weight: 800;
-  color: #334155;
+  color: #5c2e18;
   line-height: 1.1;
   flex: 1;
   min-width: 0;
@@ -753,7 +753,7 @@
   line-height: 1.25;
   font-weight: 500;
   font-style: normal;
-  color: #475569;
+  color: #6b3f2a;
   transform-origin: left top;
   animation: hb-subin 0.45s 9.33s both;
 }
@@ -781,12 +781,12 @@
   from {
     opacity: 0;
     transform: scale(0.4);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
   }
   to {
     opacity: 1;
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
   }
 }
 
@@ -798,7 +798,7 @@
 .hb-ctaft {
   flex: 0 0 59px;
   min-height: 0;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #c2410c 0%, #7f1d1d 100%);
   padding: 6px 8px 7px;
   display: flex;
   justify-content: space-between;
@@ -844,7 +844,7 @@
 .hb-ctaft-btn span {
   font-size: 4.5px;
   font-weight: 800;
-  color: #312e81;
+  color: #7c1d0e;
   line-height: 1.1;
   text-align: center;
   transform-origin: center;
