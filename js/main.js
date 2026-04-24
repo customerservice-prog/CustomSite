@@ -117,7 +117,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 // ============================================
 (function initScrollAnimations() {
   const elements = document.querySelectorAll(
-    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .process-timeline__item, .about-founder, .tech-strip__item, .industry-pills, .hero-builder'
+    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .process-timeline__item, .about-founder, .tech-strip__item, .industry-pills, .hb-widget'
   );
 
   if (!elements.length || !window.IntersectionObserver) return;
