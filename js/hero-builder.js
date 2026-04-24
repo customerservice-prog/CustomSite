@@ -1,31 +1,16 @@
 /**
  * Hero site-build preview: restart all CSS animations by replacing the widget node.
- * Cycle ~28.6s (surface fade ends ~27.6s). Re-query #hero-builder-preview each time — old
- * node references break after replaceChild. Address URL cycles each loop.
+ * 60s loop: first site ~0–30s, second site from ~30s, surface fade ~59.4s, clone at 60s.
+ * Re-query #hero-builder-preview each time — old node references break after replaceChild.
  * prefers-reduced-motion: static frame, no loop.
  */
 (function initHeroBuilderLoop() {
-  const LOOP_MS = 28600;
-  const ADDR_URLS = [
-    'summitcomfort-hvac.com',
-    'riverbend-retail.com',
-    'northfieldental.com',
-  ];
-  let urlRound = 1;
-
-  function applyNextUrl(clone) {
-    const text = clone.querySelector('.hb-addr-text');
-    if (text) {
-      text.textContent = ADDR_URLS[urlRound % ADDR_URLS.length];
-      urlRound += 1;
-    }
-  }
+  const LOOP_MS = 60000;
 
   function restartHeroBuilder() {
     const widget = document.getElementById('hero-builder-preview');
     if (!widget || !widget.parentNode) return;
     const clone = widget.cloneNode(true);
-    applyNextUrl(clone);
     widget.parentNode.replaceChild(clone, widget);
   }
 
