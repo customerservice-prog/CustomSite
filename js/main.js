@@ -116,8 +116,11 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 // SCROLL ANIMATIONS - Fade in on scroll
 // ============================================
 (function initScrollAnimations() {
+  /* Excludes .process-timeline__item: each <li> is observed alone; lower rows can stay
+   * opacity:0 forever if the user doesn’t scroll them into the negative root margin,
+   * which reads as a huge “blank” band (see index “How a build unfolds”). */
   const elements = document.querySelectorAll(
-    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .process-timeline__item, .about-founder, .tech-strip__item, .industry-pills, .hb-widget'
+    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .about-founder, .tech-strip__item, .industry-pills, .hb-widget'
   );
 
   if (!elements.length || !window.IntersectionObserver) return;
@@ -131,7 +134,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
         observer.unobserve(entry.target);
       }
     });
-  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  }, { threshold: 0.08, rootMargin: '0px 0px 80px 0px' });
 
   elements.forEach(el => observer.observe(el));
 })();

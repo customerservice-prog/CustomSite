@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Festivé Party Rentals — Demo (Syracuse, NY)</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --purple: #4c1d95;
+      --gold: #f59e0b;
+      --cream: #fffbeb;
+      --white: #ffffff;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      color: #1e1b4b;
+      background: var(--cream);
+      line-height: 1.5;
+    }
+    h1, h2, h3, .font-display { font-family: Poppins, Inter, sans-serif; }
+    a { color: var(--purple); }
+    .demo-bar {
+      background: #1e1b4b;
+      color: #c7d2fe;
+      text-align: center;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.75rem;
+      position: relative;
+      z-index: 500;
+    }
+    .demo-bar a { color: #7dd3fc; font-weight: 600; }
+    .fr-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      min-height: 40px;
+      padding: 0 1.25rem;
+      background: var(--purple);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .fr-top a[href^="tel"] { color: #fff; text-decoration: none; }
+    .fr-top .fr-socials { display: flex; gap: 0.75rem; }
+    .fr-top .fr-socials a {
+      color: var(--gold);
+      display: flex;
+    }
+    .fr-nav {
+      position: sticky;
+      top: 0;
+      z-index: 400;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding: 0.65rem 1.25rem;
+      background: var(--white);
+      border-bottom: 1px solid rgba(76, 29, 149, 0.12);
+      transition: box-shadow 0.2s;
+    }
+    .fr-nav.is-scrolled { box-shadow: 0 4px 24px rgba(15, 23, 42, 0.12); }
+    .fr-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      color: var(--purple);
+      font-weight: 800;
+      font-family: Poppins, sans-serif;
+      font-size: 1.35rem;
+    }
+    .fr-brand svg { width: 28px; height: 28px; flex-shrink: 0; }
+    .fr-menu {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 1.25rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .fr-menu a { text-decoration: none; color: #334155; font-weight: 600; font-size: 0.9rem; }
+    .fr-menu a:hover { color: var(--purple); }
+    .fr-nav-cta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .fr-cart {
+      position: relative;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+      color: var(--purple);
+    }
+    .fr-cart-badge {
+      position: absolute;
+      top: -2px; right: -2px;
+      min-width: 1.1rem; height: 1.1rem;
+      background: var(--gold);
+      color: #1e1b4b;
+      font-size: 0.65rem; font-weight: 800;
+      border-radius: 99px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-gold {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem 1.1rem;
+      border-radius: 999px;
+      background: var(--gold);
+      color: var(--purple) !important;
+      font-weight: 700;
+      font-size: 0.88rem;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-outline { background: transparent; color: #fff !important; border: 2px solid #fff; }
+    .fr-hero {
+      min-height: 600px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    @media (max-width: 960px) {
+      .fr-hero { grid-template-columns: 1fr; min-height: auto; }
+    }
+    .fr-hero__left {
+      background: var(--purple);
+      color: #fff;
+      padding: 3rem 2rem 5rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .fr-hero__left::after {
+      content: "";
+      position: absolute; inset: 0;
+      opacity: 0.2;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ctext y='20' font-size='18' fill='white' opacity='.4'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E") repeat;
+    }
+    .fr-hero__left > * { position: relative; z-index: 1; }
+    .fr-hero__left h1 { font-size: clamp(1.9rem, 3.2vw, 3.75rem); line-height: 1.1; margin: 0 0 1rem; font-weight: 800; }
+    .fr-hero__left p { font-size: 1.05rem; color: #e9d5ff; max-width: 32rem; margin: 0 0 1.5rem; }
+    .fr-hero__ctas { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .fr-hero__right {
+      background: linear-gradient(135deg, #fde68a 0%, #f97316 100%);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .fr-mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .fr-mini {
+      background: rgba(255,255,255,0.9);
+      border-radius: 12px;
+      padding: 0.85rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    .fr-mini .ph { height: 3.2rem; border-radius: 8px; margin-bottom: 0.4rem; }
+    .fr-mini h4 { margin: 0; font-size: 0.85rem; font-weight: 700; color: #1e1b4b; }
+    .fr-mini .from { font-size: 0.7rem; color: #64748b; margin-top: 0.2rem; }
+    .fr-trustbar {
+      max-width: 1280px;
+      margin: -2.2rem auto 0;
+      position: relative;
+      z-index: 2;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem 1.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    .section { max-width: 1200px; margin: 0 auto; padding: 3.5rem 1.25rem; }
+    .section h2 { font-size: 1.75rem; text-align: center; margin: 0 0 1.75rem; color: var(--purple); }
+    .fr-catgrid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    @media (max-width: 900px) { .fr-catgrid { grid-template-columns: repeat(2, 1fr); } }
+    .fr-cat {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(76, 29, 149, 0.12);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .fr-cat--feat { grid-column: span 2; grid-row: span 1; }
+    @media (max-width: 900px) { .fr-cat--feat { grid-column: span 2; } }
+    .fr-cat__img { height: 100px; }
+    .fr-cat h3 { font-size: 0.95rem; margin: 0; padding: 0.75rem 1rem 0.4rem; }
+    .fr-cat a { display: block; padding: 0 1rem 1rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; color: var(--gold); }
+    .fr-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    @media (max-width: 768px) { .fr-steps { grid-template-columns: 1fr; } }
+    .fr-step { text-align: center; }
+    .fr-step .num { width: 3.2rem; height: 3.2rem; border-radius: 50%; background: var(--gold); color: #1e1b4b; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.1rem; }
+    .fr-packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; align-items: stretch; }
+    @media (max-width: 900px) { .fr-packs { grid-template-columns: 1fr; } }
+    .fr-pack {
+      background: #fff;
+      border-radius: 14px;
+      padding: 1.5rem;
+      border: 2px solid #e9d5ff;
+    }
+    .fr-pack--pop { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); position: relative; }
+    .fr-pack--pop::before { content: "Most Popular"; position: absolute; top: -0.6rem; left: 50%; transform: translateX(-50%); background: var(--gold); color: #1e1b4b; font-size: 0.65rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 6px; }
+    .fr-pack h3 { margin: 0.5rem 0 0.4rem; font-size: 1.1rem; }
+    .fr-pack .price { font-size: 1.35rem; font-weight: 800; color: var(--purple); }
+    .fr-pack ul { margin: 0.75rem 0; padding-left: 1.1rem; font-size: 0.9rem; color: #475569; }
+    .fr-testis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    @media (max-width: 900px) { .fr-testis { grid-template-columns: 1fr; } }
+    .fr-tcard { padding: 1.25rem; border-radius: 12px; }
+    .fr-tcard:nth-child(odd) { background: #ede9fe; }
+    .fr-tcard:nth-child(even) { background: #fff; border: 1px solid #e9d5ff; }
+    .fr-stars { color: var(--gold); font-size: 0.9rem; letter-spacing: 0.1em; }
+    .fr-tcard .av { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .fr-tcard .circle { width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 0.85rem; }
+    .fr-gallery { display: flex; gap: 0.75rem; overflow-x: auto; padding: 0.5rem 0; scroll-snap-type: x mandatory; }
+    .fr-gallery > div { flex: 0 0 120px; height: 90px; border-radius: 8px; scroll-snap-align: start; display: flex; align-items: flex-end; padding: 0.4rem; font-size: 0.55rem; font-weight: 700; color: #fff; line-height: 1.2; }
+    .fr-faq details { background: #fff; border: 1px solid #e9d5ff; border-radius: 8px; margin-bottom: 0.5rem; padding: 0.5rem 1rem; }
+    .fr-faq summary { font-weight: 700; cursor: pointer; }
+    .fr-faq details[open] summary { color: var(--purple); }
+    .fr-foot { background: #1e1b4b; color: #e2e8f0; padding: 3rem 1.25rem 1.5rem; }
+    .fr-foot a { color: #fde68a; }
+    .fr-foot__grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap: 2rem; }
+    @media (max-width: 900px) { .fr-foot__grid { grid-template-columns: 1fr; } }
+    .fr-foot h4 { color: #fff; margin: 0 0 0.75rem; font-size: 0.9rem; }
+    .fr-foot ul { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; }
+    .fr-foot li { margin-bottom: 0.35rem; }
+    .fr-bottom { border-top: 1px solid rgba(255,255,255,0.1); margin-top: 2rem; padding-top: 1rem; text-align: center; font-size: 0.8rem; }
+    .fr-drawer {
+      position: fixed; top: 0; right: 0; width: 100%; max-width: 400px; height: 100%;
+      background: #fff; z-index: 600;
+      box-shadow: -4px 0 40px rgba(0,0,0,0.15);
+      transform: translateX(100%);
+      transition: transform 0.25s;
+      display: flex; flex-direction: column;
+    }
+    .fr-drawer.is-open { transform: translateX(0); }
+    .fr-drawer-h { padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    .fr-drawer-b { flex: 1; overflow: auto; padding: 1rem; }
+    .fr-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 550; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .fr-overlay.is-open { opacity: 1; pointer-events: auto; }
+    .fr-modal { position: fixed; inset: 0; z-index: 700; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; pointer-events: none; }
+    .fr-modal.is-open { opacity: 1; pointer-events: auto; }
+    .fr-modal__box { background: #fff; border-radius: 14px; max-width: 400px; width: 100%; padding: 1.5rem; position: relative; }
+    .fr-modal__box label { display: block; font-size: 0.8rem; font-weight: 600; margin: 0.4rem 0; }
+    .fr-modal__box input, .fr-modal__box select { width: 100%; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; }
+    .qty { display: flex; align-items: center; gap: 0.5rem; }
+    .qty button { width: 2rem; height: 2rem; border: 1px solid #e2e8f0; background: #f8fafc; cursor: pointer; border-radius: 4px; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">Representative <strong>party &amp; event rental</strong> demo (not a live booking site). <a href="portfolio.html">Back to portfolio</a></div>
+
+  <div class="fr-top">
+    <span><a href="tel:+13158841498">(315) 884-1498</a> — Free Delivery Quote</span>
+    <div class="fr-socials" aria-label="Social">
+      <a href="#" aria-label="Facebook"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+      <a href="#" aria-label="Instagram"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.9.2 2.3.4.6.2 1.1.5 1.5 1s.8.9 1 1.5c.2.4.3 1.1.4 2.3.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.2 1.9-.4 2.3-.2.6-.5 1.1-1 1.5s-.9.8-1.5 1c-.4.2-1.1.3-2.3.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.9-.2-2.3-.4-.6-.2-1.1-.5-1.5-1s-.8-.9-1-1.5c-.2-.4-.3-1.1-.4-2.3C2.2 12 2.2 8.4 2.2 8.4s0-3.6.1-4.9c.1-1.2.2-1.9.4-2.3.2-.6.5-1.1 1-1.5s.9-.8 1.5-1c.4-.2 1.1-.3 2.3-.4C8.4 2.2 12 2.2 12 2.2zM12 5a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm0 2.2a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6zM18.2 4.2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/></svg></a>
+      <a href="#" aria-label="YouTube"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22.5 6.2c-.3-1-1-1.8-2-2.1C18.5 3.5 12 3.5 12 3.5s-6.5 0-8.5.6c-1 .3-1.7 1.1-2 2.1C1 8.1 1 12 1 12s0 3.9.5 5.8c.3 1 1 1.8 2 2.1 2 .6 8.5.6 8.5.6s6.5 0 8.5-.6c1-.3 1.7-1.1 2-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.7 15.2V8.7l5.6 3.2-5.6 3.3z"/></svg></a>
+    </div>
+  </div>
+
+  <header class="fr-nav" id="frNav">
+    <a class="fr-brand" href="#">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="6" cy="8" r="2" fill="#f59e0b"/>
+        <circle cx="10" cy="5" r="1.5" fill="#a78bfa"/>
+        <circle cx="14" cy="9" r="1.5" fill="#f59e0b"/>
+        <path d="M4 20h14l3-4 2 1-4 6H4z" fill="#4c1d95"/>
+      </svg>
+      Festivé
+    </a>
+    <ul class="fr-menu">
+      <li><a href="#">Home</a></li>
+      <li><a href="#rentals">Rentals</a></li>
+      <li><a href="#packages">Packages</a></li>
+      <li><a href="#gallery">Gallery</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#footer">Contact</a></li>
+    </ul>
+    <div class="fr-nav-cta">
+      <button type="button" class="fr-cart" id="frCartBtn" aria-label="Quote cart" title="Open quote cart">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1"/><circle cx="16" cy="20" r="1"/><path d="M1 1h2l.7 2.1M3 1h18l-2 12H5L3 1z"/></svg>
+        <span class="fr-cart-badge" id="frCartN">0</span>
+      </button>
+      <a class="btn-gold" href="contact.html">Get a Quote</a>
+    </div>
+  </header>
+
+  <section class="fr-hero" id="rentals">
+    <div class="fr-hero__left">
+      <h1>Make Your Event Unforgettable</h1>
+      <p>Premium tent, table, chair, lighting, and entertainment rentals for Syracuse and Central New York.</p>
+      <div class="fr-hero__ctas">
+        <a class="btn-gold" href="#categories">Browse Rentals</a>
+        <a class="btn-gold btn-outline" href="contact.html">Get a Free Quote</a>
+      </div>
+    </div>
+    <div class="fr-hero__right">
+      <div class="fr-mini-grid">
+        <div class="fr-mini" data-cat="Bounce house" data-price="from $189">
+          <div class="ph" style="background:linear-gradient(135deg,#7c3aed,#4c1d95)"></div>
+          <h4>Bounce Houses</h4>
+          <div class="from">From $189</div>
+        </div>
+        <div class="fr-mini" data-cat="Tent" data-price="from $249">
+          <div class="ph" style="background:linear-gradient(135deg,#059669,#0f766e)"></div>
+          <h4>Tents</h4>
+          <div class="from">From $249</div>
+        </div>
+        <div class="fr-mini" data-cat="Tables &amp; chairs" data-price="from $99">
+          <div class="ph" style="background:linear-gradient(135deg,#1d4ed8,#1e3a5f)"></div>
+          <h4>Tables &amp; Chairs</h4>
+          <div class="from">From $99</div>
+        </div>
+        <div class="fr-mini" data-cat="Concessions" data-price="from $129">
+          <div class="ph" style="background:linear-gradient(135deg,#dc2626,#b91c1c)"></div>
+          <h4>Concessions</h4>
+          <div class="from">From $129</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div class="fr-trustbar" role="region" aria-label="Highlights">
+    <span>⭐ 4.9 Google Rating</span>
+    <span>🚚 Free Delivery in 30mi</span>
+    <span>🧼 Professionally Cleaned</span>
+    <span>📅 Easy Online Booking</span>
+  </div>
+
+  <section class="section" id="categories">
+    <h2>Everything You Need for One Perfect Event</h2>
+    <div class="fr-catgrid" id="frCatGrid"></div>
+  </section>
+
+  <section class="section" style="background:#fff" id="how">
+    <h2>How it works</h2>
+    <div class="fr-steps">
+      <div class="fr-step">
+        <div class="num">1</div>
+        <h3>Browse &amp; add to cart</h3>
+        <p style="color:#64748b;font-size:0.95rem;margin:0">Select your items and rental dates online.</p>
+      </div>
+      <div class="fr-step">
+        <div class="num">2</div>
+        <h3>We deliver &amp; set up</h3>
+        <p style="color:#64748b;font-size:0.95rem;margin:0">We arrive early to set up everything perfectly.</p>
+      </div>
+      <div class="fr-step">
+        <div class="num">3</div>
+        <h3>Enjoy your event</h3>
+        <p style="color:#64748b;font-size:0.95rem;margin:0">We handle pickup so you can relax.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="packages">
+    <h2>Featured packages</h2>
+    <div class="fr-packs">
+      <div class="fr-pack">
+        <h3>Backyard Bash</h3>
+        <div class="price">From $349</div>
+        <ul>
+          <li>Tables + chairs for 32</li>
+          <li>20×20 tent</li>
+          <li>Delivery in zone</li>
+        </ul>
+        <button type="button" class="btn-gold" style="width:100%;margin-top:0.5rem" data-add-pack="Backyard Bash|349">Book This Package</button>
+      </div>
+      <div class="fr-pack fr-pack--pop">
+        <h3>Party Package Pro</h3>
+        <div class="price">From $899</div>
+        <ul>
+          <li>40×40 tent, tables, chairs, linens</li>
+          <li>Dance floor + lighting</li>
+          <li>Setup &amp; strike</li>
+        </ul>
+        <button type="button" class="btn-gold" style="width:100%;margin-top:0.5rem" data-add-pack="Party Package Pro|899">Book This Package</button>
+      </div>
+      <div class="fr-pack">
+        <h3>Full Event</h3>
+        <div class="price">From $1,499</div>
+        <ul>
+          <li>Everything in Pro</li>
+          <li>Concessions + photobooth</li>
+          <li>Generator add-on</li>
+        </ul>
+        <button type="button" class="btn-gold" style="width:100%;margin-top:0.5rem" data-add-pack="Full Event|1499">Book This Package</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="stories" style="background:#f5f3ff">
+    <h2>Happy hosts</h2>
+    <div class="fr-testis">
+      <div class="fr-tcard">
+        <div class="av"><div class="circle" style="background:linear-gradient(135deg,#4c1d95,#7c3aed)">MK</div><div><div class="fr-stars">★★★★★</div><strong>Michelle K.</strong> · Oak Grove</div></div>
+        <p>“Clear pricing, no surprise fees, and the crew was spotless. We use them for our school fair every year now.”</p>
+      </div>
+      <div class="fr-tcard">
+        <div class="av"><div class="circle" style="background:linear-gradient(135deg,#f59e0b,#b45309)">JR</div><div><div class="fr-stars">★★★★★</div><strong>James R.</strong> · DeWitt</div></div>
+        <p>“Tent and dance floor looked incredible. They handled rain backup without us lifting a finger.”</p>
+      </div>
+      <div class="fr-tcard">
+        <div class="av"><div class="circle" style="background:linear-gradient(135deg,#0d9488,#0f766e)">ST</div><div><div class="fr-stars">★★★★★</div><strong>Sam T.</strong> · Liverpool</div></div>
+        <p>“Quote to pickup was painless. The photobooth was a huge hit with guests.”</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="gallery" style="background:#fff">
+    <h2>Gallery</h2>
+    <div class="fr-gallery" id="frGall"></div>
+  </section>
+
+  <section class="section" id="faq">
+    <h2>FAQ</h2>
+    <div class="fr-faq">
+      <details><summary>What areas do you serve?</summary><p>Onondaga County and most of CNY. Delivery radius for free drop-off is 30 miles from Syracuse; farther by quote.</p></details>
+      <details><summary>How far in advance should I book?</summary><p>Weekends in summer fill fast—2–4 weeks ahead for large tents. Short notice possible based on inventory.</p></details>
+      <details><summary>Do you set up and tear down?</summary><p>Yes. Setup and strike are included in your quote for standard packages.</p></details>
+      <details><summary>What if I need to cancel or reschedule?</summary><p>Contact us 7+ days before for full credit toward a new date; inside 7 days, a restock fee may apply per contract.</p></details>
+      <details><summary>Are your inflatables safe and inspected?</summary><p>All units are cleaned, insured, and inspected per manufacturer and state guidelines.</p></details>
+    </div>
+  </section>
+
+  <footer class="fr-foot" id="footer">
+    <div class="fr-foot__grid">
+      <div>
+        <div class="fr-brand" style="color:#fff"><svg viewBox="0 0 32 32" width="24" height="24" style="color:#f59e0b" fill="currentColor" aria-hidden="true"><path d="M4 4h6v6H4zM12 4h6v6h-6zM4 12h6v6H4zM12 12h6v6h-6z" opacity=".3"/></svg> Festivé</div>
+        <p style="font-size:0.9rem;margin:0.5rem 0 0;opacity:0.85">Tents, inflatables, and everything for a stress-free event.</p>
+      </div>
+      <div><h4>Quick links</h4><ul><li><a href="#rentals">Rentals</a></li><li><a href="#packages">Packages</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+      <div><h4>Categories</h4><ul><li><a href="#categories">Bounce &amp; games</a></li><li><a href="#categories">Tents &amp; flooring</a></li><li><a href="#categories">Concessions</a></li></ul></div>
+      <div><h4>Contact</h4><ul><li><a href="tel:+13158841498">(315) 884-1498</a></li><li>hello@festive-rentals.demo</li><li>Syracuse, NY</li></ul></div>
+    </div>
+    <div class="fr-bottom">© 2026 Festivé Party Rentals (demo) · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
+  </footer>
+
+  <div class="fr-overlay" id="frOverlay" aria-hidden="true"></div>
+  <div class="fr-drawer" id="frDrawer" role="dialog" aria-labelledby="frQuoteTitle" aria-hidden="true">
+    <div class="fr-drawer-h">
+      <h2 id="frQuoteTitle" style="margin:0;font-size:1.1rem">Your quote</h2>
+      <button type="button" class="fr-cart" id="frCloseDrawer" style="color:#64748b" aria-label="Close">✕</button>
+    </div>
+    <div class="fr-drawer-b" id="frList"></div>
+    <div style="border-top:1px solid #e2e8f0;padding:1rem;flex:0 0 auto">
+      <p style="display:flex;justify-content:space-between;font-weight:700"><span>Subtotal (est.)</span><span id="frSub">$0</span></p>
+      <p style="font-size:0.8rem;color:#64748b">Final pricing confirmed by phone; dates &amp; delivery affect total.</p>
+      <form id="frReqForm" style="margin-top:0.75rem">
+        <label>Name<input name="n" required /></label>
+        <label>Email<input name="e" type="email" required /></label>
+        <label>Phone<input name="p" type="tel" required /></label>
+        <label>Event address<textarea name="a" rows="2" required style="width:100%"></textarea></label>
+        <label>Event dates<input name="d" placeholder="e.g. June 14–15" required /></label>
+        <button type="submit" class="btn-gold" style="width:100%;margin-top:0.5rem">Request Quote</button>
+      </form>
+      <p id="frSuccess" style="display:none;color:#15803d;font-weight:600;margin-top:0.5rem">Thanks — we will reach out within one business day.</p>
+    </div>
+  </div>
+
+  <div class="fr-modal" id="frModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="fr-modal__box" id="frModalBox"></div>
+  </div>
+
+  <script>
+  (function () {
+    var cart = [];
+    var cats = [
+      { n: 'Bounce Houses', c: 'linear-gradient(135deg,#7c3aed,#4c1d95)' },
+      { n: 'Tents', c: 'linear-gradient(135deg,#059669,#0f766e)' },
+      { n: 'Tables & Chairs', c: 'linear-gradient(135deg,#1d4ed8,#1e3a5f)' },
+      { n: 'Dance Floor', c: 'linear-gradient(135deg,#ec4899,#be185d)' },
+      { n: 'Linens', c: 'linear-gradient(135deg,#14b8a6,#0f766e)' },
+      { n: 'Concessions', c: 'linear-gradient(135deg,#ef4444,#b91c1c)' },
+      { n: 'Yard Games', c: 'linear-gradient(135deg,#f97316,#c2410c)' },
+      { n: 'Lighting', c: 'linear-gradient(135deg,#f59e0b,#b45309)' },
+      { n: 'Heating/Cooling', c: 'linear-gradient(135deg,#3b82f6,#1d4ed8)' },
+      { n: 'Generators', c: 'linear-gradient(135deg,#64748b,#334155)' },
+      { n: 'Photobooth', c: 'linear-gradient(135deg,#f472b6,#db2777)' },
+      { n: 'Package Deals', c: 'linear-gradient(135deg,#fbbf24,#d97706)' }
+    ];
+    var grid = document.getElementById('frCatGrid');
+    var gall = document.getElementById('frGall');
+    var el = { drawer: document.getElementById('frDrawer'), overlay: document.getElementById('frOverlay'), list: document.getElementById('frList'),
+      sub: document.getElementById('frSub'), n: document.getElementById('frCartN'), modal: document.getElementById('frModal'),
+      modalBox: document.getElementById('frModalBox') };
+    var gLabels = ['Birthday party','Wedding reception','Corporate event','Graduation','School event','Festival block','Church fair','Block party'];
+    gLabels.forEach(function (g, i) {
+      var d = document.createElement('div');
+      d.style.background = 'linear-gradient(135deg,hsl(' + (i * 35 % 360) + ',60%,45%),hsl(' + (i * 35 + 40) % 360 + ',50%,35%))';
+      d.textContent = g;
+      gall.appendChild(d);
+    });
+    cats.forEach(function (x, i) {
+      var isFeat = i === 11;
+      var div = document.createElement('div');
+      div.className = 'fr-cat' + (isFeat ? ' fr-cat--feat' : '');
+      div.innerHTML = '<div class="fr-cat__img" style="background:' + x.c + '"></div><h3>' + x.n + '</h3><a href="#" data-open="' + i + '">View Items &rarr;</a>';
+      grid.appendChild(div);
+    });
+    function priceFrom(i) { return 99 + (i * 17) % 200; }
+    function render() {
+      el.list.innerHTML = cart.map(function (l, j) {
+        return '<p style="display:flex;justify-content:space-between;gap:0.5rem;font-size:0.9rem"><span>' + l.name + ' ×' + l.q + '</span><span>$' + (l.p * l.q) + '</span></p>';
+      }).join('') || '<p style="color:#94a3b8;font-size:0.9rem">Add items from a category to build your quote.</p>';
+      var t = cart.reduce(function (a, b) { return a + b.p * b.q; }, 0);
+      el.sub.textContent = t ? '$' + t : '$0';
+      el.n.textContent = String(cart.reduce(function (a, b) { return a + b.q; }, 0));
+    }
+    function addLine(name, p, q) {
+      q = q || 1;
+      var f = cart.filter(function (x) { return x.name === name; })[0];
+      if (f) f.q += q; else cart.push({ name: name, p: p, q: q });
+      render();
+      el.drawer.classList.add('is-open');
+      el.overlay.classList.add('is-open');
+      el.drawer.setAttribute('aria-hidden', 'false');
+    }
+    document.getElementById('frCatGrid').addEventListener('click', function (e) {
+      var a = e.target.closest('a[data-open]');
+      if (!a) return;
+      e.preventDefault();
+      var i = +a.getAttribute('data-open');
+      var p = priceFrom(i);
+      var name = cats[i].n;
+      el.modalBox.innerHTML = '<h3 style="margin:0 0 0.5rem">' + name + '</h3><p style="color:#64748b;font-size:0.9rem">Rental for your event. Inventory confirmed at booking.</p><p><strong>From $' + p + ' / day</strong></p><div class="qty" style="margin:0.75rem 0"><button type="button" id="mq">-</button><span id="mqv">1</span><button type="button" id="mp">+</button></div><label>Start <input type="date" id="d1" /></label><label>End <input type="date" id="d2" style="margin-top:0.4rem" /></label><button type="button" class="btn-gold" style="width:100%;margin-top:0.75rem" id="madd">Add to Quote</button><button type="button" class="fr-cart" style="width:100%;margin-top:0.4rem" id="mcl">Close</button>';
+      el.modal.classList.add('is-open');
+      el.modal.setAttribute('aria-hidden', 'false');
+      var qv = 1;
+      el.modalBox.querySelector('#madd').onclick = function () { addLine(name, p, qv); el.modal.classList.remove('is-open'); el.modal.setAttribute('aria-hidden', 'true'); };
+      el.modalBox.querySelector('#mcl').onclick = function () { el.modal.classList.remove('is-open'); el.modal.setAttribute('aria-hidden', 'true'); };
+      el.modalBox.querySelector('#mp').onclick = function () { qv++; el.modalBox.querySelector('#mqv').textContent = String(qv); };
+      el.modalBox.querySelector('#mq').onclick = function () { qv = Math.max(1, qv - 1); el.modalBox.querySelector('#mqv').textContent = String(qv); };
+    });
+    el.overlay.addEventListener('click', function () {
+      el.drawer.classList.remove('is-open');
+      el.overlay.classList.remove('is-open');
+      el.drawer.setAttribute('aria-hidden', 'true');
+    });
+    document.getElementById('frCloseDrawer').addEventListener('click', el.overlay.click.bind(el.overlay));
+    document.getElementById('frCartBtn').addEventListener('click', function () {
+      el.drawer.classList.add('is-open');
+      el.overlay.classList.add('is-open');
+      el.drawer.setAttribute('aria-hidden', 'false');
+    });
+    document.querySelectorAll('[data-add-pack]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var t = b.getAttribute('data-add-pack').split('|');
+        addLine(t[0], +t[1], 1);
+      });
+    });
+    document.getElementById('frReqForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      document.getElementById('frSuccess').style.display = 'block';
+    });
+    document.querySelectorAll('.fr-mini').forEach(function (m) {
+      m.addEventListener('click', function () { addLine(m.getAttribute('data-cat') + ' (starter)', 99, 1); });
+    });
+    var nav = document.getElementById('frNav');
+    window.addEventListener('scroll', function () { nav.classList.toggle('is-scrolled', window.scrollY > 12); });
+    el.modal.addEventListener('click', function (e) { if (e.target === el.modal) { el.modal.classList.remove('is-open'); el.modal.setAttribute('aria-hidden', 'true'); } });
+  })();
+  </script>
+</body>
+</html>

@@ -20,10 +20,5 @@
     return;
   }
 
-  function schedule() {
-    restartHeroBuilder();
-    setTimeout(schedule, LOOP_MS);
-  }
-
-  setTimeout(schedule, LOOP_MS);
+  setInterval(restartHeroBuilder, LOOP_MS);
 })();

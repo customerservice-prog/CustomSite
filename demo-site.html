@@ -101,6 +101,15 @@
   </style>
 </head>
 <body>
+  <script>
+    (function () {
+      try {
+        if (new URLSearchParams(location.search).get('t') === 'partyrental') {
+          location.replace('partyrental-demo.html');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <div class="sample-bar" id="sampleBar">Representative <strong>full-page sample</strong> — not a real client site. <a href="portfolio.html">Back to portfolio</a></div>
   <nav>
     <div style="display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap">
