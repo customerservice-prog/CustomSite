@@ -62,10 +62,10 @@ This stores source in Postgres — not WordPress. For images, use external URLs 
 
 ## Phase 5 — First admin login
 
-1. In Supabase **Authentication → Users**, add a user (email + password) **or** use **Sign up** if enabled.
-2. Copy that user’s **UUID** from the users table in Auth.
-3. Insert into **`public.users`** (see **`supabase/seed-admin.sql`**): same `id`, `email`, **`role = 'admin'`**.
-4. Open **`/client-portal.html`**, sign in — you should land on **`admin.html`** (admins are redirected there).
+1. In Supabase **Authentication → URL configuration**, add redirect URLs: site root `https://your-domain/`, `https://your-domain/client-portal.html`, and `https://your-domain/reset-password.html` (password reset emails use the last one).
+2. In Supabase **Authentication → Users**, add a user (email + password) **or** use **Sign up** if enabled.
+3. **Profile row (optional manual step):** After first API request with a valid JWT, the app can **auto-create** a row in `public.users` for that account. Set **`BOOTSTRAP_ADMIN_EMAILS=you@domain.com`** (or **`INITIAL_ADMIN_EMAIL`**) in Railway / `.env` so the first sign-in gets **`role = admin`**. Otherwise the row defaults to `client` — then insert admin manually (see **`supabase/seed-admin.sql`**) or update the row in SQL.
+4. Open **`/client-portal.html?agency=1`**, sign in — you should land on **`admin.html`** if the user is an admin.
 
 **Done when:** you see the Admin panel (leads, clients, projects).
 

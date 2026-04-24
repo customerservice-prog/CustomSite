@@ -4,7 +4,7 @@ A professional web design agency website where clients can call/contact to get c
 
 **Stack:** Node (`server.js`) + static pages, Supabase (auth + DB), optional Stripe/Resend. **Brand assets:** SVG wordmarks in `images/customsite-*.svg` (replace with a PNG if you have the official file — same filenames work).
 
-**Deploy (short):** Connect the repo to Railway (or any Node host), set `PORT`, add Supabase and other vars from `.env.example`, then run the SQL in `supabase/migrations/` in the Supabase SQL editor. See **`docs/LAUNCH-PHASES.md`**.
+**Deploy (short):** Connect the repo to Railway (or any Node host), set `PORT`, add Supabase and other vars from `.env.example`, then run the SQL in `supabase/migrations/` in the Supabase SQL editor. Set **`BOOTSTRAP_ADMIN_EMAILS`** (or **`INITIAL_ADMIN_EMAIL`**) to your team email so the first Supabase sign-in gets an admin `public.users` row automatically. See **`docs/LAUNCH-PHASES.md`**.
 
 **What’s next (product):** **`docs/ROADMAP-PHASES.md`** — Sites hub, visual block builder, templates, admin polish, and deploy hardening, in order.
 

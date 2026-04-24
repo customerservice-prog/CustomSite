@@ -1,6 +1,6 @@
 /**
- * Run before other app scripts. Parses Supabase auth from URL (hash: magic link / recovery;
- * ?code: PKCE / email) into localStorage keys the rest of the app already uses.
+ * Runs first on app pages. Parses Supabase auth from URL (hash: implicit tokens;
+ * ?code= PKCE) into localStorage keys used by /api/auth/* and admin fetch wrappers.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
@@ -13,11 +13,62 @@ function hasUrlAuthSignal() {
   return new URLSearchParams(window.location.search).has('code');
 }
 
+function isResetPasswordPage() {
+  return (window.location.pathname || '').toLowerCase().includes('reset-password');
+}
+
+/**
+ * Implicit flow + PKCE: wait until Supabase has processed the URL into a session.
+ */
+function waitForSession(supabase, maxMs) {
+  return new Promise((resolve) => {
+    let sub;
+    const done = (session) => {
+      clearTimeout(failTimer);
+      try {
+        sub?.unsubscribe();
+      } catch {
+        /* */
+      }
+      resolve(session || null);
+    };
+    const failTimer = setTimeout(async () => {
+      try {
+        sub?.unsubscribe();
+      } catch {
+        /* */
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      resolve(session || null);
+    }, maxMs);
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION' || event === 'PASSWORD_RECOVERY')) {
+        done(session);
+      }
+    });
+    sub = data && data.subscription;
+  });
+}
+
 async function saveSessionToAppKeys(supabase) {
-  let session = (await supabase.auth.getSession()).data.session;
+  let { data: { session } } = await supabase.auth.getSession();
   if (!session) {
-    await new Promise((r) => setTimeout(r, 50));
-    session = (await supabase.auth.getSession()).data.session;
+    await new Promise((r) => setTimeout(r, 80));
+    ({ data: { session } } = await supabase.auth.getSession());
+  }
+  if (!session) {
+    session = await waitForSession(supabase, 3200);
+  }
+  if (!session) {
+    for (const ms of [120, 250, 400]) {
+      await new Promise((r) => setTimeout(r, ms));
+      const { data: { session: s2 } } = await supabase.auth.getSession();
+      if (s2) {
+        session = s2;
+        break;
+      }
+    }
   }
   if (!session) {
     return null;
@@ -36,6 +87,26 @@ async function saveSessionToAppKeys(supabase) {
     window.history.replaceState(null, '', u.pathname + u.search);
   }
   return session;
+}
+
+async function redirectIfLoggedIn() {
+  const token = localStorage.getItem(ACCESS);
+  if (!token) return;
+  try {
+    const r = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+    if (r.ok) {
+      const j = await r.json();
+      const role = j.user && j.user.role;
+      if (isResetPasswordPage()) {
+        return;
+      }
+      window.location.replace(role === 'admin' ? 'admin.html' : 'dashboard.html');
+    } else if (r.status === 503) {
+      /* DB missing — let user see current page; admin shows setup banner */
+    }
+  } catch (e) {
+    /* keep page */
+  }
 }
 
 async function run() {
@@ -81,20 +152,12 @@ async function run() {
   await saveSessionToAppKeys(supabase);
 
   const path = window.location.pathname || '';
-  if (path.endsWith('client-portal.html') && hadUrlAuth) {
-    const token = localStorage.getItem(ACCESS);
-    if (token) {
-      try {
-        const r = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
-        if (r.ok) {
-          const j = await r.json();
-          const role = j.user && j.user.role;
-          window.location.replace(role === 'admin' ? 'admin.html' : 'dashboard.html');
-        }
-      } catch (e) {
-        /* user stays to sign in manually */
-      }
-    }
+  const isIndex =
+    path === '/' || path === '' || /\/index\.html$/i.test(path);
+  const isClientPortal = path.endsWith('client-portal.html');
+
+  if (hadUrlAuth && (isClientPortal || isIndex)) {
+    await redirectIfLoggedIn();
   }
 }
 

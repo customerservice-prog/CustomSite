@@ -42,12 +42,24 @@ export async function api(path, options = {}) {
   }
   if (!r.ok) {
     const j = await r.json().catch(() => ({}));
+    if (
+      (r.status === 500 || r.status === 403) &&
+      j &&
+      (j.code === 'NO_TOKEN' || j.code === 'INVALID_TOKEN' || j.error === 'Unauthorized')
+    ) {
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(REFRESH_KEY);
+      } catch {
+        /* */
+      }
+      window.location.replace('client-portal.html?agency=1');
+      throw new Error('Session expired. Sign in again.');
+    }
     const raw = String((j && (j.error || j.message)) || r.statusText || 'Request failed');
     const friendly = /schema cache|Could not find the table|relation .+ does not exist|PGRST205|PGRST204/i.test(raw)
       ? 'Database is not set up yet. In your Supabase project, run the SQL in the repo (supabase/migrations) or see docs/LAUNCH-PHASES.md.'
-      : /NO_TOKEN|Unauthorized/i.test(raw) && r.status === 500
-        ? 'You are not signed in. Open the site builder again after signing in to admin.'
-        : raw;
+      : raw;
     throw new Error(friendly);
   }
   const ct = r.headers.get('content-type') || '';

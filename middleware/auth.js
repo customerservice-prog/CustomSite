@@ -3,6 +3,20 @@
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
 const { verifyDevToken, isDevAuthEnabled } = require('../lib/devAuth');
 
+function isBootstrapAdminEmail(email) {
+  if (!email) return false;
+  const e = String(email).trim().toLowerCase();
+  const single = String(process.env.INITIAL_ADMIN_EMAIL || '')
+    .trim()
+    .toLowerCase();
+  if (single && e === single) return true;
+  const list = String(process.env.BOOTSTRAP_ADMIN_EMAILS || '')
+    .split(/[,;]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(e);
+}
+
 async function requireAuth(req, res, next) {
   try {
     const auth = req.headers.authorization;
@@ -42,7 +56,7 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'Invalid or expired session', code: 'INVALID_TOKEN' });
     }
 
-    const { data: profile, error: pErr } = await supabase
+    let { data: profile, error: pErr } = await supabase
       .from('users')
       .select('*')
       .eq('id', user.id)
@@ -50,7 +64,39 @@ async function requireAuth(req, res, next) {
 
     if (pErr) {
       console.error(pErr);
+      const msg = String(pErr.message || '');
+      if (/does not exist|schema cache|Could not find the table/i.test(msg)) {
+        return res.status(503).json({
+          error: 'Database is not set up yet. Run supabase/migrations in the Supabase SQL editor (see docs/LAUNCH-PHASES.md).',
+          code: 'DB_NOT_READY',
+        });
+      }
       return res.status(500).json({ error: 'Profile lookup failed' });
+    }
+    if (!profile) {
+      const role = isBootstrapAdminEmail(user.email) ? 'admin' : 'client';
+      const ins = await supabase
+        .from('users')
+        .insert({
+          id: user.id,
+          email: String(user.email || '').trim().toLowerCase(),
+          role,
+          full_name: user.user_metadata?.full_name || null,
+          company: null,
+        })
+        .select()
+        .single();
+      if (ins.error) {
+        console.error('users insert', ins.error);
+        if (ins.error.code === '23505') {
+          const again = await supabase.from('users').select('*').eq('id', user.id).maybeSingle();
+          profile = again.data;
+        } else {
+          return res.status(500).json({ error: 'Could not create your account profile', code: 'NO_PROFILE' });
+        }
+      } else {
+        profile = ins.data;
+      }
     }
     if (!profile) {
       return res.status(403).json({ error: 'No portal profile for this account', code: 'NO_PROFILE' });

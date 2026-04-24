@@ -28,6 +28,12 @@ export async function api(path, options = {}) {
   } catch {
     data = { _raw: text };
   }
+  if (res.status === 403 && data && data.error === 'Admin access required') {
+    const err = new Error(data.error || 'Forbidden');
+    err.status = 403;
+    err.body = data;
+    throw err;
+  }
   if (res.status === 401 || (res.status === 500 && data && (data.code === 'NO_TOKEN' || data.error === 'Unauthorized'))) {
     clearAuth();
     window.location.replace('/client-portal.html?agency=1');
