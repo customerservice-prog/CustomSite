@@ -95,6 +95,49 @@
   margin: 0 auto;
 }
 
+/* Pain-first headline (conversion) */
+.hero-pain-h1 {
+  font-size: clamp(1.65rem, 4.2vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: #fff;
+  margin: 0 0 1rem;
+  letter-spacing: -0.03em;
+  max-width: 22em;
+  margin-left: auto;
+  margin-right: auto;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.1s both;
+}
+.hero-pain-h1__fix {
+  display: block;
+  margin-top: 0.2em;
+  background: linear-gradient(135deg, #a5b4fc, #22d3ee);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1.05em;
+}
+
+.hero-founder {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: #94a3b8;
+  max-width: 38rem;
+  margin: 0 auto 1.5rem;
+  text-align: center;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.35s both;
+}
+.hero-founder a {
+  color: #7dd3fc;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.hero-founder a:hover {
+  color: #e0f2fe;
+}
+
 /* Eyebrow */
 .hero-eyebrow {
   font-size: 12px;
@@ -143,11 +186,11 @@
 .hero-subtext {
   font-size: 18px;
   color: #94a3b8;
-  margin: 16px auto 32px;
-  max-width: 540px;
-  line-height: 1.6;
+  margin: 0 auto 1rem;
+  max-width: 36rem;
+  line-height: 1.65;
   opacity: 0;
-  animation: heroFadeUp 0.6s ease 0.5s both;
+  animation: heroFadeUp 0.6s ease 0.28s both;
 }
 
 /* CTA — namespaced to avoid clashing with global .btn */
@@ -446,6 +489,31 @@
 }
 @media (max-width: 600px) {
   .hero-immersive .hero-ctas { flex-direction: column; align-items: center; }
-  .hero-headline { font-size: 36px; }
+  .hero-pain-h1 { font-size: 1.45rem; }
   .hero-immersive { padding: 100px 16px 64px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-bg-gradient,
+  .hero-dot-grid,
+  .hero-pain-h1,
+  .hero-founder,
+  .hero-subtext,
+  .hero-immersive .hero-ctas,
+  .macbook-wrap,
+  .hero-trust-bar,
+  .floating-card,
+  .screen-label-dot,
+  .typewriter-cursor {
+    animation: none !important;
+  }
+  .hero-pain-h1,
+  .hero-founder,
+  .hero-subtext,
+  .hero-immersive .hero-ctas,
+  .macbook-wrap,
+  .hero-trust-bar {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

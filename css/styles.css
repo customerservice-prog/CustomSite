@@ -613,6 +613,19 @@ img {
   color: rgba(255,255,255,0.5);
 }
 
+.price-cta-sub {
+  font-size: 0.8rem;
+  text-align: center;
+  margin: 0.65rem 0 0;
+}
+.price-cta-sub a {
+  color: var(--primary);
+  font-weight: 600;
+}
+.pricing-preview .price-card .price-cta-sub a {
+  color: var(--primary);
+}
+
 .price-card-enterprise {
   border: 2px solid transparent;
   color: #f1f5f9;

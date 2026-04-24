@@ -4,6 +4,9 @@
 
 'use strict';
 
+/** 20-min intro — replace with your Calendly event URL (one place updates all "Book a call" links). */
+const CALENDLY_20_MIN = 'https://calendly.com/REPLACE-ME-20min';
+
 /** Top-right auto-dismiss toasts (replaces alert() on public pages). */
 function showPageToast(message, type) {
   const kind = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
@@ -120,7 +123,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
    * opacity:0 forever if the user doesn’t scroll them into the negative root margin,
    * which reads as a huge “blank” band (see index “How a build unfolds”). */
   const elements = document.querySelectorAll(
-    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .about-founder, .tech-strip__item, .industry-pills, .tech-strip__head'
+    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .about-founder, .industry-pills, .process-timeline__item, .why-not-fiverr, .results-splash__list li'
   );
 
   if (!elements.length || !window.IntersectionObserver) return;
@@ -591,4 +594,17 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   }, { threshold: 0.4 });
 
   sections.forEach(section => observer.observe(section));
+})();
+
+// ============================================
+// Calendly — links with data-book-call="1" get the URL above
+// ============================================
+(function initCalendly20Links() {
+  const u =
+    (typeof window !== 'undefined' && window.CALENDLY_20_MIN) || CALENDLY_20_MIN;
+  document.querySelectorAll('a[data-book-call="1"]').forEach((a) => {
+    a.setAttribute('href', u);
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener noreferrer');
+  });
 })();

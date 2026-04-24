@@ -1,43 +1,6 @@
 'use strict';
 
 (function initImmersiveHero() {
-  const typeEl = document.getElementById('typewriter');
-  const phrases = [
-    'Actually Converts',
-    'Loads in Under 2s',
-    'Wins Local Searches',
-    'Looks Like a Million',
-    'Launches in 3 Weeks',
-  ];
-
-  if (typeEl) {
-    let phraseIndex = 0;
-    let charIndex = 0;
-    let deleting = false;
-
-    function typeWriter() {
-      const current = phrases[phraseIndex];
-
-      if (!deleting) {
-        typeEl.textContent = current.slice(0, ++charIndex);
-        if (charIndex === current.length) {
-          deleting = true;
-          return setTimeout(typeWriter, 2200);
-        }
-      } else {
-        typeEl.textContent = current.slice(0, --charIndex);
-        if (charIndex === 0) {
-          deleting = false;
-          phraseIndex = (phraseIndex + 1) % phrases.length;
-        }
-      }
-
-      setTimeout(typeWriter, deleting ? 45 : 85);
-    }
-
-    typeWriter();
-  }
-
   const industryNames = [
     'HVAC & Home Services',
     'Party & Event Rentals',
