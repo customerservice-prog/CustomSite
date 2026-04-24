@@ -1611,7 +1611,8 @@ img {
   box-shadow: var(--shadow-md);
   letter-spacing: -0.02em;
 }
-.about-founder__media--placeholder {
+.about-founder__media--placeholder,
+.about-founder__media {
   margin: 0;
   text-align: center;
 }
@@ -1623,6 +1624,19 @@ img {
 .about-founder__avatar--soon .about-founder__cam {
   display: block;
   opacity: 0.95;
+}
+.about-founder__avatar--sil {
+  background: transparent;
+  color: transparent;
+  font-size: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.about-founder__sil {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .about-founder__figcap {
   margin: 0.4rem 0 0;

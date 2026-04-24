@@ -478,14 +478,31 @@
 
   <section class="section" id="about" style="background: var(--light)">
     <div class="container about-founder">
-      <figure class="about-founder__media about-founder__media--placeholder" aria-label="Founder photo placeholder">
-        <div class="about-founder__avatar about-founder__avatar--soon">
-          <svg class="about-founder__cam" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-            <circle cx="12" cy="13" r="3.5" />
+      <figure class="about-founder__media" aria-label="CustomSite team">
+        <div class="about-founder__avatar about-founder__avatar--sil" aria-hidden="true">
+          <svg class="about-founder__sil" viewBox="0 0 100 100" width="100%" height="100%" focusable="false" aria-hidden="true">
+            <defs>
+              <linearGradient id="about-bg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#1e3a5f" />
+                <stop offset="1" stop-color="#0f172a" />
+              </linearGradient>
+              <linearGradient id="about-suit" x1="0.5" y1="0" x2="0.5" y2="1">
+                <stop offset="0" stop-color="#334155" />
+                <stop offset="1" stop-color="#0c1222" />
+              </linearGradient>
+            </defs>
+            <rect width="100" height="100" rx="50" fill="url(#about-bg)" />
+            <circle cx="50" cy="34" r="18" fill="#0f172a" />
+            <path d="M 32 32 Q 50 20 68 32 L 68 38 Q 50 32 32 38 Z" fill="#1e293b" />
+            <path
+              d="M 20 100 L 20 78 Q 50 60 80 78 L 80 100 L 20 100 Z"
+              fill="url(#about-suit)"
+            />
+            <path d="M 46 100 L 46 64 L 54 64 L 54 100" fill="#0a0f1a" opacity="0.4" />
+            <rect x="42" y="56" width="16" height="4" rx="1" fill="#0f172a" />
           </svg>
         </div>
-        <figcaption class="about-founder__figcap">Photo coming soon</figcaption>
+        <figcaption class="about-founder__figcap">CustomSite team</figcaption>
       </figure>
       <div class="about-founder__text">
         <span class="section-tag">About</span>

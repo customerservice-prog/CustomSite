@@ -139,6 +139,13 @@
           <p class="sb-mode-lead">Pick a starter, then add sections. Switch to <strong>Pro</strong> for code editing.</p>
           <h4 class="sb-lbl" style="margin: 0 0 0.5rem">Starter templates</h4>
           <div id="sbTplModeGrid" class="sb-tpl-mode-grid"></div>
+          <div id="sbTplSections" class="sb-tpl-sections" hidden>
+            <h4 class="sb-lbl" style="margin: 0.75rem 0 0.35rem">Sections in this page</h4>
+            <p class="sb-muted" style="margin: 0 0 0.4rem; font-size: 0.78rem">
+              After you apply a starter, click a row to scroll the preview to that part (when the template includes it).
+            </p>
+            <ul id="sbTplSectionList" class="sb-tpl-sec-list"></ul>
+          </div>
           <h4 class="sb-lbl" style="margin: 1rem 0 0.5rem">Quick sections (append to <code>index.html</code>)</h4>
           <ul class="sb-tpl-snip" id="sbTplSnippets">
             <li class="sb-muted" style="list-style: none; padding: 0">Load a project to enable sections.</li>
@@ -151,9 +158,21 @@
             Applies to the live preview only until you add styles in Pro.
           </p>
           <textarea id="sbVibeInput" class="sb-inp" rows="5" placeholder="e.g. dark blue rounded"></textarea>
+          <div class="sb-vibe-chips" role="group" aria-label="Quick style presets">
+            <button type="button" class="sb-vibe-chip" data-vibe-text="dark mode blue rounded sans" title="Pre-fill: dark, blue, rounded">Dark mode</button>
+            <button type="button" class="sb-vibe-chip" data-vibe-text="light rounded section">Rounded corners</button>
+            <button type="button" class="sb-vibe-chip" data-vibe-text="bold modern sans">Bold type</button>
+            <button type="button" class="sb-vibe-chip" data-vibe-text="gold light rounded">Gold accents</button>
+            <button type="button" class="sb-vibe-chip" data-vibe-text="light large button rounded">Large buttons</button>
+          </div>
           <div class="sb-vibe-actions" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap">
             <button type="button" class="sb-btn sb-btn-primary" id="sbVibeApply">Apply to preview</button>
             <button type="button" class="sb-btn" id="sbVibeClear" title="Remove vibe overlay from preview">Clear</button>
+          </div>
+          <p id="sbVibeOk" class="sb-vibe-ok" hidden role="status"></p>
+          <div class="sb-vibe-histwrap">
+            <h4 class="sb-lbl" style="margin: 0.75rem 0 0.35rem; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em">Last applied (up to 5)</h4>
+            <ul id="sbVibeHistory" class="sb-vibe-history" aria-label="Vibe change history"></ul>
           </div>
         </div>
         <div id="sbImagePreview" aria-hidden="true" style="position: absolute; inset: 0; z-index: 2; pointer-events: none">

@@ -132,18 +132,21 @@
     .btn-outline { background: transparent; color: #fff !important; border: 2px solid #fff; }
     .fr-hero {
       min-height: 600px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
+      flex-wrap: wrap;
       max-width: 1280px;
       margin: 0 auto;
+      align-items: stretch;
     }
     @media (max-width: 960px) {
-      .fr-hero { grid-template-columns: 1fr; min-height: auto; }
+      .fr-hero { min-height: auto; }
     }
     .fr-hero__left {
+      flex: 1 1 55%;
+      min-width: 0;
       background: var(--purple);
       color: #fff;
-      padding: 3rem 2rem 5rem 2rem;
+      padding: 3rem 2rem 4rem 2rem;
       position: relative;
       overflow: hidden;
     }
@@ -158,8 +161,10 @@
     .fr-hero__left p { font-size: 1.05rem; color: #e9d5ff; max-width: 32rem; margin: 0 0 1.5rem; }
     .fr-hero__ctas { display: flex; flex-wrap: wrap; gap: 0.6rem; }
     .fr-hero__right {
-      background: linear-gradient(135deg, #fde68a 0%, #f97316 100%);
-      padding: 2rem;
+      flex: 1 1 45%;
+      min-width: 280px;
+      background: var(--purple);
+      padding: 2rem 1.75rem 2.5rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -167,34 +172,44 @@
     .fr-mini-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
+      gap: 0.6rem;
     }
     .fr-mini {
-      background: rgba(255,255,255,0.9);
-      border-radius: 12px;
-      padding: 0.85rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      padding: 0.65rem 0.6rem 0.75rem;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+      cursor: pointer;
+      text-align: center;
+      min-height: 0;
     }
-    .fr-mini .ph { height: 3.2rem; border-radius: 8px; margin-bottom: 0.4rem; }
-    .fr-mini h4 { margin: 0; font-size: 0.85rem; font-weight: 700; color: #1e1b4b; }
-    .fr-mini .from { font-size: 0.7rem; color: #64748b; margin-top: 0.2rem; }
+    .fr-mini h4 { margin: 0.35rem 0 0.15rem; font-size: 0.78rem; font-weight: 800; color: #fff; line-height: 1.2; }
+    .fr-mini .from { font-size: 0.7rem; font-weight: 700; color: var(--gold); margin-top: 0.2rem; }
     .fr-trustbar {
-      max-width: 1280px;
-      margin: -2.2rem auto 0;
+      max-width: 100%;
+      margin: 0;
+      min-height: 40px;
       position: relative;
       z-index: 2;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
-      padding: 0.85rem 1.5rem;
+      background: #4c1d95;
+      color: #fff;
+      padding: 0.35rem 0.5rem;
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       justify-content: center;
-      gap: 0.75rem 1.5rem;
-      font-size: 0.8rem;
+      gap: 0.25rem 0;
+      font-size: 0.72rem;
       font-weight: 600;
-      color: #334155;
     }
+    .fr-trustbar__i {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.15rem 0.6rem;
+      border-right: 1px solid rgba(255,255,255,0.28);
+    }
+    .fr-trustbar__i:last-child { border-right: 0; }
+    .fr-trustbar__i strong { font-weight: 800; }
     .section { max-width: 1200px; margin: 0 auto; padding: 3.5rem 1.25rem; }
     .section h2 { font-size: 1.75rem; text-align: center; margin: 0 0 1.75rem; color: var(--purple); }
     .fr-catgrid {
@@ -261,7 +276,17 @@
       transition: transform 0.25s;
       display: flex; flex-direction: column;
     }
+    .fr-drawer--prod { z-index: 610; }
+    .fr-drawer--cart { z-index: 600; }
     .fr-drawer.is-open { transform: translateX(0); }
+    .fr-prod-cat { font-size: 0.75rem; color: #64748b; margin: 0.25rem 0 0.5rem; }
+    .fr-prod-line {
+      display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
+      gap: 0.5rem; border-bottom: 1px solid #e2e8f0; padding: 0.6rem 0; font-size: 0.88rem;
+    }
+    .fr-prod-line p { margin: 0.15rem 0 0; font-size: 0.78rem; color: #64748b; max-width: 16rem; }
+    .fr-prod-line .pname { font-weight: 700; color: #0f172a; }
+    .fr-prod-line .pprice { font-weight: 800; color: #4c1d95; }
     .fr-drawer-h { padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     .fr-drawer-b { flex: 1; overflow: auto; padding: 1rem; }
     .fr-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 550; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
@@ -324,35 +349,31 @@
       </div>
     </div>
     <div class="fr-hero__right">
-      <div class="fr-mini-grid">
-        <div class="fr-mini" data-cat="Bounce house" data-price="from $189">
-          <div class="ph" style="background:linear-gradient(135deg,#7c3aed,#4c1d95)"></div>
+      <div class="fr-mini-grid" id="frMiniGrid" aria-label="Category highlights">
+        <div class="fr-mini" data-cat-idx="0" style="background:linear-gradient(160deg,#7c3aed 0%,#4c1d95 100%)">
           <h4>Bounce Houses</h4>
-          <div class="from">From $189</div>
+          <div class="from">From $149</div>
         </div>
-        <div class="fr-mini" data-cat="Tent" data-price="from $249">
-          <div class="ph" style="background:linear-gradient(135deg,#059669,#0f766e)"></div>
+        <div class="fr-mini" data-cat-idx="1" style="background:linear-gradient(160deg,#059669 0%,#0f766e 100%)">
           <h4>Tents</h4>
           <div class="from">From $249</div>
         </div>
-        <div class="fr-mini" data-cat="Tables &amp; chairs" data-price="from $99">
-          <div class="ph" style="background:linear-gradient(135deg,#1d4ed8,#1e3a5f)"></div>
+        <div class="fr-mini" data-cat-idx="2" style="background:linear-gradient(160deg,#1d4ed8 0%,#1e3a5f 100%)">
           <h4>Tables &amp; Chairs</h4>
           <div class="from">From $99</div>
         </div>
-        <div class="fr-mini" data-cat="Concessions" data-price="from $129">
-          <div class="ph" style="background:linear-gradient(135deg,#dc2626,#b91c1c)"></div>
+        <div class="fr-mini" data-cat-idx="5" style="background:linear-gradient(160deg,#dc2626 0%,#991b1b 100%)">
           <h4>Concessions</h4>
-          <div class="from">From $129</div>
+          <div class="from">From $179</div>
         </div>
       </div>
     </div>
   </section>
-  <div class="fr-trustbar" role="region" aria-label="Highlights">
-    <span>⭐ 4.9 Google Rating</span>
-    <span>🚚 Free Delivery in 30mi</span>
-    <span>🧼 Professionally Cleaned</span>
-    <span>📅 Easy Online Booking</span>
+  <div class="fr-trustbar" role="region" aria-label="Trust and service highlights">
+    <span class="fr-trustbar__i"><span aria-hidden="true">⭐</span> <strong>4.9</strong> Google Rating</span>
+    <span class="fr-trustbar__i"><span aria-hidden="true">🚚</span> <strong>Free Delivery</strong> in 30mi</span>
+    <span class="fr-trustbar__i"><span aria-hidden="true">🧼</span> <strong>Professionally</strong> Cleaned</span>
+    <span class="fr-trustbar__i"><span aria-hidden="true">📅</span> <strong>Easy</strong> Online Booking</span>
   </div>
 
   <section class="section" id="categories">
@@ -464,8 +485,19 @@
     <div class="fr-bottom">© 2026 Festivé Party Rentals (demo) · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
   </footer>
 
+  <div class="fr-drawer fr-drawer--prod" id="frProdDrawer" role="dialog" aria-labelledby="frProdTitle" aria-hidden="true">
+    <div class="fr-drawer-h">
+      <h2 id="frProdTitle" style="margin:0;font-size:1.1rem">Category</h2>
+      <button type="button" class="fr-cart" id="frCloseProd" style="color:#64748b" aria-label="Close">✕</button>
+    </div>
+    <div class="fr-drawer-b" id="frProdBody">
+      <p class="fr-prod-cat" id="frProdSub"></p>
+      <div id="frProdList"></div>
+    </div>
+  </div>
+
   <div class="fr-overlay" id="frOverlay" aria-hidden="true"></div>
-  <div class="fr-drawer" id="frDrawer" role="dialog" aria-labelledby="frQuoteTitle" aria-hidden="true">
+  <div class="fr-drawer fr-drawer--cart" id="frDrawer" role="dialog" aria-labelledby="frQuoteTitle" aria-hidden="true">
     <div class="fr-drawer-h">
       <h2 id="frQuoteTitle" style="margin:0;font-size:1.1rem">Your quote</h2>
       <button type="button" class="fr-cart" id="frCloseDrawer" style="color:#64748b" aria-label="Close">✕</button>
@@ -479,15 +511,11 @@
         <label>Email<input name="e" type="email" required /></label>
         <label>Phone<input name="p" type="tel" required /></label>
         <label>Event address<textarea name="a" rows="2" required style="width:100%"></textarea></label>
-        <label>Event dates<input name="d" placeholder="e.g. June 14–15" required /></label>
+        <label>Event date<input name="d" type="date" required /></label>
         <button type="submit" class="btn-gold" style="width:100%;margin-top:0.5rem">Request Quote</button>
       </form>
       <p id="frSuccess" style="display:none;color:#15803d;font-weight:600;margin-top:0.5rem">Thanks — we will reach out within one business day.</p>
     </div>
-  </div>
-
-  <div class="fr-modal" id="frModal" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="fr-modal__box" id="frModalBox"></div>
   </div>
 
   <script>
@@ -507,12 +535,48 @@
       { n: 'Photobooth', c: 'linear-gradient(135deg,#f472b6,#db2777)' },
       { n: 'Package Deals', c: 'linear-gradient(135deg,#fbbf24,#d97706)' }
     ];
+    var SAMPLE = {
+      0: [
+        { name: 'Classic Castle Bounce', desc: '15×15 ft, ages 3–10, cleaned & insured', p: 149 },
+        { name: 'Princess Palace Combo', desc: 'Slide + bounce, ages 3–8', p: 219 },
+        { name: 'Sports Arena Bounce', desc: 'Basketball hoop inside', p: 199 },
+        { name: 'Toddler Farm Play', desc: 'Soft walls, ages 1–3', p: 119 }
+      ],
+      1: [
+        { name: '20×20 High Peak Tent', desc: 'White vinyl, staked on grass', p: 249 },
+        { name: '40×40 Frame Tent', desc: 'Clear sides optional; crew setup', p: 899 },
+        { name: '10×10 Pop-Up Canopy', desc: 'Quick events & park setups', p: 89 }
+      ],
+      2: [
+        { name: 'Round 60" + 8 folding chairs', desc: 'Poly folding, easy layout', p: 99 },
+        { name: '6 ft banquet tables (10 pack)', desc: 'Seats 8 per table', p: 129 },
+        { name: 'Kids seating bundle', desc: 'Short tables + stack chairs', p: 149 }
+      ],
+      3: [
+        { name: 'Oak plank dance floor 16×16', desc: 'Polished, subfloor on request', p: 179 },
+        { name: 'White vinyl overlay', desc: 'Wedding-ready finish', p: 129 },
+        { name: 'LED border kit', desc: 'Perimeter lighting', p: 89 }
+      ],
+      5: [
+        { name: 'Cotton candy cart', desc: 'Supplies for ~50 servings', p: 179 },
+        { name: 'Popcorn machine', desc: 'Cart + warmer', p: 129 },
+        { name: 'Hot dog roller', desc: 'Sneeze guard included', p: 159 }
+      ]
+    };
     var grid = document.getElementById('frCatGrid');
     var gall = document.getElementById('frGall');
-    var el = { drawer: document.getElementById('frDrawer'), overlay: document.getElementById('frOverlay'), list: document.getElementById('frList'),
-      sub: document.getElementById('frSub'), n: document.getElementById('frCartN'), modal: document.getElementById('frModal'),
-      modalBox: document.getElementById('frModalBox') };
-    var gLabels = ['Birthday party','Wedding reception','Corporate event','Graduation','School event','Festival block','Church fair','Block party'];
+    var elProd = document.getElementById('frProdDrawer');
+    var elProdList = document.getElementById('frProdList');
+    var elProdTitle = document.getElementById('frProdTitle');
+    var elProdSub = document.getElementById('frProdSub');
+    var el = {
+      drawer: document.getElementById('frDrawer'),
+      overlay: document.getElementById('frOverlay'),
+      list: document.getElementById('frList'),
+      sub: document.getElementById('frSub'),
+      n: document.getElementById('frCartN')
+    };
+    var gLabels = ['Birthday party', 'Wedding reception', 'Corporate event', 'Graduation', 'School event', 'Festival block', 'Church fair', 'Block party'];
     gLabels.forEach(function (g, i) {
       var d = document.createElement('div');
       d.style.background = 'linear-gradient(135deg,hsl(' + (i * 35 % 360) + ',60%,45%),hsl(' + (i * 35 + 40) % 360 + ',50%,35%))';
@@ -527,13 +591,68 @@
       grid.appendChild(div);
     });
     function priceFrom(i) { return 99 + (i * 17) % 200; }
+    function getProducts(i) {
+      if (SAMPLE[i]) return SAMPLE[i];
+      var c = cats[i] && cats[i].n;
+      var p0 = priceFrom(i);
+      return [
+        { name: (c || 'Rental') + ' — standard', desc: 'Inventory confirmed at booking; delivery in zone', p: p0 },
+        { name: (c || 'Rental') + ' — premium', desc: 'Larger or upgraded when available', p: p0 + 75 },
+        { name: (c || 'Rental') + ' — add-on', desc: 'Matching accessories on request', p: 49 }
+      ];
+    }
     function render() {
-      el.list.innerHTML = cart.map(function (l, j) {
-        return '<p style="display:flex;justify-content:space-between;gap:0.5rem;font-size:0.9rem"><span>' + l.name + ' ×' + l.q + '</span><span>$' + (l.p * l.q) + '</span></p>';
+      el.list.innerHTML = cart.map(function (l) {
+        return '<p style="display:flex;justify-content:space-between;gap:0.5rem;font-size:0.9rem"><span>' + l.name + ' ×' + l.q + '</span><span>$' + l.p * l.q + '</span></p>';
       }).join('') || '<p style="color:#94a3b8;font-size:0.9rem">Add items from a category to build your quote.</p>';
       var t = cart.reduce(function (a, b) { return a + b.p * b.q; }, 0);
       el.sub.textContent = t ? '$' + t : '$0';
       el.n.textContent = String(cart.reduce(function (a, b) { return a + b.q; }, 0));
+    }
+    function closeProduct() {
+      elProd.classList.remove('is-open');
+      elProd.setAttribute('aria-hidden', 'true');
+    }
+    function openProductDrawer(i) {
+      var cat = cats[i];
+      if (!cat) return;
+      var prods = getProducts(i);
+      elProdTitle.textContent = cat.n;
+      elProdSub.textContent = 'Rental for your event — final pricing on your quote. Quantities for demo only.';
+      elProdList.innerHTML = prods
+        .map(function (row, j) {
+          return (
+            '<div class="fr-prod-line" data-pi="' +
+            j +
+            '"><div><div class="pname"></div><p></p><div class="qty" style="margin-top:0.4rem"><button type="button" class="pdec">-</button><span class="pqv">1</span><button type="button" class="pinc">+</button></div></div><div class="pprice" style="text-align:right">$' +
+            row.p +
+            ' <span style="color:#94a3b8;font-size:0.75rem">/ day</span><br><button type="button" class="btn-gold" style="margin-top:0.45rem" data-add-prod>Add to quote</button></div></div>'
+          );
+        })
+        .join('');
+      prods.forEach(function (row, j) {
+        var line = elProdList.querySelectorAll('.fr-prod-line')[j];
+        line.querySelector('.pname').textContent = row.name;
+        line.querySelector('p').textContent = row.desc;
+        var qv = 1;
+        var qText = line.querySelector('.pqv');
+        line.querySelector('.pinc').onclick = function () { qv++; qText.textContent = String(qv); };
+        line.querySelector('.pdec').onclick = function () { qv = Math.max(1, qv - 1); qText.textContent = String(qv); };
+        line.querySelector('[data-add-prod]').onclick = function () {
+          addLine(row.name, row.p, qv);
+          closeProduct();
+        };
+      });
+      el.drawer.classList.remove('is-open');
+      el.drawer.setAttribute('aria-hidden', 'true');
+      elProd.classList.add('is-open');
+      elProd.setAttribute('aria-hidden', 'false');
+      el.overlay.classList.add('is-open');
+    }
+    function closeAllDrawers() {
+      el.drawer.classList.remove('is-open');
+      el.drawer.setAttribute('aria-hidden', 'true');
+      closeProduct();
     }
     function addLine(name, p, q) {
       q = q || 1;
@@ -541,32 +660,31 @@
       if (f) f.q += q; else cart.push({ name: name, p: p, q: q });
       render();
       el.drawer.classList.add('is-open');
-      el.overlay.classList.add('is-open');
       el.drawer.setAttribute('aria-hidden', 'false');
+      el.overlay.classList.add('is-open');
     }
     document.getElementById('frCatGrid').addEventListener('click', function (e) {
       var a = e.target.closest('a[data-open]');
       if (!a) return;
       e.preventDefault();
-      var i = +a.getAttribute('data-open');
-      var p = priceFrom(i);
-      var name = cats[i].n;
-      el.modalBox.innerHTML = '<h3 style="margin:0 0 0.5rem">' + name + '</h3><p style="color:#64748b;font-size:0.9rem">Rental for your event. Inventory confirmed at booking.</p><p><strong>From $' + p + ' / day</strong></p><div class="qty" style="margin:0.75rem 0"><button type="button" id="mq">-</button><span id="mqv">1</span><button type="button" id="mp">+</button></div><label>Start <input type="date" id="d1" /></label><label>End <input type="date" id="d2" style="margin-top:0.4rem" /></label><button type="button" class="btn-gold" style="width:100%;margin-top:0.75rem" id="madd">Add to Quote</button><button type="button" class="fr-cart" style="width:100%;margin-top:0.4rem" id="mcl">Close</button>';
-      el.modal.classList.add('is-open');
-      el.modal.setAttribute('aria-hidden', 'false');
-      var qv = 1;
-      el.modalBox.querySelector('#madd').onclick = function () { addLine(name, p, qv); el.modal.classList.remove('is-open'); el.modal.setAttribute('aria-hidden', 'true'); };
-      el.modalBox.querySelector('#mcl').onclick = function () { el.modal.classList.remove('is-open'); el.modal.setAttribute('aria-hidden', 'true'); };
-      el.modalBox.querySelector('#mp').onclick = function () { qv++; el.modalBox.querySelector('#mqv').textContent = String(qv); };
-      el.modalBox.querySelector('#mq').onclick = function () { qv = Math.max(1, qv - 1); el.modalBox.querySelector('#mqv').textContent = String(qv); };
+      openProductDrawer(+a.getAttribute('data-open'));
+    });
+    document.getElementById('frMiniGrid').addEventListener('click', function (e) {
+      var m = e.target.closest('[data-cat-idx]');
+      if (!m) return;
+      openProductDrawer(+m.getAttribute('data-cat-idx'));
     });
     el.overlay.addEventListener('click', function () {
-      el.drawer.classList.remove('is-open');
-      el.overlay.classList.remove('is-open');
-      el.drawer.setAttribute('aria-hidden', 'true');
+      closeAllDrawers();
     });
-    document.getElementById('frCloseDrawer').addEventListener('click', el.overlay.click.bind(el.overlay));
+    document.getElementById('frCloseProd').addEventListener('click', function () {
+      closeAllDrawers();
+    });
+    document.getElementById('frCloseDrawer').addEventListener('click', function () {
+      closeAllDrawers();
+    });
     document.getElementById('frCartBtn').addEventListener('click', function () {
+      closeProduct();
       el.drawer.classList.add('is-open');
       el.overlay.classList.add('is-open');
       el.drawer.setAttribute('aria-hidden', 'false');
@@ -575,18 +693,15 @@
       b.addEventListener('click', function () {
         var t = b.getAttribute('data-add-pack').split('|');
         addLine(t[0], +t[1], 1);
+        closeProduct();
       });
     });
     document.getElementById('frReqForm').addEventListener('submit', function (e) {
       e.preventDefault();
       document.getElementById('frSuccess').style.display = 'block';
     });
-    document.querySelectorAll('.fr-mini').forEach(function (m) {
-      m.addEventListener('click', function () { addLine(m.getAttribute('data-cat') + ' (starter)', 99, 1); });
-    });
     var nav = document.getElementById('frNav');
     window.addEventListener('scroll', function () { nav.classList.toggle('is-scrolled', window.scrollY > 12); });
-    el.modal.addEventListener('click', function (e) { if (e.target === el.modal) { el.modal.classList.remove('is-open'); el.modal.setAttribute('aria-hidden', 'true'); } });
   })();
   </script>
 </body>

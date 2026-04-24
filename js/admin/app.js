@@ -196,7 +196,7 @@ function renderDashboard() {
     !state.leads.length && !state.clients.length && !state.projects.length && !(state.invoices && state.invoices.length);
   const emptyHelp = noDataYet
     ? `<div class="adm-diag" role="status">
-  <div><strong>Dashboard is empty</strong> — that is normal for a new project. Add a lead under <strong>Leads</strong> to see activity here. If you expected data and see a <strong>Database</strong> banner above, run the schema in <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a> and confirm this app’s Supabase env matches your project.</div>
+  <div>Your dashboard is empty — add your first lead under the <strong>Leads</strong> tab to get started.</div>
 </div>`
     : '';
 

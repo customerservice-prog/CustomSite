@@ -80,6 +80,126 @@ const TEMPLATE_THUMB = {
   restaurant: 'linear-gradient(135deg,#78350f,#b45309)',
 };
 
+const TEMPLATE_SECTIONS = {
+  basic: ['HTML shell', 'Starter styles & script'],
+  business: ['Navbar', 'Hero', 'About', 'Services', 'Contact / footer'],
+  ecommerce: ['Header', 'Hero', 'Product / pricing', 'CTA & footer'],
+  portfolio: ['Navbar', 'Hero', 'Work grid', 'About & contact'],
+  restaurant: ['Navbar', 'Hero / hours', 'Menu', 'Location & contact'],
+};
+
+/** Renders a ~80×60 wireframe of nav + main layout blocks. */
+function getTemplateWireframeHtml(id) {
+  const nav = (y, c) =>
+    `<rect x="2" y="${y}" width="76" height="7" fill="${c}" opacity=".88" rx="1"/>`;
+  const b = (x, y, w, h, c, o = '0.7') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}" opacity="${o}" rx="1"/>`;
+  const bodies = {
+    basic: () =>
+      nav(2, '#c7d2fe') +
+      b(2, 12, 36, 22, '#6366f1', '0.5') +
+      b(40, 12, 36, 22, '#818cf8', '0.4') +
+      b(2, 36, 24, 14, '#94a3b8', '0.45') +
+      b(28, 36, 24, 14, '#94a3b8', '0.4') +
+      b(54, 36, 24, 14, '#94a3b8', '0.4') +
+      b(2, 52, 76, 6, '#475569', '0.35'),
+    business: () =>
+      nav(2, '#1e293b') +
+      b(2, 12, 76, 18, '#334155', '0.6') +
+      b(2, 32, 36, 26, '#64748b', '0.5') +
+      b(40, 32, 36, 26, '#64748b', '0.45') +
+      b(2, 52, 76, 6, '#475569', '0.4'),
+    ecommerce: () =>
+      nav(2, '#0f172a') +
+      b(2, 12, 48, 28, '#b45309', '0.5') +
+      b(52, 12, 26, 12, '#ea580c', '0.5') +
+      b(2, 42, 24, 16, '#78716c', '0.5') +
+      b(28, 42, 24, 16, '#78716c', '0.45') +
+      b(54, 42, 24, 16, '#78716c', '0.4') +
+      b(2, 52, 76, 6, '#44403c', '0.5'),
+    portfolio: () =>
+      nav(2, '#292524') +
+      b(2, 12, 76, 16, '#57534e', '0.55') +
+      b(2, 30, 23, 18, '#78716c', '0.5') +
+      b(28, 30, 23, 18, '#78716c', '0.45') +
+      b(54, 30, 23, 18, '#78716c', '0.4') +
+      b(2, 50, 36, 8, '#44403c', '0.4') +
+      b(2, 52, 76, 6, '#292524', '0.5'),
+    restaurant: () =>
+      nav(2, '#431407') +
+      b(2, 12, 50, 24, '#9a3412', '0.5') +
+      b(54, 12, 24, 24, '#b45309', '0.5') +
+      b(2, 38, 76, 12, '#a16207', '0.4') +
+      b(2, 52, 40, 6, '#78716c', '0.45') +
+      b(2, 52, 76, 6, '#431407', '0.45'),
+  };
+  const inner = (bodies[id] || bodies.basic)();
+  return `<span class="sb-tpl-wf" style="--tpl-bg:${bg}"><svg viewBox="0 0 80 60" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" focusable="false" aria-hidden="true"><rect width="80" height="60" fill="rgba(15, 23, 42, 0.25)"/>${inner}</svg></span>`;
+}
+
+/** @type {Array<{ text: string, css: string }>} */
+let vibeChangelog = [];
+
+function setAppliedTemplateSections(tpl) {
+  const box = document.getElementById('sbTplSections');
+  const ul = document.getElementById('sbTplSectionList');
+  if (!box || !ul) return;
+  const rows = TEMPLATE_SECTIONS[tpl];
+  if (!rows || !rows.length) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  ul.replaceChildren();
+  for (const label of rows) {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sb-tpl-sec-item';
+    b.textContent = label;
+    b.addEventListener('click', () => scrollTemplateSectionInPreview(tpl, label));
+    li.appendChild(b);
+    ul.appendChild(li);
+  }
+}
+
+function scrollTemplateSectionInPreview(tpl, label) {
+  const ifr = document.getElementById('sbPreviewFrame');
+  if (!ifr) return;
+  const doc = ifr.contentDocument || (ifr.contentWindow && ifr.contentWindow.document);
+  if (!doc) return;
+  const L = (label || '').toLowerCase();
+  let el = null;
+  if (L.includes('nav')) el = doc.querySelector('header, nav, [role="navigation"], .nav, .navbar') || null;
+  else if (L.includes('hero')) el = doc.querySelector('.hero, [class*="hero"], section') || null;
+  else if (L.includes('about') || L.includes('team')) el = doc.querySelector('#about, [id*="about"], .about, section#about') || null;
+  else if (L.includes('menu')) el = doc.querySelector('#menu, [id*="menu"], .menu') || null;
+  else if (L.includes('work') || L.includes('grid') || L.includes('portfolio') || L.includes('product')) {
+    el = doc.querySelector('main section:nth-of-type(2), .grid, .products, [class*="gallery"]') || null;
+  } else if (L.includes('contact') || L.includes('footer') || L.includes('cta')) {
+    el = doc.querySelector('footer, #contact, [id*="contact"], .contact, section:last-of-type') || null;
+  } else {
+    const sections = doc.querySelectorAll('section, main > div');
+    const idx = (TEMPLATE_SECTIONS[tpl] || []).indexOf(label);
+    if (idx >= 0 && sections[idx]) el = sections[idx];
+  }
+  if (el && typeof el.scrollIntoView === 'function') {
+    try {
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    } catch {
+      el.scrollIntoView(true);
+    }
+    if (el.style) {
+      const prev = el.style.outline;
+      el.style.outline = '2px solid rgba(99, 102, 241, 0.6)';
+      setTimeout(() => {
+        el.style.outline = prev;
+      }, 1200);
+    }
+  } else {
+    toast('Open a preview with visible sections, then try again.', 'error');
+  }
+}
+
 function isImageFile(p) {
   return /\.(png|jpe?g|gif|webp|ico)$/i.test(p || '');
 }
@@ -354,7 +474,95 @@ function compileVibeCss(input) {
   } else if (/(sans|modern|clean|minimal)/.test(s)) {
     rules.push("body { font-family: system-ui, 'Segoe UI', Inter, sans-serif !important; }");
   }
+  if (/(gold|amber)\b/.test(s)) {
+    rules.push(
+      ':root { --vibe-g: #f59e0b !important; } a, .btn, button, [class*="btn"] { color: var(--vibe-g) !important; border-color: rgba(245, 158, 11, 0.8) !important; }'
+    );
+  }
+  if (/\bbold\b|bolder|heavy/.test(s)) {
+    rules.push('h1, h2, h3, h4, .headline, strong, b { font-weight: 800 !important; }');
+  }
+  if (/large.*button|big.*button|button.*large|large button/.test(s)) {
+    rules.push(
+      'button, .btn, [class*="btn"], [type="submit"] { padding: 0.75rem 1.4rem !important; font-size: 1.05rem !important; }'
+    );
+  }
   return rules.length ? rules.join('\n') : '/* Add keywords (dark, blue, rounded) or paste CSS with { } */';
+}
+
+function renderVibeHistory() {
+  const ul = document.getElementById('sbVibeHistory');
+  if (!ul) return;
+  ul.replaceChildren();
+  for (let displayIdx = 0; displayIdx < vibeChangelog.length; displayIdx++) {
+    const chronoIdx = vibeChangelog.length - 1 - displayIdx;
+    const entry = vibeChangelog[chronoIdx];
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    const short = entry.text.length > 44 ? entry.text.slice(0, 41) + '…' : entry.text;
+    span.textContent = short;
+    const u = document.createElement('button');
+    u.type = 'button';
+    u.className = 'sb-vibe-undo';
+    u.textContent = 'Undo';
+    u.setAttribute('aria-label', `Undo ${short}`);
+    u.addEventListener('click', () => undoVibeToDisplayIndex(displayIdx));
+    li.appendChild(span);
+    li.appendChild(u);
+    ul.appendChild(li);
+  }
+}
+
+function undoVibeToDisplayIndex(displayIdx) {
+  const keep = vibeChangelog.length - 1 - displayIdx;
+  vibeChangelog = keep > 0 ? vibeChangelog.slice(0, keep) : [];
+  const last = vibeChangelog[vibeChangelog.length - 1];
+  vibeCustomCss = last ? last.css : '';
+  const inp = document.getElementById('sbVibeInput');
+  if (inp) inp.value = last ? last.text : '';
+  const ok = document.getElementById('sbVibeOk');
+  if (ok) {
+    ok.hidden = true;
+  }
+  renderVibeHistory();
+  void refreshPreview();
+  if (document.getElementById('sbAutoPreview')?.checked) {
+    scheduleLivePreview();
+  }
+}
+
+function applyVibeAndRecord(text) {
+  const t = String(text || '').trim();
+  if (!t) {
+    const ok = document.getElementById('sbVibeOk');
+    if (ok) ok.hidden = true;
+    return;
+  }
+  const css = compileVibeCss(t);
+  if (css.includes('/* Add keywords') && t.length < 3) {
+    const ok = document.getElementById('sbVibeOk');
+    if (ok) {
+      ok.hidden = false;
+      ok.textContent = 'Try a few keywords (e.g. dark, rounded) or paste CSS with { }';
+      ok.className = 'sb-vibe-ok sb-vibe-ok--warn';
+    }
+    return;
+  }
+  vibeCustomCss = css;
+  vibeChangelog.push({ text: t, css });
+  if (vibeChangelog.length > 5) vibeChangelog.shift();
+  const ok = document.getElementById('sbVibeOk');
+  if (ok) {
+    ok.hidden = false;
+    ok.className = 'sb-vibe-ok';
+    const shown = t.length > 56 ? t.slice(0, 53) + '…' : t;
+    ok.textContent = `✓ Applied: ${shown} — preview updated`;
+  }
+  renderVibeHistory();
+  void refreshPreview();
+  if (document.getElementById('sbAutoPreview')?.checked) {
+    scheduleLivePreview();
+  }
 }
 
 function liveWritePreview() {
@@ -1066,7 +1274,9 @@ function populateTemplateModeUI() {
       card.className = 'sb-tpl-card sb-tpl-mode-card';
       card.setAttribute('aria-label', `Apply ${label}`);
       card.innerHTML = `
-      <div class="sb-tpl-thumb sb-tpl-thumb--${id}" style="--tpl-bg:${TEMPLATE_THUMB[id] || '#334155'}"></div>
+      <div class="sb-tpl-thumb sb-tpl-thumb--wire sb-tpl-thumb--${id}" style="--tpl-bg:${TEMPLATE_THUMB[id] || '#334155'}">${getTemplateWireframeHtml(
+        id
+      )}</div>
       <div class="sb-tpl-txt">${escapeHtml(label)}<small>Apply starter</small></div>`;
       card.addEventListener('click', () => void runTemplateInitFromMode(id));
       g.appendChild(card);
@@ -1104,6 +1314,7 @@ async function runTemplateInitFromMode(tpl) {
     toast('Starter created', 'success');
     await loadFileList();
     await activatePath('index.html', true);
+    setAppliedTemplateSections(tpl);
     refreshPreview();
   } catch (e) {
     toast(e.message, 'error');
@@ -1333,7 +1544,9 @@ function openInit() {
     card.className = 'sb-tpl-card';
     card.innerHTML = `
       <input type="radio" name="tpl" value="${id}" />
-      <div class="sb-tpl-thumb sb-tpl-thumb--${id}" style="--tpl-bg:${TEMPLATE_THUMB[id] || '#334155'}"></div>
+      <div class="sb-tpl-thumb sb-tpl-thumb--wire sb-tpl-thumb--${id}" style="--tpl-bg:${TEMPLATE_THUMB[id] || '#334155'}">${getTemplateWireframeHtml(
+        id
+      )}</div>
       <div class="sb-tpl-txt">${escapeHtml(label)}<small>Template pack</small></div>`;
     g.appendChild(card);
   }
@@ -1755,18 +1968,26 @@ async function main() {
       applyBuildMode();
     });
   });
+  document.querySelectorAll('.sb-vibe-chip[data-vibe-text]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const text = b.getAttribute('data-vibe-text') || '';
+      const inp = document.getElementById('sbVibeInput');
+      if (inp) inp.value = text;
+      applyVibeAndRecord(text);
+    });
+  });
   document.getElementById('sbVibeApply')?.addEventListener('click', () => {
     const t = document.getElementById('sbVibeInput')?.value || '';
-    vibeCustomCss = compileVibeCss(t);
-    void refreshPreview();
-    if (document.getElementById('sbAutoPreview')?.checked) {
-      scheduleLivePreview();
-    }
+    applyVibeAndRecord(t);
   });
   document.getElementById('sbVibeClear')?.addEventListener('click', () => {
     const inp = document.getElementById('sbVibeInput');
     if (inp) inp.value = '';
     vibeCustomCss = '';
+    vibeChangelog = [];
+    const ok = document.getElementById('sbVibeOk');
+    if (ok) ok.hidden = true;
+    renderVibeHistory();
     void refreshPreview();
     scheduleLivePreview();
   });
