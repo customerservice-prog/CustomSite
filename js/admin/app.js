@@ -193,7 +193,7 @@ function renderDashboard() {
     !state.leads.length && !state.clients.length && !state.projects.length && !(state.invoices && state.invoices.length);
   const emptyHelp = noDataYet
     ? `<div class="adm-diag" role="status">
-  <div><strong>Dashboard is empty.</strong> That is normal for a new project. Add a lead under <strong>Leads</strong> to see counts update. If you expected data here, check <strong>Railway</strong> for <code style="font-size:0.8em">SUPABASE_URL</code>, <code style="font-size:0.8em">SUPABASE_ANON_KEY</code>, and <code style="font-size:0.8em">SUPABASE_SERVICE_ROLE_KEY</code> (same Supabase project as your tables) and run the schema in <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a>. The contact form uses the same database.</div>
+  <div><strong>Dashboard is empty</strong> — that is normal for a new project. Add a lead under <strong>Leads</strong> to see counts update. If you expected data here, check <strong>Railway</strong> for <code style="font-size:0.8em">SUPABASE_URL</code>, <code style="font-size:0.8em">SUPABASE_ANON_KEY</code>, and <code style="font-size:0.8em">SUPABASE_SERVICE_ROLE_KEY</code> (same Supabase project as your tables) and run the schema in <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a>. The <a href="contact.html">contact form</a> uses the same database.</div>
 </div>`
     : '';
 

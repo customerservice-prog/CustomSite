@@ -69,6 +69,13 @@
 }
 .adm-header-note a { color: #4f46e5; font-weight: 600; }
 .adm-header-note a:hover { text-decoration: underline; }
+.adm-header-note code {
+  font-size: 0.8em;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 0.12em 0.4em;
+  border-radius: 0.3em;
+  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, monospace;
+}
 
 /* Cards and tables (classes used in app.js but were missing) */
 .adm-card {
