@@ -26,6 +26,11 @@ const SNIPPETS = [
   { label: 'Feature grid', html: '<div class="grid"><div class="i">1</div><div class="i">2</div><div class="i">3</div></div>\n' },
   { label: 'Footer', html: '<footer class="ft"><p>© Year · Client</p></footer>\n' },
   { label: 'Contact', html: '<form><input type="email" placeholder="Email" /><button type="button">Send</button></form>\n' },
+  { label: 'Testimonials', html: '<section class="t"><blockquote>“Great work.”</blockquote><p>— Customer</p></section>\n' },
+  { label: 'Pricing table', html: '<section class="price"><h2>Pricing</h2><div class="row"><div class="col">Starter · $X</div><div class="col">Pro · $Y</div></div></section>\n' },
+  { label: 'Team / About', html: '<section class="about"><h2>Our team</h2><p>Bio and photo placeholders.</p></section>\n' },
+  { label: 'CTA banner', html: '<section class="cta"><h2>Ready?</h2><a href="contact.html" class="btn">Get a quote</a></section>\n' },
+  { label: 'Gallery grid', html: '<div class="gallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem"><div style="aspect-ratio:1;background:#e2e8f0">1</div><div style="aspect-ratio:1;background:#e2e8f0">2</div><div style="aspect-ratio:1;background:#e2e8f0">3</div></div>\n' },
 ];
 
 let monacoI = null;
@@ -718,6 +723,110 @@ async function saveCurrent() {
   }
 }
 
+async function createProjectFromBuilder() {
+  let clientList = [];
+  try {
+    const d = await api('/api/admin/clients');
+    clientList = d.clients || [];
+  } catch {
+    toast('Could not load clients. Create a client in Admin first.', 'error');
+    return;
+  }
+  if (!clientList.length) {
+    toast('No clients yet. In Admin → Clients, create a client, then use “+ Create new project”.', 'error');
+    return;
+  }
+  const mo = document.getElementById('sbModalBg');
+  document.getElementById('sbModalTitle').textContent = 'New project';
+  const body = document.getElementById('sbModalBody');
+  body.replaceChildren();
+  const lab = document.createElement('p');
+  lab.className = 'phase-note';
+  lab.textContent = 'Creates an empty project and opens it in the builder.';
+  const sel = document.createElement('select');
+  sel.className = 'sb-inp';
+  sel.style.width = '100%';
+  sel.style.marginTop = '0.5rem';
+  for (const c of clientList) {
+    const o = document.createElement('option');
+    o.value = c.id;
+    o.textContent = `${c.email}${c.company ? ' — ' + c.company : ''}`;
+    sel.appendChild(o);
+  }
+  const nameInp = document.createElement('input');
+  nameInp.className = 'sb-inp';
+  nameInp.placeholder = 'Project name';
+  nameInp.style.marginTop = '0.5rem';
+  nameInp.style.width = '100%';
+  const row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.gap = '0.5rem';
+  row.style.marginTop = '0.75rem';
+  const go = document.createElement('button');
+  go.type = 'button';
+  go.className = 'sb-btn sb-btn-primary';
+  go.textContent = 'Create';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'sb-btn';
+  cancel.textContent = 'Cancel';
+  body.appendChild(lab);
+  body.appendChild(document.createTextNode('Client'));
+  body.appendChild(sel);
+  body.appendChild(nameInp);
+  row.appendChild(go);
+  row.appendChild(cancel);
+  body.appendChild(row);
+  function shut() {
+    mo.classList.remove('is-on');
+    mo.removeEventListener('click', onBg);
+    body.replaceChildren();
+  }
+  function onBg(e) {
+    if (e.target === mo) shut();
+  }
+  mo.addEventListener('click', onBg);
+  cancel.onclick = shut;
+  go.onclick = async () => {
+    const name = (nameInp.value || '').trim();
+    if (!name) {
+      toast('Enter a project name', 'error');
+      return;
+    }
+    go.setAttribute('aria-busy', 'true');
+    try {
+      const r = await api('/api/admin/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          client_id: sel.value,
+          name,
+          website_type: 'business',
+          status: 'discovery',
+        }),
+      });
+      const newId = r && r.project && r.project.id;
+      shut();
+      if (newId) {
+        await loadProjects();
+        const s = document.getElementById('sbProject');
+        if (s) {
+          s.value = newId;
+          await onProjectPicked(newId);
+        }
+        toast('Project created', 'success');
+      } else {
+        toast('Project created — select it from the list', 'success');
+        await loadProjects();
+      }
+    } catch (e) {
+      toast(e.message || 'Failed', 'error');
+    } finally {
+      go.removeAttribute('aria-busy');
+    }
+  };
+  mo.classList.add('is-on');
+}
+
 async function loadProjects() {
   const d = await api('/api/admin/projects');
   projects = d.projects || [];
@@ -730,14 +839,23 @@ async function loadProjects() {
     o.textContent = `${p.name} — ${(client && client.email) || ''}`;
     s.appendChild(o);
   }
+  const oNew = document.createElement('option');
+  oNew.value = '__new__';
+  oNew.textContent = '+ Create new project…';
+  s.appendChild(oNew);
+  s.onchange = async () => {
+    if (s.value === '__new__') {
+      s.value = projectId || '';
+      await createProjectFromBuilder();
+      return;
+    }
+    await onProjectPicked(s.value || null);
+  };
   const q = new URLSearchParams(location.search).get('project');
   if (q) {
     s.value = q;
     await onProjectPicked(q);
   }
-  s.addEventListener('change', async () => {
-    await onProjectPicked(s.value || null);
-  });
 }
 
 async function onProjectPicked(id) {
@@ -1003,7 +1121,7 @@ function openInit() {
     card.className = 'sb-tpl-card';
     card.innerHTML = `
       <input type="radio" name="tpl" value="${id}" />
-      <div class="sb-tpl-thumb" style="background:${TEMPLATE_THUMB[id] || '#334155'}"></div>
+      <div class="sb-tpl-thumb sb-tpl-thumb--${id}" style="--tpl-bg:${TEMPLATE_THUMB[id] || '#334155'}"></div>
       <div class="sb-tpl-txt">${escapeHtml(label)}<small>Template pack</small></div>`;
     g.appendChild(card);
   }
@@ -1066,6 +1184,15 @@ async function runDeploy(kind) {
     }
     if (r.downloadZip || r.manualUrl) {
       log.textContent += 'ZIP: ' + (r.manualUrl || r.downloadZip) + '\n';
+    }
+    if (!r.publicUrl && !r.error) {
+      const ru = getRailwayUrl();
+      if (ru) {
+        log.textContent += `Project URL (saved on project): ${ru}\n`;
+      } else {
+        log.textContent +=
+          'No public deploy URL in this run. Set Railway API token in Settings, save project Railway URLs in Admin, or use the Staging preview link in the preview panel.\n';
+      }
     }
     await loadBuilderMeta();
     refreshPreview();

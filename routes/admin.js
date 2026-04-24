@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
+const Stripe = require('stripe');
 
 const { getService } = require('../lib/supabase');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
@@ -22,6 +23,15 @@ async function logActivity(supabase, actorId, action, entityType, entityId, meta
   } catch (e) {
     console.warn('activity log', e.message);
   }
+}
+
+function getStripeClient() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  return key ? new Stripe(key) : null;
+}
+
+function publicSiteUrl() {
+  return String(process.env.PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 }
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -917,6 +927,51 @@ router.post('/invoices/:id/send', async (req, res) => {
   }
 });
 
+/**
+ * Creates a Stripe Checkout session for this invoice amount (one-time payment).
+ * Webhook checkout.session.completed marks the invoice paid when metadata.invoice_id is set.
+ */
+router.post('/invoices/:id/stripe-checkout', async (req, res) => {
+  try {
+    const stripe = getStripeClient();
+    if (!stripe) {
+      return res.status(503).json({ error: 'Stripe is not configured (set STRIPE_SECRET_KEY in the server environment)' });
+    }
+    const supabase = getService();
+    const { data: inv, error } = await supabase.from('invoices').select('*').eq('id', req.params.id).single();
+    if (error || !inv) return res.status(404).json({ error: 'Invoice not found' });
+    const amt = Number(inv.amount);
+    if (Number.isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid invoice amount' });
+    const cents = Math.round(amt * 100);
+    const base = publicSiteUrl();
+    const title = inv.description ? `Invoice — ${String(inv.description).slice(0, 72)}` : 'Invoice payment';
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: { name: title },
+            unit_amount: cents,
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: `${base}/dashboard.html?invoice_paid=1`,
+      cancel_url: `${base}/admin.html?cancelled=1`,
+      metadata: {
+        invoice_id: inv.id,
+        kind: 'invoice',
+      },
+    });
+    await logActivity(supabase, req.profile.id, 'invoice.checkout', 'invoice', inv.id, { session_id: session.id });
+    return res.json({ url: session.url, id: session.id });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.message || 'Checkout failed' });
+  }
+});
+
 router.get('/invoices', async (_req, res) => {
   try {
     const supabase = getService();
@@ -940,6 +995,35 @@ router.get('/invoices', async (_req, res) => {
         : '—',
     }));
     return res.json({ invoices: enriched });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/messages', async (_req, res) => {
+  try {
+    const supabase = getService();
+    const { data, error } = await supabase
+      .from('messages')
+      .select('id, project_id, content, created_at, sender_id')
+      .order('created_at', { ascending: false })
+      .limit(80);
+    if (error) {
+      if (String(error.message || '').includes('does not exist')) {
+        return res.json({ messages: [] });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    const rows = data || [];
+    const pids = [...new Set(rows.map((m) => m.project_id).filter(Boolean))];
+    let pmap = {};
+    if (pids.length) {
+      const { data: projects } = await supabase.from('projects').select('id, name').in('id', pids);
+      pmap = Object.fromEntries((projects || []).map((p) => [p.id, p.name]));
+    }
+    const messages = rows.map((m) => ({ ...m, project_name: pmap[m.project_id] || '—' }));
+    return res.json({ messages });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
@@ -1050,7 +1134,7 @@ router.get('/contracts', async (_req, res) => {
 
 router.post('/contracts', async (req, res) => {
   try {
-    const { client_id, project_id, title, status, file_url } = req.body || {};
+    const { client_id, project_id, title, status, file_url, body: bodyText } = req.body || {};
     if (!client_id || !title) {
       return res.status(400).json({ error: 'client_id and title are required' });
     }
@@ -1063,6 +1147,7 @@ router.post('/contracts', async (req, res) => {
         title: String(title).trim(),
         status: (status && ['draft', 'sent', 'signed', 'void'].includes(status)) ? status : 'draft',
         file_url: (file_url && String(file_url).trim()) || null,
+        body: (bodyText != null && String(bodyText).trim()) || null,
       })
       .select()
       .single();
@@ -1083,11 +1168,12 @@ router.post('/contracts', async (req, res) => {
 router.patch('/contracts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, title, file_url, signed_at, project_id } = req.body || {};
+    const { status, title, file_url, signed_at, project_id, body: bodyText } = req.body || {};
     const supabase = getService();
     const patch = {};
     if (title != null) patch.title = String(title).trim();
     if (file_url !== undefined) patch.file_url = file_url;
+    if (bodyText !== undefined) patch.body = bodyText == null ? null : String(bodyText);
     if (signed_at !== undefined) patch.signed_at = signed_at;
     if (project_id !== undefined) patch.project_id = project_id;
     if (status != null) {

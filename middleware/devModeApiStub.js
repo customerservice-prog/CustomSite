@@ -172,8 +172,17 @@ function devModeApiStub(req, res, next) {
   if (m === 'POST' && p === '/api/admin/invoices') {
     return noDb(req, res);
   }
+  if (m === 'GET' && p === '/api/admin/messages') {
+    return res.json({ messages: [] });
+  }
   if (m === 'POST' && p === '/api/admin/messages') {
     return noDb(req, res);
+  }
+  if (m === 'POST' && /^\/api\/admin\/invoices\/[^/]+\/stripe-checkout$/.test(p)) {
+    return res.status(503).json({
+      error: 'Stripe is not configured in this local demo. Set STRIPE_SECRET_KEY to generate payment links.',
+      code: 'DEV_NO_STRIPE',
+    });
   }
 
   if (m === 'POST' && p === '/api/admin/leads') {

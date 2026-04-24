@@ -640,7 +640,6 @@ img {
 }
 
 .step-icon {
-  font-size: 1.5rem;
   margin-bottom: 1rem;
   width: 3rem;
   height: 3rem;
@@ -650,8 +649,10 @@ img {
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 0.75rem;
-  font-weight: 700;
+}
+.step-icon .step-icon-svg {
+  width: 1.35rem;
+  height: 1.35rem;
 }
 
 .step-card h3 {

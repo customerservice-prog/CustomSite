@@ -13,6 +13,7 @@ const state = {
   leads: [],
   invoices: [],
   activity: [],
+  messages: [],
   contracts: [],
   timeEntries: [],
   table: {},
@@ -125,7 +126,7 @@ async function loadAll() {
   if (!getToken()) return;
   const h = { headers: { Authorization: `Bearer ${getToken()}` } };
   try {
-    const [leadsR, clientsR, projectsR, invR, actR, contrR, timeR] = await Promise.all([
+    const [leadsR, clientsR, projectsR, invR, actR, contrR, timeR, msgR] = await Promise.all([
       api('/api/admin/leads', h).catch(() => ({ leads: [] })),
       api('/api/admin/clients', h).catch(() => ({ clients: [] })),
       api('/api/admin/projects', h).catch(() => ({ projects: [] })),
@@ -133,6 +134,7 @@ async function loadAll() {
       api('/api/admin/activity', h).catch(() => ({ events: [] })),
       api('/api/admin/contracts', h).catch(() => ({ contracts: [] })),
       api('/api/admin/time-entries', h).catch(() => ({ entries: [] })),
+      api('/api/admin/messages', h).catch(() => ({ messages: [] })),
     ]);
     state.leads = leadsR.leads || [];
     state.clients = clientsR.clients || [];
@@ -141,6 +143,7 @@ async function loadAll() {
     state.activity = actR.events || [];
     state.contracts = contrR.contracts || [];
     state.timeEntries = timeR.entries || [];
+    state.messages = msgR.messages || [];
   } catch (e) {
     toast(e.message || 'Failed to load', 'error');
   }
@@ -336,7 +339,10 @@ function renderLeads() {
     sel.addEventListener('change', () => {
       const id = sel.getAttribute('data-lid');
       api(`/api/admin/leads/${id}`, { method: 'PATCH', body: JSON.stringify({ status: sel.value }) })
-        .then(() => toast('Status updated', 'success'))
+        .then(() => {
+          toast('Status updated', 'success');
+          return loadAll();
+        })
         .catch((e) => toast(e.message, 'error'));
     });
   });
@@ -444,6 +450,7 @@ function renderClients() {
               <td>${c.website ? `<a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website)}</a>` : '—'}</td>
               <td>
                 <button type="button" class="btn btn-sm btn-outline" data-viewc="${esc(c.id)}">View</button>
+                <button type="button" class="btn btn-sm btn-outline" data-editc="${esc(c.id)}">Edit</button>
                 <button type="button" class="btn btn-sm btn-outline" data-delc="${esc(c.id)}" style="color:#b91c1c">Delete</button>
               </td>
             </tr>`
@@ -499,6 +506,44 @@ function renderClients() {
     state.table.clients.q = e.target.value;
     state.table.clients.page = 1;
     renderClients();
+  });
+  p.querySelectorAll('[data-editc]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-editc');
+      const c = state.clients.find((x) => x.id === id);
+      if (!c) return;
+      const html = `<h3 style="margin-top:0">Edit client</h3>
+        <form id="edCli" class="adm-form-stack">
+          <div class="form-group"><label>Email</label><input value="${esc(c.email)}" disabled style="opacity:0.8" /></div>
+          <div class="form-group"><label>Full name</label><input name="full_name" value="${esc(c.full_name || '')}" /></div>
+          <div class="form-group"><label>Company</label><input name="company" value="${esc(c.company || '')}" /></div>
+          <div class="form-group"><label>Phone</label><input name="phone" value="${esc(c.phone || '')}" /></div>
+          <div class="form-group"><label>Website</label><input name="website" value="${esc(c.website || '')}" /></div>
+          <div class="form-group"><label>Timezone</label><input name="timezone" value="${esc(c.timezone || '')}" /></div>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </form>`;
+      const { close, root } = openModal(html);
+      root.querySelector('#edCli').addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const fd = new FormData(ev.target);
+        api(`/api/admin/clients/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            full_name: fd.get('full_name'),
+            company: fd.get('company'),
+            phone: fd.get('phone'),
+            website: fd.get('website'),
+            timezone: fd.get('timezone'),
+          }),
+        })
+          .then(() => {
+            toast('Client updated', 'success');
+            close();
+            return loadAll();
+          })
+          .catch((e) => toast(e.message, 'error'));
+      });
+    });
   });
   p.querySelectorAll('[data-viewc]').forEach((b) => {
     b.addEventListener('click', () => {
@@ -635,7 +680,7 @@ function renderProjects() {
         <p class="adm-hint-below" id="wsFname">No file selected</p>
         <button type="button" class="btn btn-outline" id="wsUpload">Upload to project</button>
         <h4 style="margin:1.25rem 0 0.5rem">Files for this project</h4>
-        <div id="wsFileList" class="phase-note">Loading…</div>
+        <div id="wsFileList" class="phase-note">Select a project to see its files.</div>
       </div>
     </div>
     <div class="adm-card">
@@ -720,7 +765,11 @@ function renderProjects() {
   const loadWsFiles = () => {
     const id = p.querySelector('#wsProject')?.value;
     const box = p.querySelector('#wsFileList');
-    if (!id || !box) return;
+    if (!box) return;
+    if (!id) {
+      box.innerHTML = '<p class="phase-note">Select a project to see its files.</p>';
+      return;
+    }
     box.textContent = 'Loading…';
     api(`/api/admin/by-project/${id}/files`)
       .then((d) => {
@@ -974,6 +1023,9 @@ function renderInvoices() {
                 <button type="button" class="btn btn-sm btn-outline" data-markpaid="${esc(i.id)}" ${
   i.status === 'paid' ? 'disabled' : ''
 }>Mark paid</button>
+                <button type="button" class="btn btn-sm btn-outline" data-payinv="${esc(i.id)}" ${
+  i.status === 'paid' ? 'disabled' : ''
+}>Pay link (Stripe)</button>
                 <button type="button" class="btn btn-sm btn-outline" data-sndinv="${esc(i.id)}">Send email</button>
                 <button type="button" class="btn btn-sm" style="color:#b91c1c" data-delinv="${esc(i.id)}">Delete</button>
               </td>
@@ -1055,6 +1107,22 @@ function renderInvoices() {
         .catch((e) => toast(e.message, 'error'));
     });
   });
+  p.querySelectorAll('[data-payinv]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-payinv');
+      withBusy(
+        b,
+        api(`/api/admin/invoices/${id}/stripe-checkout`, { method: 'POST', body: JSON.stringify({}) })
+      )
+        .then((r) => {
+          if (r && r.url) {
+            window.open(r.url, '_blank', 'noopener,noreferrer');
+            toast('Opening Stripe Checkout…', 'success');
+          }
+        })
+        .catch((e) => toast(e.message, 'error'));
+    });
+  });
   p.querySelectorAll('[data-sndinv]').forEach((b) => {
     b.addEventListener('click', () => {
       const id = b.getAttribute('data-sndinv');
@@ -1091,6 +1159,7 @@ function renderInvoices() {
     st.page = Math.min(totalPages, st.page + 1);
     renderInvoices();
   });
+  recalc();
 }
 
 /* ---------- Files tab ---------- */
@@ -1108,7 +1177,11 @@ function renderFilesTab() {
   const loadF = () => {
     const id = document.getElementById('fTabP')?.value;
     const box = document.getElementById('fTabL');
-    if (!id || !box) return;
+    if (!box) return;
+    if (!id) {
+      box.innerHTML = '<p class="phase-note">Select a project to list files.</p>';
+      return;
+    }
     box.textContent = 'Loading…';
     api(`/api/admin/by-project/${id}/files`)
       .then((d) => {
@@ -1136,6 +1209,18 @@ function renderFilesTab() {
 
 /* ---------- Messages ---------- */
 function renderMessages() {
+  const recent = (state.messages || []).slice(0, 30);
+  const recentHtml = recent.length
+    ? recent
+        .map(
+          (m) => `<li style="border-bottom:1px solid #f1f5f9;padding:0.5rem 0">
+          <div style="font-size:0.8rem;color:#94a3b8">${m.created_at ? new Date(m.created_at).toLocaleString() : '—'}
+            · <strong>${esc(m.project_name || 'Project')}</strong></div>
+          <div style="margin-top:0.25rem;white-space:pre-wrap;font-size:0.9rem">${esc(m.content)}</div>
+        </li>`
+        )
+        .join('')
+    : '<li class="phase-note" style="list-style:none">No messages yet.</li>';
   document.getElementById('panel-messages').innerHTML = `
     <div class="adm-card">
       <h2>Message client (project thread)</h2>
@@ -1150,6 +1235,11 @@ function renderMessages() {
         <div class="adm-hint-below"><span id="msgC">0</span> / 4000</div>
       </div>
       <button type="button" class="btn btn-primary" id="msgS">Send</button>
+    </div>
+    <div class="adm-card">
+      <h2>Recent messages</h2>
+      <p class="phase-note" style="margin-bottom:0.75rem">Last 30 team messages, newest first (grouped by time).</p>
+      <ul style="list-style:none;padding:0;margin:0;max-height:50vh;overflow:auto">${recentHtml}</ul>
     </div>`;
   const p = document.getElementById('panel-messages');
   p.querySelector('#msgB')?.addEventListener('input', (e) => {
@@ -1178,6 +1268,24 @@ function renderMessages() {
 
 /* ---------- Time ---------- */
 function renderTime() {
+  const entries = state.timeEntries || [];
+  const byProject = new Map();
+  for (const t of entries) {
+    const id = t.project_id || 'none';
+    const h = Number(t.hours) || 0;
+    byProject.set(id, (byProject.get(id) || 0) + h);
+  }
+  const summaryRows = [...byProject.entries()]
+    .filter(([k]) => k !== 'none')
+    .map(
+      ([pid, hours]) =>
+        `<tr><td>${projectNameOrDash(pid)}</td><td><strong>${hours.toFixed(2)}</strong> h</td></tr>`
+    )
+    .join('');
+  const totalH = entries.reduce((a, t) => a + (Number(t.hours) || 0), 0);
+  const summaryTable =
+    summaryRows || '<tr><td colspan="2" class="phase-note">No time logged yet — add hours above.</td></tr>';
+
   document.getElementById('panel-time').innerHTML = `
     <div class="adm-card">
       <h2>Log time</h2>
@@ -1185,9 +1293,20 @@ function renderTime() {
         <div class="form-group"><label>Project *</label><select name="project_id" required><option value="">—</option>${projectOptions()}</select></div>
         <div class="form-group"><label>Date</label><input name="worked_date" type="date" required /></div>
         <div class="form-group"><label>Hours *</label><input name="hours" type="number" min="0.25" step="0.25" required /></div>
-        <div class="form-group"><label>Description</label><input name="description" /></div>
+        <div class="form-group"><label>Description</label><input name="description" placeholder="What you worked on" /></div>
         <button type="submit" class="btn btn-primary" style="width:100%">Log</button>
       </form>
+    </div>
+    <div class="adm-card">
+      <h2>Summary</h2>
+      <p class="phase-note" style="margin-bottom:0.5rem">Totals from <strong>loaded entries</strong> (up to 500 from the server).</p>
+      <p style="font-size:1.1rem;margin-bottom:0.75rem"><strong>All projects:</strong> ${totalH.toFixed(2)} hours</p>
+      <div style="overflow-x:auto;max-width:32rem">
+        <table>
+          <thead><tr><th>Project</th><th>Hours</th></tr></thead>
+          <tbody>${summaryTable}</tbody>
+        </table>
+      </div>
     </div>
     <div class="adm-card">
       <h2>Time entries (recent)</h2>
@@ -1195,7 +1314,7 @@ function renderTime() {
         <table>
           <thead><tr><th>Date</th><th>Project</th><th>Hours</th><th>Description</th></tr></thead>
           <tbody>
-            ${state.timeEntries
+            ${entries
               .slice(0, 50)
               .map(
                 (t) => `<tr>
@@ -1205,7 +1324,7 @@ function renderTime() {
               <td>${esc(t.description || '—')}</td>
             </tr>`
               )
-              .join('') || '<tr><td colspan="4">No entries (run database migration to enable)</td></tr>'}
+              .join('') || '<tr><td colspan="4" class="phase-note">No entries yet</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -1244,6 +1363,7 @@ function renderContracts() {
         <div class="form-group"><label>Status</label>
           <select name="status"><option value="draft">Draft</option><option value="sent">Sent</option><option value="signed">Signed</option><option value="void">Void</option></select>
         </div>
+        <div class="form-group"><label>Contract / proposal text</label><textarea name="body" rows="6" placeholder="Scope, terms, or summary (stored in the database)"></textarea></div>
         <div class="form-group"><label>File URL (signed PDF, etc.)</label><input name="file_url" type="url" placeholder="https://…" /></div>
         <button type="submit" class="btn btn-primary" style="width:100%">Save</button>
       </form>
@@ -1257,11 +1377,12 @@ function renderContracts() {
             ${state.contracts
               .map(
                 (c) => `<tr>
-              <td>${esc(c.title)}</td>
+              <td>${esc(c.title)}${c.body ? ` <span class="phase-note" style="font-size:0.75rem">(has text)</span>` : ''}</td>
               <td>${esc(c.status)}</td>
               <td>${c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</td>
               <td>
-                ${c.file_url ? `<a href="${esc(c.file_url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">Link</a>` : '—'}
+                ${c.body ? `<button type="button" class="btn btn-sm btn-outline" data-vwct="${esc(c.id)}">View text</button> ` : ''}
+                ${c.file_url ? `<a href="${esc(c.file_url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">File</a>` : '—'}
                 <button type="button" class="btn btn-sm" data-delct="${esc(c.id)}" style="color:#b91c1c">Delete</button>
               </td>
             </tr>`
@@ -1280,6 +1401,7 @@ function renderContracts() {
       title: f.get('title'),
       status: f.get('status'),
       file_url: f.get('file_url') || null,
+      body: f.get('body') || null,
     };
     withBusy(
       e.target.querySelector('button'),
@@ -1305,23 +1427,41 @@ function renderContracts() {
       });
     });
   });
+  document.querySelectorAll('[data-vwct]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const c = state.contracts.find((x) => x.id === b.getAttribute('data-vwct'));
+      if (!c) return;
+      openModal(
+        `<h3 style="margin-top:0">${esc(c.title)}</h3>
+        <pre style="white-space:pre-wrap;font-size:0.9rem;max-height:60vh;overflow:auto;text-align:left;background:#f8fafc;padding:1rem;border-radius:0.5rem">${esc(
+          c.body || ''
+        )}</pre>
+        <p style="margin-top:0.75rem"><button type="button" class="btn btn-primary" data-close-modal>Close</button></p>`,
+        null
+      );
+    });
+  });
 }
 
 /* ---------- Activity ---------- */
 function renderActivity() {
+  const ev = state.activity || [];
+  const listHtml = ev.length
+    ? ev
+        .map(
+          (a) => `<li style="border-bottom:1px solid #f1f5f9;padding:0.5rem 0">
+            <time style="color:#94a3b8">${a.created_at ? new Date(a.created_at).toLocaleString() : '—'}</time>
+            <div><strong>${esc(a.action)}</strong> ${a.entity_type ? '· ' + esc(a.entity_type) : ''}</div>
+          </li>`
+        )
+        .join('')
+    : '<li class="phase-note" style="list-style:none">No activity recorded yet. Actions you take here (invoices, files, messages, etc.) will appear in this list.</li>';
   document.getElementById('panel-activity').innerHTML = `
     <div class="adm-card">
       <h2>Activity (recent 100)</h2>
       <div style="max-height:70vh;overflow:auto;font-size:0.9rem">
         <ul style="list-style:none;padding:0;margin:0">
-          ${(state.activity || [])
-            .map(
-              (a) => `<li style="border-bottom:1px solid #f1f5f9;padding:0.5rem 0">
-            <time style="color:#94a3b8">${a.created_at ? new Date(a.created_at).toLocaleString() : '—'}</time>
-            <div><strong>${esc(a.action)}</strong> ${a.entity_type ? '· ' + esc(a.entity_type) : ''}</div>
-          </li>`
-            )
-            .join('') || '<li>Run the database migration to enable the activity log.</li>'}
+          ${listHtml}
         </ul>
       </div>
     </div>`;

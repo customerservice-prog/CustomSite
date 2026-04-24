@@ -5,6 +5,7 @@ Run these in the **Supabase** project → **SQL** → **New query**, in order:
 1. `001_core.sql` — `users`, `leads`, `projects`, `site_files`, `messages`, etc.
 2. `002_admin_overhaul.sql` — activity log, time entries, contracts, extra user/invoice fields.
 3. `003_site_builder_railway.sql` — site builder + Railway fields on `projects` and `site_files`.
+4. `004_contract_body.sql` — optional `body` text column on `agency_contracts` for in-app proposal drafting.
 
 After SQL succeeds:
 
