@@ -679,6 +679,18 @@ function renderProjects() {
         <div class="adm-drop" id="wsDrop">Drag files here or <label style="color:#6366f1;cursor:pointer"><input type="file" id="wsFile" style="display:none" /> browse</label></div>
         <p class="adm-hint-below" id="wsFname">No file selected</p>
         <button type="button" class="btn btn-outline" id="wsUpload">Upload to project</button>
+        <p class="phase-note" style="margin:1rem 0 0.25rem">Or paste a <strong>public https</strong> file URL (e.g. cloud link) if Storage upload is not set up yet:</p>
+        <div class="form-group" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:flex-end;max-width:32rem">
+          <div style="flex:1;min-width:12rem">
+            <label for="wsFileUrl">File URL</label>
+            <input type="url" id="wsFileUrl" placeholder="https://…" style="width:100%;margin-top:0.25rem" />
+          </div>
+          <div style="min-width:9rem">
+            <label for="wsFileUrlName">Display name</label>
+            <input type="text" id="wsFileUrlName" placeholder="e.g. contract.pdf" style="width:100%;margin-top:0.25rem" />
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline" id="wsAddFileUrl" style="margin-top:0.5rem">Add file link</button>
         <h4 style="margin:1.25rem 0 0.5rem">Files for this project</h4>
         <div id="wsFileList" class="phase-note">Select a project to see its files.</div>
       </div>
@@ -873,6 +885,33 @@ function renderProjects() {
         fi.value = '';
         p.querySelector('#wsFname').textContent = 'No file selected';
         loadWsFiles();
+      })
+      .catch((e) => toast(e.message, 'error'));
+  });
+  p.querySelector('#wsAddFileUrl')?.addEventListener('click', () => {
+    const pid = p.querySelector('#wsProject')?.value;
+    const pr = findProject(pid);
+    const u = p.querySelector('#wsFileUrl')?.value?.trim();
+    if (!pr || !u) {
+      toast('Select a project and enter a file URL', 'error');
+      return;
+    }
+    if (!/^https?:\/\//i.test(u)) {
+      toast('URL must start with http:// or https://', 'error');
+      return;
+    }
+    const cid = pr.client_id;
+    const body = { file_url: u, file_name: p.querySelector('#wsFileUrlName')?.value?.trim() || null };
+    withBusy(
+      p.querySelector('#wsAddFileUrl'),
+      api(`/api/admin/projects/${cid}/file-link`, { method: 'POST', body: JSON.stringify(body) })
+    )
+      .then(() => {
+        toast('File link added', 'success');
+        p.querySelector('#wsFileUrl').value = '';
+        p.querySelector('#wsFileUrlName').value = '';
+        loadWsFiles();
+        return loadAll();
       })
       .catch((e) => toast(e.message, 'error'));
   });

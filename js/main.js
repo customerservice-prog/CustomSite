@@ -150,8 +150,10 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
     );
 
     elements.forEach((el) => observer.observe(el));
-    // Safety net: never leave content invisible if observer never fired (layout, fast scroll, edge browsers).
-    setTimeout(revealAll, 4000);
+    // Safety net: show content if IntersectionObserver never fires (in-view threshold quirks, some mobile browsers).
+    setTimeout(revealAll, 0);
+    setTimeout(revealAll, 120);
+    setTimeout(revealAll, 2000);
   }
 
   if (document.readyState === 'loading') {
@@ -619,14 +621,27 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 // Calendly — data-book-call="1" (env CALENDLY_20_MIN wins over JS constant)
 // ============================================
 (function initCalendly20Links() {
+  const FALLBACK = 'contact.html';
+  function stripInvalidCalendly() {
+    document.querySelectorAll('a[data-book-call="1"]').forEach((a) => {
+      const h = a.getAttribute('href') || '';
+      if (h.indexOf('REPLACE-ME') !== -1 || h.indexOf('calendly.com/REPLACE-ME') !== -1) {
+        a.setAttribute('href', FALLBACK);
+        a.removeAttribute('target');
+        a.removeAttribute('rel');
+      }
+    });
+  }
   function applyUrl(u) {
     if (!u || String(u).indexOf('REPLACE-ME') !== -1) return;
+    if (!/^https?:\/\//i.test(String(u).trim())) return;
     document.querySelectorAll('a[data-book-call="1"]').forEach((a) => {
       a.setAttribute('href', u);
       a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
     });
   }
+  stripInvalidCalendly();
   const w =
     (typeof window !== 'undefined' && window.CALENDLY_20_MIN) || null;
   if (w && String(w).indexOf('REPLACE-ME') === -1) {
@@ -641,6 +656,9 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     .then((r) => (r.ok ? r.json() : null))
     .then((j) => {
       if (j && j.calendly20Min) applyUrl(j.calendly20Min);
+      else stripInvalidCalendly();
     })
-    .catch(() => {});
+    .catch(() => {
+      stripInvalidCalendly();
+    });
 })();

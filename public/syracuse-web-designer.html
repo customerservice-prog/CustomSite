@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="/js/brand-resolver.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web Designer in Syracuse, NY | Affordable Custom Websites</title>
+  <meta name="description" content="Looking for a web designer in Syracuse? We build custom, affordable websites for small businesses and entrepreneurs in Syracuse, NY. No templates. Starting at $799." />
+  <link rel="canonical" href="https://syracusewebdesigner.com/" />
+  <meta property="og:title" content="Web Designer in Syracuse, NY | Affordable Custom Websites" />
+  <meta property="og:description" content="Looking for a web designer in Syracuse? We build custom, affordable websites for small businesses and entrepreneurs in Syracuse, NY. No templates. Starting at $799." />
+  <meta property="og:url" content="https://syracusewebdesigner.com/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
+  <meta property="og:site_name" content="Syracuse Web Designer" />
+  <link rel="dns-prefetch" href="https://supabase.co" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --navy: #0f172a; --gold: #f59e0b; --text: #e2e8f0; --muted: #94a3b8; --white: #fff; --max: 1120px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(--text); background: var(--navy); line-height: 1.5; }
+    a { color: #7dd3fc; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: var(--max); margin: 0 auto; padding: 0 1.25rem; }
+    .topnav { position: sticky; top: 0; z-index: 100; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(148, 163, 184, 0.15); }
+    .topnav__inner { display: flex; align-items: center; justify-content: space-between; min-height: 64px; flex-wrap: wrap; gap: 0.75rem; }
+    .text-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .logo-mark { width: 36px; height: 36px; background: linear-gradient(135deg, #6366f1, #06b6d4); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 11px; flex-shrink: 0; }
+    .logo-text { font-size: 1.1rem; font-weight: 800; background: linear-gradient(135deg, #6366f1, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .btn { display: inline-flex; padding: 0.55rem 1.1rem; border-radius: 0.4rem; font-weight: 700; font-size: 0.9rem; }
+    .btn--gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #0f172a !important; text-decoration: none; }
+    .btn--gold:hover { filter: brightness(1.05); }
+    .topnav__right { display: flex; align-items: center; gap: 0.75rem 1rem; flex-wrap: wrap; }
+    .phone { color: #94a3b8; font-size: 0.9rem; font-weight: 600; }
+    .phone a { color: #e2e8f0; text-decoration: none; }
+    .phone a:hover { text-decoration: underline; }
+    .hero { padding: 3rem 0 2.5rem; }
+    .hero__grid { display: grid; grid-template-columns: 1fr; gap: 2.25rem; align-items: center; }
+    @media (min-width: 900px) { .hero__grid { grid-template-columns: 1fr 1fr; } }
+    .hero h1 { font-size: clamp(1.65rem, 4vw, 2.35rem); font-weight: 800; line-height: 1.12; color: #fff; margin: 0 0 0.75rem; }
+    .hero .lead { color: #cbd5e1; font-size: 1.05rem; max-width: 40rem; margin: 0 0 0.5rem; }
+    .hero .meta { color: #94a3b8; font-size: 0.92rem; margin: 0.75rem 0 1.25rem; }
+    .mock { max-width: 100%; width: 420px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); }
+    .mock__chrome { height: 32px; background: #2d3748; display: flex; align-items: center; padding: 0 8px; gap: 5px; }
+    .mock__dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+    .mock__dots span:nth-child(1) { background: #ff5f57; }
+    .mock__dots span:nth-child(2) { background: #febc2e; }
+    .mock__dots span:nth-child(3) { background: #28c840; }
+    .mock__addr { flex: 1; height: 16px; margin: 0 8px; background: #4a5568; border-radius: 3px; }
+    .mock__canvas { background: #ffffff; font-size: 3px; }
+    .mock__navf { display: flex; align-items: center; gap: 3px; padding: 4px 5px; background: #1e293b; }
+    .mock__logo { width: 14px; height: 8px; background: linear-gradient(135deg,#f59e0b,#ea580c); border-radius: 1px; }
+    .mock__pills { display: flex; flex: 1; justify-content: center; gap: 2px; }
+    .mock__pill { height: 5px; width: 12px; background: #64748b; border-radius: 0.5px; }
+    .mock__cta { width: 18px; height: 6px; background: #f97316; border-radius: 0.5px; }
+    .mock__row { display: flex; min-height: 58px; background: #fff7ed; padding: 5px; gap: 4px; }
+    .mock__col1 { flex: 1.1; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+    .mock__h1a { height: 5px; width: 90%; background: #0f172a; border-radius: 0.5px; }
+    .mock__h1b { height: 5px; width: 55%; background: #ea580c; border-radius: 0.5px; }
+    .mock__sub { height: 3px; width: 85%; background: #94a3b8; border-radius: 0.3px; margin-top: 1px; }
+    .mock__btns { display: flex; gap: 2px; margin-top: 2px; }
+    .mock__b1 { width: 20px; height: 5px; background: #ea580c; border-radius: 0.5px; }
+    .mock__b2 { width: 18px; height: 5px; border: 0.2px solid #94a3b8; border-radius: 0.5px; }
+    .mock__art { flex: 1; background: #e2e8f0; border-radius: 2px; }
+    .mock__cards { display: flex; gap: 3px; padding: 5px; background: #fff; border-top: 1px solid #e2e8f0; }
+    .mock__svc { flex: 1; min-height: 18px; background: #fff7ed; border-radius: 2px; border: 0.2px solid #fdba74; box-shadow: inset 0 2px 0 #f97316; }
+    .btn--ghost { text-decoration: none; border: 2px solid rgba(255,255,255,0.25); color: #fff !important; margin-left: 0.5rem; }
+    .btn--ghost:hover { border-color: #7dd3fc; }
+    .trust { background: #1e293b; font-size: 0.86rem; font-weight: 600; padding: 0.75rem 1rem; }
+    .trust__row { max-width: var(--max); margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.3rem 1rem; }
+    .section { padding: 3.25rem 0; }
+    .section--light { background: #f8fafc; color: #0f172a; }
+    .section h2 { font-size: 1.5rem; font-weight: 800; margin: 0 0 0.4rem; }
+    .sub { color: #64748b; margin: 0 0 1.5rem; max-width: 40rem; }
+    .whogrid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    @media (min-width: 700px) { .whogrid { grid-template-columns: repeat(3, 1fr); } }
+    .wcard { background: #fff; border-radius: 12px; border: 1px solid rgba(0,0,0,0.07); padding: 1.15rem; }
+    .wcard h3 { font-size: 0.95rem; margin: 0.35rem 0 0.4rem; color: #0f172a; }
+    .wcard p { font-size: 0.88rem; color: #475569; margin: 0; }
+    .wic { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: #eef2ff; border-radius: 8px; color: #4f46e5; }
+    .steps { display: grid; grid-template-columns: 1fr; gap: 1rem; counter-reset: s; }
+    @media (min-width: 800px) { .steps { grid-template-columns: repeat(4, 1fr); } }
+    .step { position: relative; background: #0b1220; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 1.1rem; }
+    .step::before { counter-increment: s; content: counter(s); position: absolute; top: 0.75rem; right: 0.75rem; font-size: 0.7rem; font-weight: 800; color: #6366f1; }
+    .step h3 { color: #fff; font-size: 0.95rem; margin: 0 0 0.35rem; }
+    .step p { color: #94a3b8; font-size: 0.85rem; margin: 0; }
+    .price-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    @media (min-width: 900px) { .price-grid { grid-template-columns: repeat(3, 1fr); } }
+    .pc { background: #fff; border-radius: 12px; padding: 1.35rem; border: 1px solid #e2e8f0; }
+    .pc h3 { margin: 0; font-size: 1rem; color: #0f172a; }
+    .pc .tag { font-size: 0.75rem; color: #64748b; margin: 0.2rem 0 0.5rem; }
+    .pc .p { font-size: 1.6rem; font-weight: 800; color: #4f46e5; }
+    .testi { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    @media (min-width: 768px) { .testi { grid-template-columns: repeat(3, 1fr); } }
+    .tcard { background: #0f172a; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.15rem; font-size: 0.9rem; }
+    .tcard .st { color: #fbbf24; margin-bottom: 0.35rem; }
+    details.faq { background: #f1f5f9; border-radius: 8px; margin-bottom: 0.4rem; border: 1px solid rgba(0,0,0,0.06); }
+    details.faq summary { padding: 0.8rem 0.9rem; cursor: pointer; font-weight: 700; color: #0f172a; }
+    details.faq p { margin: 0; padding: 0 0.9rem 0.85rem; color: #475569; font-size: 0.9rem; }
+    .cta { background: linear-gradient(120deg, #4f46e5, #0e7490); padding: 2.5rem 1.25rem; text-align: center; }
+    .footer { background: #020617; padding: 2rem; font-size: 0.85rem; color: #94a3b8; text-align: center; }
+    .footer a { color: #cbd5e1; }
+    .f-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 0.8rem; margin: 0.6rem 0; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": ["LocalBusiness", "ProfessionalService"],
+        "@id": "https://syracusewebdesigner.com/#business",
+        "name": "Syracuse Web Designer",
+        "description": "Syracuse web designer — custom, affordable websites for small businesses. Starting at $799.",
+        "url": "https://syracusewebdesigner.com/",
+        {{JSONLD_COMMUNICATION}}
+        "address": { "@type": "PostalAddress", "addressLocality": "Syracuse", "addressRegion": "NY", "postalCode": "13201", "addressCountry": "US" },
+        "geo": { "@type": "GeoCoordinates", "latitude": 43.0481, "longitude": -76.1474 },
+        "areaServed": [
+          { "@type": "City", "name": "Syracuse" },
+          { "@type": "AdministrativeArea", "name": "Onondaga County" },
+          { "@type": "AdministrativeArea", "name": "Central New York" }
+        ],
+        "serviceType": ["Web Design", "Web Development", "Local SEO"],
+        "priceRange": "$799 - $7500",
+        "openingHours": "Mo-Fr 09:00-18:00",
+        "sameAs": ["https://customsite.online/"]
+      }
+    ]
+  }
+  </script>
+  <script src="../js/main.js" defer></script>
+</head>
+<body>
+  <header class="topnav">
+    <div class="container topnav__inner">
+      <a class="logo text-logo" href="https://syracusewebdesigner.com/" aria-label="Home">
+        <span class="logo-mark" id="nav-logo-mark">SWD</span>
+        <span class="logo-text" id="nav-brand-name">Syracuse Web Designer</span>
+      </a>
+      <div class="topnav__right">
+        <span class="phone">{{NAV_CONTACT_LINE}}</span>
+        <a class="btn btn--gold" href="https://customsite.online/contact.html" data-book-call="1">Book a free 20-min call</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container hero__grid">
+      <div>
+        <h1>A Syracuse Web Designer Who Actually Gets Local Business</h1>
+        <p class="lead">You need a site that works &mdash; one that loads fast, looks professional, and brings in leads. I build custom websites for Syracuse small businesses starting at $799. No templates, no bloated agencies, no runaround.</p>
+        <p class="meta">Based in Syracuse, NY · Fast replies · Speak directly with your designer</p>
+        <div>
+          <a class="btn btn--gold" href="https://customsite.online/contact.html" data-book-call="1">Book a free 20-min call</a>
+          <a class="btn btn--ghost" href="https://customsite.online/portfolio.html">See work</a>
+        </div>
+      </div>
+      <div class="mock" role="img" aria-label="Sample local business website preview">
+        <div class="mock__chrome">
+          <div class="mock__dots" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="mock__addr"></div>
+        </div>
+        <div class="mock__canvas">
+          <div class="mock__navf">
+            <div class="mock__logo"></div>
+            <div class="mock__pills" aria-hidden="true">
+              <span class="mock__pill"></span><span class="mock__pill"></span><span class="mock__pill"></span>
+            </div>
+            <div class="mock__cta"></div>
+          </div>
+          <div class="mock__row">
+            <div class="mock__col1">
+              <div class="mock__h1a"></div>
+              <div class="mock__h1b"></div>
+              <div class="mock__sub"></div>
+              <div class="mock__btns"><div class="mock__b1"></div><div class="mock__b2"></div></div>
+            </div>
+            <div class="mock__art"></div>
+          </div>
+          <div class="mock__cards" aria-hidden="true">
+            <div class="mock__svc"></div>
+            <div class="mock__svc"></div>
+            <div class="mock__svc"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="trust" role="region" aria-label="What to expect">
+    <div class="trust__row">
+      <span>👤 Direct access to your designer</span>
+      <span>·</span>
+      <span>⚡ Sites live in 2&ndash;3 weeks</span>
+      <span>·</span>
+      <span>💳 Starts at $799</span>
+      <span>·</span>
+      <span>🔄 Unlimited revisions during build</span>
+    </div>
+  </div>
+
+  <section class="section section--light" id="who">
+    <div class="container">
+      <h2>Who I Work With</h2>
+      <p class="sub">Local owners, not enterprise procurement teams &mdash; if this sounds like you, we&rsquo;ll get along great.</p>
+      <div class="whogrid">
+        <div class="wcard">
+          <div class="wic" aria-hidden="true">🍽</div>
+          <h3>Restaurants &amp; cafés</h3>
+          <p>You need a menu, hours, and a reservations link that actually works on a phone.</p>
+        </div>
+        <div class="wcard">
+          <div class="wic" aria-hidden="true">🔧</div>
+          <h3>Contractors &amp; trades</h3>
+          <p>A clean site with your license, reviews, and a quote form beats any directory listing.</p>
+        </div>
+        <div class="wcard">
+          <div class="wic" aria-hidden="true">🛍</div>
+          <h3>Retail &amp; boutiques</h3>
+          <p>Whether you sell online or in-store, your site should drive foot traffic and orders.</p>
+        </div>
+        <div class="wcard">
+          <div class="wic" aria-hidden="true">📈</div>
+          <h3>Consultants &amp; coaches</h3>
+          <p>Your credibility lives online. Your site needs to show it.</p>
+        </div>
+        <div class="wcard">
+          <div class="wic" aria-hidden="true">🦷</div>
+          <h3>Medical &amp; dental</h3>
+          <p>HIPAA-aware intake, booking links, and insurance info &mdash; done right.</p>
+        </div>
+        <div class="wcard">
+          <div class="wic" aria-hidden="true">🚀</div>
+          <h3>Startups &amp; creators</h3>
+          <p>Launching something new? I&rsquo;ll get your first real web presence up fast.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="process" style="background:#0b1220">
+    <div class="container">
+      <h2 style="color:#fff">How It Works</h2>
+      <p class="sub" style="color:#94a3b8">No mystery phases &mdash; just a straight path to launch.</p>
+      <div class="steps">
+        <div class="step">
+          <h3>We talk</h3>
+          <p>30-min free call. I listen, you explain what you need.</p>
+        </div>
+        <div class="step">
+          <h3>I send a written scope</h3>
+          <p>Exact pages, features, price. No surprises.</p>
+        </div>
+        <div class="step">
+          <h3>I build it</h3>
+          <p>You see drafts, give feedback, we refine together.</p>
+        </div>
+        <div class="step">
+          <h3>You go live</h3>
+          <p>I handle DNS, SSL, and hand you the keys.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--light" id="pricing">
+    <div class="container">
+      <h2>Pricing that won&rsquo;t waste your time</h2>
+      <p class="sub">Same published pricing as the full CustomSite line &mdash; because hiding price is how agencies burn trust.</p>
+      <div class="price-grid">
+        <div class="pc">
+          <h3>Starter &mdash; $799</h3>
+          <p class="tag">Perfect for a first professional site.</p>
+          <div class="p">$799</div>
+          <p style="font-size:0.9rem; color:#64748b; margin:0.5rem 0 0">Up to 5 pages, mobile-first, lead form, basic SEO, one month of support.</p>
+        </div>
+        <div class="pc" style="border:2px solid #6366f1">
+          <h3>Business &mdash; $1,499</h3>
+          <p class="tag">Most popular for established local businesses.</p>
+          <div class="p">$1,499</div>
+          <p style="font-size:0.9rem; color:#64748b; margin:0.5rem 0 0">Up to 10 pages, blog/CMS, advanced SEO, three months&rsquo; support.</p>
+        </div>
+        <div class="pc">
+          <h3>E-Commerce &mdash; $2,499</h3>
+          <p class="tag">Full online store, products, and checkout.</p>
+          <div class="p">$2,499</div>
+          <p style="font-size:0.9rem; color:#64748b; margin:0.5rem 0 0">Catalog, secure checkout, orders &amp; email flows, six months&rsquo; support.</p>
+        </div>
+      </div>
+      <p style="text-align:center; margin-top:1.5rem"><a class="btn btn--gold" style="text-decoration:none" href="https://customsite.online/pricing.html">Full breakdown &rarr;</a></p>
+    </div>
+  </section>
+
+  <section class="section" style="background:#0b1220" id="stories">
+    <div class="container">
+      <h2 style="color:#fff; text-align:center; margin-bottom:1rem">What owners say</h2>
+      <div class="testi">
+        <div class="tcard">
+          <div class="st" aria-hidden="true">★★★★★</div>
+          <p>&ldquo;We went from a buried Google listing to the top half of page one for our main service in about six weeks. The new site is fast on phones and the form is simple &mdash; most leads land there now.&rdquo;</p>
+          <p style="margin:0.6rem 0 0; color:#94a3b8; font-size:0.82rem"><strong style="color:#e2e8f0">Marcus K.</strong> · Kim&rsquo;s HVAC</p>
+        </div>
+        <div class="tcard">
+          <div class="st" aria-hidden="true">★★★★★</div>
+          <p>&ldquo;Clear scope and one build invoice. The showroom and online catalog finally look like one brand, and the contact path is obvious &mdash; we see steady form fills every week.&rdquo;</p>
+          <p style="margin:0.6rem 0 0; color:#94a3b8; font-size:0.82rem"><strong style="color:#e2e8f0">Janet R.</strong> · River &amp; Rail Home</p>
+        </div>
+        <div class="tcard">
+          <div class="st" aria-hidden="true">★★★★★</div>
+          <p>&ldquo;The care plan is worth it &mdash; I am not chasing a generic host. Updates and security are handled, and the site stays quick. Our clients actually book from the new flow.&rdquo;</p>
+          <p style="margin:0.6rem 0 0; color:#94a3b8; font-size:0.82rem"><strong style="color:#e2e8f0">Amanda L.</strong> · Northfield Dental Co.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--light" id="faq">
+    <div class="container" style="max-width: 680px">
+      <h2>FAQ &mdash; straight answers</h2>
+      <details class="faq" open>
+        <summary>Are you actually local to Syracuse?</summary>
+        <p>Yes &mdash; I&rsquo;m based in the Syracuse area and can meet in person if you need to.</p>
+      </details>
+      <details class="faq">
+        <summary>How is working with you different from a big agency?</summary>
+        <p>You talk directly to the person building your site. No account managers, no upsells, no mystery handoffs.</p>
+      </details>
+      <details class="faq">
+        <summary>What do you need from me to get started?</summary>
+        <p>A brief call or a filled-out contact form. I&rsquo;ll take it from there.</p>
+      </details>
+      <details class="faq">
+        <summary>Can you work with my existing domain and hosting?</summary>
+        <p>Yes. I can build on what you have or help you move to a faster, simpler stack if it makes sense.</p>
+      </details>
+      <details class="faq">
+        <summary>Do you do ongoing maintenance?</summary>
+        <p>Yes. Optional care plans from $49/mo cover security, updates, and backups &mdash; so you&rsquo;re not reopening a ticket with a call center.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="cta" id="book">
+    <div class="container">
+      <h2 style="color:#fff; font-size:1.45rem; margin:0 0 0.5rem">Let&rsquo;s talk about your site.</h2>
+      <p style="color:#c7d2fe; margin:0 0 1.25rem; font-size:0.95rem">No pressure. If we&rsquo;re a fit, I&rsquo;ll tell you the next step. If not, I&rsquo;ll say so too.</p>
+      <a class="btn btn--gold" style="font-size:1rem; padding:0.7rem 1.5rem" href="https://customsite.online/contact.html" data-book-call="1">Book a free 20-min call</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p class="logo-text" style="display:inline" id="brand-name">Syracuse Web Designer</p>
+    <p id="brand-tagline" style="margin:0.35rem 0 0.4rem; color:var(--muted)">Web designer based in Syracuse, NY</p>
+    <p><span class="brand-city">Syracuse, NY</span> — custom websites for local businesses. From $799.</p>
+    <div class="f-links">
+      <a href="https://customsite.online/">Main site</a>
+      <a href="https://customsite.online/portfolio.html">Portfolio</a>
+      <a href="https://customsite.online/pricing.html">Pricing</a>
+      <a href="https://customsite.online/contact.html">Contact</a>
+      <a href="https://customsite.online/privacy.html">Privacy</a>
+      <a href="https://customsite.online/terms.html">Terms</a>
+    </div>
+    <p style="font-size:12px; color:#64748b; margin:1rem 0; max-width:32rem; margin-left:auto; margin-right:auto; line-height:1.5">
+      More options: <a href="https://syracusewebagency.com/" rel="noopener">Syracuse Web Agency</a> ·
+      <a href="https://cnywebagency.com/" rel="noopener">CNY Web Agency</a> ·
+      <a href="https://customsite.online/" rel="noopener">CustomSite.online</a>
+    </p>
+    <p style="margin:0">© 2026 CustomSite. All rights reserved.</p>
+  </footer>
+</body>
+</html>

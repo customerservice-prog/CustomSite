@@ -786,6 +786,55 @@ router.post('/projects/:clientId/files', upload.single('file'), async (req, res)
   }
 });
 
+/** When Supabase Storage is unavailable: record a public https URL (Dropbox, Drive share, S3, etc.) */
+router.post('/projects/:clientId/file-link', async (req, res) => {
+  try {
+    const { file_url, file_name } = req.body || {};
+    const u = (file_url && String(file_url).trim()) || '';
+    if (!u || !/^https?:\/\//i.test(u) || u.length > 4000) {
+      return res.status(400).json({ error: 'file_url must be a valid http(s) URL' });
+    }
+
+    const { clientId } = req.params;
+    const supabase = getService();
+    let projectId = await getProjectIdForClient(supabase, clientId);
+    if (!projectId) {
+      const { data: proj, error: pErr } = await supabase
+        .from('projects')
+        .insert({
+          client_id: clientId,
+          name: 'Website project',
+          status: 'discovery',
+        })
+        .select()
+        .single();
+      if (pErr) return res.status(500).json({ error: pErr.message });
+      projectId = proj.id;
+    }
+
+    const name =
+      (file_name && String(file_name).trim().slice(0, 500)) || u.split('/').pop().split('?')[0] || 'Linked file';
+
+    const { data: row, error: insErr } = await supabase
+      .from('files')
+      .insert({
+        project_id: projectId,
+        file_name: name,
+        file_url: u,
+        uploaded_by: req.profile.id,
+      })
+      .select()
+      .single();
+
+    if (insErr) return res.status(500).json({ error: insErr.message });
+    await logActivity(supabase, req.profile.id, 'file.link', 'file', row.id, { project_id: projectId });
+    return res.json({ success: true, file: row });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.post('/invoices', async (req, res) => {
   try {
     const { client_id, amount, description, due_date, project_id, line_items } = req.body || {};
