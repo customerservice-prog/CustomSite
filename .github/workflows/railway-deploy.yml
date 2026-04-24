@@ -14,6 +14,14 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
+      - name: Check Railway token
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::error::GitHub secret RAILWAY_TOKEN is not set. In Railway: Project → Settings → Tokens → create a project token, then in GitHub: Settings → Secrets → Actions → New secret → name RAILWAY_TOKEN, paste the token. Re-run this workflow."
+            exit 1
+          fi
       - name: Upload and deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
