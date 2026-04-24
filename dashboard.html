@@ -30,7 +30,9 @@
 <body>
   <nav class="navbar scrolled" id="navbar">
     <div class="container nav-container">
-      <a href="index.html" class="logo" style="color:var(--dark)"><span class="logo-icon">CS</span> CustomSite</a>
+      <a href="index.html" class="logo" style="color:var(--dark)" aria-label="CustomSite home">
+        <img class="logo-wordmark" src="images/customsite-wordmark-on-light.svg" width="200" height="36" alt="CustomSite" />
+      </a>
       <ul class="nav-links" id="navLinks">
         <li><a href="index.html">Home</a></li>
         <li><a href="#" id="dashLogout">Log out</a></li>
@@ -92,9 +94,17 @@
     </div>
   </div>
 
-  <script src="js/main.js"></script>
-  <script>
-(function () {
+  <script type="module" src="js/auth-bootstrap.js"></script>
+  <script src="js/main.js" defer></script>
+  <script type="module">
+(async function () {
+  if (window.__csAuthReady) {
+    try {
+      await window.__csAuthReady;
+    } catch (e) {
+      console.error(e);
+    }
+  }
   const token = localStorage.getItem('customsite_access_token');
   if (!token) return;
 

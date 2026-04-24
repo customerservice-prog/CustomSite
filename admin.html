@@ -14,7 +14,10 @@
 <body>
   <nav class="navbar scrolled" id="navbar">
     <div class="container nav-container">
-      <a href="index.html" class="logo" style="color:var(--dark)"><span class="logo-icon">CS</span> CustomSite Admin</a>
+      <a href="index.html" class="logo logo--admin" style="color:var(--dark)" aria-label="CustomSite Admin home">
+        <img class="logo-wordmark" src="images/customsite-wordmark-on-light.svg" width="200" height="36" alt="" />
+        <span class="logo-suffix">Admin</span>
+      </a>
       <ul class="nav-links" id="navLinks">
         <li><a href="dashboard.html">Client view</a></li>
         <li><a href="site-builder.html">Site builder</a></li>
@@ -24,6 +27,8 @@
       <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </nav>
+
+  <div class="container" id="admDbBanner" hidden style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem"></div>
 
   <div class="adm-wrap container" id="admRoot">
     <header class="adm-head">
@@ -58,7 +63,8 @@
 
   <div id="admModalRoot"></div>
 
-  <script src="js/main.js"></script>
+  <script type="module" src="js/auth-bootstrap.js"></script>
+  <script src="js/main.js" defer></script>
   <script type="module" src="js/admin/app.js"></script>
 </body>
 </html>

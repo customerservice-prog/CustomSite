@@ -30,6 +30,32 @@ const upload = multer({
 
 router.use(requireAuth, requireAdmin);
 
+/**
+ * True if the service role can read the projects table (schema applied).
+ */
+router.get('/db-health', async (req, res) => {
+  try {
+    const supabase = getService();
+    const { error } = await supabase.from('projects').select('id', { count: 'exact', head: true });
+    if (error) {
+      return res.json({
+        ok: false,
+        code: 'DB_QUERY_FAILED',
+        message: error.message,
+        hint:
+          'Run the SQL in supabase/migrations (001, 002, 003) in the Supabase SQL Editor. See docs/LAUNCH-PHASES.md.',
+      });
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.json({
+      ok: false,
+      code: 'EXCEPTION',
+      message: e && e.message ? e.message : String(e),
+    });
+  }
+});
+
 router.post('/leads', async (req, res) => {
   try {
     const { name, email, company, source, message } = req.body || {};

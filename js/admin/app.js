@@ -99,6 +99,28 @@ function confirmDialog(title, text, onConfirm) {
 }
 
 let loadPromise;
+async function checkDbHealth() {
+  const el = document.getElementById('admDbBanner');
+  if (!el) return;
+  try {
+    const d = await api('/api/admin/db-health');
+    if (d && d.ok) {
+      el.innerHTML = '';
+      el.hidden = true;
+      return;
+    }
+    const hint = d && d.hint ? ` ${d.hint}` : '';
+    const code = d && d.message ? d.message : 'Database check failed';
+    el.hidden = false;
+    el.innerHTML = `<strong>Database is not set up or projects table is missing.</strong> <span>${esc(
+      String(code)
+    )}</span>${esc(hint)} <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Open Launch phases</a> — run <code>supabase/migrations/001_core.sql</code> (then 002, 003) in the Supabase SQL editor.`;
+  } catch (e) {
+    el.innerHTML = '';
+    el.hidden = true;
+  }
+}
+
 async function loadAll() {
   if (!getToken()) return;
   const h = { headers: { Authorization: `Bearer ${getToken()}` } };
@@ -1341,6 +1363,7 @@ if (getToken()) {
   window.scrollTo(0, 0);
   showTab('dashboard');
   document.getElementById('panel-dashboard').innerHTML = '<p class="phase-note">Loading…</p>';
+  checkDbHealth();
   loadAll();
 } else {
   document.getElementById('admRoot').innerHTML = '<p class="container" style="padding:4rem 1rem">Not signed in.</p>';

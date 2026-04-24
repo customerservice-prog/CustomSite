@@ -1,6 +1,6 @@
 'use strict';
 
-import { TOKEN_KEY, clearAuth, getToken } from './config.js';
+import { clearAuth, getToken } from './config.js';
 import { toast } from './toast.js';
 
 export async function api(path, options = {}) {
@@ -21,17 +21,17 @@ export async function api(path, options = {}) {
     toast('Network error — is the server running?', 'error');
     throw e;
   }
-  if (res.status === 401) {
-    clearAuth();
-    window.location.replace('/client-portal.html?agency=1');
-    throw new Error('Session expired');
-  }
   const text = await res.text();
   let data;
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
     data = { _raw: text };
+  }
+  if (res.status === 401 || (res.status === 500 && data && (data.code === 'NO_TOKEN' || data.error === 'Unauthorized'))) {
+    clearAuth();
+    window.location.replace('/client-portal.html?agency=1');
+    throw new Error('Session expired — please sign in again.');
   }
   if (!res.ok) {
     const err = new Error((data && data.error) || res.statusText || 'Request failed');

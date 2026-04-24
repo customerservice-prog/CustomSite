@@ -2,6 +2,12 @@
 
 A professional web design agency website where clients can call/contact to get custom websites built, with recurring monthly/yearly maintenance plans.
 
+**Stack:** Node (`server.js`) + static pages, Supabase (auth + DB), optional Stripe/Resend. **Brand assets:** SVG wordmarks in `images/customsite-*.svg` (replace with a PNG if you have the official file — same filenames work).
+
+**Deploy (short):** Connect the repo to Railway (or any Node host), set `PORT`, add Supabase and other vars from `.env.example`, then run the SQL in `supabase/migrations/` in the Supabase SQL editor. See **`docs/LAUNCH-PHASES.md`**.
+
+**What’s next (product):** **`docs/ROADMAP-PHASES.md`** — Sites hub, visual block builder, templates, admin polish, and deploy hardening, in order.
+
 ## Project Structure
 
 ```

@@ -3,11 +3,22 @@
 const express = require('express');
 const { getService } = require('../lib/supabase');
 const { sendLeadNotification, sendLeadConfirmation } = require('../lib/email');
+const { allowRequest } = require('../lib/contactRateLimit');
 
 const router = express.Router();
 
 router.post('/', async (req, res) => {
   try {
+    const ip = req.ip || req.connection?.remoteAddress || '0';
+    if (!allowRequest(ip)) {
+      return res.status(429).json({ success: false, error: 'Too many requests. Please try again later.' });
+    }
+
+    const hp = (req.body && req.body.cs_hp_website != null && String(req.body.cs_hp_website).trim()) || '';
+    if (hp) {
+      return res.json({ success: true, id: 'filtered' });
+    }
+
     const {
       name,
       email,

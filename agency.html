@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CustomSite for agencies and teams: one place for leads, projects, client messaging, and the in-browser site builder." />
+  <meta property="og:title" content="Agency — CustomSite" />
+  <meta property="og:description" content="Operations dashboard, site builder, and client tools for your web team." />
+  <meta property="og:url" content="https://customsite.online/agency.html" />
+  <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
+  <title>Agency — CustomSite</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    .agency-hero { padding: 6rem 0 3rem; background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%); color: #fff; }
+    .agency-hero h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 800; margin-bottom: 1rem; }
+    .agency-hero p { max-width: 36rem; color: rgba(255,255,255,0.75); line-height: 1.65; }
+    .agency-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 2.5rem; }
+    .agency-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius-lg); padding: 1.5rem; }
+    .agency-card h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+    .agency-card p { font-size: 0.9rem; color: rgba(255,255,255,0.65); line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <nav class="navbar scrolled" id="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo" style="color:var(--dark)" aria-label="CustomSite home">
+        <img class="logo-wordmark" src="images/customsite-wordmark-on-light.svg" width="220" height="40" alt="CustomSite" />
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="portfolio.html">Portfolio</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="agency.html" class="active">Agency</a></li>
+        <li><a href="client-portal.html?agency=1" class="btn-nav">Agency sign-in</a></li>
+      </ul>
+      <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <section class="agency-hero">
+    <div class="container">
+      <span class="section-tag" style="border-color: rgba(99,102,241,0.4); color: #a5b4fc">For teams</span>
+      <h1>Run client sites from one place</h1>
+      <p>
+        CustomSite includes an <strong>agency operations</strong> area: leads from your marketing site, clients and projects,
+        billing hooks, and an <strong>in-browser site builder</strong> tied to each project. Sign in with your team account to use the admin panel and builder.
+      </p>
+      <div style="margin-top: 1.75rem; display: flex; flex-wrap: wrap; gap: 1rem">
+        <a href="client-portal.html?agency=1" class="btn btn-primary btn-lg">Agency sign-in</a>
+        <a href="contact.html" class="btn btn-outline btn-lg" style="border-color: rgba(255,255,255,0.35); color: #fff">Talk to us</a>
+      </div>
+      <div class="agency-grid">
+        <div class="agency-card">
+          <h3>Leads &amp; CRM basics</h3>
+          <p>Capture inquiries from the contact form, track phases, and keep a paper trail without a separate CRM if you do not need one yet.</p>
+        </div>
+        <div class="agency-card">
+          <h3>Site builder</h3>
+          <p>Edit HTML/CSS/JS per project, staging and production deploy hooks, and previews — all from the browser for admins.</p>
+        </div>
+        <div class="agency-card">
+          <h3>Client portal</h3>
+          <p>Clients can sign in separately for updates, messages, and invoices when you enable those flows.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 2rem">
+    <div class="container">
+      <h2 class="section-title" style="font-size: 1.35rem">White-label &amp; resale</h2>
+      <p class="section-subtitle" style="max-width: 40rem; text-align: left; margin: 0 0 1rem">
+        This page is for <strong>your team</strong> using CustomSite to deliver sites. If you need a formal reseller or white-label program, say so in your inquiry and we will align contract and branding.
+      </p>
+      <p><a href="pricing.html">See public pricing</a> · <a href="docs/ROADMAP-PHASES.md">Product roadmap</a></p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="logo logo-light" aria-label="CustomSite home">
+          <img class="logo-stacked" src="images/customsite-stacked-on-dark.svg" width="256" height="96" alt="CustomSite" />
+        </a>
+        <p>Professional web design and development for businesses of all sizes.</p>
+      </div>
+      <div class="footer-col"><h4>Services</h4><ul>
+        <li><a href="pricing.html">Business Websites</a></li>
+        <li><a href="pricing.html">E-Commerce</a></li>
+        <li><a href="pricing.html">Landing Pages</a></li>
+        <li><a href="pricing.html">Maintenance Plans</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Company</h4><ul>
+        <li><a href="portfolio.html">Portfolio</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="agency.html">Agency</a></li>
+        <li><a href="client-portal.html">Client Portal</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Contact</h4><ul>
+        <li><a href="mailto:hello@customsite.online">hello@customsite.online</a></li>
+        <li><a href="contact.html">Project inquiry</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+        <p>2026 CustomSite. All rights reserved.</p>
+        <div class="footer-legal"><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Service</a></div>
+      </div>
+    </div>
+  </footer>
+  <script src="js/main.js" defer></script>
+</body>
+</html>

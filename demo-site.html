@@ -103,7 +103,12 @@
 <body>
   <div class="sample-bar" id="sampleBar">Representative <strong>full-page sample</strong> — not a real client site. <a href="portfolio.html">Back to portfolio</a></div>
   <nav>
-    <div class="nav-logo" id="navLogo"><span id="logoMark" class="logo-mark">C</span><span id="brandName">Brand</span></div>
+    <div style="display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap">
+      <a href="index.html" style="line-height: 0" aria-label="CustomSite home">
+        <img src="images/customsite-wordmark-on-light.svg" width="200" height="32" style="height: 1.85rem; width: auto; max-width: 10rem" alt="CustomSite" />
+      </a>
+      <div class="nav-logo" id="navLogo"><span id="logoMark" class="logo-mark">C</span><span id="brandName">Brand</span></div>
+    </div>
     <div class="nav-links" id="navLinks"></div>
   </nav>
   <header class="hero" id="hero">
@@ -135,7 +140,7 @@
         { t: 'Service areas', b: 'Maps, hours, and “call now” above the fold on every phone size.' },
         { t: 'Trust stack', b: 'Reviews, badges, and team photos in a layout that feels established.' }
       ],
-      band: 'This is how a $10K+ service business site is structured: story first, then proof, then call.',
+      band: 'This is how a service business site in our Starter–Business range is structured: story first, then proof, then call.',
       cta: [['Book service', 'btn-pri'], ['View reviews', 'btn-sec']]
     },
     store: {
@@ -246,7 +251,19 @@
       workGrid: true
     }
   };
-  var key = (new URLSearchParams(location.search).get('t') || 'service').toLowerCase();
+  var raw = (new URLSearchParams(location.search).get('t') || 'service').toLowerCase();
+  var SLUG = {
+    ridgelineplumbing: 'service',
+    atlashomegoods: 'store',
+    lumierebistro: 'dining',
+    lumenatelier: 'creative',
+    hudsonharbor: 'realty',
+    'meridian-legal': 'professional',
+    'vessel-drop': 'launch',
+    cindersbar: 'cafe',
+    'vellen-agency': 'studio'
+  };
+  var key = SLUG[raw] || raw;
   if (!T[key]) key = 'service';
   document.body.className = 'theme-' + key;
   var d = T[key];

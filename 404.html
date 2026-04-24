@@ -17,52 +17,70 @@
 
   <nav class="navbar scrolled" id="navbar">
     <div class="container nav-container">
-      <a href="index.html" class="logo" style="color:var(--dark)">
-        <span class="logo-icon">CS</span>
-        CustomSite
+      <a href="index.html" class="logo" style="color:var(--dark)" aria-label="CustomSite home">
+        <img class="logo-wordmark" src="images/customsite-wordmark-on-light.svg" width="220" height="40" alt="CustomSite" />
       </a>
       <ul class="nav-links" id="navLinks">
         <li><a href="index.html">Home</a></li>
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
         <li><a href="contact.html">Contact</a></li>
-        <li><a href="client-portal.html?agency=1">Agency</a></li>
+        <li><a href="agency.html">Agency</a></li>
         <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
       </ul>
       <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </nav>
 
-  <section class="page-hero" style="padding-top:10rem;min-height:60vh;display:flex;align-items:center">
-    <div class="container">
+  <section class="page-hero" style="padding-top: 10rem; min-height: 50vh; display: flex; align-items: center">
+    <div class="container" style="max-width: 40rem; text-align: center">
       <span class="section-tag">404</span>
       <h1>Page not found</h1>
-      <p style="margin-bottom:2rem">That URL does not exist or has moved. Try one of the links below.</p>
-      <div style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center">
-        <a href="index.html" class="btn btn-primary">Back to home</a>
-        <a href="contact.html" class="btn btn-outline" style="border-color:rgba(255,255,255,0.5);color:#fff">Contact</a>
+      <p style="margin-bottom: 1.5rem; color: rgba(255, 255, 255, 0.8)">That URL does not exist or has moved. Try a popular page below or <a href="contact.html" style="color: #a5b4fc; font-weight: 600">contact us</a>.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-bottom: 1.5rem">
+        <a href="index.html" class="btn btn-primary">Home</a>
+        <a href="portfolio.html" class="btn btn-outline" style="border-color: rgba(255, 255, 255, 0.45); color: #fff">Portfolio</a>
+        <a href="pricing.html" class="btn btn-outline" style="border-color: rgba(255, 255, 255, 0.45); color: #fff">Pricing</a>
+        <a href="contact.html" class="btn btn-outline" style="border-color: rgba(255, 255, 255, 0.45); color: #fff">Contact</a>
+        <a href="agency.html" class="btn btn-outline" style="border-color: rgba(255, 255, 255, 0.45); color: #fff">Agency</a>
       </div>
+      <p style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.5); margin: 0">Sitemap: <a href="sitemap.xml" style="color: #a5b4fc">/sitemap.xml</a> · <a href="robots.txt" style="color: #a5b4fc">/robots.txt</a></p>
     </div>
   </section>
 
   <footer class="footer">
     <div class="container footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="logo logo-light"><span class="logo-icon">CS</span> CustomSite</a>
+        <a href="index.html" class="logo logo-light" aria-label="CustomSite home">
+          <img class="logo-stacked" src="images/customsite-stacked-on-dark.svg" width="256" height="96" alt="CustomSite" />
+        </a>
         <p>Professional web design and development for businesses of all sizes.</p>
       </div>
+      <div class="footer-col"><h4>Services</h4><ul>
+        <li><a href="pricing.html">Business Websites</a></li>
+        <li><a href="pricing.html">E-Commerce</a></li>
+        <li><a href="pricing.html">Landing Pages</a></li>
+        <li><a href="pricing.html">Maintenance Plans</a></li>
+      </ul></div>
       <div class="footer-col"><h4>Company</h4><ul>
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
         <li><a href="contact.html">Contact</a></li>
+        <li><a href="agency.html">Agency</a></li>
+        <li><a href="client-portal.html">Client Portal</a></li>
       </ul></div>
       <div class="footer-col"><h4>Contact</h4><ul>
         <li><a href="mailto:hello@customsite.online">hello@customsite.online</a></li>
+        <li><a href="contact.html">Project inquiry</a></li>
       </ul></div>
     </div>
     <div class="footer-bottom">
-      <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div class="container">
         <p>2026 CustomSite. All rights reserved.</p>
+        <div class="footer-legal">
+          <a href="privacy.html">Privacy Policy</a>
+          <a href="terms.html">Terms of Service</a>
+        </div>
       </div>
     </div>
   </footer>

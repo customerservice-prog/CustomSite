@@ -15,6 +15,7 @@ const siteBuilderRoutes = require('./routes/siteBuilder');
 const previewSiteMiddleware = require('./routes/previewSite');
 const { devModeApiStub } = require('./middleware/devModeApiStub');
 const { router: paymentsRoutes, handleWebhook } = require('./routes/payments');
+const configPublicRoutes = require('./routes/configPublic');
 const { isSupabaseConfigured } = require('./lib/supabase');
 const { isDevAuthEnabled } = require('./lib/devAuth');
 
@@ -50,6 +51,7 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', siteBuilderRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api', configPublicRoutes);
 
 app.use(previewSiteMiddleware);
 
@@ -64,7 +66,11 @@ app.use((req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return res.status(404).end();
   }
-  res.sendFile(path.join(__dirname, '404.html'));
+  res.status(404).sendFile(path.join(__dirname, '404.html'), (err) => {
+    if (err) {
+      res.status(404).type('text/plain').send('Not found');
+    }
+  });
 });
 
 app.use((err, _req, res, _next) => {

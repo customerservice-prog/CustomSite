@@ -93,30 +93,58 @@
     .faq-section { background: var(--light); }
     .faq-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
       gap: 1.5rem;
     }
     .faq-item {
       background: var(--white);
       border-radius: var(--radius);
-      padding: 1.75rem;
+      padding: 0;
       border: 1px solid rgba(0,0,0,0.06);
     }
-    .faq-item h4 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--dark);
-      margin-bottom: 0.75rem;
-    }
-    .faq-item p {
-      font-size: 0.9rem;
-      color: var(--gray);
-      line-height: 1.7;
+    .faq-item details {
+      padding: 1.75rem;
+      border-radius: var(--radius);
     }
     @media (max-width: 768px) {
       .faq-grid {
         grid-template-columns: 1fr;
       }
+    }
+    .faq-item summary {
+      cursor: pointer;
+      list-style: none;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--dark);
+      padding: 0.1rem 1.75rem 0.1rem 0;
+      position: relative;
+      line-height: 1.4;
+    }
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+    .faq-item summary::after {
+      content: "";
+      position: absolute;
+      right: 0.15rem;
+      top: 0.35em;
+      width: 0.45em;
+      height: 0.45em;
+      border-right: 2px solid var(--primary);
+      border-bottom: 2px solid var(--primary);
+      transform: rotate(45deg);
+      transition: transform 0.2s ease;
+    }
+    .faq-item details[open] summary::after {
+      transform: rotate(-135deg);
+      top: 0.55em;
+    }
+    .faq-item details p {
+      margin: 0.75rem 0 0;
+      font-size: 0.9rem;
+      color: var(--gray);
+      line-height: 1.7;
     }
   </style>
 </head>
@@ -124,16 +152,15 @@
 
   <nav class="navbar scrolled" id="navbar">
     <div class="container nav-container">
-      <a href="index.html" class="logo" style="color: var(--dark)">
-        <span class="logo-icon">CS</span>
-        CustomSite
+      <a href="index.html" class="logo" style="color: var(--dark)" aria-label="CustomSite home">
+        <img class="logo-wordmark" src="images/customsite-wordmark-on-light.svg" width="220" height="40" alt="CustomSite" />
       </a>
       <ul class="nav-links" id="navLinks">
         <li><a href="index.html">Home</a></li>
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html" class="active">Pricing</a></li>
         <li><a href="contact.html">Contact</a></li>
-        <li><a href="client-portal.html?agency=1">Agency</a></li>
+        <li><a href="agency.html">Agency</a></li>
         <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
       </ul>
       <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
@@ -152,14 +179,14 @@
   <section class="section">
     <div class="container">
 
-      <!-- Monthly/Yearly Toggle -->
-      <div class="pricing-toggle-wrapper">
-        <span class="toggle-label active">Monthly</span>
-        <label class="toggle-switch">
+      <p style="text-align: center; max-width: 36rem; margin: 0 auto 0.5rem; color: var(--gray); font-size: 0.95rem">One-time <strong>build</strong> fees below. The toggle applies only to <strong>optional maintenance</strong> (monthly vs yearly with 2 months free).</p>
+      <div class="pricing-toggle-wrapper" role="group" aria-label="Maintenance billing">
+        <span class="toggle-label active">Care: monthly</span>
+        <label class="toggle-switch" title="Switch maintenance to yearly billing">
           <input type="checkbox" id="pricingToggle" />
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-label">Yearly <span class="save-badge">Save 20%</span></span>
+        <span class="toggle-label">Care: yearly <span class="save-badge">Save 20%</span></span>
       </div>
 
       <!-- Pricing Cards -->
@@ -183,7 +210,7 @@
             <li>2 rounds of revisions</li>
             <li>1 month free support</li>
           </ul>
-          <a href="#" class="btn btn-outline js-stripe-checkout" data-plan="starter" style="width:100%;margin-top:1.5rem">Get Started</a>
+          <a href="contact.html?tier=starter" class="btn btn-outline" data-plan="starter" style="width:100%;margin-top:1.5rem">Get Started</a>
         </div>
 
         <div class="price-card price-card-featured" data-plan="business">
@@ -206,7 +233,7 @@
             <li>4 rounds of revisions</li>
             <li>3 months free support</li>
           </ul>
-          <a href="#" class="btn btn-primary js-stripe-checkout" data-plan="business" style="width:100%;margin-top:1.5rem">Get Started</a>
+          <a href="contact.html?tier=business" class="btn btn-primary" data-plan="business" style="width:100%;margin-top:1.5rem">Get Started</a>
         </div>
 
         <div class="price-card" data-plan="ecommerce">
@@ -228,7 +255,7 @@
             <li>Unlimited revisions</li>
             <li>6 months free support</li>
           </ul>
-          <a href="#" class="btn btn-outline js-stripe-checkout" data-plan="ecommerce" style="width:100%;margin-top:1.5rem">Get Started</a>
+          <a href="contact.html?tier=ecommerce" class="btn btn-outline" data-plan="ecommerce" style="width:100%;margin-top:1.5rem">Get Started</a>
         </div>
       </div>
 
@@ -243,45 +270,45 @@
           </tr>
         </thead>
         <tbody>
-          <tr><td>Custom domain setup</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
-          <tr><td>SSL certificate</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
-          <tr><td>Mobile responsive</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
-          <tr><td>Contact forms</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
-          <tr><td>Blog / CMS</td><td class="dash">No</td><td class="check">Yes</td><td class="check">Yes</td></tr>
-          <tr><td>E-commerce store</td><td class="dash">No</td><td class="dash">No</td><td class="check">Yes</td></tr>
-          <tr><td>Online payments</td><td class="dash">No</td><td class="dash">No</td><td class="check">Yes</td></tr>
-          <tr><td>Inventory system</td><td class="dash">No</td><td class="dash">No</td><td class="check">Yes</td></tr>
-          <tr><td>Advanced SEO</td><td class="dash">No</td><td class="check">Yes</td><td class="check">Yes</td></tr>
-          <tr><td>Email newsletter</td><td class="dash">No</td><td class="check">Yes</td><td class="check">Yes</td></tr>
-          <tr><td>Priority support</td><td class="dash">No</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+          <tr><td>Custom domain setup</td><td class="check" title="Included">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>SSL certificate</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Mobile responsive</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Contact forms</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Blog / CMS</td><td class="dash" title="Not included">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>E-commerce store</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Online payments</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Inventory system</td><td class="dash">&#8212;</td><td class="dash">&#8212;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Advanced SEO</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Email newsletter</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+          <tr><td>Priority support</td><td class="dash">&#8212;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
   <!-- MAINTENANCE PLANS -->
-  <section class="section" style="background:var(--light)">
+  <section class="section" style="background: var(--light); padding: 2.5rem 0 3rem">
     <div class="container">
       <div class="section-header">
         <span class="section-tag">After Launch</span>
         <h2 class="section-title">Maintenance Plans</h2>
-        <p class="section-subtitle">Keep your site fast, secure, and up-to-date. Cancel anytime.</p>
+        <p class="section-subtitle">Keep your site fast, secure, and up-to-date. Domain registration and any paid stock assets are your cost or pass-through; we will quote before you buy. Cancel care anytime.</p>
       </div>
       <div class="services-grid">
         <div class="service-card">
-          <div class="service-icon">$49</div>
-          <h3>Starter Care - $49/mo</h3>
+          <div class="service-icon service-icon--fill" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg></div>
+          <h3>Starter Care — $49/mo</h3>
           <p>Hosting, SSL, daily backups, security monitoring, uptime alerts, and up to 1 hour of content updates per month.</p>
         </div>
-        <div class="service-card" style="border-color:var(--primary)">
-          <div class="service-icon">$79</div>
-          <h3>Business Care - $79/mo</h3>
+        <div class="service-card" style="border-color: var(--primary)">
+          <div class="service-icon service-icon--fill" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg></div>
+          <h3>Business Care — $79/mo</h3>
           <p>Everything in Starter plus up to 3 hours of updates, plugin updates, performance optimization, and monthly reports.</p>
         </div>
         <div class="service-card">
-          <div class="service-icon">$99</div>
-          <h3>E-Commerce Care - $99/mo</h3>
-          <p>Everything in Business plus store updates, product management support, order issue resolution, and payment gateway maintenance.</p>
+          <div class="service-icon service-icon--fill" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity="0.45" /></svg></div>
+          <h3>E-Commerce Care — $99/mo</h3>
+          <p>Everything in Business plus store updates, product support, order help, and payment stack checks.</p>
         </div>
       </div>
     </div>
@@ -296,28 +323,40 @@
       </div>
       <div class="faq-grid">
         <div class="faq-item">
-          <h4>How long does it take to build a website?</h4>
-          <p>Most sites are completed within 1-3 weeks depending on complexity. E-commerce sites may take 3-5 weeks. We will give you an exact timeline during our initial call.</p>
+          <details>
+            <summary>How long does it take to build a website?</summary>
+            <p>Most sites are completed within 1-3 weeks depending on complexity. E-commerce sites may take 3-5 weeks. We will give you an exact timeline during our initial call.</p>
+          </details>
         </div>
         <div class="faq-item">
-          <h4>Do I own my website?</h4>
-          <p>Yes, 100%. Once you pay the build fee, the website is yours. If you ever cancel maintenance, you can take the files and host it anywhere you want.</p>
+          <details>
+            <summary>Do I own my website?</summary>
+            <p>Yes, 100%. Once you pay the build fee, the website is yours. If you ever cancel maintenance, you can take the files and host it anywhere you want.</p>
+          </details>
         </div>
         <div class="faq-item">
-          <h4>Is the maintenance plan required?</h4>
-          <p>No, it is optional. But we strongly recommend it for security, backups, and keeping your site running smoothly.</p>
+          <details>
+            <summary>Is the maintenance plan required?</summary>
+            <p>No, it is optional. But we strongly recommend it for security, backups, and keeping your site running smoothly.</p>
+          </details>
         </div>
         <div class="faq-item">
-          <h4>What if I need more pages or features?</h4>
-          <p>No problem. We can add extra pages for $75-$150 each depending on complexity, or custom features starting at $200.</p>
+          <details>
+            <summary>What if I need more pages or features?</summary>
+            <p>No problem. We can add extra pages for $75-$150 each depending on complexity, or custom features starting at $200.</p>
+          </details>
         </div>
         <div class="faq-item">
-          <h4>Do you build on WordPress?</h4>
-          <p>Yes! We use WordPress, Shopify, or custom HTML/CSS depending on what is best for your needs. We will recommend the right platform.</p>
+          <details>
+            <summary>Do you build on WordPress?</summary>
+            <p>Yes! We use WordPress, Shopify, or custom HTML/CSS depending on what is best for your needs. We will recommend the right platform.</p>
+          </details>
         </div>
         <div class="faq-item">
-          <h4>What is your payment policy?</h4>
-          <p>50% deposit to start, 50% on delivery. For larger projects we can do milestone-based payments.</p>
+          <details>
+            <summary>What is your payment policy?</summary>
+            <p>50% deposit to start, 50% on delivery. For larger projects we can do milestone-based payments.</p>
+          </details>
         </div>
       </div>
     </div>
@@ -337,19 +376,22 @@
   <footer class="footer">
     <div class="container footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="logo logo-light"><span class="logo-icon">CS</span> CustomSite</a>
+        <a href="index.html" class="logo logo-light" aria-label="CustomSite home">
+          <img class="logo-stacked" src="images/customsite-stacked-on-dark.svg" width="256" height="96" alt="CustomSite" />
+        </a>
         <p>Professional web design and development for businesses of all sizes.</p>
       </div>
       <div class="footer-col"><h4>Services</h4><ul>
         <li><a href="pricing.html">Business Websites</a></li>
         <li><a href="pricing.html">E-Commerce</a></li>
+        <li><a href="pricing.html">Landing Pages</a></li>
         <li><a href="pricing.html">Maintenance Plans</a></li>
       </ul></div>
       <div class="footer-col"><h4>Company</h4><ul>
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
         <li><a href="contact.html">Contact</a></li>
-        <li><a href="client-portal.html?agency=1">Agency</a></li>
+        <li><a href="agency.html">Agency</a></li>
         <li><a href="client-portal.html">Client Portal</a></li>
       </ul></div>
       <div class="footer-col"><h4>Contact</h4><ul>
@@ -358,9 +400,12 @@
       </ul></div>
     </div>
     <div class="footer-bottom">
-      <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div class="container">
         <p>2026 CustomSite. All rights reserved.</p>
-        <div class="footer-legal"><a href="#">Privacy</a><a href="#">Terms</a></div>
+        <div class="footer-legal">
+          <a href="privacy.html">Privacy Policy</a>
+          <a href="terms.html">Terms of Service</a>
+        </div>
       </div>
     </div>
   </footer>

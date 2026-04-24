@@ -1,5 +1,46 @@
 /* CustomSite — admin panel (loaded by admin.html only) */
 
+#navbar .logo--admin,
+.adm-wrap .logo--admin {
+  align-items: center;
+  gap: 0.5rem;
+}
+#navbar .logo--admin .logo-suffix,
+.adm-wrap .logo--admin .logo-suffix {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--gray, #64748b);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+#navbar .logo--admin .logo-wordmark,
+.adm-wrap .logo--admin .logo-wordmark {
+  height: 2.15rem;
+}
+
+#admDbBanner {
+  max-width: 1200px;
+  margin: 0 auto 1rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 0.5rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #7f1d1d;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+#admDbBanner a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: underline;
+}
+#admDbBanner code {
+  font-size: 0.78em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.2rem;
+}
+
 /* main.js gives #navbar position:fixed; without this, page title sat under the bar */
 .adm-wrap {
   padding-top: 5.5rem;

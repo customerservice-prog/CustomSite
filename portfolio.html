@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Premium $10K+ style custom websites by industry — full navigation, brand-grade UI, and conversion-focused layouts. See high-fidelity previews and book a call." />
+  <meta name="description" content="Sample layouts by industry — builds align with our public $799–$2,499 pricing. Open a live reference demo, then book a call." />
   <meta property="og:title" content="CustomSite — Professional Web Design" />
-  <meta property="og:description" content="We build websites that grow your business." />
+  <meta property="og:description" content="Sample layouts by industry — builds align with our public $799–$2,499 pricing." />
   <meta property="og:url" content="https://customsite.online/portfolio.html" />
   <meta property="og:image" content="https://customsite.online/images/og-image.jpg" />
   <meta property="og:type" content="website" />
@@ -136,8 +136,9 @@
       color: #94a3b8;
       margin: 0.15rem 0 0.75rem 0;
     }
-    /* $10K+ “finished product” — dense, brand-grade mini UI (no image assets) */
+    /* Faux browser chrome (CSS-only) — not real screenshots */
     .portfolio-mock {
+      position: relative;
       height: 268px;
       padding: 10px 10px 12px;
       display: flex;
@@ -172,6 +173,21 @@
     .portfolio-mock__dots span:nth-child(1) { background: #ff5f57; }
     .portfolio-mock__dots span:nth-child(2) { background: #febc2e; }
     .portfolio-mock__dots span:nth-child(3) { background: #28c840; }
+    .sample-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+      font-size: 0.62rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #fff;
+      background: rgba(15, 23, 42, 0.82);
+      padding: 0.35rem 0.55rem;
+      border-radius: 6px;
+      pointer-events: none;
+    }
     .portfolio-mock__url {
       flex: 1;
       font-size: 5px;
@@ -385,16 +401,15 @@
 
   <nav class="navbar scrolled" id="navbar">
     <div class="container nav-container">
-      <a href="index.html" class="logo" style="color:var(--dark)">
-        <span class="logo-icon">CS</span>
-        CustomSite
+      <a href="index.html" class="logo" style="color:var(--dark)" aria-label="CustomSite home">
+        <img class="logo-wordmark" src="images/customsite-wordmark-on-light.svg" width="220" height="40" alt="CustomSite" />
       </a>
       <ul class="nav-links" id="navLinks">
         <li><a href="index.html">Home</a></li>
         <li><a href="portfolio.html" class="active">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
         <li><a href="contact.html">Contact</a></li>
-        <li><a href="client-portal.html?agency=1">Agency</a></li>
+        <li><a href="agency.html">Agency</a></li>
         <li><a href="client-portal.html" class="btn-nav">Client Portal</a></li>
       </ul>
       <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
@@ -404,8 +419,8 @@
   <section class="page-hero">
     <div class="container">
       <span class="section-tag">Our Work</span>
-      <h1>Premium custom sites</h1>
-      <p>Each tile is a <strong>high-fidelity live-style preview</strong> — not a wireframe: real navigation, story, and conversion patterns. It represents the <strong>design and build depth</strong> we deliver for serious brands, typically <strong>$10,000+</strong> custom engagements. Ask us for a call or industry-specific walkthroughs.</p>
+      <h1>Reference builds &amp; sample layouts</h1>
+      <p>Sample pages demonstrating layouts we ship — builds align with <strong>transparent pricing</strong> ($799–$2,499) on the Pricing page. Open a full preview, then <a href="contact.html" style="color: inherit; text-decoration: underline">ask for case studies or a call</a>.</p>
     </div>
   </section>
 
@@ -424,12 +439,13 @@
 
       <div class="portfolio-grid" id="portfolioGrid">
 
-        <div class="portfolio-card" data-category="business" data-preview="service">
+        <div class="portfolio-card" data-category="business" data-preview="ridgelineplumbing">
           <div class="portfolio-mock" style="background:linear-gradient(160deg,#1e3a5f 0%,#0f172a 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">ridgelineplumbing.co</div>
+                <div class="portfolio-mock__url">Ridgeline · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:#fff">
                 <div class="pmb-bnav" aria-hidden="true">
@@ -478,24 +494,25 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Business</div>
             <h3>Service &amp; local business</h3>
-            <p class="portfolio-tier">$10K+ build · custom UI &amp; local SEO structure</p>
-            <p>What you are seeing: nav, story-led hero, trust strip, and service modules — the same <strong>layered, conversion-driven</strong> build we ship for high-ticket service brands.</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · custom UI &amp; local SEO structure</p>
+            <p>What you are seeing: nav, story-led hero, trust strip, and service blocks — a <strong>layered, conversion-driven</strong> build we ship for local and trade brands.</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">Brand-grade UI</span><span class="tech-tag">Leads + calls</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=service" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=ridgelineplumbing" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="ecommerce" data-preview="store">
+        <div class="portfolio-card" data-category="ecommerce" data-preview="atlashomegoods">
           <div class="portfolio-mock" style="background:linear-gradient(150deg,#4c1d95 0%,#0f172a 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">atlashomegoods.com</div>
+                <div class="portfolio-mock__url">Atlas · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:#fafafa">
                 <div class="pmb-bnav" aria-hidden="true" style="background:#fff">
@@ -551,24 +568,25 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">E-Commerce</div>
             <h3>Retail &amp; product catalog</h3>
-            <p class="portfolio-tier">$10K+ build · storefront &amp; checkout UX</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · storefront &amp; checkout UX</p>
             <p>What you are seeing: <strong>catalog density</strong>, product cards, and cart affordances — a real shop layout, not a few boxes. Built to your platform (Shopify, WooCommerce, or custom).</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">E‑commerce UI</span><span class="tech-tag">Merchandising</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=store" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=atlashomegoods" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="restaurant" data-preview="dining">
+        <div class="portfolio-card" data-category="restaurant" data-preview="lumierebistro">
           <div class="portfolio-mock" style="background:linear-gradient(150deg,#431407 0%,#0c0a09 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">lumierebistro.com</div>
+                <div class="portfolio-mock__url">Lumière · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:#0c0a09">
                 <div class="pmb-bnav" style="background:transparent;border-color:#292524">
@@ -604,24 +622,25 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Restaurant</div>
             <h3>Menu &amp; hospitality</h3>
-            <p class="portfolio-tier">$10K+ build · experience-led dining brand</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · experience-led dining brand</p>
             <p>What you are seeing: <strong>dark, editorial hospitality UI</strong> with hero, menu module, and booking — the kind of site guests expect from a serious dining room, not a PDF menu.</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">Reservations</span><span class="tech-tag">Mobile menu</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=dining" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=lumierebistro" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="portfolio" data-preview="creative">
+        <div class="portfolio-card" data-category="portfolio" data-preview="lumenatelier">
           <div class="portfolio-mock" style="background:linear-gradient(150deg,#1a1025 0%,#030712 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">lumenatelier.com</div>
+                <div class="portfolio-mock__url">Lumen · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:#030712">
                 <div class="pmb-bnav" style="background:#030712;border-color:#1e293b">
@@ -650,24 +669,25 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Portfolio</div>
             <h3>Creators &amp; studios</h3>
-            <p class="portfolio-tier">$10K+ build · gallery &amp; motion-ready art direction</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · gallery &amp; motion-ready art direction</p>
             <p>What you are seeing: <strong>editorial grid, negative space, and art-forward tiles</strong> — the look of a contemporary studio site where photography does the selling.</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">Editorial grid</span><span class="tech-tag">Fast load</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=creative" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=lumenatelier" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="realestate" data-preview="realty">
+        <div class="portfolio-card" data-category="realestate" data-preview="hudsonharbor">
           <div class="portfolio-mock" style="background:linear-gradient(150deg,#0c4a6e 0%,#020617 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">hudsonharbor.realty</div>
+                <div class="portfolio-mock__url">Hudson Harbor · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:#f8fafc">
                 <div class="pmb-bnav" style="background:#fff">
@@ -700,24 +720,25 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Real Estate</div>
             <h3>Listings &amp; lead capture</h3>
-            <p class="portfolio-tier">$10K+ build · search + lead routing</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · search + lead routing</p>
             <p>What you are seeing: <strong>search bar, hero property, and listing panel</strong> — structured like a top brokerage site, with clear paths to tour requests and your CRM.</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">IDX-ready UI</span><span class="tech-tag">Lead flow</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=realty" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=hudsonharbor" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="business" data-preview="professional">
+        <div class="portfolio-card" data-category="business" data-preview="meridian-legal">
           <div class="portfolio-mock" style="background:linear-gradient(150deg,#134e4a 0%,#022c22 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">meridian-legal.com</div>
+                <div class="portfolio-mock__url">Meridian · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:#fff">
                 <div class="pmb-bnav" aria-hidden="true">
@@ -755,24 +776,25 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Business</div>
             <h3>Professional services</h3>
-            <p class="portfolio-tier">$10K+ build · trust, compliance, team</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · trust, compliance, team</p>
             <p>What you are seeing: <strong>restrained, authority-led layout</strong> with practice narrative, team panel, and subtle trust — how premium firms present online, not a template blog.</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">Authority UI</span><span class="tech-tag">Secure intake</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=professional" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=meridian-legal" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="ecommerce" data-preview="launch">
+        <div class="portfolio-card" data-category="ecommerce" data-preview="vessel-drop">
           <div class="portfolio-mock" style="background:linear-gradient(150deg,#4c0519 0%,#0f172a 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">vessel-drop.com</div>
+                <div class="portfolio-mock__url">Vessel · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:linear-gradient(180deg,#1a050c,#0f172a)">
                 <div class="pmb-hero--mesh" style="--m-hero:linear-gradient(95deg,#fb7185 0%,#be123c 50%,#431407 100%);min-height:88px;flex:0">
@@ -797,24 +819,25 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">E-Commerce</div>
             <h3>Brand &amp; campaign landing</h3>
-            <p class="portfolio-tier">$10K+ build · launch + conversion testing</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · launch + conversion testing</p>
             <p>What you are seeing: <strong>one goal, one hero, one CTA</strong> — a campaign-grade drop page with the visual weight of a national brand launch, tuned for signups and pre-orders.</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">Campaign CRO</span><span class="tech-tag">Analytics</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=launch" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=vessel-drop" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="restaurant" data-preview="cafe">
+        <div class="portfolio-card" data-category="restaurant" data-preview="cindersbar">
           <div class="portfolio-mock" style="background:linear-gradient(150deg,#14532d 0%,#022c0f 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">cindersbar.com</div>
+                <div class="portfolio-mock__url">Cinders · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:#0f1f12">
                 <div class="pmb-bnav" style="background:transparent;border-color:#166534">
@@ -840,24 +863,25 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Restaurant</div>
             <h3>Cafe &amp; bar</h3>
-            <p class="portfolio-tier">$10K+ build · late-night + events UI</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · late-night + events UI</p>
             <p>What you are seeing: <strong>event strip, social hero, and drink-style line list</strong> — a bar site that looks alive on a phone and sells Friday night, not a text PDF.</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">Events + menu</span><span class="tech-tag">Tap-to-call</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=cafe" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=cindersbar" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="portfolio-card" data-category="portfolio" data-preview="studio">
+        <div class="portfolio-card" data-category="portfolio" data-preview="vellen-agency">
           <div class="portfolio-mock" style="background:linear-gradient(150deg,#0f172a 0%,#020617 100%)" title="Open full sample layout">
+            <span class="sample-badge" aria-hidden="true">Sample layout</span>
             <div class="portfolio-mock__shell">
               <div class="portfolio-mock__chrome" aria-hidden="true">
                 <div class="portfolio-mock__dots"><span></span><span></span><span></span></div>
-                <div class="portfolio-mock__url">vellen-agency.com</div>
+                <div class="portfolio-mock__url">Vellen · sample</div>
               </div>
               <div class="portfolio-mock__body" style="background:#020617">
                 <div class="pmb-bnav" style="background:#020617;border-color:#1e293b">
@@ -884,12 +908,12 @@
           <div class="portfolio-info">
             <div class="portfolio-tag">Portfolio</div>
             <h3>Studio &amp; agency</h3>
-            <p class="portfolio-tier">$10K+ build · case-study + pitch site</p>
-            <p>What you are seeing: <strong>asymmetric work grid, split hero, and minimal nav</strong> — the “design shop” look buyers expect before they sign a $10K+ statement of work.</p>
+            <p class="portfolio-tier">Builds from $799–$2,499 · case-study + pitch site</p>
+            <p>What you are seeing: <strong>asymmetric work grid, split hero, and minimal nav</strong> — the agency-style first impression buyers expect before they book; scope still maps to the pricing tiers on our Pricing page.</p>
             <div class="portfolio-meta">
               <div class="tech-tags"><span class="tech-tag">Case study UX</span><span class="tech-tag">New-business pitch</span></div>
               <div class="portfolio-actions">
-                <a href="demo-site.html?t=studio" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
+                <a href="demo-site.html?t=vellen-agency" class="btn-preview" target="_blank" rel="noopener">Preview full layout</a>
                 <a href="contact.html" class="link-quote">Get a quote</a>
               </div>
             </div>
@@ -900,10 +924,10 @@
     </div>
   </section>
 
-  <section class="section" style="background:var(--dark)">
-    <div class="container" style="max-width:720px;text-align:center">
-      <p style="color:rgba(255,255,255,0.75);font-size:1.1rem;line-height:1.7;margin:0">
-        Expect <strong>five-figure</strong> depth: strategy, custom UI, performance, and launch support. <strong>Book a call</strong> and we will walk you through a build that matches your business — with client-safe examples when NDAs allow.
+  <section class="section" style="background: var(--dark); padding: 2.5rem 0">
+    <div class="container" style="max-width: 720px; text-align: center">
+      <p style="color: rgba(255, 255, 255, 0.78); font-size: 1.1rem; line-height: 1.7; margin: 0">
+        Full builds cover strategy, custom UI, performance, and launch support — with <a href="pricing.html" style="color: #a5b4fc; font-weight: 600">public one-time fees</a> and optional care. <a href="contact.html" style="color: #a5b4fc; font-weight: 600">Book a call</a> to scope your project; we can share private examples when NDAs allow.
       </p>
     </div>
   </section>
@@ -922,18 +946,23 @@
   <footer class="footer">
     <div class="container footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="logo logo-light"><span class="logo-icon">CS</span> CustomSite</a>
+        <a href="index.html" class="logo logo-light" aria-label="CustomSite home">
+          <img class="logo-stacked" src="images/customsite-stacked-on-dark.svg" width="256" height="96" alt="CustomSite" />
+        </a>
         <p>Professional web design and development for businesses of all sizes.</p>
       </div>
       <div class="footer-col"><h4>Services</h4><ul>
         <li><a href="pricing.html">Business Websites</a></li>
         <li><a href="pricing.html">E-Commerce</a></li>
+        <li><a href="pricing.html">Landing Pages</a></li>
         <li><a href="pricing.html">Maintenance Plans</a></li>
       </ul></div>
       <div class="footer-col"><h4>Company</h4><ul>
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
         <li><a href="contact.html">Contact</a></li>
+        <li><a href="agency.html">Agency</a></li>
+        <li><a href="client-portal.html">Client Portal</a></li>
       </ul></div>
       <div class="footer-col"><h4>Contact</h4><ul>
         <li><a href="mailto:hello@customsite.online">hello@customsite.online</a></li>
@@ -941,9 +970,12 @@
       </ul></div>
     </div>
     <div class="footer-bottom">
-      <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div class="container">
         <p>2026 CustomSite. All rights reserved.</p>
-        <div class="footer-legal"><a href="#">Privacy</a><a href="#">Terms</a></div>
+        <div class="footer-legal">
+          <a href="privacy.html">Privacy Policy</a>
+          <a href="terms.html">Terms of Service</a>
+        </div>
       </div>
     </div>
   </footer>

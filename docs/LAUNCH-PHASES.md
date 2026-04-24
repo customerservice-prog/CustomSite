@@ -17,8 +17,9 @@ Follow in order. Each phase unlocks the next.
 ## Phase 2 — Database & storage (Supabase)
 
 1. Create a Supabase project.
-2. Run **`supabase/schema.sql`** in the SQL Editor.
-3. Run **`supabase/migration_project_fields.sql`** (website type + notes on projects).
+2. Run the migrations in order in the SQL editor: **`supabase/migrations/001_core.sql`**, then **`002_admin_overhaul.sql`**, then **`003_site_builder_railway.sql`** (see that folder’s `README.md`).  
+   (Older docs referenced **`supabase/schema.sql`** — it matches `001_core.sql` for a fresh project.)
+3. If you have an old database, also run legacy **`supabase/migration_project_fields.sql`** as needed.
 4. **Storage:** bucket **`project-files`** (public read is simplest for download links).
 5. Copy **URL**, **anon key**, **service role key** into Railway env.
 

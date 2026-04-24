@@ -117,7 +117,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 // ============================================
 (function initScrollAnimations() {
   const elements = document.querySelectorAll(
-    '.step-card, .service-card, .price-card, .testimonial-card, .portfolio-card, .section-header'
+    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header'
   );
 
   if (!elements.length || !window.IntersectionObserver) return;
@@ -143,6 +143,14 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
   const form = document.getElementById('contactForm');
   if (!form) return;
 
+  const tier = (new URLSearchParams(window.location.search).get('tier') || '').toLowerCase();
+  if (tier && /^(starter|business|ecommerce)$/.test(tier)) {
+    const msg = form.querySelector('#message');
+    if (msg && !String(msg.value).trim()) {
+      msg.value = `I am interested in the ${tier} build. `;
+    }
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -152,6 +160,11 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
     const serviceSelect = form.querySelector('#service');
     const budgetSelect = form.querySelector('#budget');
     const timelineSelect = form.querySelector('#timeline');
+
+    const hp = form.querySelector('[name="cs_hp_website"]')?.value || '';
+    if (String(hp).trim()) {
+      return;
+    }
 
     const payload = {
       name: form.querySelector('#name')?.value.trim(),
@@ -163,6 +176,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
       timeline: timelineSelect?.options[timelineSelect.selectedIndex]?.text?.trim() || '',
       message: form.querySelector('#message')?.value.trim(),
       current_url: form.querySelector('#currentSite')?.value.trim() || '',
+      cs_hp_website: '',
     };
 
     if (!payload.name || !payload.email || !payload.message) {
@@ -186,10 +200,19 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error(data.error || 'Too many requests. Please try again in a few minutes.');
+        }
         throw new Error(data.error || 'Request failed');
       }
-      showFormMessage(form, 'Thanks — your message was sent. We will reply within one business day.', 'success');
-      form.reset();
+      const wrap = form.parentElement;
+      form.classList.add('is-sent');
+      wrap.innerHTML = `
+        <div class="form-success" style="background:var(--light);padding:2.5rem;border-radius:var(--radius-lg);border:1px solid rgba(0,0,0,0.08);text-align:center">
+          <h3 style="color:var(--dark);font-size:1.35rem;margin-bottom:0.5rem">Thanks — we got your request</h3>
+          <p style="color:var(--gray)">We typically reply within one business day. You will get a copy at the email you provided when our inbox is connected.</p>
+          <p style="margin-top:1.25rem"><a href="index.html" class="btn btn-primary">Back to home</a></p>
+        </div>`;
     } catch (error) {
       console.error('Form submission error:', error);
       showFormMessage(form,
@@ -310,39 +333,48 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
   const isSiteBuilder = path.endsWith('site-builder.html');
   if (!isDash && !isAdmin && !isSiteBuilder) return;
 
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
-  if (!token) {
-    const agencyEntry = isAdmin || isSiteBuilder
-      ? 'client-portal.html?agency=1'
-      : 'client-portal.html';
-    window.location.replace(agencyEntry);
-    return;
-  }
-
-  fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
-    .then((r) => {
-      if (!r.ok) throw new Error();
-      return r.json();
-    })
-    .then((data) => {
-      if (isAdmin && data.user && data.user.role !== 'admin') {
-        window.location.replace('dashboard.html');
+  (async function run() {
+    if (window.__csAuthReady) {
+      try {
+        await window.__csAuthReady;
+      } catch (e) {
+        console.error(e);
       }
-      if (isSiteBuilder && data.user && data.user.role !== 'admin') {
-        window.location.replace('dashboard.html');
-      }
-      if (isDash && data.user && data.user.role === 'admin') {
-        window.location.replace('admin.html');
-      }
-    })
-    .catch(() => {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      localStorage.removeItem(AUTH_REFRESH_KEY);
+    }
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
       const agencyEntry = isAdmin || isSiteBuilder
         ? 'client-portal.html?agency=1'
         : 'client-portal.html';
       window.location.replace(agencyEntry);
-    });
+      return;
+    }
+
+    return fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((data) => {
+        if (isAdmin && data.user && data.user.role !== 'admin') {
+          window.location.replace('dashboard.html');
+        }
+        if (isSiteBuilder && data.user && data.user.role !== 'admin') {
+          window.location.replace('dashboard.html');
+        }
+        if (isDash && data.user && data.user.role === 'admin') {
+          window.location.replace('admin.html');
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(AUTH_REFRESH_KEY);
+        const agencyEntry = isAdmin || isSiteBuilder
+          ? 'client-portal.html?agency=1'
+          : 'client-portal.html';
+        window.location.replace(agencyEntry);
+      });
+  })();
 })();
 
 // ============================================
@@ -486,6 +518,24 @@ function showFormMessage(form, message, type) {
 // ============================================
 // SMOOTH SCROLL for anchor links
 // ============================================
+(function initCopyEmailCta() {
+  const b = document.getElementById('copyEmailCta');
+  if (!b) return;
+  b.addEventListener('click', async () => {
+    const em = b.getAttribute('data-email') || 'hello@customsite.online';
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(em);
+        showPageToast('Copied ' + em, 'success');
+      } else {
+        showPageToast(em, 'info');
+      }
+    } catch (e) {
+      showPageToast(em, 'info');
+    }
+  });
+})();
+
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', (e) => {
     const href = anchor.getAttribute('href');
