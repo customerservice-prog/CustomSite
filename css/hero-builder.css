@@ -3,12 +3,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  width: 560px;
+  width: 620px;
   max-width: 100%;
-  height: 420px;
+  height: 460px;
   border-radius: 12px;
   background: #18110c;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(251, 191, 36, 0.12), 0 0 40px -12px rgba(234, 88, 12, 0.15);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 40px rgba(99, 102, 241, 0.2);
   overflow: visible;
   margin: 0 auto;
   z-index: 1;
@@ -121,7 +121,7 @@
   width: 10px;
   height: 10px;
   margin-top: -5px;
-  border: 2px solid #f59e0b;
+  border: 2px solid #6366f1;
   border-top-color: transparent;
   border-radius: 50%;
   animation: hb-wait-spin 0.8s linear infinite, hb-wait-vanish 0.35s 16.5s both;
@@ -161,7 +161,7 @@
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, #f59e0b, #ea580c);
+  background: linear-gradient(90deg, #6366f1 0%, #06b6d4 100%);
   border-radius: 0 1px 1px 0;
   animation: hb-prog 16.5s linear 0s both;
 }
@@ -310,7 +310,7 @@
 }
 
 .hb-hero {
-  flex: 0 0 124px;
+  flex: 0 0 110px;
   background: linear-gradient(135deg, #1a0f0a 0%, #2d1a10 50%, #1a0f0a 100%);
   padding: 8px 10px 10px;
   display: flex;
@@ -433,7 +433,7 @@
 .hb-hero-art {
   width: 100%;
   max-width: 170px;
-  min-height: 92px;
+  min-height: 84px;
   background:
     linear-gradient(152deg, rgba(26, 15, 10, 0.65) 0%, rgba(40, 24, 16, 0.25) 40%, transparent 60%),
     linear-gradient(135deg, #7c2d12 0%, #f59e0b 42%, #b45309 100%);
@@ -501,7 +501,8 @@
 }
 
 .hb-trust {
-  flex: 0 0 26px;
+  flex: 0 0 24px;
+  opacity: 0;
   background: #fff2e5;
   border-top: 1px solid #fed7aa;
   border-bottom: 1px solid #fed7aa;
@@ -510,6 +511,7 @@
   justify-content: space-between;
   padding: 3px 8px 4px;
   gap: 4px;
+  animation: hb-fade-in 0.3s ease 6.6s both;
 }
 .hb-trust-item {
   flex: 1;
@@ -594,12 +596,14 @@
 }
 
 .hb-features {
-  flex: 0 0 72px;
+  flex: 0 0 116px;
+  opacity: 0;
   background: #fffaf3;
-  padding: 5px 8px 6px;
+  padding: 6px 8px 7px;
   display: flex;
   gap: 6px;
   border-bottom: 1px solid #fed7aa;
+  animation: hb-fade-in 0.3s ease 6.9s both;
 }
 .hb-fcard {
   flex: 1;
@@ -615,25 +619,28 @@
 .hb-fcard:nth-child(2) { animation-delay: 7.77s; }
 .hb-fcard:nth-child(3) { animation-delay: 8.4s; }
 .hb-fcard-ico {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px;
-  font-weight: 800;
-  line-height: 1;
-  color: #431407;
+  color: #f97316;
   animation: hb-mic 0.35s both;
   transform-origin: 50% 100%;
+}
+.hb-fcard-ico-svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  flex-shrink: 0;
 }
 .hb-fcard:nth-child(1) .hb-fcard-ico { background: #ffedd5; animation-delay: 7.14s; }
 .hb-fcard:nth-child(2) .hb-fcard-ico { background: #fed7aa; animation-delay: 7.77s; }
 .hb-fcard:nth-child(3) .hb-fcard-ico { background: #fef3c7; animation-delay: 8.4s; }
 .hb-fcard-title {
   margin: 2px 0 0;
-  font-size: 5.5px;
+  font-size: 9px;
   font-weight: 800;
   color: #422006;
   line-height: 1.2;
@@ -646,11 +653,11 @@
 .hb-fcard:nth-child(3) .hb-fcard-title { animation-delay: 8.58s; }
 .hb-fcard-p {
   margin: 2px 0 0;
-  font-size: 4.5px;
+  font-size: 7px;
   line-height: 1.2;
   font-weight: 500;
   color: #7c4f3a;
-  max-height: 2.4em;
+  max-height: 3.6em;
   overflow: hidden;
   animation: hb-mic2 0.32s both;
   transform-origin: left top;
@@ -690,14 +697,15 @@
 }
 
 .hb-tquote {
-  flex: 0 0 66px;
+  flex: 0 0 70px;
+  opacity: 0;
   background: #fff2e2;
   border-top: 1px solid #fdba74;
   padding: 5px 8px 6px;
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  animation: hb-tq-surface 0.6s 9.1s both;
+  animation: hb-sect-fade-up 0.5s 8.9s both;
 }
 .hb-ava {
   width: 30px;
@@ -767,10 +775,10 @@
     transform: translateY(0.5px) scale(1) rotate(0);
   }
 }
-@keyframes hb-tq-surface {
+@keyframes hb-sect-fade-up {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(5px);
   }
   to {
     opacity: 1;
@@ -796,15 +804,16 @@
 }
 
 .hb-ctaft {
-  flex: 0 0 59px;
+  flex: 0 0 65px;
   min-height: 0;
+  opacity: 0;
   background: linear-gradient(135deg, #c2410c 0%, #7f1d1d 100%);
   padding: 6px 8px 7px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 6px;
-  animation: hb-ctaft 0.55s 9.87s both;
+  animation: hb-sect-fade-up 0.45s 9.7s both;
 }
 .hb-ctaft-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .hb-ctaft-t1 {
@@ -860,17 +869,6 @@
     transform: translateX(0) scale(1);
   }
 }
-@keyframes hb-ctaft {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .hb-ready-badge {
   position: absolute;
   top: -12px;
@@ -886,7 +884,7 @@
   line-height: 1.2;
   pointer-events: none;
   white-space: nowrap;
-  animation: hb-badge 0.55s 15s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: hb-badge 0.5s 11s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 @keyframes hb-badge {
@@ -908,7 +906,7 @@
   text-align: center;
   color: rgba(255, 255, 255, 0.85);
   width: 100%;
-  max-width: 560px;
+  max-width: 620px;
 }
 .hb-links a {
   color: #c7d2fe;
@@ -919,6 +917,12 @@
 .hb-links a:hover {
   color: #fff;
   border-bottom-color: #fff;
+}
+
+@media (min-width: 1200px) and (max-width: 1399px) {
+  #hero-builder-preview.hb-widget {
+    width: 580px;
+  }
 }
 
 @media (max-width: 600px) {
@@ -932,7 +936,7 @@
 }
 
 .hb-widget.hb--static {
-  height: 420px;
+  height: 460px;
 }
 .hb-widget.hb--static * {
   animation: none !important;
@@ -940,7 +944,11 @@
 .hb-widget.hb--static .hb-site,
 .hb-widget.hb--static .hb-chrome,
 .hb-widget.hb--static .hb-progress-track,
-.hb-widget.hb--static .hb-ready-badge {
+.hb-widget.hb--static .hb-ready-badge,
+.hb-widget.hb--static .hb-trust,
+.hb-widget.hb--static .hb-features,
+.hb-widget.hb--static .hb-tquote,
+.hb-widget.hb--static .hb-ctaft {
   opacity: 1 !important;
   transform: none !important;
 }
