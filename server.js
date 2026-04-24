@@ -1,7 +1,9 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs/promises');
 require('./lib/env');
+const { applySitePhoneToHtml } = require('./lib/sitePhone');
 
 const express = require('express');
 const cors = require('cors');
@@ -70,7 +72,7 @@ const LOCAL_SEO_PAGES = {
   'www.syracusewebdesigner.com': 'syracuse-web-designer',
 };
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return next();
   }
@@ -84,12 +86,17 @@ app.use((req, res, next) => {
     p = p.slice(0, -1);
   }
   if (p === '/' || p === '/index.html') {
-    return res.sendFile(path.join(__dirname, 'public', `${slug}.html`), (err) => {
-      if (err) next(err);
-    });
+    try {
+      const filePath = path.join(__dirname, 'local-seo', `${slug}.html`);
+      const raw = await fs.readFile(filePath, 'utf8');
+      res.type('html').send(applySitePhoneToHtml(raw));
+    } catch (e) {
+      next(e);
+    }
+    return;
   }
   if (p === '/sitemap.xml') {
-    return res.type('application/xml').sendFile(path.join(__dirname, 'public', `sitemap-${slug}.xml`), (err) => {
+    return res.type('application/xml').sendFile(path.join(__dirname, 'local-seo', `sitemap-${slug}.xml`), (err) => {
       if (err) next(err);
     });
   }
