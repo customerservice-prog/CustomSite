@@ -3,9 +3,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  width: 620px;
+  width: 720px;
   max-width: 100%;
-  height: 460px;
+  height: 520px;
   border-radius: 12px;
   background: #18110c;
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 40px rgba(99, 102, 241, 0.2);
@@ -181,7 +181,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
 }
 
 .hb-nav {
@@ -310,7 +310,7 @@
 }
 
 .hb-hero {
-  flex: 0 0 110px;
+  flex: 0 0 125px;
   background: linear-gradient(135deg, #1a0f0a 0%, #2d1a10 50%, #1a0f0a 100%);
   padding: 8px 10px 10px;
   display: flex;
@@ -338,7 +338,7 @@
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  font-size: 8.5px;
+  font-size: 9.5px;
   color: #fff7ed;
   text-wrap: balance;
 }
@@ -356,7 +356,7 @@
 .hb-sub {
   margin: 4px 0 0;
   max-width: 100%;
-  font-size: 5.5px;
+  font-size: 6px;
   line-height: 1.32;
   color: #b89f8f;
   font-weight: 500;
@@ -373,11 +373,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 5.5px;
+  font-size: 6px;
   font-weight: 800;
   line-height: 1;
   border-radius: 4px;
-  padding: 4px 5px;
+  padding: 4px 6px;
   white-space: nowrap;
 }
 .hb-btn-pri {
@@ -432,8 +432,8 @@
 
 .hb-hero-art {
   width: 100%;
-  max-width: 170px;
-  height: 86px;
+  max-width: 196px;
+  height: 102px;
   min-height: 0;
   background: #2d1a10;
   border-radius: 8px;
@@ -531,7 +531,7 @@
 }
 
 .hb-trust {
-  flex: 0 0 24px;
+  flex: 0 0 26px;
   opacity: 0;
   background: #fff2e5;
   border-top: 1px solid #fed7aa;
@@ -626,7 +626,7 @@
 }
 
 .hb-features {
-  flex: 0 0 116px;
+  flex: 0 0 144px;
   opacity: 0;
   background: #fffaf3;
   padding: 6px 8px 7px;
@@ -649,8 +649,8 @@
 .hb-fcard:nth-child(2) { animation-delay: 7.77s; }
 .hb-fcard:nth-child(3) { animation-delay: 8.4s; }
 .hb-fcard-ico {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -660,8 +660,8 @@
   transform-origin: 50% 100%;
 }
 .hb-fcard-ico-svg {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   display: block;
   flex-shrink: 0;
 }
@@ -670,7 +670,7 @@
 .hb-fcard:nth-child(3) .hb-fcard-ico { background: #fef3c7; animation-delay: 8.4s; }
 .hb-fcard-title {
   margin: 2px 0 0;
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 800;
   color: #422006;
   line-height: 1.2;
@@ -683,11 +683,11 @@
 .hb-fcard:nth-child(3) .hb-fcard-title { animation-delay: 8.58s; }
 .hb-fcard-p {
   margin: 2px 0 0;
-  font-size: 7px;
-  line-height: 1.2;
+  font-size: 7.5px;
+  line-height: 1.22;
   font-weight: 500;
   color: #7c4f3a;
-  max-height: 3.6em;
+  max-height: 4.2em;
   overflow: hidden;
   animation: hb-mic2 0.32s both;
   transform-origin: left top;
@@ -727,7 +727,7 @@
 }
 
 .hb-tquote {
-  flex: 0 0 70px;
+  flex: 0 0 78px;
   opacity: 0;
   background: #fff2e2;
   border-top: 1px solid #fdba74;
@@ -832,7 +832,7 @@
 }
 
 .hb-ctaft {
-  flex: 0 0 65px;
+  flex: 0 0 72px;
   min-height: 0;
   opacity: 0;
   background: linear-gradient(135deg, #c2410c 0%, #7f1d1d 100%);
@@ -934,7 +934,7 @@
   text-align: center;
   color: rgba(255, 255, 255, 0.85);
   width: 100%;
-  max-width: 620px;
+  max-width: 720px;
 }
 .hb-links a {
   color: #c7d2fe;
@@ -949,7 +949,7 @@
 
 @media (min-width: 1200px) and (max-width: 1399px) {
   #hero-builder-preview.hb-widget {
-    width: 580px;
+    width: 660px;
   }
 }
 
@@ -957,14 +957,14 @@
   #hero-builder-preview.hb-widget {
     width: 100%;
     max-width: 100%;
-    height: 400px;
-    transform: scale(0.96);
+    height: 440px;
+    transform: scale(0.98);
     transform-origin: top center;
   }
 }
 
 .hb-widget.hb--static {
-  height: 460px;
+  height: 520px;
 }
 .hb-widget.hb--static * {
   animation: none !important;
