@@ -135,6 +135,20 @@ app.get('/robots.txt', (req, res) => {
   res.send(buildRobotsTxt(req.hostname));
 });
 
+/* Same local SEO HTML as a direct path on customsite.online (not only via dedicated hostnames). */
+const LOCAL_SEO_SLUGS = ['syracuse-web-agency', 'cny-web-agency', 'syracuse-web-designer'];
+LOCAL_SEO_SLUGS.forEach((slug) => {
+  app.get(`/${slug}.html`, async (req, res, next) => {
+    try {
+      const filePath = path.join(__dirname, 'local-seo', `${slug}.html`);
+      const raw = await fs.readFile(filePath, 'utf8');
+      res.type('html').send(applySitePhoneToHtml(raw));
+    } catch (e) {
+      next(e);
+    }
+  });
+});
+
 /* Local SEO domains (Syracuse / CNY) — host-based landing pages, same deployment */
 const LOCAL_SEO_PAGES = {
   'syracusewebagency.com': 'syracuse-web-agency',

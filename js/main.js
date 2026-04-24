@@ -4,8 +4,8 @@
 
 'use strict';
 
-/** 20-min Calendly URL — set CALENDLY_20_MIN in Railway/.env, or window.CALENDLY_20_MIN, or /api/config/public. */
-const CALENDLY_20_MIN = 'https://calendly.com/REPLACE-ME-20min';
+/** 20-min Calendly URL — set CALENDLY_20_MIN in Railway/.env, or window.CALENDLY_20_MIN, or /api/config/public. Leave empty so links stay contact.html until configured. */
+const CALENDLY_20_MIN = '';
 
 /** Top-right auto-dismiss toasts (replaces alert() on public pages). */
 function showPageToast(message, type) {
@@ -119,27 +119,46 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 // SCROLL ANIMATIONS - Fade in on scroll
 // ============================================
 (function initScrollAnimations() {
-  /* Excludes .process-timeline__item: each <li> is observed alone; lower rows can stay
-   * opacity:0 forever if the user doesn’t scroll them into the negative root margin,
-   * which reads as a huge “blank” band (see index “How a build unfolds”). */
-  const elements = document.querySelectorAll(
-    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .about-founder, .industry-pills, .process-timeline__item, .why-not-fiverr, .results-splash__list li'
-  );
+  function runFadeIn() {
+    const elements = document.querySelectorAll(
+      '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .about-founder, .industry-pills, .process-timeline__item, .why-not-fiverr, .results-splash__list li'
+    );
 
-  if (!elements.length || !window.IntersectionObserver) return;
+    if (!elements.length) return;
 
-  elements.forEach(el => el.classList.add('fade-in'));
+    elements.forEach((el) => el.classList.add('fade-in'));
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.08, rootMargin: '0px 0px 80px 0px' });
+    const revealAll = () => {
+      elements.forEach((el) => el.classList.add('visible'));
+    };
 
-  elements.forEach(el => observer.observe(el));
+    if (!window.IntersectionObserver) {
+      revealAll();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.05, rootMargin: '0px 0px 200px 0px' }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    // Safety net: never leave content invisible if observer never fired (layout, fast scroll, edge browsers).
+    setTimeout(revealAll, 4000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runFadeIn);
+  } else {
+    runFadeIn();
+  }
 })();
 
 // ============================================
