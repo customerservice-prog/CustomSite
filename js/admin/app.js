@@ -113,9 +113,11 @@ async function checkDbHealth() {
     const hint = d && d.hint ? ` ${d.hint}` : '';
     const code = d && d.message ? d.message : 'Database check failed';
     el.hidden = false;
-    el.innerHTML = `<strong>Database is not set up or projects table is missing.</strong> <span>${esc(
+    el.innerHTML = `<strong>We couldn&rsquo;t load data from the database yet.</strong> <span>${esc(
       String(code)
-    )}</span>${esc(hint)} <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Open Launch phases</a> — run <code>supabase/migrations/001_core.sql</code> (then 002, 003) in the Supabase SQL editor.`;
+    )}</span>${esc(
+      hint
+    )} Follow the <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">setup guide</a> in order (it links the SQL you need in Supabase).`;
   } catch (e) {
     el.innerHTML = '';
     el.hidden = true;
@@ -640,7 +642,10 @@ function renderProjects() {
     return r[st.sort];
   });
   const { slice, page, totalPages } = paginate(rows, st.page, PER);
-  const selPrj = state._lastActProject || (state.projects[0] && state.projects[0].id) || '';
+  const selPrj =
+    (state._lastActProject && findProject(state._lastActProject) && state._lastActProject) ||
+    (state.projects.length === 1 ? state.projects[0].id : '') ||
+    '';
 
   document.getElementById('panel-projects').innerHTML = `
     <div class="adm-card">
@@ -649,7 +654,7 @@ function renderProjects() {
       <div class="adm-form-stack" style="max-width:36rem">
         <div class="form-group">
           <label>Project *</label>
-          <select id="wsProject" class="ws-prj">${projectOptions()}</select>
+          <select id="wsProject" class="ws-prj"><option value="">— Select a project —</option>${projectOptions()}</select>
         </div>
         <p id="wsCtx" class="phase-note" style="min-height:1.5em"></p>
         <div class="form-group">
@@ -814,7 +819,8 @@ function renderProjects() {
         });
       })
       .catch(() => {
-        box.textContent = 'Could not load files';
+        box.innerHTML =
+          '<p class="phase-note" role="alert">Could not load files. Check your connection, then pick the project again or refresh the page.</p>';
       });
   };
   p.querySelector('#wsPost')?.addEventListener('click', () => {
