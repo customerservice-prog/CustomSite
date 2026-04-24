@@ -85,6 +85,13 @@ app.use(async (req, res, next) => {
   if (p.length > 1 && p.endsWith('/')) {
     p = p.slice(0, -1);
   }
+  if (p === '/robots.txt') {
+    const base = `https://${host}`;
+    res.type('text/plain');
+    return res.send(
+      `User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`
+    );
+  }
   if (p === '/' || p === '/index.html') {
     try {
       const filePath = path.join(__dirname, 'local-seo', `${slug}.html`);
