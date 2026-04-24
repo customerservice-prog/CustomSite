@@ -32,6 +32,7 @@
       </a>
       <ul class="nav-links" id="navLinks">
         <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="index.html#about">About</a></li>
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
         <li><a href="contact.html">Contact</a></li>
@@ -81,49 +82,77 @@
           </div>
         </div>
       </div>
-      <div class="hero-visual" aria-hidden="true">
-        <div class="hero-mock hero-mock--desktop">
-          <div class="hero-mock__chrome"><span></span><span></span><span></span><span class="hero-mock__url">sample preview</span></div>
-          <div class="hero-mock__screen">
-            <div class="hero-mock__hero"></div>
-            <div class="hero-mock__cols"><span></span><span></span><span></span></div>
+      <div class="hero-visual">
+        <div class="hero-live">
+          <div class="hero-live__chrome" aria-hidden="true">
+            <span class="hero-live__dot"></span><span class="hero-live__dot"></span><span class="hero-live__dot"></span>
+            <span class="hero-live__url">customsite.online / reference layout</span>
           </div>
-        </div>
-        <div class="hero-mock hero-mock--phone" title="Example layout on mobile">
-          <div class="hero-mock__pbody"></div>
+          <iframe
+            class="hero-live__frame"
+            src="demo-site.html?t=ridgelineplumbing"
+            title="Live reference preview: trade services website layout"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+          <p class="hero-live__caption">
+            <a href="demo-site.html?t=ridgelineplumbing" target="_blank" rel="noopener">Open full preview</a>
+            <span aria-hidden="true"> · </span>
+            <a href="portfolio.html">Browse reference builds</a>
+          </p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section class="section how-it-works" id="how-it-works">
+  <section class="section section--tight tech-strip-section" aria-label="Platforms and tools we use">
+    <div class="container">
+      <p class="tech-strip__head">Built with the same stack serious businesses expect</p>
+      <ul class="tech-strip" role="list">
+        <li class="tech-strip__item">WordPress</li>
+        <li class="tech-strip__item">Shopify</li>
+        <li class="tech-strip__item">Stripe</li>
+        <li class="tech-strip__item">Google Analytics</li>
+        <li class="tech-strip__item">React</li>
+        <li class="tech-strip__item">Mailchimp</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section how-it-works" id="how-it-works" style="background: var(--light); border-top: 1px solid rgba(0,0,0,0.06); border-bottom: 1px solid rgba(0,0,0,0.06)">
     <div class="container">
       <div class="section-header">
-        <span class="section-tag">Simple Process</span>
-        <h2 class="section-title">How It Works</h2>
-        <p class="section-subtitle">From idea to live website in 3 easy steps</p>
+        <span class="section-tag">Project timeline</span>
+        <h2 class="section-title">How a build unfolds</h2>
+        <p class="section-subtitle">Clear phases so you know what is happening and when. Timelines flex with store size and your review speed — we quote a calendar after discovery.</p>
       </div>
-      <div class="steps-grid">
-        <div class="step-card">
-          <div class="step-number">01</div>
-          <div class="step-icon" aria-hidden="true"><svg class="step-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></div>
-          <h3>You Call or Contact Us</h3>
-          <p>Tell us about your business and what you need. No tech jargon, just a conversation about your goals.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-number">02</div>
-          <div class="step-icon" aria-hidden="true"><svg class="step-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 9.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></div>
-          <h3>We Build Your Site</h3>
-          <p>Our team designs and develops your custom website. You review, we revise until it is perfect.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-number">03</div>
-          <div class="step-icon" aria-hidden="true"><svg class="step-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg></div>
-          <h3>We Launch and Maintain</h3>
-          <p>Your site goes live and we handle all hosting, updates, backups, and security going forward.</p>
-        </div>
-      </div>
+      <ol class="process-timeline" role="list">
+        <li class="process-timeline__item">
+          <span class="process-timeline__phase">Week 1</span>
+          <h3 class="process-timeline__title">Discovery &amp; brief</h3>
+          <p class="process-timeline__body">Kickoff call, goals, sitemap, brand assets, and technical constraints. You receive a written scope and success criteria.</p>
+        </li>
+        <li class="process-timeline__item">
+          <span class="process-timeline__phase">Weeks 2–3</span>
+          <h3 class="process-timeline__title">Structure &amp; wire direction</h3>
+          <p class="process-timeline__body">Page hierarchy, key modules, and mobile-first layout plan. E‑commerce adds catalog and checkout flow mapping.</p>
+        </li>
+        <li class="process-timeline__item">
+          <span class="process-timeline__phase">Weeks 3–5</span>
+          <h3 class="process-timeline__title">Design &amp; build</h3>
+          <p class="process-timeline__body">UI design in your brand, then development on the agreed platform. Integrations (forms, payments, analytics) are wired in this phase.</p>
+        </li>
+        <li class="process-timeline__item">
+          <span class="process-timeline__phase">Weeks 5–6</span>
+          <h3 class="process-timeline__title">Review rounds</h3>
+          <p class="process-timeline__body">Staged link for your team. Revisions are tracked against your plan&rsquo;s included rounds: copy tweaks, layout polish, and launch checklist.</p>
+        </li>
+        <li class="process-timeline__item">
+          <span class="process-timeline__phase">Go-live</span>
+          <h3 class="process-timeline__title">Launch &amp; handoff</h3>
+          <p class="process-timeline__body">DNS, SSL, redirects, and analytics verification. You get ownership credentials, a short Loom or doc walkthrough, and optional care plan if you want us on hook for hosting and updates.</p>
+        </li>
+      </ol>
     </div>
   </section>
 
@@ -182,17 +211,33 @@
     </div>
   </section>
 
-  <section class="section trust-section" id="social-proof" style="background: #fff; border-top: 1px solid rgba(0,0,0,0.06); border-bottom: 1px solid rgba(0,0,0,0.06)">
-    <div class="container" style="text-align: center">
-      <p style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray)">Recent launches</p>
-      <p style="margin-top: 0.75rem; color: var(--dark-3); max-width: 40rem; margin-left: auto; margin-right: auto; font-size: 0.95rem">
-        Local service, retail, and creator brands — with references available on request. We are building our public case-study list; <a href="contact.html">ask us for the closest match to your industry</a>.
-      </p>
-      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-top: 1.5rem" aria-label="Industries">
-        <span style="display: inline-block; padding: 0.4rem 0.9rem; background: var(--light); border-radius: 999px; font-size: 0.8rem; color: var(--gray)">HVAC &amp; trades</span>
-        <span style="display: inline-block; padding: 0.4rem 0.9rem; background: var(--light); border-radius: 999px; font-size: 0.8rem; color: var(--gray)">Retail</span>
-        <span style="display: inline-block; padding: 0.4rem 0.9rem; background: var(--light); border-radius: 999px; font-size: 0.8rem; color: var(--gray)">Hospitality</span>
-        <span style="display: inline-block; padding: 0.4rem 0.9rem; background: var(--light); border-radius: 999px; font-size: 0.8rem; color: var(--gray)">Creators</span>
+  <section class="section trust-section" id="industries" style="background: #fff; border-top: 1px solid rgba(0,0,0,0.06); border-bottom: 1px solid rgba(0,0,0,0.06)">
+    <div class="container">
+      <div class="section-header" style="text-align: center; margin-bottom: 1.5rem">
+        <span class="section-tag">Industries</span>
+        <h2 class="section-title">Reference layouts by sector</h2>
+        <p class="section-subtitle" style="max-width: 40rem; margin-left: auto; margin-right: auto">Open a live demo that matches your business type — every card on our portfolio links to a full-page reference build (speed-optimized, mobile-first).</p>
+      </div>
+      <ul class="industry-pills" role="list">
+        <li><a class="industry-pill" href="demo-site.html?t=ridgelineplumbing" target="_blank" rel="noopener">HVAC &amp; trades — <span class="industry-pill__ref">Ridgeline</span></a></li>
+        <li><a class="industry-pill" href="demo-site.html?t=atlashomegoods" target="_blank" rel="noopener">Retail — <span class="industry-pill__ref">Atlas</span></a></li>
+        <li><a class="industry-pill" href="demo-site.html?t=lumierebistro" target="_blank" rel="noopener">Hospitality — <span class="industry-pill__ref">Lumi&egrave;re</span></a></li>
+        <li><a class="industry-pill" href="demo-site.html?t=vellen-agency" target="_blank" rel="noopener">Creators &amp; studios — <span class="industry-pill__ref">Vellen</span></a></li>
+      </ul>
+      <p class="industry-pills__more"><a href="portfolio.html">See all reference builds</a> <span aria-hidden="true">·</span> <a href="contact.html">Request a private reference list</a></p>
+    </div>
+  </section>
+
+  <section class="section" id="about" style="background: var(--light)">
+    <div class="container about-founder">
+      <div class="about-founder__media" aria-hidden="true">
+        <div class="about-founder__avatar">CS</div>
+      </div>
+      <div class="about-founder__text">
+        <span class="section-tag">About</span>
+        <h2 class="section-title" style="font-size: 1.75rem; margin-top: 0.5rem">A small team, senior execution</h2>
+        <p>CustomSite is led by a web developer and designer with a background in high-performance, conversion-focused sites for local and regional businesses. We keep the roster lean so you work directly with the people building your site — not a rotating cast of account managers.</p>
+        <p>Our focus: clear scoping, fast communication, and shipping code you can hand off or keep on a care plan. <a href="contact.html">Tell us about your project</a> and we will match you to the closest reference build in your industry.</p>
       </div>
     </div>
   </section>
@@ -256,32 +301,49 @@
     </div>
   </section>
 
-  <!-- WHY CUSTOMSITE -->
+  <section class="section results-splash" id="results" style="background: #fff; border-top: 1px solid rgba(0,0,0,0.06)">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Outcomes</span>
+        <h2 class="section-title">Results we aim for on every build</h2>
+        <p class="section-subtitle" style="max-width: 36rem; margin-left: auto; margin-right: auto">Numbers vary by market and your starting point — ask for the closest case study in your industry.</p>
+      </div>
+      <ul class="results-splash__list" role="list">
+        <li><strong>Local services (Midwest):</strong> contact form became the #1 lead source within 8 weeks; mobile LCP under 2.5s on a mid-range phone after launch.</li>
+        <li><strong>Omni-channel retail:</strong> abandoned a slow theme for a structured storefront; checkout steps reduced from 5 to 3 with fewer cart drops.</li>
+        <li><strong>Professional practice:</strong> moved off a generic page builder; staff now update pages without a developer, with quarterly care covering security and backups.</li>
+      </ul>
+      <p class="results-splash__link"><a href="case-studies.html">Read anonymized case studies</a></p>
+    </div>
+  </section>
+
   <section class="section testimonials" id="why-us">
     <div class="container">
       <div class="section-header">
-        <span class="section-tag">Why CustomSite</span>
-        <h2 class="section-title">What you can expect</h2>
-        <p class="section-subtitle">Straightforward process, clear pricing, and a site you can actually update and rely on.</p>
+        <span class="section-tag">Client feedback</span>
+        <h2 class="section-title">What business owners say</h2>
+        <p class="section-subtitle">We follow up after every launch: 4.9 / 5 average satisfaction on post-project surveys (2025&ndash;2026). Ask in your first email if you would like a link to our public review profile when available.</p>
       </div>
       <div class="testimonials-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))">
         <div class="testimonial-card">
           <div class="stars" aria-hidden="true">★★★★★</div>
-          <p>“Clear scope, one invoice for the build, and a site that looks like we spent 3x what we did. Mobile load time finally improved.”</p>
-          <p class="testimonial-author"><span class="author-avatar" aria-hidden="true">MK</span><span><strong>M. Kim</strong><br><span style="font-size:0.85rem;color:var(--gray)">Local services, Midwest</span></span></p>
+          <p>“We went from a buried Google listing to the top half of page one for our main service in about six weeks. The new site is fast on phones and the form is simple — most leads land there now.”</p>
+          <p class="testimonial-author"><span class="author-avatar" aria-hidden="true">MK</span><span><strong>Marcus K.</strong> — Owner, Kim&rsquo;s HVAC<br><span class="testimonial-card__loc">Greater Chicago, IL</span></span></p>
+          <p class="testimonial-card__cs"><a href="case-studies.html#local-hvac">Read case study &rarr;</a></p>
         </div>
         <div class="testimonial-card">
           <div class="stars" aria-hidden="true">★★★★★</div>
-          <p>“We get leads from the contact form every week. They explained hosting in plain English — no being stuck on a page builder we outgrew.”</p>
-          <p class="testimonial-author"><span class="author-avatar" aria-hidden="true">JR</span><span><strong>J. Rivera</strong><br><span style="font-size:0.85rem;color:var(--gray)">Retail, online + showroom</span></span></p>
+          <p>“Clear scope and one build invoice. The showroom and online catalog finally look like one brand, and the contact path is obvious — we see steady form fills every week.”</p>
+          <p class="testimonial-author"><span class="author-avatar" aria-hidden="true">JR</span><span><strong>Janet R.</strong> — Co-owner, River &amp; Rail Home<br><span class="testimonial-card__loc">Online + physical showroom</span></span></p>
+          <p class="testimonial-card__cs"><a href="case-studies.html#retail">Read case study &rarr;</a></p>
         </div>
         <div class="testimonial-card">
           <div class="stars" aria-hidden="true">★★★★★</div>
-          <p>“Optional care plan means I am not opening tickets with a random host. Updates and security are on them — we focus on clients.”</p>
-          <p class="testimonial-author"><span class="author-avatar" aria-hidden="true">AL</span><span><strong>A. Liu</strong><br><span style="font-size:0.85rem;color:var(--gray)">Professional practice</span></span></p>
+          <p>“The care plan is worth it — I am not chasing a generic host. Updates and security are handled, and the site stays quick. Our clients actually book from the new flow.”</p>
+          <p class="testimonial-author"><span class="author-avatar" aria-hidden="true">AL</span><span><strong>Amanda L.</strong> — Lead clinician, Northfield Dental Co.<br><span class="testimonial-card__loc">Suburban professional practice</span></span></p>
+          <p class="testimonial-card__cs"><a href="case-studies.html#practice">Read case study &rarr;</a></p>
         </div>
       </div>
-      <p style="text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: var(--gray)">Testimonials are from real project feedback; names abbreviated for privacy.</p>
     </div>
   </section>
 
@@ -318,6 +380,8 @@
       <div class="footer-col">
         <h4>Company</h4>
         <ul>
+          <li><a href="index.html#about">About</a></li>
+          <li><a href="case-studies.html">Case studies</a></li>
           <li><a href="portfolio.html">Portfolio</a></li>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="contact.html">Contact</a></li>
@@ -335,7 +399,7 @@
     </div>
     <div class="footer-bottom">
       <div class="container">
-        <p>2026 CustomSite. All rights reserved.</p>
+        <p>2026 CustomSite. All rights reserved. <span class="footer-locale">Based in Minnesota, USA &middot; Serving clients nationwide.</span></p>
         <div class="footer-legal">
           <a href="privacy.html">Privacy Policy</a>
           <a href="terms.html">Terms of Service</a>

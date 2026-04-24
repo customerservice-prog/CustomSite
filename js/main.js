@@ -117,7 +117,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 // ============================================
 (function initScrollAnimations() {
   const elements = document.querySelectorAll(
-    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header'
+    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .process-timeline__item, .about-founder, .tech-strip__item, .industry-pills'
   );
 
   if (!elements.length || !window.IntersectionObserver) return;
@@ -143,11 +143,20 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
   const form = document.getElementById('contactForm');
   if (!form) return;
 
-  const tier = (new URLSearchParams(window.location.search).get('tier') || '').toLowerCase();
-  if (tier && /^(starter|business|ecommerce)$/.test(tier)) {
+  const params = new URLSearchParams(window.location.search);
+  const rawTier = (params.get('tier') || params.get('package') || '').toLowerCase();
+  const tier = /^(starter|business|ecommerce)$/.test(rawTier) ? rawTier : '';
+  if (tier) {
     const msg = form.querySelector('#message');
     if (msg && !String(msg.value).trim()) {
-      msg.value = `I am interested in the ${tier} build. `;
+      const label = tier === 'ecommerce' ? 'e-commerce' : tier;
+      msg.value = `I am interested in the ${label} build tier. `;
+    }
+    const serviceSelect = form.querySelector('#service');
+    if (serviceSelect) {
+      const tierToService = { starter: 'business', business: 'business', ecommerce: 'ecommerce' };
+      const v = tierToService[tier];
+      if (v) serviceSelect.value = v;
     }
   }
 
