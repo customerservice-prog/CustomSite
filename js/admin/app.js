@@ -196,7 +196,7 @@ function renderDashboard() {
     !state.leads.length && !state.clients.length && !state.projects.length && !(state.invoices && state.invoices.length);
   const emptyHelp = noDataYet
     ? `<div class="adm-diag" role="status">
-  <div><strong>Dashboard is empty</strong> — that is normal for a new project. Add a lead under <strong>Leads</strong> to see counts update. If you expected data here, check <strong>Railway</strong> for <code style="font-size:0.8em">SUPABASE_URL</code>, <code style="font-size:0.8em">SUPABASE_ANON_KEY</code>, and <code style="font-size:0.8em">SUPABASE_SERVICE_ROLE_KEY</code> (same Supabase project as your tables) and run the schema in <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a>. The <a href="contact.html">contact form</a> uses the same database.</div>
+  <div><strong>Dashboard is empty</strong> — that is normal for a new project. Add a lead under <strong>Leads</strong> to see activity here. If you expected data and see a <strong>Database</strong> banner above, run the schema in <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a> and confirm this app’s Supabase env matches your project.</div>
 </div>`
     : '';
 
@@ -1050,7 +1050,7 @@ function renderInvoices() {
       t += Number(v) || 0;
     });
     const invt = p.querySelector('#invt');
-    if (invt) invt.value = t > 0 ? t.toFixed(2) : '';
+    if (invt) invt.value = t.toFixed(2);
   };
   p.querySelector('#addLine')?.addEventListener('click', () => {
     const c = p.querySelector('#lineItems');
@@ -1058,9 +1058,11 @@ function renderInvoices() {
     d.className = 'form-group li-row';
     d.innerHTML = `<label>Line item</label><input name="l_desc" placeholder="Description" /><input name="l_amt" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:0.5rem" />`;
     c.appendChild(d);
-    d.querySelector('input[name=l_amt]').addEventListener('input', recalc);
+    recalc();
   });
-  p.querySelectorAll('.li-row input[name=l_amt]').forEach((x) => x.addEventListener('input', recalc));
+  p.querySelector('#lineItems')?.addEventListener('input', (e) => {
+    if (e.target && e.target.matches && e.target.matches('input[name=l_amt]')) recalc();
+  });
   p.querySelector('#formInv')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const f = e.target;
@@ -1164,14 +1166,19 @@ function renderInvoices() {
 
 /* ---------- Files tab ---------- */
 function renderFilesTab() {
+  const hasProjects = state.projects && state.projects.length;
   document.getElementById('panel-files').innerHTML = `
     <div class="adm-card">
       <h2>Files by project</h2>
       <p class="phase-note">Pick a project to list uploads. You can also upload from the <strong>Projects</strong> tab.</p>
-      <div class="form-group" style="max-width:24rem">
+      ${
+        hasProjects
+          ? `<div class="form-group" style="max-width:24rem">
         <label>Project</label>
-        <select id="fTabP">${projectOptions()}</select>
-      </div>
+        <select id="fTabP"><option value="">— Select a project —</option>${projectOptions()}</select>
+      </div>`
+          : '<p class="phase-note" role="status">No projects yet. Create a project under <strong>Projects</strong> first.</p>'
+      }
       <div id="fTabL"></div>
     </div>`;
   const loadF = () => {
@@ -1179,7 +1186,7 @@ function renderFilesTab() {
     const box = document.getElementById('fTabL');
     if (!box) return;
     if (!id) {
-      box.innerHTML = '<p class="phase-note">Select a project to list files.</p>';
+      box.innerHTML = '<p class="phase-note">Select a project above to list files.</p>';
       return;
     }
     box.textContent = 'Loading…';
@@ -1204,7 +1211,11 @@ function renderFilesTab() {
   };
   document.getElementById('fTabP')?.addEventListener('change', loadF);
   document.addEventListener('adm:files-panel', loadF, { once: true });
-  loadF();
+  if (hasProjects) loadF();
+  else {
+    const box = document.getElementById('fTabL');
+    if (box) box.innerHTML = '';
+  }
 }
 
 /* ---------- Messages ---------- */

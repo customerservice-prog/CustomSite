@@ -50,6 +50,18 @@
       </div>
       <div class="sb-tool sb-row-2">
         <div class="sb-row2-left">
+          <div class="sb-env" id="sbBuildMode" role="radiogroup" aria-label="Builder mode">
+            <span class="sb-env-hint" title="How you want to work">Mode</span>
+            <label class="sb-env-lbl"
+              ><input type="radio" name="sbmode" value="templates" /> Templates</label
+            >
+            <label class="sb-env-lbl"
+              ><input type="radio" name="sbmode" value="vibe" /> Vibe</label
+            >
+            <label class="sb-env-lbl"
+              ><input type="radio" name="sbmode" value="pro" checked /> Pro</label
+            >
+          </div>
           <div class="sb-env" id="sbEnvToggle" role="radiogroup" aria-label="Deployment environment">
             <label class="sb-env-lbl"
               ><input type="radio" name="sbenv" value="staging" checked /> Staging</label
@@ -88,7 +100,7 @@
       </div>
     </header>
 
-    <div id="sbTabBar" role="tablist" aria-label="Open files"></div>
+    <div id="sbTabBar" class="sb-tabbar-pro" role="tablist" aria-label="Open files"></div>
 
     <div id="sbWorkspace">
       <aside id="sbSidebar">
@@ -122,6 +134,27 @@
         <div id="sbEmptyState" style="position: absolute; inset: 0; z-index: 3; pointer-events: none">
           <p><strong>No files yet</strong></p>
           <p>Click <b>Starter</b> to pick a template, or <b>+</b> to add a file.</p>
+        </div>
+        <div id="sbModeTemplates" class="sb-mode-panel is-off" aria-label="Templates mode">
+          <p class="sb-mode-lead">Pick a starter, then add sections. Switch to <strong>Pro</strong> for code editing.</p>
+          <h4 class="sb-lbl" style="margin: 0 0 0.5rem">Starter templates</h4>
+          <div id="sbTplModeGrid" class="sb-tpl-mode-grid"></div>
+          <h4 class="sb-lbl" style="margin: 1rem 0 0.5rem">Quick sections (append to <code>index.html</code>)</h4>
+          <ul class="sb-tpl-snip" id="sbTplSnippets">
+            <li class="sb-muted" style="list-style: none; padding: 0">Load a project to enable sections.</li>
+          </ul>
+        </div>
+        <div id="sbModeVibe" class="sb-mode-panel is-off" aria-label="Vibe mode">
+          <h4 class="sb-lbl" style="margin: 0 0 0.35rem">Describe the look</h4>
+          <p class="sb-muted" style="margin: 0 0 0.5rem; font-size: 0.8rem">
+            Try: <em>dark</em>, <em>light</em>, <em>blue</em>, <em>rounded</em>, <em>sans</em> — or paste your own CSS (with <code>{}</code>).
+            Applies to the live preview only until you add styles in Pro.
+          </p>
+          <textarea id="sbVibeInput" class="sb-inp" rows="5" placeholder="e.g. dark blue rounded"></textarea>
+          <div class="sb-vibe-actions" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap">
+            <button type="button" class="sb-btn sb-btn-primary" id="sbVibeApply">Apply to preview</button>
+            <button type="button" class="sb-btn" id="sbVibeClear" title="Remove vibe overlay from preview">Clear</button>
+          </div>
         </div>
         <div id="sbImagePreview" aria-hidden="true" style="position: absolute; inset: 0; z-index: 2; pointer-events: none">
           <img id="sbImgTag" alt="Asset preview" />

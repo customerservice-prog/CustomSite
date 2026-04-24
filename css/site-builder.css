@@ -962,6 +962,98 @@ a.sb-a:hover {
   background: rgba(99, 102, 241, 0.08);
 }
 
+/* Builder mode: Templates / Vibe / Pro */
+.sb-env-hint {
+  font-size: 0.65rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 0.15rem;
+}
+#sbBuildMode {
+  border-color: rgba(99, 102, 241, 0.35);
+}
+.sb-mode-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: #0b1220;
+  overflow: auto;
+  padding: 1rem 1.1rem 1.5rem;
+  pointer-events: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sb-mode-panel.is-off {
+  display: none;
+}
+.sb-mode-lead {
+  margin: 0 0 0.75rem;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+.sb-tpl-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.6rem;
+  max-width: 42rem;
+}
+.sb-tpl-mode-card {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.4rem;
+  background: #111a2a;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+.sb-tpl-mode-card:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: #151f32;
+}
+.sb-tpl-mode-grid .sb-tpl-card {
+  margin: 0;
+}
+#sbApp[data-sbmode='vibe'] .sb-tabbar-pro,
+#sbApp[data-sbmode='templates'] .sb-tabbar-pro {
+  display: none;
+}
+#sbApp[data-sbmode='vibe'] #sbFormat,
+#sbApp[data-sbmode='vibe'] #sbUndo,
+#sbApp[data-sbmode='vibe'] #sbRedo,
+#sbApp[data-sbmode='templates'] #sbFormat,
+#sbApp[data-sbmode='templates'] #sbUndo,
+#sbApp[data-sbmode='templates'] #sbRedo {
+  display: none;
+}
+.sb-tpl-snip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 28rem;
+}
+.sb-tpl-snip li button {
+  text-align: left;
+}
+.sb-muted {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+#sbVibeInput {
+  width: 100%;
+  min-height: 6rem;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
 @media (max-width: 900px) {
   #sbPreview {
     display: none;

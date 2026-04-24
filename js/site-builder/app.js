@@ -48,6 +48,10 @@ let autoPreviewT = null;
 const debounceMs = 1500;
 /** @type {'code'|'visual'} */
 let htmlEditMode = 'code';
+/** @type {'templates'|'vibe'|'pro'} */
+let buildMode = 'pro';
+/** Vibe mode: extra CSS applied only in preview (not saved to files). */
+let vibeCustomCss = '';
 
 function isLocalDevHost() {
   const h = location.hostname;
@@ -237,6 +241,16 @@ function refreshPreview() {
   if (activePath && isImageFile(activePath)) return;
   if (ifr) {
     ifr.src = `/preview/${projectId}/index.html?t=${Date.now()}`;
+    ifr.onload = () => {
+      try {
+        const doc = ifr.contentDocument;
+        if (doc && buildMode === 'vibe' && vibeCustomCss.trim()) {
+          injectVibeInPreviewDocument(doc);
+        }
+      } catch (e) {
+        /* */
+      }
+    };
   }
   setPreviewUrlText();
 }
@@ -291,6 +305,58 @@ function htmlWithPreviewBase(raw) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8" />${tag}</head><body>\n${str}\n</body></html>`;
 }
 
+function injectVibeInPreviewDocument(doc) {
+  if (!doc || buildMode !== 'vibe' || !vibeCustomCss.trim()) return;
+  try {
+    let el = doc.getElementById('sb-vibe-override');
+    if (!el) {
+      el = doc.createElement('style');
+      el.id = 'sb-vibe-override';
+      (doc.head || doc.documentElement).appendChild(el);
+    }
+    el.textContent = vibeCustomCss;
+  } catch (e) {
+    /* */
+  }
+}
+
+/**
+ * Heuristic “describe the look” → CSS (or return raw if user pasted full rules).
+ */
+function compileVibeCss(input) {
+  const raw = String(input || '').trim();
+  if (!raw) return '';
+  if (/\{[^}]*\}/.test(raw) && /[{};]/.test(raw)) {
+    return raw;
+  }
+  const s = raw.toLowerCase();
+  const rules = [];
+  if (/(dark|night|charcoal|midnight)/.test(s)) {
+    rules.push('body { background: #0f172a !important; color: #e2e8f0 !important; }');
+    rules.push('a { color: #93c5fd !important; }');
+  } else if (/(light|bright|white|airy)/.test(s)) {
+    rules.push('body { background: #f8fafc !important; color: #0f172a !important; }');
+  }
+  const colorMap = { blue: '#2563eb', green: '#16a34a', red: '#dc2626', purple: '#7c3aed', orange: '#ea580c' };
+  for (const [k, v] of Object.entries(colorMap)) {
+    if (new RegExp(`\\b${k}\\b`).test(s)) {
+      rules.push(
+        `:root { --vibe-p: ${v}; } a, .btn, button, [class*='btn'] { --accent: var(--vibe-p); }`
+      );
+      break;
+    }
+  }
+  if (/(rounded|soft|pill)/.test(s)) {
+    rules.push('button, .btn, img, section, .nav { border-radius: 0.75rem !important; }');
+  }
+  if (/(serif|elegant|formal|classic)/.test(s)) {
+    rules.push("body { font-family: Georgia, 'Times New Roman', serif !important; }");
+  } else if (/(sans|modern|clean|minimal)/.test(s)) {
+    rules.push("body { font-family: system-ui, 'Segoe UI', Inter, sans-serif !important; }");
+  }
+  return rules.length ? rules.join('\n') : '/* Add keywords (dark, blue, rounded) or paste CSS with { } */';
+}
+
 function liveWritePreview() {
   const ifr = document.getElementById('sbPreviewFrame');
   if (!ifr || !ed || !activePath) return;
@@ -302,6 +368,7 @@ function liveWritePreview() {
     doc.open();
     doc.write(html);
     doc.close();
+    injectVibeInPreviewDocument(doc);
   } catch (e) {
     /* cross-origin or blocked */
   }
@@ -985,6 +1052,151 @@ async function loadBuilderMeta() {
   }
 }
 
+function populateTemplateModeUI() {
+  const g = document.getElementById('sbTplModeGrid');
+  const sn = document.getElementById('sbTplSnippets');
+  if (g) {
+    g.replaceChildren();
+    const order = ['basic', 'business', 'ecommerce', 'portfolio', 'restaurant'];
+    for (const id of order) {
+      const label = TEMPLATE_LABELS[id];
+      if (!label) continue;
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'sb-tpl-card sb-tpl-mode-card';
+      card.setAttribute('aria-label', `Apply ${label}`);
+      card.innerHTML = `
+      <div class="sb-tpl-thumb sb-tpl-thumb--${id}" style="--tpl-bg:${TEMPLATE_THUMB[id] || '#334155'}"></div>
+      <div class="sb-tpl-txt">${escapeHtml(label)}<small>Apply starter</small></div>`;
+      card.addEventListener('click', () => void runTemplateInitFromMode(id));
+      g.appendChild(card);
+    }
+  }
+  if (sn) {
+    sn.replaceChildren();
+    for (const s of SNIPPETS) {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sb-btn';
+      b.textContent = s.label;
+      b.addEventListener('click', () => void appendSectionToIndex(s.html));
+      li.appendChild(b);
+      sn.appendChild(li);
+    }
+  }
+}
+
+async function runTemplateInitFromMode(tpl) {
+  if (!projectId) {
+    toast('Select a project', 'error');
+    return;
+  }
+  const ok = await showConfirm('Init starter', 'Overwrite or create starter files for this template?');
+  if (!ok) return;
+  try {
+    await api(`/api/admin/projects/${projectId}/site/init`, {
+      method: 'POST',
+      body: JSON.stringify({ template: tpl }),
+    });
+    mem.clear();
+    openTabs = [];
+    toast('Starter created', 'success');
+    await loadFileList();
+    await activatePath('index.html', true);
+    refreshPreview();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function appendSectionToIndex(html) {
+  if (!projectId) {
+    toast('Select a project', 'error');
+    return;
+  }
+  const path = 'index.html';
+  let cur;
+  if (mem.has(path)) {
+    cur = mem.get(path).content;
+  } else {
+    try {
+      const r = await loadFileContent(path);
+      cur = r.content;
+    } catch {
+      cur = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Site</title></head><body></body></html>';
+    }
+  }
+  const patch = String(cur);
+  const next = /<\/body>/i.test(patch)
+    ? patch.replace(/<\/body>/i, '\n' + html + '\n</body>')
+    : `${patch}\n${html}`;
+
+  mem.set(path, { content: next, encoding: 'utf8' });
+  try {
+    await api(`/api/admin/projects/${projectId}/site/file`, {
+      method: 'PUT',
+      body: JSON.stringify({ path, content: next, content_encoding: 'utf8' }),
+    });
+  } catch (e) {
+    toast(e.message, 'error');
+    return;
+  }
+  dirty.delete(path);
+  if (activePath === path && ed) {
+    showModel(ed, path, next);
+    setModelLanguage(ed, path);
+  }
+  toast('Section added to index.html', 'success');
+  await loadFileList();
+  refreshPreview();
+  scheduleLivePreview();
+}
+
+function applyBuildMode() {
+  const app = document.getElementById('sbApp');
+  if (app) app.setAttribute('data-sbmode', buildMode);
+  const mt = document.getElementById('sbModeTemplates');
+  const mv = document.getElementById('sbModeVibe');
+  const monacoH = document.getElementById('sbMonacoHost');
+  const grapesH = document.getElementById('sbGrapesHost');
+  const htmlMode = document.getElementById('sbHtmlMode');
+  if (buildMode !== 'pro') {
+    leaveVisualMode();
+  }
+  if (mt) {
+    const on = buildMode === 'templates';
+    mt.classList.toggle('is-off', !on);
+  }
+  if (mv) {
+    const on = buildMode === 'vibe';
+    mv.classList.toggle('is-off', !on);
+  }
+  const isPro = buildMode === 'pro';
+  if (monacoH) {
+    monacoH.style.display = isPro ? '' : 'none';
+  }
+  if (grapesH && !isPro) {
+    grapesH.style.display = 'none';
+  }
+  if (htmlMode) {
+    if (!isPro) {
+      htmlMode.hidden = true;
+    } else {
+      updateHtmlModeUI();
+    }
+  }
+  document.querySelectorAll('input[name="sbmode"]').forEach((r) => {
+    r.checked = r.value === buildMode;
+  });
+  populateTemplateModeUI();
+  if (isPro) {
+    ed?.layout?.();
+  } else {
+    void refreshPreview();
+  }
+}
+
 function setupSnippets() {
   const ul = document.getElementById('sbSnippets');
   ul.replaceChildren();
@@ -1536,6 +1748,29 @@ async function main() {
     showBanner(isLikelyConnectionError(e) ? connectionHint(e) : m);
   }
   updateHtmlModeUI();
+  document.querySelectorAll('input[name="sbmode"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      if (!r.checked) return;
+      buildMode = r.value;
+      applyBuildMode();
+    });
+  });
+  document.getElementById('sbVibeApply')?.addEventListener('click', () => {
+    const t = document.getElementById('sbVibeInput')?.value || '';
+    vibeCustomCss = compileVibeCss(t);
+    void refreshPreview();
+    if (document.getElementById('sbAutoPreview')?.checked) {
+      scheduleLivePreview();
+    }
+  });
+  document.getElementById('sbVibeClear')?.addEventListener('click', () => {
+    const inp = document.getElementById('sbVibeInput');
+    if (inp) inp.value = '';
+    vibeCustomCss = '';
+    void refreshPreview();
+    scheduleLivePreview();
+  });
+  applyBuildMode();
   window.addEventListener('unhandledrejection', () => {
     /* */
   });
