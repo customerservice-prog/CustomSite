@@ -39,7 +39,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
 
   // Shrink navbar on scroll
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 50) {
+    if (window.scrollY > 40) {
       navbar.classList.add('scrolled');
     } else {
       navbar.classList.remove('scrolled');
@@ -120,7 +120,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
    * opacity:0 forever if the user doesn’t scroll them into the negative root margin,
    * which reads as a huge “blank” band (see index “How a build unfolds”). */
   const elements = document.querySelectorAll(
-    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .about-founder, .tech-strip__item, .industry-pills, .hb-widget'
+    '.step-card, .service-card, .testimonial-card, .portfolio-card, .section-header, .about-founder, .tech-strip__item, .industry-pills, .tech-strip__head'
   );
 
   if (!elements.length || !window.IntersectionObserver) return;

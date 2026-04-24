@@ -18,11 +18,11 @@
   <title>CustomSite — Professional Web Design and Development</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/hero-builder.css" />
+  <link rel="stylesheet" href="css/hero-immersive.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
-<body>
+<body class="page-home">
 
   <!-- NAVIGATION -->
   <nav class="navbar" id="navbar">
@@ -47,307 +47,71 @@
   </nav>
 
   <!-- HERO SECTION -->
-  <section class="hero" id="hero">
-    <div class="hero-bg-shapes">
-      <div class="shape shape-1"></div>
-      <div class="shape shape-2"></div>
-      <div class="shape shape-3"></div>
-    </div>
-    <div class="container hero-content hero-content--split">
-      <div class="hero-copy">
-        <div class="hero-badge">Custom Websites Built For You</div>
-        <h1 class="hero-title">
-          We Build Websites<br>
-          <span class="gradient-text">That Actually Work</span>
-        </h1>
-        <p class="hero-subtitle">
-          Tell us what you need. We design, build, host, and maintain your website
-          from start to finish so you can focus on running your business.
-        </p>
-        <div class="hero-cta">
-          <a href="contact.html" class="btn btn-primary btn-lg">Get a Free Quote</a>
-          <a href="portfolio.html" class="btn btn-outline btn-lg">See Our Work</a>
+  <section id="hero" class="hero-immersive">
+    <div class="hero-bg-gradient" aria-hidden="true"></div>
+    <div class="hero-dot-grid" aria-hidden="true"></div>
+
+    <div class="hero-content">
+      <div class="hero-eyebrow">Syracuse · Central New York · Nationwide</div>
+      <h1 class="hero-headline">
+        We Build Websites That
+        <span class="hero-typewriter" id="typewriter"></span><span class="typewriter-cursor" aria-hidden="true">|</span>
+      </h1>
+      <p class="hero-subtext">Custom-built sites for local businesses, startups, and growing brands. From $799. Live in 3 weeks.</p>
+
+      <div class="hero-ctas">
+        <a href="portfolio.html" class="hero-btn-primary">See Our Work →</a>
+        <a href="contact.html" class="hero-btn-outline">Get a Free Quote</a>
+      </div>
+
+      <div class="macbook-wrap">
+        <div class="floating-card card-left">
+          <div class="fc-dot green" aria-hidden="true"></div>
+          <div class="fc-text">
+            <div class="fc-label">New Lead</div>
+            <div class="fc-sub">friendlypartyrental.com</div>
+          </div>
+          <div class="fc-icon" aria-hidden="true">🔔</div>
         </div>
-        <div class="hero-stats">
-          <div class="stat">
-            <span class="stat-number">100%</span>
-            <span class="stat-label">Custom work — no generic templates for your final site</span>
+
+        <div class="macbook">
+          <div class="macbook-lid">
+            <div class="macbook-notch" aria-hidden="true"></div>
+            <div class="macbook-screen">
+              <div class="macbook-screen-inner">
+                <div class="slide active" data-industry="HVAC" style="background-image:url('screens/demo-hvac.jpg')"></div>
+                <div class="slide" data-industry="Party Rentals" style="background-image:url('screens/demo-party.jpg')"></div>
+                <div class="slide" data-industry="Restaurant" style="background-image:url('screens/demo-restaurant.jpg')"></div>
+                <div class="slide" data-industry="Dental" style="background-image:url('screens/demo-dental.jpg')"></div>
+                <div class="slide" data-industry="Real Estate" style="background-image:url('screens/demo-realestate.jpg')"></div>
+              </div>
+              <div class="screen-label">
+                <span class="screen-label-dot" aria-hidden="true"></span>
+                <span class="screen-label-text">HVAC &amp; Home Services</span>
+              </div>
+            </div>
           </div>
-          <div class="stat">
-            <span class="stat-number">End-to-end</span>
-            <span class="stat-label">Design, build, launch, and optional care plans</span>
+          <div class="macbook-hinge" aria-hidden="true"></div>
+          <div class="macbook-base">
+            <div class="macbook-base-notch" aria-hidden="true"></div>
           </div>
-          <div class="stat">
-            <span class="stat-number">24h</span>
-            <span class="stat-label">Typical first reply (weekdays)</span>
-          </div>
+        </div>
+
+        <div class="floating-card card-right">
+          <div class="fc-stars" aria-hidden="true">⭐⭐⭐⭐⭐</div>
+          <div class="fc-review">“Live in 2 weeks, exactly what I wanted”</div>
+          <div class="fc-reviewer">— Marcus K., Syracuse NY</div>
         </div>
       </div>
-      <div class="hero-visual">
-        <div id="hero-builder-preview" class="hb-widget" role="img" aria-label="Animation: two different local service sites build in a browser—first 30 seconds, then a second at 30 seconds in a 60 second loop">
-          <div class="hb-fade-surface">
-            <div class="hb-ready-badge hb-ready-badge--a" aria-hidden="true">✓ Site Ready</div>
-            <div class="hb-ready-badge hb-ready-badge--b" aria-hidden="true">✓ Site Ready</div>
-            <div class="hb-inner">
-            <div class="hb-chrome" aria-hidden="true">
-              <div class="hb-dots"><span></span><span></span><span></span></div>
-              <div class="hb-addr">
-                <span class="hb-addr-lock" aria-hidden="true"></span>
-                <div class="hb-addr-mid">
-                  <span class="hb-addr-text hb-addr-text--a">summitcomfort-hvac.com</span>
-                  <span class="hb-addr-text hb-addr-text--b">crescentdental.care</span>
-                </div>
-                <div class="hb-addr-r hb-addr-r--a">
-                  <span class="hb-addr-spin"></span>
-                  <span class="hb-addr-check" aria-hidden="true">✓</span>
-                </div>
-                <div class="hb-addr-r hb-addr-r--b">
-                  <span class="hb-addr-spin"></span>
-                  <span class="hb-addr-check" aria-hidden="true">✓</span>
-                </div>
-              </div>
-            </div>
-            <div class="hb-progress-track" aria-hidden="true"><span class="hb-progress-fill"></span></div>
-            <div class="hb-canvas">
-            <div class="hb-scene hb-scene--a">
-              <div class="hb-site">
-                <header class="hb-nav" aria-hidden="true">
-                  <div class="hb-nav-brand">
-                    <span class="hb-nav-logo" aria-hidden="true">S</span>
-                    <span class="hb-nav-name">Summit Comfort</span>
-                  </div>
-                  <div class="hb-nav-links">
-                    <span class="hb-nav-link">Home</span>
-                    <span class="hb-nav-link">Services</span>
-                    <span class="hb-nav-link">Reviews</span>
-                    <span class="hb-nav-link">Contact</span>
-                  </div>
-                  <span class="hb-nav-cta">Get quote</span>
-                </header>
-                <section class="hb-hero" aria-hidden="true">
-                  <div class="hb-hero-l">
-                    <h2 class="hb-hero-h1">
-                      <span class="hb-h1-line hb-h1-line1">HVAC &amp; home comfort you can</span>
-                      <span class="hb-h1-line hb-h1-line2">trust the first time</span>
-                    </h2>
-                    <p class="hb-sub">Licensed, insured NATE® techs. Installations, same-day repair &amp; tune-ups—serving homes across the metro.</p>
-                    <div class="hb-hero-btns">
-                      <span class="hb-btn hb-btn-pri">Book a visit</span>
-                      <span class="hb-btn hb-btn-sec">(555) 310-4298</span>
-                    </div>
-                  </div>
-                  <div class="hb-hero-r">
-                    <div class="hb-hero-art">
-                      <img
-                        class="hb-hero-art__img"
-                        src="images/hb-hero-hvac.jpg"
-                        width="340"
-                        height="220"
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <div class="hb-hero-art__overlay">
-                        <div class="hb-hero-art__badge">NATE + EPA</div>
-                        <p class="hb-hero-art__cap">Family-owned — 15+ years in business</p>
-                        <p class="hb-hero-art__sub">Uniformed crews, upfront quotes, 24/7 when your heat or AC quits</p>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-                <section class="hb-trust" aria-hidden="true">
-                  <div class="hb-trust-item">
-                    <div class="hb-trust-ico" aria-hidden="true">★</div>
-                    <div class="hb-trust-txt">
-                      <strong class="hb-stat-h">4.9 on Google</strong>
-                      <span class="hb-stat-s">400+ local reviews</span>
-                    </div>
-                  </div>
-                  <div class="hb-trust-item">
-                    <div class="hb-trust-ico" aria-hidden="true">◎</div>
-                    <div class="hb-trust-txt">
-                      <strong class="hb-stat-h">Licensed &amp; insured</strong>
-                      <span class="hb-stat-s">Liability on every job</span>
-                    </div>
-                  </div>
-                  <div class="hb-trust-item">
-                    <div class="hb-trust-ico" aria-hidden="true">⟲</div>
-                    <div class="hb-trust-txt">
-                      <strong class="hb-stat-h">24/7 emergency</strong>
-                      <span class="hb-stat-s">Nights &amp; holidays</span>
-                    </div>
-                  </div>
-                </section>
-                <section class="hb-features" aria-hidden="true">
-                  <div class="hb-fcard">
-                    <div class="hb-fcard-ico" aria-hidden="true">
-                      <svg class="hb-fcard-ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    </div>
-                    <h3 class="hb-fcard-title">Emergency repair</h3>
-                    <p class="hb-fcard-p">Furnace, heat pump, or AC out? We dispatch the same day—nights, weekends, and holidays too.</p>
-                  </div>
-                  <div class="hb-fcard">
-                    <div class="hb-fcard-ico" aria-hidden="true">
-                      <svg class="hb-fcard-ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.35 6.35a2 2 0 0 1-2.83-2.83l6.35-6.35a6 6 0 0 1 7.94-7.94l-3.78 3.78z"/></svg>
-                    </div>
-                    <h3 class="hb-fcard-title">Install &amp; replace</h3>
-                    <p class="hb-fcard-p">Right-sized systems, financing, and clean installs. We stand behind the equipment and the ductwork.</p>
-                  </div>
-                  <div class="hb-fcard">
-                    <div class="hb-fcard-ico" aria-hidden="true">
-                      <svg class="hb-fcard-ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    </div>
-                    <h3 class="hb-fcard-title">Maintenance &amp; tune-ups</h3>
-                    <p class="hb-fcard-p">Seasonal service plans that catch problems early, cut energy bills, and keep warranties valid.</p>
-                  </div>
-                </section>
-                <section class="hb-tquote" aria-hidden="true">
-                  <div class="hb-ava" aria-hidden="true">
-                    <img class="hb-ava__img" src="images/hb-testimonial.jpg" width="64" height="64" alt="" loading="lazy" decoding="async" />
-                  </div>
-                  <div class="hb-tq-col">
-                    <div class="hb-tq-row">
-                      <span class="hb-tq-name">Michelle R. · Oak Grove</span>
-                      <div class="hb-stars" aria-hidden="true">
-                        <b></b><b></b><b></b><b></b><b></b>
-                      </div>
-                    </div>
-                    <p class="hb-tq-quote">“They had the heat back on before dinner. Clear pricing, no surprise fees, and the crew was spotless. We use them every season now.”</p>
-                  </div>
-                </section>
-                <section class="hb-ctaft" aria-hidden="true">
-                  <div class="hb-ctaft-txt">
-                    <h3 class="hb-ctaft-t1">Ready for a comfortable home this season?</h3>
-                    <p class="hb-ctaft-t2">Free in-home estimate—upfront numbers, no hard sell.</p>
-                  </div>
-                  <div class="hb-ctaft-btn" role="presentation"><span>Schedule estimate</span></div>
-                </section>
-              </div>
-            </div>
-            <div class="hb-scene hb-scene--b">
-              <div class="hb-site">
-                <header class="hb-nav" aria-hidden="true">
-                  <div class="hb-nav-brand">
-                    <span class="hb-nav-logo" aria-hidden="true">C</span>
-                    <span class="hb-nav-name">Crescent Dental</span>
-                  </div>
-                  <div class="hb-nav-links">
-                    <span class="hb-nav-link">Home</span>
-                    <span class="hb-nav-link">Services</span>
-                    <span class="hb-nav-link">Insurances</span>
-                    <span class="hb-nav-link">Contact</span>
-                  </div>
-                  <span class="hb-nav-cta">Book a visit</span>
-                </header>
-                <section class="hb-hero" aria-hidden="true">
-                  <div class="hb-hero-l">
-                    <h2 class="hb-hero-h1">
-                      <span class="hb-h1-line hb-h1-line1">Gentle family dentistry</span>
-                      <span class="hb-h1-line hb-h1-line2">in a calm, modern office</span>
-                    </h2>
-                    <p class="hb-sub">Same-day relief for pain, clear treatment plans, and early-morning or evening hours that work around your job.</p>
-                    <div class="hb-hero-btns">
-                      <span class="hb-btn hb-btn-pri">Request appointment</span>
-                      <span class="hb-btn hb-btn-sec">(555) 620-1804</span>
-                    </div>
-                  </div>
-                  <div class="hb-hero-r">
-                    <div class="hb-hero-art">
-                      <img
-                        class="hb-hero-art__img"
-                        src="images/hb-hero-dental.jpg"
-                        width="340"
-                        height="220"
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <div class="hb-hero-art__overlay">
-                        <div class="hb-hero-art__badge">ADA + Invisalign®</div>
-                        <p class="hb-hero-art__cap">Multi-chair practice — 12 years serving the neighborhood</p>
-                        <p class="hb-hero-art__sub">Digital X-rays, anxiety-friendly team, and transparent out-of-pocket estimates</p>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-                <section class="hb-trust" aria-hidden="true">
-                  <div class="hb-trust-item">
-                    <div class="hb-trust-ico" aria-hidden="true">★</div>
-                    <div class="hb-trust-txt">
-                      <strong class="hb-stat-h">5.0 on Google</strong>
-                      <span class="hb-stat-s">320+ patient reviews</span>
-                    </div>
-                  </div>
-                  <div class="hb-trust-item">
-                    <div class="hb-trust-ico" aria-hidden="true">◎</div>
-                    <div class="hb-trust-txt">
-                      <strong class="hb-stat-h">Most insurances in-network</strong>
-                      <span class="hb-stat-s">We file claims for you</span>
-                    </div>
-                  </div>
-                  <div class="hb-trust-item">
-                    <div class="hb-trust-ico" aria-hidden="true">⟲</div>
-                    <div class="hb-trust-txt">
-                      <strong class="hb-stat-h">Same-day emergencies</strong>
-                      <span class="hb-stat-s">Toothache &amp; broken crown</span>
-                    </div>
-                  </div>
-                </section>
-                <section class="hb-features" aria-hidden="true">
-                  <div class="hb-fcard">
-                    <div class="hb-fcard-ico" aria-hidden="true">
-                      <svg class="hb-fcard-ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.5 2 5.5 4.2 4.2 7.2c-1.3 2.5-.7 5.2 1.1 7.1L12 22l6.7-7.7c1.8-1.9 2.4-4.6 1.1-7.1C18.5 4.2 15.5 2 12 2z"/></svg>
-                    </div>
-                    <h3 class="hb-fcard-title">Exams &amp; cleanings</h3>
-                    <p class="hb-fcard-p">Routine visits with gum-health screening, oral cancer check, and personalized hygiene coaching.</p>
-                  </div>
-                  <div class="hb-fcard">
-                    <div class="hb-fcard-ico" aria-hidden="true">
-                      <svg class="hb-fcard-ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v6"/></svg>
-                    </div>
-                    <h3 class="hb-fcard-title">Invisalign &amp; smile design</h3>
-                    <p class="hb-fcard-p">Clear aligners, whitening, and bonding—digital scans so you can preview the plan up front.</p>
-                  </div>
-                  <div class="hb-fcard">
-                    <div class="hb-fcard-ico" aria-hidden="true">
-                      <svg class="hb-fcard-ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    </div>
-                    <h3 class="hb-fcard-title">Emergency &amp; restorative</h3>
-                    <p class="hb-fcard-p">Cracked teeth, abscess, or lost filling—we reserve slots daily and call you back the same day.</p>
-                  </div>
-                </section>
-                <section class="hb-tquote" aria-hidden="true">
-                  <div class="hb-ava" aria-hidden="true">
-                    <img class="hb-ava__img" src="images/hb-testimonial.jpg" width="64" height="64" alt="" loading="lazy" decoding="async" />
-                  </div>
-                  <div class="hb-tq-col">
-                    <div class="hb-tq-row">
-                      <span class="hb-tq-name">Diego A. · Lakeside</span>
-                      <div class="hb-stars" aria-hidden="true">
-                        <b></b><b></b><b></b><b></b><b></b>
-                      </div>
-                    </div>
-                    <p class="hb-tq-quote">“I’ve avoided the dentist for years—they explained everything, no guilt trip. Cleaning was painless; I actually booked the next one before I left.”</p>
-                  </div>
-                </section>
-                <section class="hb-ctaft" aria-hidden="true">
-                  <div class="hb-ctaft-txt">
-                    <h3 class="hb-ctaft-t1">New to the area or overdue for a checkup?</h3>
-                    <p class="hb-ctaft-t2">New-patient special includes exam, X‑rays, and a treatment roadmap—insurance or cash.</p>
-                  </div>
-                  <div class="hb-ctaft-btn" role="presentation"><span>Claim new-patient offer</span></div>
-                </section>
-              </div>
-            </div>
-            </div>
-            </div>
-          </div>
-        </div>
-        <p class="hb-links">
-          <a href="demo-site.html?t=ridgelineplumbing" target="_blank" rel="noopener">Open full preview</a>
-          <span aria-hidden="true"> · </span>
-          <a href="portfolio.html">Browse reference builds</a>
-        </p>
+
+      <div class="hero-trust-bar" role="region" aria-label="Highlights">
+        <div class="trust-item"><span class="trust-num">100+</span><span class="trust-label">Sites Built</span></div>
+        <div class="trust-divider" aria-hidden="true"></div>
+        <div class="trust-item"><span class="trust-num">3 wks</span><span class="trust-label">Avg Delivery</span></div>
+        <div class="trust-divider" aria-hidden="true"></div>
+        <div class="trust-item"><span class="trust-num">$799</span><span class="trust-label">Starting Price</span></div>
+        <div class="trust-divider" aria-hidden="true"></div>
+        <div class="trust-item"><span class="trust-num">⭐ 4.9</span><span class="trust-label">Client Rating</span></div>
       </div>
     </div>
   </section>
@@ -691,7 +455,7 @@
     </div>
   </footer>
 
-  <script src="js/hero-builder.js" defer></script>
+  <script src="js/hero-immersive.js" defer></script>
   <script type="module" src="js/auth-bootstrap.js"></script>
   <script src="js/main.js" defer></script>
 </body>

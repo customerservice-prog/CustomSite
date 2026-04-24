@@ -1,0 +1,451 @@
+/* ============================================
+   Immersive home hero — MacBook, typewriter, particles
+   ============================================ */
+
+/* ---- Home: navbar over dark hero (scrolled = dark glass, not white) ---- */
+.page-home .navbar.scrolled {
+  background: rgba(5, 8, 18, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 0.85rem 0;
+}
+
+.page-home .navbar.scrolled .nav-links a {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.page-home .navbar.scrolled .nav-links a:hover,
+.page-home .navbar.scrolled .nav-links a.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.page-home .navbar.scrolled .logo .logo-on-dark {
+  display: block;
+}
+
+.page-home .navbar.scrolled .logo .logo-on-light {
+  display: none;
+}
+
+.page-home .navbar.scrolled .hamburger span {
+  background: #fff;
+}
+
+.page-home .navbar.scrolled .btn-nav {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+
+/* Mobile menu open on dark scrolled bar */
+@media (max-width: 992px) {
+  .page-home .navbar.scrolled .nav-links.open {
+    background: rgba(15, 23, 42, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* ── HERO SECTION ──────────────────────────────────── */
+.hero-immersive {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 120px 24px 80px;
+  text-align: center;
+}
+
+/* Animated gradient + violet corner glow (spec) */
+.hero-bg-gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 8% 5%, #0a0118 0%, transparent 55%),
+    radial-gradient(ellipse 50% 45% at 95% 95%, rgba(76, 29, 149, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 20% 10%, #1e1b4b 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, #312e81 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, #0f172a 0%, #050812 100%);
+  animation: heroBgShift 20s ease-in-out infinite alternate;
+}
+
+@keyframes heroBgShift {
+  0%   { filter: hue-rotate(0deg) brightness(1); }
+  50%  { filter: hue-rotate(15deg) brightness(1.05); }
+  100% { filter: hue-rotate(-10deg) brightness(0.95); }
+}
+
+/* Subtle dot grid overlay */
+.hero-dot-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+/* Content */
+.hero-immersive .hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Eyebrow */
+.hero-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #6366f1;
+  margin-bottom: 16px;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.2s both;
+}
+
+/* Headline */
+.hero-headline {
+  font-size: clamp(38px, 5.5vw, 72px);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #ffffff;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.35s both;
+}
+
+.hero-typewriter {
+  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  min-width: 4px;
+  display: inline-block;
+}
+
+.typewriter-cursor {
+  color: #6366f1;
+  animation: heroBlink 0.75s step-end infinite;
+  font-weight: 300;
+}
+
+@keyframes heroBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Subtitle */
+.hero-subtext {
+  font-size: 18px;
+  color: #94a3b8;
+  margin: 16px auto 32px;
+  max-width: 540px;
+  line-height: 1.6;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.5s both;
+}
+
+/* CTA — namespaced to avoid clashing with global .btn */
+.hero-immersive .hero-ctas {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 60px;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.65s both;
+}
+
+.hero-immersive a.hero-btn-primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hero-immersive a.hero-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.55);
+  color: #fff;
+}
+
+.hero-immersive a.hero-btn-outline {
+  background: transparent;
+  color: #e2e8f0;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.hero-immersive a.hero-btn-outline:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}
+
+/* ── MACBOOK WRAP ──────────────────────────────────── */
+.macbook-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  opacity: 0;
+  animation: heroFadeUp 0.8s ease 0.8s both;
+  margin-bottom: 48px;
+}
+
+/* ── MACBOOK CSS ──────────────────────────────────── */
+.macbook {
+  position: relative;
+  width: 680px;
+  max-width: 100%;
+  filter: drop-shadow(0 40px 80px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 120px rgba(99, 102, 241, 0.25));
+}
+
+.macbook-lid {
+  background: linear-gradient(180deg, #1d1d1f 0%, #2d2d2f 100%);
+  border-radius: 14px 14px 0 0;
+  padding: 16px 16px 0 16px;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+}
+
+.macbook-notch {
+  width: 120px;
+  height: 22px;
+  background: #1d1d1f;
+  border-radius: 0 0 14px 14px;
+  margin: 0 auto -1px;
+  position: relative;
+  z-index: 2;
+}
+
+.macbook-screen {
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  padding-top: 64.5%;
+}
+
+.macbook-screen-inner {
+  position: absolute;
+  inset: 0;
+}
+
+.macbook-screen-inner .slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: top center;
+  background-color: #0f172a;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+}
+
+.macbook-screen-inner .slide.active {
+  opacity: 1;
+}
+
+.screen-label {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 5px 12px;
+  z-index: 10;
+  transition: opacity 0.4s ease;
+}
+
+.screen-label-dot {
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #22c55e;
+  animation: heroPulseDot 2s ease-in-out infinite;
+}
+
+@keyframes heroPulseDot {
+  0%, 100% { box-shadow: 0 0 6px #22c55e; }
+  50% { box-shadow: 0 0 14px #22c55e; }
+}
+
+.screen-label-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: opacity 0.35s ease;
+}
+
+.macbook-hinge {
+  height: 5px;
+  background: linear-gradient(180deg, #3a3a3c 0%, #1d1d1f 100%);
+  margin: 0 20px;
+  border-radius: 0 0 2px 2px;
+}
+
+.macbook-base {
+  background: linear-gradient(180deg, #2d2d2f 0%, #1d1d1f 50%, #111 100%);
+  height: 28px;
+  border-radius: 0 0 14px 14px;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: none;
+}
+
+.macbook-base-notch {
+  width: 160px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+
+.macbook::after {
+  content: '';
+  display: block;
+  width: 60%;
+  height: 30px;
+  background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+  margin: 0 auto;
+  filter: blur(10px);
+}
+
+/* ── FLOATING CARDS ──────────────────────────────── */
+.floating-card {
+  position: absolute;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  z-index: 10;
+  text-align: left;
+}
+
+.card-left {
+  left: -20px;
+  top: 30%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 210px;
+  animation: heroFloatCard 5s ease-in-out infinite;
+}
+
+.card-right {
+  right: -20px;
+  top: 45%;
+  min-width: 200px;
+  animation: heroFloatCard 6s ease-in-out infinite reverse;
+}
+
+@keyframes heroFloatCard {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+.fc-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fc-dot.green {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  animation: heroPulseDot 2s ease-in-out infinite;
+}
+
+.fc-label { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+.fc-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
+.fc-icon  { font-size: 20px; margin-left: auto; }
+
+.fc-stars   { font-size: 13px; margin-bottom: 6px; }
+.fc-review  { font-size: 11px; color: #cbd5e1; line-height: 1.4; font-style: italic; }
+.fc-reviewer{ font-size: 10px; color: #64748b; margin-top: 6px; font-weight: 600; }
+
+/* ── TRUST BAR ──────────────────────────────────── */
+.hero-trust-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 1.4s both;
+}
+
+.trust-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 32px;
+}
+
+.trust-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.trust-label {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.trust-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .macbook { width: 90vw; max-width: 500px; }
+  .floating-card { display: none; }
+  .hero-trust-bar { gap: 20px; }
+  .trust-divider { display: none; }
+  .trust-item { padding: 0 16px; }
+}
+@media (max-width: 600px) {
+  .hero-immersive .hero-ctas { flex-direction: column; align-items: center; }
+  .hero-headline { font-size: 36px; }
+  .hero-immersive { padding: 100px 16px 64px; }
+}
