@@ -4,7 +4,7 @@
 
 'use strict';
 
-/** 20-min intro — replace with your Calendly event URL (one place updates all "Book a call" links). */
+/** 20-min Calendly URL — set CALENDLY_20_MIN in Railway/.env, or window.CALENDLY_20_MIN, or /api/config/public. */
 const CALENDLY_20_MIN = 'https://calendly.com/REPLACE-ME-20min';
 
 /** Top-right auto-dismiss toasts (replaces alert() on public pages). */
@@ -597,14 +597,31 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 })();
 
 // ============================================
-// Calendly — links with data-book-call="1" get the URL above
+// Calendly — data-book-call="1" (env CALENDLY_20_MIN wins over JS constant)
 // ============================================
 (function initCalendly20Links() {
-  const u =
-    (typeof window !== 'undefined' && window.CALENDLY_20_MIN) || CALENDLY_20_MIN;
-  document.querySelectorAll('a[data-book-call="1"]').forEach((a) => {
-    a.setAttribute('href', u);
-    a.setAttribute('target', '_blank');
-    a.setAttribute('rel', 'noopener noreferrer');
-  });
+  function applyUrl(u) {
+    if (!u || String(u).indexOf('REPLACE-ME') !== -1) return;
+    document.querySelectorAll('a[data-book-call="1"]').forEach((a) => {
+      a.setAttribute('href', u);
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
+  }
+  const w =
+    (typeof window !== 'undefined' && window.CALENDLY_20_MIN) || null;
+  if (w && String(w).indexOf('REPLACE-ME') === -1) {
+    applyUrl(w);
+    return;
+  }
+  if (CALENDLY_20_MIN && String(CALENDLY_20_MIN).indexOf('REPLACE-ME') === -1) {
+    applyUrl(CALENDLY_20_MIN);
+    return;
+  }
+  fetch('/api/config/public', { credentials: 'same-origin' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      if (j && j.calendly20Min) applyUrl(j.calendly20Min);
+    })
+    .catch(() => {});
 })();

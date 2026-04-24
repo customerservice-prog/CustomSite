@@ -9,6 +9,22 @@ const { isDevAuthEnabled, signDevToken } = require('../lib/devAuth');
 
 const router = express.Router();
 
+async function logSignIn(userId, email, source) {
+  try {
+    if (!isSupabaseConfigured()) return;
+    const supabase = getService();
+    await supabase.from('agency_activity').insert({
+      actor_id: userId,
+      action: 'sign_in',
+      entity_type: 'session',
+      entity_id: null,
+      metadata: { email: String(email || ''), source },
+    });
+  } catch (e) {
+    console.warn('sign_in activity', e.message);
+  }
+}
+
 const DEV_LOCAL_ADMIN_ID = '00000000-0000-0000-0000-00000000a001';
 
 router.post('/login', async (req, res) => {
@@ -112,6 +128,8 @@ router.post('/login', async (req, res) => {
     if (error || !session) {
       return res.status(401).json({ error: error?.message || 'Invalid credentials' });
     }
+
+    await logSignIn(data.user.id, data.user.email, 'password');
 
     let profile;
     try {

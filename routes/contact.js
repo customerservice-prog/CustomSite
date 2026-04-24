@@ -3,6 +3,20 @@
 const express = require('express');
 const { getService } = require('../lib/supabase');
 const { sendLeadNotification, sendLeadConfirmation } = require('../lib/email');
+
+async function logPublicLead(supabase, leadId, email) {
+  try {
+    await supabase.from('agency_activity').insert({
+      actor_id: null,
+      action: 'lead_submitted',
+      entity_type: 'lead',
+      entity_id: leadId,
+      metadata: { email, source: 'public_contact' },
+    });
+  } catch (e) {
+    console.warn('agency_activity (lead)', e.message);
+  }
+}
 const contactRateLimit = require('../lib/createContactRateLimiter');
 
 const router = express.Router();
@@ -55,6 +69,12 @@ router.post('/', contactRateLimit, async (req, res) => {
     if (error) {
       console.error('leads insert', error);
       return res.status(500).json({ success: false, error: 'Could not save lead' });
+    }
+
+    try {
+      await logPublicLead(supabase, data.id, row.email);
+    } catch (e) {
+      /* non-fatal */
     }
 
     try {

@@ -41,7 +41,7 @@
       </a>
       <ul class="nav-links" id="navLinks">
         <li><a href="index.html">Home</a></li>
-        <li><a href="index.html#about">About</a></li>
+        <li><a href="about.html">About</a></li>
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
         <li><a href="contact.html" class="active">Contact</a></li>
@@ -129,7 +129,7 @@
             <div class="form-row">
               <div class="form-group">
                 <label for="phone">Phone Number</label>
-                <input type="tel" id="phone" name="phone" placeholder="(555) 123-4567" />
+                <input type="tel" id="phone" name="phone" placeholder="Optional" />
               </div>
               <div class="form-group">
                 <label for="company">Business Name</label>
@@ -255,7 +255,7 @@
         <li><a href="pricing.html">Maintenance Plans</a></li>
       </ul></div>
       <div class="footer-col"><h4>Company</h4><ul>
-        <li><a href="index.html#about">About</a></li>
+        <li><a href="about.html">About</a></li>
         <li><a href="case-studies.html">Case studies</a></li>
         <li><a href="portfolio.html">Portfolio</a></li>
         <li><a href="pricing.html">Pricing</a></li>
@@ -288,6 +288,19 @@
         var m = document.getElementById('message');
         if (m && String(m.value).indexOf('City / area:') < 0) {
           m.value = 'City / area: ' + c + '.\n\n' + m.value;
+        }
+      } catch (e) {
+        /* */
+      }
+    })();
+    (function () {
+      try {
+        if (new URLSearchParams(window.location.search).get('package') !== 'enterprise') return;
+        var b = document.getElementById('budget');
+        if (b) b.value = '7500-plus';
+        var m = document.getElementById('message');
+        if (m && String(m.value).indexOf('Enterprise') < 0) {
+          m.value = 'Enterprise / custom build inquiry.\n\n' + m.value;
         }
       } catch (e) {
         /* */

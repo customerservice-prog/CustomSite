@@ -178,6 +178,7 @@ router.patch('/leads/:id', async (req, res) => {
       .select()
       .single();
     if (error) return res.status(500).json({ error: error.message });
+    await logActivity(supabase, req.profile.id, 'lead.update', 'lead', id, { status });
     return res.json({ lead: data });
   } catch (e) {
     console.error(e);
@@ -304,6 +305,7 @@ router.post('/projects', async (req, res) => {
     }
     const { data, error } = await supabase.from('projects').insert(insert).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    await logActivity(supabase, req.profile.id, 'project_created', 'project', data.id, { name: data.name });
     return res.json({ success: true, project: data });
   } catch (e) {
     console.error(e);
