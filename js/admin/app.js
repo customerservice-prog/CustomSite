@@ -996,9 +996,9 @@ function renderLeads() {
         <button type="button" class="btn-secondary btn-sm" data-lp="next" ${page >= totalPages ? 'disabled' : ''}>Next</button>
     </div>`;
 
-  const pipePanel = getEl('panel-pipeline') || getEl('panel-leads');
+  const pipePanel = getEl('panel-leads') || getEl('panel-pipeline');
   if (!pipePanel) {
-    console.error('renderLeads: #panel-pipeline (or #panel-leads) missing from DOM');
+    console.error('renderLeads: #panel-leads (or #panel-pipeline) missing from DOM');
     return;
   }
   pipePanel.innerHTML = `
