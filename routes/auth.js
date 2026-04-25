@@ -4,6 +4,7 @@ require('../lib/env');
 
 const express = require('express');
 const { getAnon, getService, isSupabaseConfigured, isSupabaseAnonReady } = require('../lib/supabase');
+const { isBootstrapAdminEmail } = require('../lib/bootstrapAdmin');
 const { requireAuth } = require('../middleware/auth');
 const { isDevAuthEnabled, signDevToken } = require('../lib/devAuth');
 
@@ -126,7 +127,16 @@ router.post('/login', async (req, res) => {
     }
 
     if (error || !session) {
-      return res.status(401).json({ error: error?.message || 'Invalid credentials' });
+      const code = error?.code || 'invalid_credentials';
+      let message = error?.message || 'Invalid credentials';
+      if (code === 'email_not_confirmed' || /email not confirmed/i.test(String(message))) {
+        message =
+          'This email is not confirmed yet. Open the confirmation link Supabase sent, or in Supabase Dashboard go to Authentication → Users, find your account, and confirm the email (or disable “Confirm email” for testing).';
+      } else if (code === 'invalid_credentials' || /invalid login credentials/i.test(String(message))) {
+        message =
+          'Invalid email or password. If you forgot your password, use “Forgot password?” on the portal or reset it in Supabase → Authentication → Users.';
+      }
+      return res.status(401).json({ error: message, code });
     }
 
     await logSignIn(data.user.id, data.user.email, 'password');
@@ -141,9 +151,45 @@ router.post('/login', async (req, res) => {
         .maybeSingle();
       if (pr.error) {
         console.error('users lookup', pr.error);
-        return res.status(502).json({ error: 'Could not load profile' });
+        const msg = String(pr.error.message || '');
+        if (/does not exist|schema cache|Could not find the table/i.test(msg)) {
+          return res.status(503).json({
+            error:
+              'Database is not set up. Run the SQL migrations in `supabase/migrations` in the Supabase SQL editor.',
+            code: 'DB_NOT_READY',
+          });
+        }
+        return res.status(502).json({ error: 'Could not load your account profile. Check server logs.', code: 'PROFILE_LOOKUP' });
       }
       profile = pr.data;
+      if (!profile && data.user) {
+        const role = isBootstrapAdminEmail(data.user.email) ? 'admin' : 'client';
+        const ins = await service
+          .from('users')
+          .insert({
+            id: data.user.id,
+            email: String(data.user.email || '').trim().toLowerCase(),
+            role,
+            full_name: data.user.user_metadata?.full_name || null,
+            company: null,
+          })
+          .select('id, email, full_name, company, role, created_at')
+          .single();
+        if (ins.error) {
+          if (ins.error.code === '23505') {
+            const again = await service
+              .from('users')
+              .select('id, email, full_name, company, role, created_at')
+              .eq('id', data.user.id)
+              .maybeSingle();
+            profile = again.data;
+          } else {
+            console.error('users insert (login)', ins.error);
+          }
+        } else {
+          profile = ins.data;
+        }
+      }
     } catch (err) {
       console.error(err);
       return res.status(502).json({ error: 'Could not load profile' });

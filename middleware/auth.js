@@ -2,20 +2,7 @@
 
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
 const { verifyDevToken, isDevAuthEnabled } = require('../lib/devAuth');
-
-function isBootstrapAdminEmail(email) {
-  if (!email) return false;
-  const e = String(email).trim().toLowerCase();
-  const single = String(process.env.INITIAL_ADMIN_EMAIL || '')
-    .trim()
-    .toLowerCase();
-  if (single && e === single) return true;
-  const list = String(process.env.BOOTSTRAP_ADMIN_EMAILS || '')
-    .split(/[,;]/)
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  return list.includes(e);
-}
+const { isBootstrapAdminEmail } = require('../lib/bootstrapAdmin');
 
 async function requireAuth(req, res, next) {
   try {
