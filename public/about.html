@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <script src="/js/brand-resolver.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>About | CustomSite — Web Design in Syracuse, NY</title>
-  <meta name="description" content="CustomSite is Bryan and a small team: real web design for small businesses, based in Syracuse, NY. A person from first call to launch, not a ticket queue." />
+  <title>About | CustomSite &mdash; Web Design Team in Syracuse, NY</title>
+  <meta name="description" content="CustomSite is a Syracuse web design agency: strategists, designers, and developers for small businesses. Local team, clear pricing, and support after launch." />
   <link rel="canonical" href="https://customsite.online/about.html" />
   <meta property="og:title" content="About | CustomSite" />
   <meta property="og:description" content="Who we are, how we work, and what you can expect when you hire us." />
@@ -22,10 +22,31 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://customsite.online/" },
-      { "@type": "ListItem", "position": 2, "name": "About", "item": "https://customsite.online/about.html" }
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://customsite.online/" },
+          { "@type": "ListItem", "position": 2, "name": "About", "item": "https://customsite.online/about.html" }
+        ]
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://customsite.online/#org",
+        "name": "CustomSite",
+        "url": "https://customsite.online/",
+        "logo": "https://customsite.online/images/customsite-wordmark-on-dark.svg",
+        "foundingLocation": { "@type": "Place", "name": "Syracuse, NY" },
+        "areaServed": { "@type": "City", "name": "Syracuse" },
+        "employee": [
+          {
+            "@type": "Person",
+            "name": "Bryan P.",
+            "jobTitle": "Founder & Strategy Lead",
+            "worksFor": { "@id": "https://customsite.online/#org" }
+          }
+        ]
+      }
     ]
   }
   </script>
@@ -35,7 +56,7 @@
   <nav class="navbar scrolled" id="navbar">
     <div class="container nav-container">
       <a href="index.html" class="logo" style="color:var(--dark)" aria-label="CustomSite home">
-        <img class="logo-wordmark" src="images/customsite-wordmark-on-light.svg" width="220" height="40" alt="CustomSite" />
+        <img class="logo-wordmark" src="images/customsite-wordmark-on-light.svg" width="220" height="40" alt="CustomSite — web design agency Syracuse NY" />
       </a>
       <ul class="nav-links" id="navLinks">
         <li><a href="index.html">Home</a></li>
@@ -53,42 +74,30 @@
   <section class="page-hero">
     <div class="container">
       <span class="section-tag">CustomSite</span>
-      <h1>A person, not a platform</h1>
-      <p>Web design and development for small businesses — with clear scoping, fixed pricing where it fits, and someone who answers when something breaks after launch.</p>
+      <h1>Built by a team. Felt like a partner.</h1>
+      <p>Web design and development for small businesses &mdash; clear scoping, fixed pricing where the plan allows, and a crew you can reach when something needs attention after launch.</p>
     </div>
   </section>
 
   <section class="section" style="background: var(--light)">
-    <div class="container about-founder" style="max-width: 52rem; margin: 0 auto">
-      <figure class="about-founder__media" aria-label="CustomSite team">
-        <div class="about-founder__avatar about-founder__avatar--sil" aria-hidden="true">
-          <svg class="about-founder__sil" viewBox="0 0 100 100" width="100%" height="100%" focusable="false" aria-hidden="true">
-            <defs>
-              <linearGradient id="about-bg" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#1e3a5f" />
-                <stop offset="1" stop-color="#0f172a" />
-              </linearGradient>
-              <linearGradient id="about-suit" x1="0.5" y1="0" x2="0.5" y2="1">
-                <stop offset="0" stop-color="#334155" />
-                <stop offset="1" stop-color="#0c1222" />
-              </linearGradient>
-            </defs>
-            <rect width="100" height="100" rx="50" fill="url(#about-bg)" />
-            <circle cx="50" cy="34" r="18" fill="#0f172a" />
-            <path d="M 32 32 Q 50 20 68 32 L 68 38 Q 50 32 32 38 Z" fill="#1e293b" />
-            <path d="M 20 100 L 20 78 Q 50 60 80 78 L 80 100 L 20 100 Z" fill="url(#about-suit)" />
-            <path d="M 46 100 L 46 64 L 54 64 L 54 100" fill="#0a0f1a" opacity="0.4" />
-            <rect x="42" y="56" width="16" height="4" rx="1" fill="#0f172a" />
-          </svg>
-        </div>
-        <figcaption class="about-founder__figcap">Bryan &mdash; CustomSite</figcaption>
-      </figure>
-      <div class="about-founder__text">
-        <h2 class="section-title" style="font-size: 1.75rem; margin-top: 0.5rem">Who you&rsquo;re hiring</h2>
-        <p>CustomSite is <strong>me</strong> (Bryan) and a small group of people I bring in when a project needs it &mdash; not a call center, not a &ldquo;we&rsquo;ll get back to you&rdquo; ticket queue. I&rsquo;m <strong>based in Syracuse, NY</strong> and I work with <strong>local and national</strong> businesses; Central New York clients get priority for in-person and quick visits when that helps.</p>
-        <p>You get the same person from first call to launch &mdash; and someone you can reach when something breaks. <a href="contact.html" data-book-call="1" class="about-book">Book a free 20-minute call</a> or <a href="contact.html">send a message</a> and tell me what&rsquo;s not working on your current site.</p>
-        <p>We&rsquo;ve shipped <strong>1k+</strong> site builds. Every build is scoped in plain English: pages, what each does, and a fixed price where the plan allows. If you need something larger &mdash; enterprise web apps, multi-location, deep integrations &mdash; we <a href="contact.html?package=enterprise">start with a consultation</a> and a written quote.</p>
-      </div>
+    <div class="container" style="max-width: 52rem; margin: 0 auto">
+      <h2 class="section-title" style="text-align: center; font-size: 1.5rem; margin: 0 0 0.5rem">Who we are</h2>
+      <p style="text-align: center; color: var(--gray); max-width: 40rem; margin: 0 auto 2rem; line-height: 1.7">CustomSite is a web design and development agency in <strong>Syracuse, NY</strong>. We&rsquo;re a tight team of strategists, designers, and developers who work with small and mid-sized businesses. Every project gets a dedicated lead from discovery through launch &mdash; and we stay available after go-live. We serve <strong>Central New York and clients nationwide</strong>. Local clients get priority for in-person kickoffs when that helps; most of our work runs over video and shared docs just as well.</p>
+      <ul class="about-team" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem" role="list">
+        <li class="testimonial-card" style="text-align: center; margin: 0">
+          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 3.5rem; height: 3.5rem" aria-hidden="true">BP</span><span><strong>Bryan P.</strong><br><span class="testimonial-card__loc">Founder &amp; strategy lead</span></span></p>
+          <p style="font-size: 0.9rem; color: var(--gray); line-height: 1.5; margin: 0">Scopes work in plain English and stays your main point of contact from kickoff to launch.</p>
+        </li>
+        <li class="testimonial-card" style="text-align: center; margin: 0">
+          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 3.5rem; height: 3.5rem; font-size: 0.85rem" aria-hidden="true">DS</span><span><strong>Design team</strong><br><span class="testimonial-card__loc">UI/UX &amp; visual</span></span></p>
+          <p style="font-size: 0.9rem; color: var(--gray); line-height: 1.5; margin: 0">UI/UX focused on fast, conversion-friendly layouts for service, retail, and hospitality.</p>
+        </li>
+        <li class="testimonial-card" style="text-align: center; margin: 0">
+          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 3.5rem; height: 3.5rem; font-size: 0.85rem" aria-hidden="true">DT</span><span><strong>Dev team</strong><br><span class="testimonial-card__loc">Build &amp; launch</span></span></p>
+          <p style="font-size: 0.9rem; color: var(--gray); line-height: 1.5; margin: 0">Frontend and full-stack work: custom sites, e-commerce, booking, and client portals &mdash; built for performance and maintainability.</p>
+        </li>
+      </ul>
+      <p style="text-align: center; margin: 2rem auto 0; max-width: 38rem; line-height: 1.7">We work across <strong>5+ industry verticals</strong> with full spec builds you can open live on the portfolio. Every engagement starts with a written scope. Larger builds &mdash; enterprise web apps, multi-location, deep integrations &mdash; begin with a <a href="contact.html?package=enterprise">consultation and quote</a>. <a href="contact.html" data-book-call="1" class="about-book">Book a free 20-minute call</a> or <a href="contact.html">message us</a> about your current site.</p>
     </div>
   </section>
 
