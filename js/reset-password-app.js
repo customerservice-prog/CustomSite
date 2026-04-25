@@ -65,13 +65,9 @@ try {
   msg(e.message || 'Could not start password reset', 'error');
 }
 
-let hasSession = false;
-if (supabase) {
-  const { data: { session } } = await supabase.auth.getSession();
-  hasSession = Boolean(session || localStorage.getItem(ACCESS));
-}
+const isRecovery = /type=recovery/.test(window.location.hash);
 
-if (hasSession) {
+if (isRecovery) {
   show('panelPassword', true);
   show('panelEmail', false);
 } else {
