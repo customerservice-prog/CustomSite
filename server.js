@@ -31,6 +31,53 @@ const BIND_HOST = process.env.BIND_HOST || '0.0.0.0';
 // Railway, Render, etc. set X-Forwarded-* — needed for correct https:// host in preview URLs
 app.set('trust proxy', 1);
 
+/**
+ * www and apex (e.g. customsite.online vs www.customsite.online) are different origins;
+ * `localStorage` (session token after login) is not shared, so the user appears signed
+ * out on the other host. If PUBLIC_SITE_URL is set, 301 GET/HEAD to that hostname
+ * for the same "site" (ignores Railway/Render preview hostnames). Set
+ * PUBLIC_SITE_URL=https://customsite.online (pick www or not — use one and stick to it).
+ * Emergency bypass: SKIP_CANONICAL_HOST=1
+ */
+function skipCanonicalHostCheck(hostname) {
+  const h = String(hostname || '').toLowerCase();
+  if (!h) return true;
+  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return true;
+  if (
+    h.endsWith('.railway.app')
+    || h.endsWith('.onrender.com')
+    || h.endsWith('.vercel.app')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (String(process.env.SKIP_CANONICAL_HOST || '').trim() === '1') return next();
+  if (skipCanonicalHostCheck(req.hostname)) return next();
+  const raw = String(process.env.PUBLIC_SITE_URL || '').trim();
+  if (!raw) return next();
+  let canonicalHost;
+  try {
+    const withProto = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    canonicalHost = new URL(withProto).hostname.toLowerCase();
+  } catch {
+    return next();
+  }
+  if (!canonicalHost) return next();
+  const host = String(req.hostname || '').toLowerCase();
+  if (host === canonicalHost) return next();
+  const stripWww = (x) => (x.startsWith('www.') ? x.slice(4) : x);
+  if (stripWww(host) !== stripWww(canonicalHost)) return next();
+  const rel = String(req.originalUrl || req.url || '/');
+  const dest = new URL(rel, `https://${canonicalHost}/`);
+  dest.protocol = 'https:';
+  dest.hostname = canonicalHost;
+  return res.redirect(301, dest.toString());
+});
+
 // API hardening: disable default CSP/COEP so preview iframes and the site builder keep working; tighten per-route if needed.
 app.use(
   helmet({

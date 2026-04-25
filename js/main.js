@@ -278,10 +278,22 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        credentials: 'same-origin',
       });
-      const data = await res.json().catch(() => ({}));
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        if (!res.ok) {
+          throw new Error(
+            res.status ? `Login failed (HTTP ${res.status}).` : 'Login failed. Try again.'
+          );
+        }
+      }
       if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
+        const msg = data.error || data.message || (raw && raw.length < 400 ? raw : '') || 'Login failed';
+        throw new Error(String(msg).trim() || 'Login failed');
       }
       if (!data.access_token) {
         throw new Error('No access token returned. Is the server running? Check the terminal for errors.');
@@ -291,7 +303,8 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
         localStorage.setItem(AUTH_REFRESH_KEY, data.refresh_token);
       }
       const isAdmin = data.user && data.user.role === 'admin';
-      window.location.href = isAdmin ? 'admin.html' : 'dashboard.html';
+      const nextPage = isAdmin ? '/admin.html' : '/dashboard.html';
+      window.location.replace(nextPage);
     } catch (error) {
       console.error('Login error:', error);
       showFormMessage(loginForm, error.message || 'Invalid email or password.', 'error');
