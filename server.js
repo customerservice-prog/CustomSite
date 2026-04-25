@@ -241,6 +241,7 @@ app.use(async (req, res, next) => {
   return next();
 });
 
+app.use(
   express.static(path.join(__dirname), {
     extensions: ['html'],
     etag: true,
