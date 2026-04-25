@@ -3072,39 +3072,48 @@ getEl('csQaInv')?.addEventListener('click', () => {
 document.getElementById('admLogout')?.addEventListener('click', (e) => {
   e.preventDefault();
   clearAuth();
-  location.href = 'client-portal.html?agency=1';
+  location.href = '/client-portal.html?agency=1';
 });
 
-if (getToken()) {
+/** Wait for auth-bootstrap (Supabase URL/code → localStorage) before reading getToken() — otherwise admin shows "Not signed in" during OAuth return. */
+(async function initAdminForSession() {
   try {
-    initToast();
-    initUserMenu();
-    const app = getEl('admApp');
-    const out = getEl('admSignedOut');
-    if (out) out.style.display = 'none';
-    if (app) app.style.display = 'block';
-    window.scrollTo(0, 0);
-    showTab('dashboard');
-    const pDash = getEl('panel-dashboard');
-    if (pDash) pDash.innerHTML = dashboardPanelSkeleton();
-    else console.error('panel-dashboard missing');
-    checkDbHealth();
-    loadAll();
+    const p = window.__csAuthReady;
+    if (p && typeof p.then === 'function') await p;
   } catch (e) {
-    console.error('Admin init failed', e);
+    console.warn('auth-bootstrap', e);
+  }
+  if (getToken()) {
+    try {
+      initToast();
+      initUserMenu();
+      const app = getEl('admApp');
+      const out = getEl('admSignedOut');
+      if (out) out.style.display = 'none';
+      if (app) app.style.display = 'block';
+      window.scrollTo(0, 0);
+      showTab('dashboard');
+      const pDash = getEl('panel-dashboard');
+      if (pDash) pDash.innerHTML = dashboardPanelSkeleton();
+      else console.error('panel-dashboard missing');
+      checkDbHealth();
+      loadAll();
+    } catch (e) {
+      console.error('Admin init failed', e);
+      const app = getEl('admApp');
+      const out = getEl('admSignedOut');
+      if (app) app.style.display = 'none';
+      if (out) {
+        out.style.display = 'block';
+        out.innerHTML = `<p style="margin:0 0 0.5rem 0">Something went wrong loading the admin. Try a <strong>hard refresh</strong> (Ctrl+Shift+R) or check the browser console (F12).</p><p class="phase-note" style="margin:0">Error: ${esc(
+          e && e.message ? e.message : String(e)
+        )}</p><p style="margin:0.75rem 0 0 0"><a href="/client-portal.html?agency=1" class="cs-link-a" style="font-weight:600">Client portal</a></p>`;
+      }
+    }
+  } else {
     const app = getEl('admApp');
     const out = getEl('admSignedOut');
     if (app) app.style.display = 'none';
-    if (out) {
-      out.style.display = 'block';
-      out.innerHTML = `<p style="margin:0 0 0.5rem 0">Something went wrong loading the admin. Try a <strong>hard refresh</strong> (Ctrl+Shift+R) or check the browser console (F12).</p><p class="phase-note" style="margin:0">Error: ${esc(
-        e && e.message ? e.message : String(e)
-      )}</p><p style="margin:0.75rem 0 0 0"><a href="client-portal.html?agency=1" class="cs-link-a" style="font-weight:600">Client portal</a></p>`;
-    }
+    if (out) out.style.display = 'block';
   }
-} else {
-  const app = getEl('admApp');
-  const out = getEl('admSignedOut');
-  if (app) app.style.display = 'none';
-  if (out) out.style.display = 'block';
-}
+})();
