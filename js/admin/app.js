@@ -367,8 +367,13 @@ function formatActivityEvent(ev) {
   }
   if (!meta || typeof meta !== 'object') meta = {};
   const rel = ev.created_at ? formatRelative(ev.created_at) : '—';
-  if (a === 'sign_in' || aLow.includes('sign_in') || a === 'auth.signin') {
-    return { icon: '🔑', text: 'You signed in', rel };
+  if (a === 'sign_in' || aLow.includes('sign_in') || a === 'auth.signin' || aLow === 'session') {
+    const who = meta.email || meta.user_email || meta.actor || meta.name || '';
+    return {
+      icon: '🔑',
+      text: who ? `Sign-in — ${esc(String(who))}` : 'Sign-in (new session)',
+      rel,
+    };
   }
   if (a === 'project_created' || a === 'project.create') {
     let nm = meta.name;
@@ -453,6 +458,11 @@ function showTab(name) {
     const on = p.getAttribute('data-panel') === name;
     p.classList.toggle('is-visible', on);
     p.toggleAttribute('hidden', !on);
+    try {
+      if ('inert' in p) p.inert = !on;
+    } catch {
+      /* */
+    }
   });
   getEl('admSidebar')?.classList.remove('open');
   const ovl = getEl('admSbOverlay');
@@ -736,7 +746,7 @@ function renderDashboard() {
         <div class="cs-kpi-pills" style="margin-top:6px">
           <span class="badge badge-discovery">D ${byPh('discovery')}</span>
           <span class="badge badge-design">De ${byPh('design')}</span>
-          <span class="badge badge-dev" title="Development phase">Dev ${byPh('development')}</span>
+          <span class="badge badge-dev" title="Development phase">Devel. ${byPh('development')}</span>
           <span class="badge badge-review">R ${byPh('review')}</span>
           <span class="badge badge-live">L ${byPh('live')}</span>
         </div>
@@ -768,7 +778,7 @@ function renderDashboard() {
               ${
                 state.clients.length
                   ? clientSitesRows.join('')
-                  : '<tr><td colspan="4" class="phase-note" style="cursor:default">No clients yet. Create a client in the Clients tab.</td></tr>'
+                  : '<tr><td colspan="7" class="phase-note" style="cursor:default">No clients yet. Create a client in the Clients tab.</td></tr>'
               }
             </tbody>
           </table>
@@ -1433,6 +1443,7 @@ function renderClients() {
               <th>Client</th>
               <th>Email</th>
               <th>Phone</th>
+              <th>Website</th>
               <th>Projects</th>
               <th>Status</th>
               <th style="text-align:right">Actions</th>
@@ -1457,7 +1468,16 @@ function renderClients() {
                   </div>
                 </td>
                 <td>${esc(c.email)}</td>
-                <td>${esc(c.phone || '—')}</td>
+                <td>${
+                  c.phone && String(c.phone).trim()
+                    ? esc(c.phone)
+                    : '<span class="cs-table-empty" aria-label="No phone">—</span>'
+                }</td>
+                <td>${
+                  c.website && String(c.website).trim()
+                    ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer" class="tbl-link">${esc(c.website)}</a>`
+                    : '<span class="cs-table-empty" aria-label="No website">—</span>'
+                }</td>
                 <td><button type="button" class="badge badge-active" data-fpc="${esc(c.id)}" style="border:0;cursor:pointer;font:inherit">${nP} project${
                   nP === 1 ? '' : 's'
                 }</button></td>
@@ -1573,8 +1593,8 @@ function renderProjects() {
       </aside>
       <div class="cs-proj-main">
     <div class="adm-card" style="margin:0 0 1rem 0">
-      <h2 style="margin-top:0">Project workspace</h2>
-      <p class="phase-note">Select a project in the list. Use tabs for updates, files, and billing.</p>
+      <h2 style="margin-top:0">Projects — workspace</h2>
+      <p class="phase-note">Choose a project in the list on the left, then use Overview / Updates / Files / Billing. To add another project, use <strong>Create new project</strong> below.</p>
         <div class="form-group" style="max-width:100%">
           <label class="visually-hidden" for="wsProject">Active project</label>
           <select id="wsProject" class="ws-prj" style="max-width:100%"><option value="">— Select a project —</option>${projectOptions()}</select>
@@ -2186,11 +2206,13 @@ function renderInvoices() {
     c.appendChild(d);
     recalc();
   });
+  const formInv = p.querySelector('#formInv');
   const onLineItemChange = () => recalc();
-  p.querySelector('#lineItems')?.addEventListener('input', onLineItemChange);
-  p.querySelector('#lineItems')?.addEventListener('change', onLineItemChange);
+  formInv?.addEventListener('input', onLineItemChange);
+  formInv?.addEventListener('change', onLineItemChange);
   p.querySelector('#formInv')?.addEventListener('submit', (e) => {
     e.preventDefault();
+    recalc();
     const f = e.target;
     const lines = [];
     f.querySelectorAll('.li-row').forEach((row) => {
@@ -2906,7 +2928,17 @@ function renderContracts() {
       </div>
     </div>`;
   setTimeout(() => {
-    const quill = initQuillContract();
+    let quill = null;
+    try {
+      quill = initQuillContract();
+    } catch (e) {
+      console.error('Quill init', e);
+    }
+    const qel = document.getElementById('quillContract');
+    if (qel && !qel.querySelector('.ql-container')) {
+      qel.innerHTML =
+        '<p class="phase-note" role="alert">Rich text editor did not start (Quill missing or blocked). Check the network or allow <code>cdn.quilljs.com</code>, then refresh.</p>';
+    }
     if (ed) setQuillBody(quill, ed.body);
   }, 0);
   const p = document.getElementById('panel-contracts');
@@ -3026,18 +3058,19 @@ function renderContracts() {
 }
 
 /* ---------- Settings ---------- */
-function renderSettings() {
-  getEl('panel-settings').innerHTML = '<p class="phase-note" style="margin:0">Loading…</p>';
-  api('/api/admin/integrations')
-    .then((d) => {
-      const re = d.resend
-        ? '<span class="badge badge-paid" style="margin-left:6px">Connected</span>'
-        : '<span class="badge badge-overdue" style="margin-left:6px">Not configured</span>';
-      const st = d.stripe
-        ? '<span class="badge badge-paid" style="margin-left:6px">Connected</span>'
-        : '<span class="phase-note" style="margin-left:6px">Not set</span> — <a href="https://dashboard.stripe.com" target="_blank" rel="noopener">Stripe dashboard</a>';
-      getEl('panel-settings').innerHTML = `
-    <div class="card cs-settings-sec" style="margin-bottom:0">
+function buildSettingsPanelHtml(d) {
+  const re =
+    d && d.resend
+      ? '<span class="badge badge-paid" style="margin-left:6px">Connected</span>'
+      : '<span class="badge badge-overdue" style="margin-left:6px">Not configured</span>';
+  const st =
+    d && d.stripe
+      ? '<span class="badge badge-paid" style="margin-left:6px">Connected</span>'
+      : '<span class="phase-note" style="margin-left:6px">Not set</span> — <a href="https://dashboard.stripe.com" target="_blank" rel="noopener">Stripe dashboard</a>';
+  const fromE = d && d.fromEmail != null ? d.fromEmail : '—';
+  const pubU = d && d.publicUrl != null && String(d.publicUrl).trim() ? d.publicUrl : '—';
+  return `
+    <div class="card cs-settings-sec" style="margin-bottom:0" id="settingsRoot">
       <p class="cs-set-hint" style="margin:0 0 1.25rem 0">Agency profile and live integration status. Secrets stay in Railway / server env; this page shows what the server sees (not the secret values themselves).</p>
       <div style="display:grid;gap:1.75rem;max-width:44rem">
         <section>
@@ -3050,17 +3083,15 @@ function renderSettings() {
         </section>
         <section>
           <h3 style="font-size:16px;margin:0 0 0.5rem 0">Email (Resend)</h3>
-          <p class="phase-note" style="margin:0">Resend ${re} · <code>FROM_EMAIL</code> on server: <strong>${
-        d.fromEmail || '—'
-      }</strong></p>
+          <p class="phase-note" id="settingsResendLine" style="margin:0">Resend ${re} · <code>FROM_EMAIL</code> on server: <strong>${esc(fromE)}</strong></p>
         </section>
         <section>
           <h3 style="font-size:16px;margin:0 0 0.5rem 0">Payments (Stripe)</h3>
-          <p class="phase-note" style="margin:0">Stripe ${st}</p>
+          <p class="phase-note" id="settingsStripeLine" style="margin:0">Stripe ${st}</p>
         </section>
         <section>
           <h3 style="font-size:16px;margin:0 0 0.5rem 0">Public site URL</h3>
-          <p class="phase-note" style="margin:0">Configured as <code>${esc(d.publicUrl || '—')}</code> (used in client emails and portal links).</p>
+          <p class="phase-note" id="settingsUrlLine" style="margin:0">Configured as <code>${esc(pubU)}</code> (used in client emails and portal links).</p>
         </section>
         <section>
           <h3 style="font-size:16px;margin:0 0 0.5rem 0">Calendly &amp; phone (site-wide)</h3>
@@ -3072,9 +3103,28 @@ function renderSettings() {
         </section>
       </div>
     </div>`;
+}
+
+function renderSettings() {
+  const el = getEl('panel-settings');
+  if (!el) {
+    console.error('admin: #panel-settings missing from DOM');
+    return;
+  }
+  el.innerHTML = buildSettingsPanelHtml(null);
+  api('/api/admin/integrations')
+    .then((d) => {
+      const box = getEl('panel-settings');
+      if (box) box.innerHTML = buildSettingsPanelHtml(d);
     })
-    .catch(() => {
-      getEl('panel-settings').innerHTML = '<p class="phase-note" style="margin:0">Could not load integration status. Check that you are signed in and the server is running.</p>';
+    .catch((err) => {
+      console.error('admin: integrations', err);
+      const box = getEl('panel-settings');
+      if (box) {
+        box.innerHTML = `${buildSettingsPanelHtml(null)}
+        <p class="phase-note" id="settingsErr" style="margin:1rem 0 0 0" role="alert">Could not refresh integration status from the server. The sections above are still valid. Check your session and that <code>/api/admin/integrations</code> is reachable, then use <button type="button" class="btn-secondary btn-sm" id="settingsRetry" style="margin-top:0.5rem">Retry</button></p>`;
+        box.querySelector('#settingsRetry')?.addEventListener('click', () => renderSettings());
+      }
     });
 }
 
@@ -3113,11 +3163,11 @@ function renderActivity() {
           </li>`);
   });
   getEl('panel-activity').innerHTML = `
-    <div class="card" style="margin-bottom:0">
+    <div class="card cs-activity-card" style="margin-bottom:0;max-width:none">
       <div class="card-header" style="border:0">
         <span class="card-title">Activity (recent 100)</span>
       </div>
-      <div style="max-height:70vh;overflow:auto">
+      <div style="max-height:min(70vh,1200px);overflow:auto">
         <ul style="list-style:none;padding:0;margin:0" role="list">
           ${blocks.join('')}
         </ul>
@@ -3168,17 +3218,17 @@ function wireMainNav() {
   const onNav = (e) => {
     const t = e.target.closest('button[data-tab]');
     if (!t) return;
-    if (!t.closest('#csNav') && !t.closest('#admBottomBar')) return;
+    if (!t.matches('.adm-sb-item') && !t.matches('.adm-bbar-item')) return;
     const name = t.getAttribute('data-tab');
     if (!name) return;
-    state.currentTab = name;
+    e.preventDefault();
     showTab(name);
     if (name === 'files') {
       setTimeout(() => document.dispatchEvent(new CustomEvent('adm:files-panel')), 0);
     }
   };
-  getEl('csNav')?.addEventListener('click', onNav);
-  getEl('admBottomBar')?.addEventListener('click', onNav);
+  const root = getEl('admApp') || document.body;
+  root.addEventListener('click', onNav);
 }
 
 wireMainNav();
@@ -3191,22 +3241,6 @@ getEl('admHamburger')?.addEventListener('click', (e) => {
 getEl('admSbOverlay')?.addEventListener('click', () => {
   getEl('admSidebar')?.classList.remove('open');
   getEl('admSbOverlay')?.setAttribute('hidden', '');
-});
-
-getEl('csQaClient')?.addEventListener('click', () => {
-  showTab('clients');
-  setTimeout(() => openNewClientDrawer(), 0);
-});
-getEl('csQaLead')?.addEventListener('click', () => {
-  showTab('pipeline');
-  setTimeout(() => openAddLeadDrawer(), 0);
-});
-getEl('csQaInv')?.addEventListener('click', () => {
-  showTab('invoices');
-  setTimeout(() => {
-    getEl('invFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    getEl('invc')?.focus();
-  }, 50);
 });
 
 document.getElementById('admLogout')?.addEventListener('click', (e) => {
