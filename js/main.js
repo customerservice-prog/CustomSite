@@ -299,8 +299,18 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
         throw new Error('No access token returned. Is the server running? Check the terminal for errors.');
       }
       localStorage.setItem(AUTH_TOKEN_KEY, data.access_token);
+      try {
+        sessionStorage.setItem(AUTH_TOKEN_KEY, data.access_token);
+      } catch {
+        /* */
+      }
       if (data.refresh_token) {
         localStorage.setItem(AUTH_REFRESH_KEY, data.refresh_token);
+        try {
+          sessionStorage.setItem(AUTH_REFRESH_KEY, data.refresh_token);
+        } catch {
+          /* */
+        }
       }
       const isAdmin = data.user && data.user.role === 'admin';
       const nextPage = isAdmin ? '/admin.html' : '/dashboard.html';
@@ -371,7 +381,15 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
         console.error(e);
       }
     }
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    let token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
+      try {
+        token = sessionStorage.getItem(AUTH_TOKEN_KEY);
+        if (token) localStorage.setItem(AUTH_TOKEN_KEY, token);
+      } catch {
+        /* */
+      }
+    }
     if (!token) {
       const agencyEntry = isAdmin || isSiteBuilder
         ? 'client-portal.html?agency=1'
@@ -397,8 +415,18 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
         }
       })
       .catch(() => {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        localStorage.removeItem(AUTH_REFRESH_KEY);
+        try {
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          localStorage.removeItem(AUTH_REFRESH_KEY);
+        } catch {
+          /* */
+        }
+        try {
+          sessionStorage.removeItem(AUTH_TOKEN_KEY);
+          sessionStorage.removeItem(AUTH_REFRESH_KEY);
+        } catch {
+          /* */
+        }
         const agencyEntry = isAdmin || isSiteBuilder
           ? 'client-portal.html?agency=1'
           : 'client-portal.html';

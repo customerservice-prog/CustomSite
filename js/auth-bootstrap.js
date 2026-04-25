@@ -117,7 +117,18 @@ async function run() {
 
   let hasExistingAppToken = false;
   try {
-    hasExistingAppToken = Boolean(localStorage.getItem(ACCESS));
+    hasExistingAppToken = Boolean(
+      localStorage.getItem(ACCESS) || sessionStorage.getItem(ACCESS)
+    );
+    if (sessionStorage.getItem(ACCESS) && !localStorage.getItem(ACCESS)) {
+      try {
+        localStorage.setItem(ACCESS, sessionStorage.getItem(ACCESS));
+        const rt = sessionStorage.getItem(REFRESH);
+        if (rt) localStorage.setItem(REFRESH, rt);
+      } catch {
+        /* */
+      }
+    }
   } catch {
     hasExistingAppToken = false;
   }
@@ -179,7 +190,9 @@ async function run() {
   // OAuth/PKCE return — avoids ~3s delay on every admin load.
   hasExistingAppToken = false;
   try {
-    hasExistingAppToken = Boolean(localStorage.getItem(ACCESS));
+    hasExistingAppToken = Boolean(
+      localStorage.getItem(ACCESS) || sessionStorage.getItem(ACCESS)
+    );
   } catch {
     hasExistingAppToken = false;
   }

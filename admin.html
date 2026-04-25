@@ -27,6 +27,26 @@
   </div>
 
   <div id="admApp" class="adm-app-shell" style="display: none; min-height: 100vh">
+  <script>
+    (function () {
+      var K = 'customsite_access_token';
+      var t = null;
+      try {
+        t = localStorage.getItem(K) || sessionStorage.getItem(K);
+        if (t && !localStorage.getItem(K)) {
+          try {
+            localStorage.setItem(K, t);
+          } catch (e) {}
+        }
+      } catch (e) {}
+      if (t) {
+        var o = document.getElementById('admSignedOut');
+        var a = document.getElementById('admApp');
+        if (o) o.style.display = 'none';
+        if (a) a.style.display = 'flex';
+      }
+    })();
+  </script>
     <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
     <aside id="admSidebar" class="adm-sidebar">
       <div class="adm-sb-header">
