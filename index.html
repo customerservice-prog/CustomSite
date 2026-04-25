@@ -169,8 +169,30 @@
             <div class="macbook-notch" aria-hidden="true"></div>
             <div class="macbook-screen">
               <div class="macbook-screen-inner">
-                <div class="lb-root" id="live-builder">
-                  <div class="lb-canvas" aria-hidden="true">
+                <div class="lb-root" id="live-builder" data-phase="code">
+                  <div class="lb-code" aria-hidden="true">
+                    <div class="lb-code-top">
+                      <span class="lb-code-tab lb-code-tab--active">index.html</span>
+                      <span class="lb-code-tab">styles.css</span>
+                      <span class="lb-code-pill">HTML · CSS</span>
+                    </div>
+                    <div class="lb-code-body">
+                      <div class="lb-code-line" style="--d:0ms"><span class="lb-c-k">&lt;!DOCTYPE</span> <span class="lb-c-v">html</span><span class="lb-c-k">&gt;</span></div>
+                      <div class="lb-code-line" style="--d:80ms"><span class="lb-c-k">&lt;header</span> <span class="lb-c-a">class</span>=<span class="lb-c-s">&quot;site-header&quot;</span><span class="lb-c-k">&gt;</span>…<span class="lb-c-k">&lt;/header&gt;</span></div>
+                      <div class="lb-code-line" style="--d:160ms"><span class="lb-c-k">&lt;section</span> <span class="lb-c-a">id</span>=<span class="lb-c-s">&quot;hero&quot;</span><span class="lb-c-k">&gt;</span></div>
+                      <div class="lb-code-line" style="--d:240ms">&nbsp;&nbsp;<span class="lb-c-k">&lt;h1&gt;</span>Your value prop here<span class="lb-c-k">&lt;/h1&gt;</span></div>
+                      <div class="lb-code-line" style="--d:320ms"><span class="lb-c-k">&lt;/section&gt;</span></div>
+                      <div class="lb-code-line lb-code-line--css" style="--d:400ms"><span class="lb-c-c">.hero</span> <span class="lb-c-k">{</span> <span class="lb-c-a">display</span>: <span class="lb-c-v">grid</span>; <span class="lb-c-k">}</span></div>
+                      <div class="lb-code-line lb-code-line--css" style="--d:480ms"><span class="lb-c-c">.btn</span> <span class="lb-c-k">{</span> <span class="lb-c-a">background</span>: <span class="lb-c-s">#6366f1</span>; <span class="lb-c-k">}</span></div>
+                    </div>
+                    <div class="lb-code-build">
+                      <span class="lb-code-build__label">$ build</span>
+                      <span class="lb-code-build__out">compiling…</span>
+                      <span class="lb-code-build__ok">output → <strong>dist/</strong> <span class="lb-code-build__check">✓</span></span>
+                    </div>
+                  </div>
+                  <div class="lb-preview-wrap">
+                    <div class="lb-canvas" aria-hidden="true">
                     <div class="lb-nav">
                       <div class="lb-logo"></div>
                       <div class="lb-nav-links"><span></span><span></span><span></span><span></span></div>
@@ -218,13 +240,14 @@
                       <div class="lb-cta-text lb-cta-text--sm"></div>
                       <div class="lb-cta-btn" aria-hidden="true"><span class="lb-cta-glint"></span></div>
                     </div>
+                    </div>
                   </div>
                   <div class="lb-ready-badge" aria-hidden="true">✓ Site Ready</div>
                 </div>
               </div>
               <div class="screen-label">
                 <span class="screen-label-dot" aria-hidden="true"></span>
-                <span class="screen-label-text">Live build preview</span>
+                <span class="screen-label-text" id="heroBuildStepLabel">1 · Write HTML &amp; CSS</span>
               </div>
             </div>
           </div>
