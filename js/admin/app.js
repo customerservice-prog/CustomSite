@@ -18,8 +18,9 @@ const state = {
   timeEntries: [],
   table: {},
   currentTab: 'dashboard',
-  ui: { projectClientId: null },
+  ui: { projectClientId: null, msgProjectId: null, msgQ: '', timePeriod: 'month', contractSel: null },
   _prefillClientId: null,
+  _prefillInvoice: null,
 };
 
 function esc(s) {
@@ -69,12 +70,54 @@ function parseDisplayName() {
   }
 }
 
+function parseJwtSub() {
+  const t = getToken();
+  if (!t) return null;
+  try {
+    const part = t.split('.')[1];
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const p = JSON.parse(atob(b64));
+    return p.sub || null;
+  } catch {
+    return null;
+  }
+}
+
 function getGreeting() {
   const h = new Date().getHours();
   const name = parseDisplayName();
   if (h < 12) return `Good morning, ${name} 👋`;
   if (h < 17) return `Good afternoon, ${name} 👋`;
   return `Good evening, ${name} 👋`;
+}
+
+function getDefaultHourlyRate() {
+  const v = localStorage.getItem('cs_admin_hourly');
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 150;
+}
+function setDefaultHourlyRate(n) {
+  localStorage.setItem('cs_admin_hourly', String(n));
+}
+
+/** @param {string} iso @param {'week' | 'month' | 'all'} period */
+function timeEntryInPeriod(iso, period) {
+  if (period === 'all') return true;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  if (period === 'month') {
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }
+  if (period === 'week') {
+    const start = new Date(now);
+    const day = start.getDay();
+    const toMon = day === 0 ? -6 : 1 - day;
+    start.setDate(start.getDate() + toMon);
+    start.setHours(0, 0, 0, 0);
+    return d >= start;
+  }
+  return true;
 }
 
 function formatRelative(iso) {
@@ -122,17 +165,17 @@ function invStatusBadge(st) {
 }
 
 const TAB_CHROME = {
-  dashboard: { section: 'Dashboard', page: 'Dashboard', greet: true, act: '' },
-  leads: { section: 'Pipeline', page: 'Pipeline', greet: false, act: '<button type="button" class="btn-primary" id="hdrAddLead">+ Add lead</button>' },
-  clients: { section: 'Clients', page: 'Clients', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewClient">+ New client</button>' },
-  projects: { section: 'Projects', page: 'Projects', greet: false, act: '' },
-  invoices: { section: 'Invoices', page: 'Invoices', greet: false, act: '' },
-  files: { section: 'Files', page: 'Files', greet: false, act: '' },
-  messages: { section: 'Messages', page: 'Messages', greet: false, act: '' },
-  time: { section: 'Time & Billing', page: 'Time & Billing', greet: false, act: '' },
-  contracts: { section: 'Contracts', page: 'Contracts', greet: false, act: '' },
-  activity: { section: 'Activity', page: 'Activity', greet: false, act: '' },
-  settings: { section: 'Settings', page: 'Settings', greet: false, act: '' },
+  dashboard: { section: 'Dashboard', page: 'Dashboard', docTitle: 'Dashboard', greet: true, act: '' },
+  leads: { section: 'Pipeline', page: 'Pipeline', docTitle: 'Pipeline', greet: false, act: '<button type="button" class="btn-primary" id="hdrAddLead">+ Add lead</button>' },
+  clients: { section: 'Clients', page: 'Clients', docTitle: 'Clients', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewClient">+ New client</button>' },
+  projects: { section: 'Projects', page: 'Projects', docTitle: 'Projects', greet: false, act: '' },
+  invoices: { section: 'Invoices', page: 'Invoices', docTitle: 'Invoices', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewInv">+ New invoice</button>' },
+  files: { section: 'Files', page: 'Files', docTitle: 'Files', greet: false, act: '' },
+  messages: { section: 'Messages', page: 'Messages', docTitle: 'Messages', greet: false, act: '' },
+  time: { section: 'Time & Billing', page: 'Time & Billing', docTitle: 'Time & Billing', greet: false, act: '' },
+  contracts: { section: 'Contracts', page: 'Contracts', docTitle: 'Contracts', greet: false, act: '' },
+  activity: { section: 'Activity', page: 'Activity', docTitle: 'Activity', greet: false, act: '' },
+  settings: { section: 'Settings', page: 'Settings', docTitle: 'Settings', greet: false, act: '' },
 };
 
 function setUserAvatar() {
@@ -149,10 +192,20 @@ function wireHeaderActions(tab) {
   if (tab === 'clients') {
     getEl('hdrNewClient')?.addEventListener('click', () => openNewClientDrawer());
   }
+  if (tab === 'invoices') {
+    getEl('hdrNewInv')?.addEventListener('click', () => {
+      getEl('invFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      getEl('invc')?.focus();
+    });
+  }
 }
 
 function updatePageHeader(tab) {
-  const c = TAB_CHROME[tab] || { section: tab, page: tab, greet: false, act: '' };
+  const c = TAB_CHROME[tab] || { section: tab, page: tab, docTitle: tab, greet: false, act: '' };
+  const docT = c.docTitle || c.page || c.section || tab;
+  if (typeof document !== 'undefined') {
+    document.title = `${docT} — CustomSite Admin`;
+  }
   const bc = getEl('admBreadcrumb');
   const title = getEl('admPageTitle');
   const greetWrap = getEl('admDashGreetWrap');
@@ -212,47 +265,70 @@ function formatActivityEvent(ev) {
   }
   if (!meta || typeof meta !== 'object') meta = {};
   const rel = ev.created_at ? formatRelative(ev.created_at) : '—';
-  if (aLow.includes('sign_in') || a === 'auth.signin') {
+  if (a === 'sign_in' || aLow.includes('sign_in') || a === 'auth.signin') {
     return { icon: '🔑', text: 'You signed in', rel };
   }
   if (a === 'project_created' || a === 'project.create') {
-    return { icon: '📁', text: `Created project “${esc(meta.name || 'Project')}”`, rel };
+    let nm = meta.name;
+    if (!nm && ev.entity_id) {
+      const pr = state.projects.find((p) => p.id === ev.entity_id);
+      nm = pr && pr.name;
+    }
+    return { icon: '📁', text: `Created project “${esc(nm || 'Project')}”`, rel };
   }
   if (a === 'lead.create' || a === 'lead_submitted') {
-    return { icon: '📬', text: `New lead — ${esc(meta.email || 'from form')}`, rel };
+    return { icon: '📬', text: `New lead from contact form — ${esc(meta.name || meta.email || 'prospect')}`, rel };
   }
-  if (a === 'lead.update') {
-    return { icon: '🔄', text: 'Lead status updated', rel };
+  if (a === 'lead_status_changed' || a === 'lead.update') {
+    return {
+      icon: '📊',
+      text: `Lead ${esc(meta.name || '—')} → ${esc(meta.status || 'updated')}`,
+      rel,
+    };
   }
-  if (a === 'client.update' || a === 'client.create') {
-    return { icon: '👤', text: 'Client details updated', rel };
+  if (a === 'client.update') {
+    return { icon: '👤', text: 'Client profile updated', rel };
+  }
+  if (a === 'client.create' || a === 'client_created') {
+    return { icon: '👤', text: `Added client ${esc(meta.name || meta.email || '')}`, rel };
   }
   if (a === 'client.delete') {
     return { icon: '👤', text: 'Client removed', rel };
   }
   if (a === 'invoice.create' || a === 'invoice_created') {
-    return { icon: '💳', text: 'Invoice created', rel };
+    return {
+      icon: '💳',
+      text: `Created invoice${meta.client_name ? ` for ${esc(meta.client_name)}` : ''} — $${esc(String(meta.amount != null ? Number(meta.amount).toFixed(2) : '0'))}`,
+      rel,
+    };
   }
-  if (a === 'invoice.update' || a === 'invoice.paid' || a === 'invoice_paid') {
+  if (a === 'invoice.update' || a === 'invoice.paid') {
     return { icon: '✅', text: 'Invoice updated', rel };
   }
+  if (a === 'invoice_paid') {
+    return { icon: '✅', text: `Invoice paid — $${esc(String(meta.amount != null ? Number(meta.amount).toFixed(2) : '0'))}`, rel };
+  }
   if (a === 'invoice.send' || a === 'invoice_sent') {
-    return { icon: '✉️', text: 'Invoice email sent to client', rel };
+    return { icon: '✉️', text: 'Sent invoice to client', rel };
   }
   if (a === 'message.send' || a === 'message_sent') {
-    return { icon: '💬', text: 'Message sent to client on project', rel };
+    return { icon: '💬', text: 'New message to client (project thread)', rel };
   }
   if (a === 'time.log' || a === 'time_logged') {
-    return { icon: '⏱', text: `Logged ${esc(String(meta.hours || ''))} hrs on a project`, rel };
+    return { icon: '⏱', text: `Logged ${esc(String(meta.hours || ''))} hrs`, rel };
   }
-  if (a === 'contract.create') {
-    return { icon: '📄', text: 'Contract created', rel };
+  if (a === 'contract.create' || a === 'contract_saved') {
+    return { icon: '📄', text: `Contract ${meta.title ? `“${esc(meta.title)}”` : 'saved'}`, rel };
   }
   if (a === 'contract.send' || a === 'contract_sent') {
     return { icon: '📄', text: 'Contract sent to client', rel };
   }
   if (a === 'file.delete' || a === 'file.link' || a === 'file_uploaded') {
-    return { icon: '📎', text: 'Project file changed', rel };
+    return {
+      icon: '📎',
+      text: meta.filename ? `Uploaded ${esc(meta.filename)}` : 'Project file changed',
+      rel,
+    };
   }
   if (a === 'project.update' || a === 'project.update_posted') {
     return { icon: '📣', text: 'Project update posted to client', rel };
@@ -378,26 +454,36 @@ async function loadAll() {
   renderAll();
 }
 
-function projectOptions() {
+function projectOptions(projectId) {
   return state.projects
     .map(
       (p) =>
-        `<option value="${esc(p.id)}">${esc(p.name)} — ${esc((p.client && p.client.email) || '')}</option>`
+        `<option value="${esc(p.id)}"${
+          projectId && p.id === projectId ? ' selected' : ''
+        }>${esc(p.name)} — ${esc((p.client && p.client.email) || '')}</option>`
     )
     .join('');
 }
 
-function clientOptions() {
+function clientOptions(clientId) {
   return state.clients
     .map(
       (c) =>
-        `<option value="${esc(c.id)}">${esc(c.email)}${c.company ? ' — ' + esc(c.company) : ''}</option>`
+        `<option value="${esc(c.id)}"${
+          clientId && c.id === clientId ? ' selected' : ''
+        }>${esc(c.email)}${c.company ? ' — ' + esc(c.company) : ''}</option>`
     )
     .join('');
 }
 
 function findProject(id) {
   return state.projects.find((p) => p.id === id);
+}
+
+function clientDisplayName(clientId) {
+  const c = state.clients.find((x) => x.id === clientId);
+  if (!c) return '—';
+  return (c.full_name && String(c.full_name).trim()) || c.email || '—';
 }
 
 function projectNameOrDash(id) {
@@ -432,6 +518,32 @@ function clientInitials(c) {
   const p = n.split(/\s+/);
   if (p.length >= 2) return (p[0][0] + p[1][0]).toUpperCase();
   return n.slice(0, 2).toUpperCase();
+}
+
+function dashboardPanelSkeleton() {
+  const sk = (w) => `<div class="cs-skel-line ${w}"></div>`;
+  const card = () =>
+    `<div class="cs-skel-block">${sk('w30')}${sk('w50')}${sk('w40')}</div>`;
+  return `<div class="cs-dash-skel" aria-busy="true" aria-label="Loading dashboard">
+    <div class="cs-kpi-row">${[1, 2, 3, 4].map(() => `<div class="cs-skel-card">${card()}</div>`).join('')}</div>
+    <div class="cs-dash-2"><div class="cs-skel-card cs-skel-tall">${sk('w40')}${sk('w80')}</div><div class="cs-skel-card cs-skel-tall">${sk('w40')}${sk('w80')}</div></div>
+    <div class="cs-skel-card cs-skel-wide">${sk('w25')}${sk('w90')}</div>
+  </div>`;
+}
+
+function activityDateLabel(iso) {
+  if (!iso) return 'Earlier';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Earlier';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = new Date(d);
+  day.setHours(0, 0, 0, 0);
+  if (day.getTime() === today.getTime()) return 'Today';
+  const y = new Date(today);
+  y.setDate(y.getDate() - 1);
+  if (day.getTime() === y.getTime()) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 function renderDashboard() {
@@ -491,6 +603,7 @@ function renderDashboard() {
         <div class="cs-kpi-top"><div class="cs-kpi-icon emerald" aria-hidden="true">📁</div></div>
         <div class="cs-kpi-n">${open.length}</div>
         <div class="cs-kpi-l">Open projects</div>
+        <div class="cs-kpi-micro">Projects by phase</div>
         <div class="cs-kpi-pills" style="margin-top:6px">
           <span class="badge badge-discovery">D ${byPh('discovery')}</span>
           <span class="badge badge-design">De ${byPh('design')}</span>
@@ -696,9 +809,10 @@ function openLeadDetailDrawer(id) {
   root.querySelector('#ldClose')?.addEventListener('click', close);
   root.querySelector('#ldCv')?.addEventListener('click', () => {
     confirmDialog('Convert lead', `Create a portal user for ${L.email} and a project?`, () => {
-      api(`/api/admin/leads/${L.id}/convert`, { method: 'POST' })
+        api(`/api/admin/leads/${L.id}/convert`, { method: 'POST' })
         .then(() => {
-          toast('Converted. Welcome email sends when Resend is configured.', 'success');
+          const nm = L.name && String(L.name).trim() ? String(L.name).trim() : 'Lead';
+          toast(`${nm} converted to client ✓`, 'success');
           close();
           showTab('clients');
           return loadAll();
@@ -863,7 +977,8 @@ function renderLeads() {
       confirmDialog('Convert lead', `Create a portal user for ${L.email} and a project?`, () => {
         api(`/api/admin/leads/${id}/convert`, { method: 'POST' })
           .then(() => {
-            toast('Converted. Welcome email sends when Resend is set up.', 'success');
+            const nm = L.name && String(L.name).trim() ? String(L.name).trim() : 'Lead';
+            toast(`${nm} converted to client ✓`, 'success');
             return loadAll();
           })
           .catch((err) => toast(err.message, 'error'));
@@ -944,19 +1059,14 @@ function clientNotesKey(id) {
 
 function openNewClientDrawer() {
   const { close, root } = openDrawer({
-    title: 'New client',
-    body: `<p class="phase-note" style="margin-top:0">Creates a portal account. A welcome email is sent when the server is configured with Resend and email settings.</p>
-      <form id="fNewCli" class="adm-form-stack">
+    title: 'Add a new client',
+    body: `<form id="fNewCli" class="adm-form-stack">
         <div class="form-group"><label>Email *</label><input class="adm-inp" name="email" type="email" required /></div>
         <div class="form-group"><label>Full name *</label><input class="adm-inp" name="full_name" required /></div>
         <div class="form-group"><label>Company</label><input class="adm-inp" name="company" /></div>
         <div class="form-group"><label>Phone</label><input class="adm-inp" name="phone" type="tel" /></div>
         <div class="form-group"><label>Website</label><input class="adm-inp" name="website" type="url" placeholder="https://…" /></div>
         <div class="form-group"><label>Timezone</label><input class="adm-inp" name="timezone" placeholder="e.g. America/New_York" /></div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
-          <input type="checkbox" name="invite" checked disabled style="cursor:not-allowed" />
-          <span>Send welcome email (when Resend is configured)</span>
-        </label>
       </form>`,
     footer: '<button type="button" class="btn-secondary" id="ncCancel">Cancel</button> <button type="button" class="btn-primary" id="ncGo">Create account</button>',
   });
@@ -1264,6 +1374,37 @@ function renderProjects() {
     (state.projects.length === 1 ? state.projects[0].id : '') ||
     '';
 
+  const plItems = rows.length
+    ? rows
+        .map((p) => {
+          const c = p.client || {};
+          return `<button type="button" class="cs-proj-tile${p.id === selPrj ? ' is-sel' : ''}" data-pselect="${esc(p.id)}">
+        <span class="cs-proj-tile-n">${esc(p.name)}</span>
+        <span class="cs-proj-tile-c">${esc(c.email || c.full_name || '—')}</span>
+        <span class="cs-proj-tile-ph">${phBadge(p.status)}</span>
+      </button>`;
+        })
+        .join('')
+    : '<p class="phase-note" style="padding:0.5rem 0.25rem">No projects — create one below.</p>';
+  const stepKeys = [
+    { k: 'discovery', l: 'Discovery' },
+    { k: 'design', l: 'Design' },
+    { k: 'development', l: 'Dev' },
+    { k: 'review', l: 'Review' },
+    { k: 'live', l: 'Live' },
+  ];
+  const stPh = (findProject(selPrj) && findProject(selPrj).status) || 'discovery';
+  const stepper = stepKeys
+    .map(
+      (s, idx) => `
+    <div class="cs-proj-st ${stPh === s.k ? 'is-cur' : ''} ${(findProject(selPrj) && stepKeys.findIndex((x) => x.k === (findProject(selPrj).status || 'discovery')) > idx) ? 'is-past' : ''}" data-setphase="${s.k}" title="Set to ${esc(s.l)}">
+      <div class="cs-proj-st-dot${stPh === s.k ? ' is-on' : ''}"></div>
+      <span class="cs-proj-st-lb">${esc(s.l)}</span>
+      ${idx < stepKeys.length - 1 ? '<span class="cs-proj-st-line" aria-hidden="true"></span>' : ''}
+    </div>`
+    )
+    .join('');
+
   document.getElementById('panel-projects').innerHTML = `
     ${
       state.ui && state.ui.projectClientId
@@ -1273,27 +1414,40 @@ function renderProjects() {
           </div>`
         : ''
     }
-    <div class="adm-card">
-      <h2>Workspace — updates, phase, files</h2>
-      <p class="phase-note">Select the <strong>project</strong> (not just the client) so the correct engagement is updated when a client has multiple projects.</p>
-      <div class="adm-form-stack" style="max-width:36rem">
-        <div class="form-group">
-          <label>Project *</label>
-          <select id="wsProject" class="ws-prj"><option value="">— Select a project —</option>${projectOptions()}</select>
+    <div class="cs-proj-workspace">
+      <aside class="cs-proj-aside" aria-label="Project list">
+        <div class="cs-proj-srch">
+          <input type="search" class="adm-inp" data-pq placeholder="Search projects…" value="${esc(st.q)}" style="width:100%" />
+        </div>
+        <button type="button" class="btn-primary btn-sm" id="wsScrollNew" style="width:100%;margin:8px 0">+ New project</button>
+        <div class="cs-proj-scrl">${plItems}</div>
+      </aside>
+      <div class="cs-proj-main">
+    <div class="adm-card" style="margin:0 0 1rem 0">
+      <h2 style="margin-top:0">Project workspace</h2>
+      <p class="phase-note">Select a project in the list. Use tabs for updates, files, and billing.</p>
+        <div class="form-group" style="max-width:100%">
+          <label class="visually-hidden" for="wsProject">Active project</label>
+          <select id="wsProject" class="ws-prj" style="max-width:100%"><option value="">— Select a project —</option>${projectOptions()}</select>
         </div>
         <p id="wsCtx" class="phase-note" style="min-height:1.5em"></p>
-        <div class="form-group">
-          <label>Post update to client dashboard</label>
-          <textarea id="wsUpd" rows="3" maxlength="5000" placeholder="Milestone, deliverable, next step…"></textarea>
-          <div class="adm-hint-below"><span id="wsUpdC">0</span> / 5000 · <button type="button" class="tbl-link" id="wsPrevT">Preview</button></div>
+        <div class="cs-proj-st-wrap" id="wsStepperWrap" role="group" aria-label="Phase">
+          ${selPrj && findProject(selPrj) ? stepper : '<p class="phase-note" style="margin:0">Select a project to set phase.</p>'}
         </div>
-        <div id="wsPrev" style="display:none;border:1px solid #e2e8f0;padding:0.75rem;border-radius:0.5rem;margin-bottom:0.5rem;font-size:0.9rem"></div>
-        <button type="button" class="btn btn-primary" id="wsPost" style="width:100%;max-width:16rem">Post update</button>
-        <hr style="border:0;border-top:1px solid #e2e8f0;margin:1.5rem 0" />
-        <h3 style="font-size:1rem;margin:0 0 0.5rem">Change phase</h3>
+        <div class="cs-dtabs" role="tablist" style="margin:16px 0 0 0">
+          <button type="button" class="cs-dtab active" data-wst="ov" role="tab" aria-selected="true">Overview</button>
+          <button type="button" class="cs-dtab" data-wst="up" role="tab" aria-selected="false">Updates</button>
+          <button type="button" class="cs-dtab" data-wst="fi" role="tab" aria-selected="false">Files</button>
+          <button type="button" class="cs-dtab" data-wst="bi" role="tab" aria-selected="false">Billing</button>
+        </div>
+        <div class="cs-ws-pan" data-wsp="ov" style="display:block">
+        <div class="form-group">
+          <label>Internal notes (team only)</label>
+          <textarea id="wsIntNotes" rows="3" class="adm-inp" placeholder="Saves to project…" style="width:100%"></textarea>
+        </div>
         <div class="form-group" style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:end">
           <div style="flex:1;min-width:10rem">
-            <label>Phase</label>
+            <label>Phase (dropdown)</label>
             <select id="wsPhase" class="ws-ph">
               <option value="discovery">Discovery</option>
               <option value="design">Design</option>
@@ -1304,12 +1458,23 @@ function renderProjects() {
           </div>
           <button type="button" class="btn btn-outline" id="wsSetPh">Apply phase</button>
         </div>
-        <hr style="border:0;border-top:1px solid #e2e8f0;margin:1.5rem 0" />
-        <h3 style="font-size:1rem;margin:0 0 0.5rem">Upload file</h3>
+        </div>
+        <div class="cs-ws-pan" data-wsp="up" style="display:none">
+        <h4 style="font-size:14px;margin:0 0 8px 0">Recent updates to client</h4>
+        <div id="wsUpdList" class="cs-upd-feed" role="log">—</div>
+        <div class="form-group" style="margin-top:1rem">
+          <label>Post update to client dashboard</label>
+          <textarea id="wsUpd" rows="3" maxlength="5000" placeholder="Milestone, deliverable, next step…"></textarea>
+          <div class="adm-hint-below"><span id="wsUpdC">0</span> / 5000</div>
+        </div>
+        <button type="button" class="btn btn-primary" id="wsPost" style="max-width:16rem">Post update</button>
+        </div>
+        <div class="cs-ws-pan" data-wsp="fi" style="display:none">
+        <h4 style="font-size:14px;margin:0 0 8px 0">Upload</h4>
         <div class="adm-drop" id="wsDrop">Drag files here or <label style="color:#6366f1;cursor:pointer"><input type="file" id="wsFile" style="display:none" /> browse</label></div>
         <p class="adm-hint-below" id="wsFname">No file selected</p>
         <button type="button" class="btn btn-outline" id="wsUpload">Upload to project</button>
-        <p class="phase-note" style="margin:1rem 0 0.25rem">Or paste a <strong>public https</strong> file URL (e.g. cloud link) if Storage upload is not set up yet:</p>
+        <p class="phase-note" style="margin:1rem 0 0.25rem">Or add a <strong>public https</strong> file URL:</p>
         <div class="form-group" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:flex-end;max-width:32rem">
           <div style="flex:1;min-width:12rem">
             <label for="wsFileUrl">File URL</label>
@@ -1323,45 +1488,13 @@ function renderProjects() {
         <button type="button" class="btn btn-outline" id="wsAddFileUrl" style="margin-top:0.5rem">Add file link</button>
         <h4 style="margin:1.25rem 0 0.5rem">Files for this project</h4>
         <div id="wsFileList" class="phase-note">Select a project to see its files.</div>
+        </div>
+        <div class="cs-ws-pan" data-wsp="bi" style="display:none">
+        <h4 style="font-size:14px;margin:0 0 8px 0">Billing (this project)</h4>
+        <div id="wsBill" class="phase-note">Select a project.</div>
+        </div>
       </div>
     </div>
-    <div class="adm-card">
-      <h2>All projects</h2>
-      <div class="adm-table-tools"><input type="search" data-pq placeholder="Search…" value="${esc(st.q)}" /></div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Project</th><th>Client</th><th>Created</th><th>Phase</th><th>Type</th><th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${slice
-              .map(
-                (p) => {
-                  const c = p.client || {};
-                  return `<tr>
-                <td><button type="button" class="tbl-link" data-prname="${esc(p.id)}">${esc(p.name)}</button></td>
-                <td>${esc(c.email || '—')}</td>
-                <td>${p.created_at ? new Date(p.created_at).toLocaleString() : '—'}</td>
-                <td>${phBadge(p.status)}</td>
-                <td>${esc(p.website_type || '—')}</td>
-                <td>
-                  <button type="button" class="btn btn-sm btn-outline" data-edp="${esc(p.id)}">Edit</button>
-                  <button type="button" class="btn btn-sm" style="color:#b91c1c" data-delp="${esc(p.id)}">Delete</button>
-                </td>
-              </tr>`;
-                }
-              )
-              .join('')}
-          </tbody>
-        </table>
-      </div>
-      <div class="adm-pager">
-        <span>Page ${page} / ${totalPages}</span>
-        <button type="button" data-pp="prev" class="btn btn-sm" ${page <= 1 ? 'disabled' : ''}>Prev</button>
-        <button type="button" data-pp="next" class="btn btn-sm" ${page >= totalPages ? 'disabled' : ''}>Next</button>
-      </div>
     </div>
     <div class="adm-card">
       <h2>Create new project</h2>
@@ -1395,15 +1528,79 @@ function renderProjects() {
       syncWs();
     });
   }
+  const loadProjUpdates = () => {
+    const id = p.querySelector('#wsProject')?.value;
+    const ul = p.querySelector('#wsUpdList');
+    if (!ul) return;
+    if (!id) {
+      ul.innerHTML = '<p class="phase-note" style="margin:0">Select a project.</p>';
+      return;
+    }
+    ul.textContent = 'Loading…';
+    api(`/api/admin/project-updates?project_id=${encodeURIComponent(id)}`)
+      .then((d) => {
+        const upd = d.updates || [];
+        ul.innerHTML = upd.length
+          ? `<ul class="cs-upd-ul" style="list-style:none;padding:0;margin:0">${upd
+              .map(
+                (u) =>
+                  `<li class="cs-upd-li" style="border-bottom:1px solid var(--cs-border);padding:10px 0">
+            <div style="font-size:11px;color:var(--cs-text-muted);margin-bottom:4px">${u.created_at ? formatRelative(u.created_at) : '—'}</div>
+            <div style="font-size:14px;white-space:pre-wrap">${esc(u.message)}</div>
+          </li>`
+              )
+              .join('')}</ul>`
+          : '<p class="phase-note" style="margin:0">No updates posted yet.</p>';
+      })
+      .catch(() => {
+        ul.innerHTML = '<p class="phase-note" style="margin:0">Could not load updates.</p>';
+      });
+  };
+  const fillProjBilling = () => {
+    const id = p.querySelector('#wsProject')?.value;
+    const box = p.querySelector('#wsBill');
+    if (!box) return;
+    if (!id) {
+      box.textContent = 'Select a project.';
+      return;
+    }
+    const pr = findProject(id);
+    const invs = (state.invoices || []).filter((i) => i.project_id === id);
+    const paid = invs.filter((i) => (i.status || '') === 'paid').reduce((a, i) => a + Number(i.amount || 0), 0);
+    const out = invs.filter((i) => (i.status || 'pending') !== 'paid').reduce((a, i) => a + Number(i.amount || 0), 0);
+    const te = (state.timeEntries || []).filter((t) => t.project_id === id);
+    const hrs = te.reduce((a, t) => a + (Number(t.hours) || 0), 0);
+    const rate = getDefaultHourlyRate();
+    const tot = invs.reduce((a, i) => a + Number(i.amount || 0), 0);
+    box.innerHTML = `<p style="margin:0 0 8px 0">Total invoiced: <strong>$${tot.toFixed(2)}</strong> · Paid: <strong>$${paid.toFixed(2)}</strong> · Outstanding: <strong>$${out.toFixed(2)}</strong></p>
+      <p style="margin:0 0 8px 0">Time logged: <strong>${hrs.toFixed(2)}</strong> h · Est. billable: <strong>$${(hrs * rate).toFixed(2)}</strong></p>
+      <button type="button" class="btn-secondary btn-sm" id="wsInvFromProj">+ Create invoice for this project</button>`;
+    box.querySelector('#wsInvFromProj')?.addEventListener('click', () => {
+      if (!pr) return;
+      state._prefillClientId = pr.client_id;
+      state._prefillInvoice = {
+        client_id: pr.client_id,
+        project_id: id,
+        line_desc: `Services — ${pr.name || 'Project'}`,
+        amount: Math.max(0, hrs * rate),
+        description: `Time and materials — ${pr.name || 'project'}`,
+      };
+      showTab('invoices');
+      setTimeout(() => getEl('invFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    });
+  };
   const syncWs = () => {
     const id = p.querySelector('#wsProject')?.value;
     state._lastActProject = id;
     const pr = findProject(id);
     const el = p.querySelector('#wsCtx');
     const ph = p.querySelector('#wsPhase');
+    const notes = p.querySelector('#wsIntNotes');
     if (el) {
       if (pr) {
-        el.innerHTML = `Selected: <strong>${esc(pr.name)}</strong> · Current phase: ${phBadge(pr.status || 'discovery')}`;
+        el.innerHTML = `Selected: <strong>${esc(pr.name)}</strong> · Client: <strong>${
+          pr.client && pr.client.email ? esc(pr.client.email) : '—'
+        }</strong> · ${phBadge(pr.status || 'discovery')}`;
       } else {
         el.textContent = 'Select a project';
       }
@@ -1411,7 +1608,12 @@ function renderProjects() {
     if (pr && ph) {
       ph.value = pr.status || 'discovery';
     }
+    if (notes) {
+      notes.value = pr && pr.internal_notes != null ? pr.internal_notes : '';
+    }
     loadWsFiles();
+    loadProjUpdates();
+    fillProjBilling();
   };
   const loadWsFiles = () => {
     const id = p.querySelector('#wsProject')?.value;
@@ -1558,15 +1760,60 @@ function renderProjects() {
   p.querySelector('#wsUpd')?.addEventListener('input', (e) => {
     p.querySelector('#wsUpdC').textContent = String(e.target.value.length);
   });
-  p.querySelector('#wsPrevT')?.addEventListener('click', () => {
-    const t = p.querySelector('#wsUpd')?.value || '';
-    const pr = p.querySelector('#wsPrev');
-    if (pr.style.display === 'block') {
-      pr.style.display = 'none';
-    } else {
-      pr.style.display = 'block';
-      pr.textContent = t || '(empty)';
-    }
+  p.querySelector('#wsIntNotes')?.addEventListener('blur', (e) => {
+    const pid = p.querySelector('#wsProject')?.value;
+    if (!pid) return;
+    const v = e.target.value;
+    api(`/api/admin/entity/project/${pid}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ internal_notes: v && String(v).trim() ? String(v) : null }),
+    })
+      .then(() => {
+        const pr = findProject(pid);
+        if (pr) pr.internal_notes = v;
+      })
+      .catch(() => {});
+  });
+  p.querySelectorAll('[data-pselect]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-pselect');
+      const sel = p.querySelector('#wsProject');
+      if (sel) sel.value = id;
+      state._lastActProject = id;
+      p.querySelectorAll('.cs-proj-tile').forEach((t) => t.classList.toggle('is-sel', t.getAttribute('data-pselect') === id));
+      syncWs();
+    });
+  });
+  p.querySelector('#wsScrollNew')?.addEventListener('click', () => {
+    p.querySelector('#formNewProj')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    p.querySelector('#formNewProj input[name=name]')?.focus();
+  });
+  p.querySelectorAll('[data-wst]').forEach((bt) => {
+    bt.addEventListener('click', () => {
+      const k = bt.getAttribute('data-wst');
+      p.querySelectorAll('[data-wst]').forEach((x) => {
+        x.classList.toggle('active', x.getAttribute('data-wst') === k);
+        x.setAttribute('aria-selected', x.getAttribute('data-wst') === k ? 'true' : 'false');
+      });
+      p.querySelectorAll('.cs-ws-pan').forEach((pan) => {
+        pan.style.display = pan.getAttribute('data-wsp') === k ? 'block' : 'none';
+      });
+    });
+  });
+  p.querySelectorAll('[data-setphase]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const stp = b.getAttribute('data-setphase');
+      const pid = p.querySelector('#wsProject')?.value;
+      if (!pid || !stp) return;
+      const ph = p.querySelector('#wsPhase');
+      if (ph) ph.value = stp;
+      api(`/api/admin/entity/project/${pid}`, { method: 'PATCH', body: JSON.stringify({ status: stp }) })
+        .then(() => {
+          toast('Phase updated', 'success');
+          return loadAll();
+        })
+        .catch((e) => toast(e.message, 'error'));
+    });
   });
   syncWs();
 
@@ -1665,61 +1912,73 @@ function renderInvoices() {
   rows = sortRows(rows, st.sort, st.dir, (r) => (st.sort === 'amount' ? Number(r.amount) : r[st.sort]));
   const { slice, page, totalPages } = paginate(rows, st.page, PER);
 
+  const invCount = rows.length;
   document.getElementById('panel-invoices').innerHTML = `
-    <div class="adm-card">
-      <h2>Create invoice</h2>
-      <form id="formInv" class="adm-form-stack" style="max-width:32rem">
-        <div class="form-group"><label>Client *</label><select name="client_id" id="invc" required><option value="">—</option>${clientOptions()}</select></div>
-        <div class="form-group"><label>Project (optional)</label><select name="project_id" id="invp"><option value="">—</option>${projectOptions()}</select></div>
-        <div id="lineItems"><div class="form-group li-row" data-idx="0"><label>Line item</label><input name="l_desc" placeholder="Description" /><input name="l_amt" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:0.5rem" /></div></div>
-        <button type="button" class="btn btn-outline btn-sm" id="addLine" style="margin-bottom:0.75rem">+ Add line</button>
-        <p class="hint" style="margin:0 0 0.5rem">Total updates automatically from line item amounts below.</p>
-        <div class="form-group"><label>Total (USD) * <span class="phase-note" style="font-weight:400">(auto)</span></label><input name="amount" type="number" id="invt" step="0.01" min="0" required readonly /></div>
-        <div class="form-group"><label>Description (summary, optional)</label><input name="description" placeholder="e.g. February milestone" /></div>
-        <div class="form-group"><label>Due date</label><input name="due_date" type="date" /></div>
-        <button type="submit" class="btn btn-primary" style="width:100%">Create invoice</button>
-      </form>
-    </div>
-    <div class="adm-card">
-      <h2>Invoices</h2>
-      <div class="adm-table-tools"><input type="search" data-iq value="${esc(st.q)}" placeholder="Search…" /></div>
-      <div style="overflow-x:auto">
-        <table>
+    <div class="cs-inv-grid">
+      <div class="card" id="invFormCard" style="margin:0">
+        <div class="card-header" style="border:0">
+          <span class="card-title">Create invoice</span>
+        </div>
+        <p class="phase-note" style="margin:0 0 12px 0">Line item amounts update the total automatically. Total is read-only.</p>
+        <form id="formInv" class="adm-form-stack" style="max-width:100%">
+          <div class="form-group"><label>Client *</label><select name="client_id" id="invc" class="adm-inp" required><option value="">—</option>${clientOptions()}</select></div>
+          <div class="form-group"><label>Project (optional)</label><select name="project_id" id="invp" class="adm-inp"><option value="">—</option>${projectOptions()}</select></div>
+          <div id="lineItems"><div class="form-group li-row" data-idx="0"><label>Line item</label><input class="adm-inp" name="l_desc" placeholder="Description" /><input class="adm-inp invoice-amount-field" name="l_amt" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:0.5rem" /></div></div>
+          <button type="button" class="btn-secondary btn-sm" id="addLine" style="margin-bottom:0.75rem">+ Add line</button>
+          <div class="form-group"><label>Total (USD) — <span class="phase-note" style="font-weight:500">auto-calculated</span></label>
+            <input name="amount" type="text" id="invoice-total" inputmode="decimal" required readonly class="adm-inp" style="font-weight:700;font-size:1.1rem;background:var(--cs-surface-2)" value="0.00" aria-readonly="true" /></div>
+          <div class="form-group"><label>Description (summary, optional)</label><input class="adm-inp" name="description" placeholder="e.g. February milestone" /></div>
+          <div class="form-group"><label>Due date</label><input class="adm-inp" name="due_date" type="date" /></div>
+          <button type="submit" class="btn-primary" style="width:100%">Create invoice</button>
+        </form>
+      </div>
+      <div class="card" style="margin:0;min-width:0">
+        <div class="card-header">
+          <span class="card-title">All invoices</span>
+          <span class="phase-note" style="margin:0;font-weight:500">${invCount} record${invCount === 1 ? '' : 's'}</span>
+        </div>
+        <div class="adm-table-tools" style="margin-top:0"><input class="adm-inp" type="search" data-iq value="${esc(st.q)}" placeholder="Search client, project, amount…" style="max-width:20rem" /></div>
+        <div class="data-table-wrap" style="border:0">
+        <table class="data-table cs-cli-tbl">
           <thead>
             <tr>
-              <th>Amount</th><th>Project</th><th>Status</th><th>Due</th><th>Created</th><th>Actions</th>
+              <th>Client</th><th>Amount</th><th>Status</th><th>Project</th><th>Due</th><th>Created</th><th style="text-align:right">Actions</th>
             </tr>
           </thead>
           <tbody>
             ${slice
               .map(
                 (i) => `<tr>
+              <td>${esc(i.client_label || '—')}</td>
               <td>$${Number(i.amount).toFixed(2)}</td>
-              <td>${esc(i.project_name || (i.project_id ? '—' : '—'))}</td>
               <td>${invStatusBadge(i.status)}</td>
+              <td>${esc(i.project_name || '—')}</td>
               <td>${i.due_date || '—'}</td>
               <td>${i.created_at ? new Date(i.created_at).toLocaleString() : '—'}</td>
-              <td>
-                <button type="button" class="btn btn-sm btn-outline" data-vwinv="${esc(i.id)}">View</button>
-                <button type="button" class="btn btn-sm btn-outline" data-markpaid="${esc(i.id)}" ${
+              <td style="text-align:right;white-space:nowrap">
+                <span class="cs-act-icons">
+                <button type="button" class="btn-ghost btn-sm" title="View" data-vwinv="${esc(i.id)}" aria-label="View">👁</button>
+                <button type="button" class="btn-ghost btn-sm" title="Send email" data-sndinv="${esc(i.id)}" aria-label="Send">✉</button>
+                <button type="button" class="btn-ghost btn-sm" title="Mark paid" data-markpaid="${esc(i.id)}" ${
   i.status === 'paid' ? 'disabled' : ''
-}>Mark paid</button>
-                <button type="button" class="btn btn-sm btn-outline" data-payinv="${esc(i.id)}" ${
+} aria-label="Mark paid">✓</button>
+                <button type="button" class="btn-ghost btn-sm" title="Stripe pay link" data-payinv="${esc(i.id)}" ${
   i.status === 'paid' ? 'disabled' : ''
-}>Pay link (Stripe)</button>
-                <button type="button" class="btn btn-sm btn-outline" data-sndinv="${esc(i.id)}">Send email</button>
-                <button type="button" class="btn btn-sm" style="color:#b91c1c" data-delinv="${esc(i.id)}">Delete</button>
+} aria-label="Pay link">💳</button>
+                <button type="button" class="btn-ghost btn-sm" title="Delete" style="color:var(--cs-danger)" data-delinv="${esc(i.id)}" aria-label="Delete">🗑</button>
+                </span>
               </td>
             </tr>`
               )
               .join('')}
           </tbody>
         </table>
-      </div>
-      <div class="adm-pager">
+        </div>
+        <div class="adm-pager">
         <span>Page ${page} / ${totalPages}</span>
-        <button type="button" data-ip="prev" class="btn btn-sm" ${page <= 1 ? 'disabled' : ''}>Prev</button>
-        <button type="button" data-ip="next" class="btn btn-sm" ${page >= totalPages ? 'disabled' : ''}>Next</button>
+        <button type="button" data-ip="prev" class="btn-secondary btn-sm" ${page <= 1 ? 'disabled' : ''}>Prev</button>
+        <button type="button" data-ip="next" class="btn-secondary btn-sm" ${page >= totalPages ? 'disabled' : ''}>Next</button>
+      </div>
       </div>
     </div>`;
 
@@ -1735,14 +1994,29 @@ function renderInvoices() {
       const v = row.querySelector('input[name=l_amt]')?.value;
       t += Number(v) || 0;
     });
-    const invt = p.querySelector('#invt');
+    const invt = p.querySelector('#invoice-total');
     if (invt) invt.value = t.toFixed(2);
   };
+  if (state._prefillInvoice) {
+    const pf = state._prefillInvoice;
+    if (p.querySelector('#invc') && pf.client_id) p.querySelector('#invc').value = pf.client_id;
+    if (p.querySelector('#invp') && pf.project_id) p.querySelector('#invp').value = pf.project_id;
+    if (p.querySelector('[name=description]') && pf.description) p.querySelector('[name=description]').value = pf.description;
+    const li = p.querySelector('#lineItems .li-row');
+    if (li) {
+      const d = li.querySelector('input[name=l_desc]');
+      const a = li.querySelector('input[name=l_amt]');
+      if (d && pf.line_desc) d.value = pf.line_desc;
+      if (a && pf.amount != null) a.value = String(Number(pf.amount).toFixed(2));
+    }
+    recalc();
+    state._prefillInvoice = null;
+  }
   p.querySelector('#addLine')?.addEventListener('click', () => {
     const c = p.querySelector('#lineItems');
     const d = document.createElement('div');
     d.className = 'form-group li-row';
-    d.innerHTML = `<label>Line item</label><input name="l_desc" placeholder="Description" /><input name="l_amt" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:0.5rem" />`;
+    d.innerHTML = `<label>Line item</label><input name="l_desc" placeholder="Description" /><input class="adm-inp invoice-amount-field" name="l_amt" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:0.5rem" />`;
     c.appendChild(d);
     recalc();
   });
@@ -1760,7 +2034,7 @@ function renderInvoices() {
         lines.push({ description: d, amount: Number(a) });
       }
     });
-    const total = Number(f.querySelector('#invt').value) || 0;
+    const total = Number(f.querySelector('#invoice-total').value) || 0;
     if (!f.querySelector('#invc').value || !total) {
       toast('Client and total required', 'error');
       return;
@@ -1845,6 +2119,7 @@ function renderInvoices() {
       api(`/api/admin/invoices/${id}/send`, { method: 'POST' })
         .then((r) => {
           toast(r.sent ? 'Email sent' : 'Resend not configured — check .env', r.sent ? 'success' : 'warning');
+          return loadAll();
         })
         .catch((e) => toast(e.message, 'error'));
     });
@@ -1884,49 +2159,138 @@ function renderFilesTab() {
   document.getElementById('panel-files').innerHTML = `
     <div class="adm-card">
       <h2>Files by project</h2>
-      <p class="phase-note">Pick a project to list uploads. You can also upload from the <strong>Projects</strong> tab.</p>
+      <p class="phase-note" style="margin:0 0 1rem 0">Choose a project, then upload with the drop zone or list downloads below.</p>
       ${
         hasProjects
           ? `<div class="form-group" style="max-width:24rem">
         <label>Project</label>
         <select id="fTabP"><option value="">— Select a project —</option>${projectOptions()}</select>
+      </div>
+      <div class="cs-file-drop" id="fTabDrop" role="button" tabindex="0" aria-label="File upload zone">
+        <div class="cs-file-drop-ic" aria-hidden="true">📤</div>
+        <p style="margin:0;font-weight:600">Drop a file or click to upload</p>
+        <p class="phase-note" style="margin:0.35rem 0 0 0">PDF, images, documents — size limits from your host.</p>
+        <input type="file" id="fTabFi" hidden />
+        <p class="cs-file-fname" id="fTabFname" aria-live="polite">No file selected</p>
+        <button type="button" class="btn btn-primary" id="fTabUp" style="margin-top:0.5rem" disabled>Upload to project</button>
       </div>`
           : '<p class="phase-note" role="status">No projects yet. Create a project under <strong>Projects</strong> first.</p>'
       }
-      <div id="fTabL"></div>
+      <p class="cs-file-cnt" id="fTabCnt" style="display:none" aria-live="polite"></p>
+      <div id="fTabL" class="cs-file-list-wrap"></div>
     </div>`;
   const loadF = () => {
     const id = document.getElementById('fTabP')?.value;
     const box = document.getElementById('fTabL');
+    const cnt = document.getElementById('fTabCnt');
     if (!box) return;
     if (!id) {
-      box.innerHTML = '<p class="phase-note">Select a project above to list files.</p>';
+      box.innerHTML = '<p class="phase-note">Select a project to list files and enable uploads.</p>';
+      if (cnt) {
+        cnt.style.display = 'none';
+        cnt.textContent = '';
+      }
       return;
     }
     box.textContent = 'Loading…';
     api(`/api/admin/by-project/${id}/files`)
       .then((d) => {
         const files = d.files || [];
+        if (cnt) {
+          cnt.style.display = 'block';
+          cnt.textContent = files.length
+            ? `${files.length} file${files.length === 1 ? '' : 's'} for this project`
+            : 'No files for this project yet';
+        }
         box.innerHTML = files.length
-          ? `<table><thead><tr><th>File</th><th>When</th></tr></thead><tbody>
+          ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>File</th><th>When</th><th style="text-align:right">Get</th></tr></thead><tbody>
             ${files
               .map(
-                (f) => `<tr><td><a href="${esc(f.file_url)}" target="_blank" rel="noopener">${esc(
-                  f.file_name
-                )}</a></td><td>${f.uploaded_at ? new Date(f.uploaded_at).toLocaleString() : '—'}</td></tr>`
+                (f) => `<tr><td><span class="cs-file-type" aria-hidden="true">📎</span> ${esc(f.file_name || 'File')}</td><td style="color:var(--cs-text-secondary);font-size:13px">${
+                  f.uploaded_at ? new Date(f.uploaded_at).toLocaleString() : '—'
+                }</td><td style="text-align:right"><a class="btn-secondary btn-sm" href="${esc(
+                  f.file_url
+                )}" target="_blank" rel="noopener">Download</a></td></tr>`
               )
               .join('')}
-            </tbody></table>`
-          : '<p class="phase-note">No files.</p>';
+            </tbody></table></div>`
+          : '<p class="phase-note">No files for this project yet. Upload one above.</p>';
       })
       .catch(() => {
         box.textContent = 'Failed to load';
       });
   };
-  document.getElementById('fTabP')?.addEventListener('change', loadF);
+  const wireUp = () => {
+    const fi = document.getElementById('fTabFi');
+    const dr = document.getElementById('fTabDrop');
+    const up = document.getElementById('fTabUp');
+    const fn = document.getElementById('fTabFname');
+    const syncUp = () => {
+      const pid = document.getElementById('fTabP')?.value;
+      if (up) up.disabled = !(pid && fi?.files?.length);
+    };
+    const setFile = (file) => {
+      if (!file || !fi) return;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fi.files = dt.files;
+      if (fn) fn.textContent = file.name;
+      syncUp();
+    };
+    dr?.addEventListener('click', () => fi?.click());
+    dr?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fi?.click();
+      }
+    });
+    dr?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dr.classList.add('drag');
+    });
+    dr?.addEventListener('dragleave', () => dr.classList.remove('drag'));
+    dr?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dr.classList.remove('drag');
+      if (e.dataTransfer?.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+    fi?.addEventListener('change', () => {
+      if (fi.files[0] && fn) fn.textContent = fi.files[0].name;
+      syncUp();
+    });
+    document.getElementById('fTabP')?.addEventListener('change', () => {
+      loadF();
+      syncUp();
+    });
+    up?.addEventListener('click', () => {
+      const pid = document.getElementById('fTabP')?.value;
+      const pr = findProject(pid);
+      if (!pr || !fi?.files[0]) {
+        toast('Select a project and a file', 'error');
+        return;
+      }
+      const fd = new FormData();
+      fd.append('file', fi.files[0]);
+      withBusy(
+        up,
+        api(`/api/admin/projects/${pr.client_id}/files`, { method: 'POST', body: fd })
+      )
+        .then(() => {
+          toast('Uploaded', 'success');
+          fi.value = '';
+          if (fn) fn.textContent = 'No file selected';
+          syncUp();
+          return loadF();
+        })
+        .catch((e) => toast(e.message, 'error'));
+    });
+    syncUp();
+  };
   document.addEventListener('adm:files-panel', loadF, { once: true });
-  if (hasProjects) loadF();
-  else {
+  if (hasProjects) {
+    wireUp();
+    loadF();
+  } else {
     const box = document.getElementById('fTabL');
     if (box) box.innerHTML = '';
   }
@@ -1934,45 +2298,136 @@ function renderFilesTab() {
 
 /* ---------- Messages ---------- */
 function renderMessages() {
-  const recent = (state.messages || []).slice(0, 30);
-  const recentHtml = recent.length
-    ? recent
-        .map(
-          (m) => `<li style="border-bottom:1px solid #f1f5f9;padding:0.5rem 0">
-          <div style="font-size:0.8rem;color:#94a3b8">${m.created_at ? new Date(m.created_at).toLocaleString() : '—'}
-            · <strong>${esc(m.project_name || 'Project')}</strong></div>
-          <div style="margin-top:0.25rem;white-space:pre-wrap;font-size:0.9rem">${esc(m.content)}</div>
-        </li>`
-        )
+  const q = (state.ui.msgQ || '').trim().toLowerCase();
+  let projs = state.projects || [];
+  if (q) {
+    projs = projs.filter((p) => {
+      const nm = (p.name || '').toLowerCase();
+      const c = state.clients.find((cl) => cl.id === p.client_id);
+      const ce = (c && c.email) || '';
+      const cf = (c && c.full_name) || '';
+      return nm.includes(q) || ce.toLowerCase().includes(q) || cf.toLowerCase().includes(q);
+    });
+  }
+  const allMsgs = state.messages || [];
+  const mySub = parseJwtSub();
+  if (!state.ui.msgProjectId && projs.length) {
+    const withMsg = projs.find((p) => allMsgs.some((m) => m.project_id === p.id));
+    state.ui.msgProjectId = (withMsg || projs[0]).id;
+  }
+  if (state.ui.msgProjectId && projs.length && !projs.some((p) => p.id === state.ui.msgProjectId)) {
+    state.ui.msgProjectId = projs[0].id;
+  }
+  const sel = state.ui.msgProjectId;
+  const selProj = sel ? projs.find((p) => p.id === sel) || findProject(sel) : null;
+  const selClientName = selProj ? clientDisplayName(selProj.client_id) : '—';
+
+  const threads = projs
+    .map((p) => {
+      const pmsgs = allMsgs.filter((m) => m.project_id === p.id);
+      const lastAt = pmsgs.length
+        ? Math.max(...pmsgs.map((m) => new Date(m.created_at).getTime()))
+        : 0;
+      const last = pmsgs
+        .slice()
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+      return { p, lastAt, preview: last?.content || 'No messages yet', time: last?.created_at };
+    })
+    .sort((a, b) => b.lastAt - a.lastAt);
+  const thread = sel
+    ? allMsgs
+        .filter((m) => m.project_id === sel)
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    : [];
+  const bubbles = thread
+    .map((m) => {
+      const mine = mySub && m.sender_id && m.sender_id === mySub;
+      const t = m.created_at ? new Date(m.created_at).toLocaleString() : '—';
+      const who = mine ? 'You' : 'Team';
+      return `<div class="cs-msg-bubble ${mine ? 'is-mine' : 'is-them'}" role="listitem">
+        <div class="cs-msg-bubble-who">${esc(who)}</div>
+        <div class="cs-msg-bubble-txt">${esc(m.content)}</div>
+        <div class="cs-msg-bubble-meta">${formatRelative(m.created_at)}</div>
+      </div>`;
+    })
+    .join('');
+  const threadList = projs.length
+    ? threads
+        .map(({ p, preview, time }) => {
+          const ptxt = String(preview || '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const pshort = ptxt.length > 40 ? `${ptxt.slice(0, 40)}…` : ptxt;
+          const cname = clientDisplayName(p.client_id);
+          return `
+      <button type="button" class="cs-msg-thread${p.id === sel ? ' is-active' : ''}" data-thrid="${esc(p.id)}">
+        <span class="cs-msg-thread-t">${esc(p.name || 'Project')}</span>
+        <span class="cs-msg-thread-sub">${esc(cname)}</span>
+        <span class="cs-msg-thread-p">${esc(pshort)}</span>
+        <span class="cs-msg-thread-w">${time ? formatRelative(time) : '—'}</span>
+      </button>`;
+        })
         .join('')
-    : '<li class="phase-note" style="list-style:none">No messages yet.</li>';
+    : '<p class="phase-note" style="padding:1rem">No projects — create a project first.</p>';
+  const mainInner = sel
+    ? `<div class="cs-msg-hd">
+        <div>
+          <div class="cs-msg-hd-title">${esc(selProj?.name || 'Project')}</div>
+          <div class="cs-msg-hd-sub">Client: <strong>${esc(selClientName)}</strong></div>
+        </div>
+        <a class="btn-secondary btn-sm" href="site-builder.html?project=${esc(
+          sel
+        )}" target="_blank" rel="noopener" style="text-decoration:none;white-space:nowrap">Open project →</a>
+      </div>
+        <div class="cs-msg-bubbles" id="msgBub" role="list">${bubbles || '<p class="phase-note" style="padding:1.5rem;margin:0">No messages in this thread yet.</p>'}</div>
+        <div class="cs-msg-composer">
+          <div class="form-group" style="margin:0">
+            <label>Message</label>
+            <textarea id="msgB" rows="2" maxlength="4000" style="width:100%" placeholder="Type a message… (Ctrl+Enter to send)"></textarea>
+            <div class="adm-hint-below"><span id="msgC">0</span> / 4000</div>
+          </div>
+          <button type="button" class="btn btn-primary" id="msgS">Send</button>
+        </div>`
+    : `<div class="cs-msg-empty">
+        <p style="margin:0;font-size:16px;font-weight:600">Select a project</p>
+        <p class="phase-note" style="margin:8px 0 0 0">Choose a thread on the left to view the message history.</p>
+      </div>`;
   document.getElementById('panel-messages').innerHTML = `
-    <div class="adm-card">
-      <h2>Message client (project thread)</h2>
-      <p class="phase-note">Messages appear in the client dashboard for the selected project.</p>
-      <div class="form-group">
-        <label>Project *</label>
-        <select id="msgP">${projectOptions()}</select>
+    <div class="cs-msg-split">
+      <aside class="cs-msg-threads" aria-label="Project threads">
+        <div class="cs-msg-threads-hd">Inbox</div>
+        <div class="cs-msg-srch">
+          <input type="search" class="adm-inp" id="msgQInp" placeholder="Search by project or client…" value="${esc(state.ui.msgQ || '')}" style="width:100%" />
+        </div>
+        <div class="cs-msg-thread-list">${threadList}</div>
+      </aside>
+      <div class="cs-msg-main">
+        ${mainInner}
       </div>
-      <div class="form-group">
-        <label>Message</label>
-        <textarea id="msgB" rows="3" maxlength="4000" style="width:100%"></textarea>
-        <div class="adm-hint-below"><span id="msgC">0</span> / 4000</div>
-      </div>
-      <button type="button" class="btn btn-primary" id="msgS">Send</button>
-    </div>
-    <div class="adm-card">
-      <h2>Recent messages</h2>
-      <p class="phase-note" style="margin-bottom:0.75rem">Last 30 team messages, newest first (grouped by time).</p>
-      <ul style="list-style:none;padding:0;margin:0;max-height:50vh;overflow:auto">${recentHtml}</ul>
     </div>`;
   const p = document.getElementById('panel-messages');
-  p.querySelector('#msgB')?.addEventListener('input', (e) => {
-    p.querySelector('#msgC').textContent = String(e.target.value.length);
+  p.querySelector('#msgQInp')?.addEventListener('input', (e) => {
+    state.ui.msgQ = e.target.value;
+    renderMessages();
   });
-  p.querySelector('#msgS')?.addEventListener('click', () => {
-    const project_id = p.querySelector('#msgP')?.value;
+  const sc = p.querySelector('#msgBub');
+  if (sc) sc.scrollTop = sc.scrollHeight;
+  p.querySelectorAll('.cs-msg-thread').forEach((b) => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-thrid');
+      if (id) {
+        state.ui.msgProjectId = id;
+        renderMessages();
+      }
+    });
+  });
+  const sendMsg = () => {
+    const project_id = state.ui.msgProjectId;
     const content = p.querySelector('#msgB')?.value?.trim();
+    if (!project_id) {
+      toast('Select a project thread', 'error');
+      return;
+    }
     if (!content) {
       toast('Enter a message', 'error');
       return;
@@ -1988,12 +2443,27 @@ function renderMessages() {
         loadAll();
       })
       .catch((e) => toast(e.message, 'error'));
+  };
+  p.querySelector('#msgB')?.addEventListener('input', (e) => {
+    const el = p.querySelector('#msgC');
+    if (el) el.textContent = String(e.target.value.length);
   });
+  p.querySelector('#msgB')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      sendMsg();
+    }
+  });
+  p.querySelector('#msgS')?.addEventListener('click', sendMsg);
 }
 
 /* ---------- Time ---------- */
 function renderTime() {
-  const entries = state.timeEntries || [];
+  if (!['week', 'month', 'all'].includes(state.ui.timePeriod)) state.ui.timePeriod = 'month';
+  const period = state.ui.timePeriod;
+  const rate = getDefaultHourlyRate();
+  const allEntries = state.timeEntries || [];
+  const entries = allEntries.filter((t) => timeEntryInPeriod(t.worked_date, period));
   const byProject = new Map();
   for (const t of entries) {
     const id = t.project_id || 'none';
@@ -2004,39 +2474,60 @@ function renderTime() {
     .filter(([k]) => k !== 'none')
     .map(
       ([pid, hours]) =>
-        `<tr><td>${projectNameOrDash(pid)}</td><td><strong>${hours.toFixed(2)}</strong> h</td></tr>`
+        `<tr><td>${projectNameOrDash(pid)}</td><td><strong>${hours.toFixed(2)}</strong> h</td><td style="text-align:right">$${(hours * rate).toFixed(2)}</td></tr>`
     )
     .join('');
   const totalH = entries.reduce((a, t) => a + (Number(t.hours) || 0), 0);
+  const billable = totalH * rate;
+  const periodLabel = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time';
   const summaryTable =
-    summaryRows || '<tr><td colspan="2" class="phase-note">No time logged yet — add hours above.</td></tr>';
+    summaryRows ||
+    `<tr><td colspan="3" class="phase-note">No time in ${period === 'all' ? 'the log' : periodLabel} — add hours or change the period filter.</td></tr>`;
+  const today = new Date().toISOString().slice(0, 10);
+  const pdActive = (p) => (state.ui.timePeriod === p ? 'is-active' : '');
 
   document.getElementById('panel-time').innerHTML = `
     <div class="adm-card">
       <h2>Log time</h2>
       <form id="formTime" class="adm-form-stack" style="max-width:22rem">
         <div class="form-group"><label>Project *</label><select name="project_id" required><option value="">—</option>${projectOptions()}</select></div>
-        <div class="form-group"><label>Date</label><input name="worked_date" type="date" required /></div>
+        <div class="form-group"><label>Date</label><input name="worked_date" type="date" value="${esc(today)}" required /></div>
         <div class="form-group"><label>Hours *</label><input name="hours" type="number" min="0.25" step="0.25" required /></div>
         <div class="form-group"><label>Description</label><input name="description" placeholder="What you worked on" /></div>
         <button type="submit" class="btn btn-primary" style="width:100%">Log</button>
       </form>
     </div>
     <div class="adm-card">
-      <h2>Summary</h2>
-      <p class="phase-note" style="margin-bottom:0.5rem">Totals from <strong>loaded entries</strong> (up to 500 from the server).</p>
-      <p style="font-size:1.1rem;margin-bottom:0.75rem"><strong>All projects:</strong> ${totalH.toFixed(2)} hours</p>
-      <div style="overflow-x:auto;max-width:32rem">
-        <table>
-          <thead><tr><th>Project</th><th>Hours</th></tr></thead>
-          <tbody>${summaryTable}</tbody>
-        </table>
+      <h2>Default hourly rate (USD)</h2>
+      <p class="phase-note" style="margin:0 0 0.5rem 0">Used to estimate billable totals on this page (stored in your browser only).</p>
+      <div class="form-group" style="max-width:10rem">
+        <label>Rate / hr</label>
+        <input type="number" id="timeRate" min="1" step="1" class="adm-inp" value="${esc(String(rate))}" />
       </div>
     </div>
     <div class="adm-card">
-      <h2>Time entries (recent)</h2>
+      <h2>Summary</h2>
+      <div class="cs-time-filters" role="group" aria-label="Time period">
+        <button type="button" class="btn-secondary btn-sm ${pdActive('week')}" data-tper="week">This week</button>
+        <button type="button" class="btn-secondary btn-sm ${pdActive('month')}" data-tper="month">This month</button>
+        <button type="button" class="btn-secondary btn-sm ${pdActive('all')}" data-tper="all">All time</button>
+      </div>
+      <p class="phase-note" style="margin:0.75rem 0 0.5rem 0">Hours and billable amounts for <strong>${esc(periodLabel)}</strong> (from entries loaded in this session).</p>
+      <p style="font-size:1.05rem;margin-bottom:0.5rem"><strong>${totalH.toFixed(2)}</strong> hours · <strong>$${billable.toFixed(2)}</strong> billable @ $${rate.toFixed(0)}/hr</p>
+      <div style="overflow-x:auto;max-width:100%">
+        <table class="data-table">
+          <thead><tr><th>Project</th><th>Hours</th><th style="text-align:right">Est. billable</th></tr></thead>
+          <tbody>${summaryTable}</tbody>
+        </table>
+      </div>
+      <p style="margin:1rem 0 0 0">
+        <button type="button" class="btn-primary" id="timeToInv">Create invoice from this summary</button>
+      </p>
+    </div>
+    <div class="adm-card">
+      <h2>Recent time entries</h2>
       <div style="overflow-x:auto">
-        <table>
+        <table class="data-table">
           <thead><tr><th>Date</th><th>Project</th><th>Hours</th><th>Description</th></tr></thead>
           <tbody>
             ${entries
@@ -2049,11 +2540,51 @@ function renderTime() {
               <td>${esc(t.description || '—')}</td>
             </tr>`
               )
-              .join('') || '<tr><td colspan="4" class="phase-note">No entries yet</td></tr>'}
+              .join('') || '<tr><td colspan="4" class="phase-note">No entries in this period</td></tr>'}
           </tbody>
         </table>
       </div>
     </div>`;
+  const p = document.getElementById('panel-time');
+  p.querySelector('#timeRate')?.addEventListener('change', (e) => {
+    const n = Number(e.target.value);
+    if (Number.isFinite(n) && n > 0) {
+      setDefaultHourlyRate(n);
+      renderTime();
+    }
+  });
+  p.querySelectorAll('[data-tper]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.ui.timePeriod = b.getAttribute('data-tper') || 'month';
+      renderTime();
+    });
+  });
+  p.querySelector('#timeToInv')?.addEventListener('click', () => {
+    if (totalH <= 0) {
+      toast('No hours in this period to bill', 'error');
+      return;
+    }
+    const pids = [...byProject.keys()].filter((k) => k !== 'none');
+    const line_desc = `Professional services — ${periodLabel} (${totalH.toFixed(2)} h)`;
+    const pr = pids.length === 1 ? findProject(pids[0]) : null;
+    const clientId = pr && pr.client_id;
+    const projectId = pr && pr.id;
+    if (!clientId) {
+      toast('Use a single project in this period, or pick a client on the Invoices form after switching tabs.', 'warning');
+    }
+    state._prefillInvoice = {
+      client_id: clientId || null,
+      project_id: projectId || null,
+      line_desc,
+      amount: billable,
+      description: `Time & materials, ${periodLabel}, ${totalH.toFixed(2)} h @ $${rate}/hr`,
+    };
+    showTab('invoices');
+    setTimeout(() => {
+      getEl('invFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      getEl('invc')?.focus();
+    }, 80);
+  });
   document.getElementById('formTime')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
@@ -2070,6 +2601,8 @@ function renderTime() {
       .then(() => {
         toast('Time logged', 'success');
         e.target.reset();
+        const td = e.target.querySelector('input[name=worked_date]');
+        if (td) td.value = new Date().toISOString().slice(0, 10);
         return loadAll();
       })
       .catch((er) => toast(er.message, 'error'));
@@ -2077,202 +2610,342 @@ function renderTime() {
 }
 
 /* ---------- Contracts ---------- */
+function initQuillContract() {
+  const el = document.getElementById('quillContract');
+  if (!el || !window.Quill) return null;
+  const q = new Quill('#quillContract', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, false] }],
+        ['bold', 'italic', 'underline', 'link'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['clean'],
+      ],
+    },
+    placeholder: 'Write the project scope, deliverables, payment terms, and timelines here…',
+  });
+  el.__q = q;
+  return q;
+}
+function openContractPreview(c) {
+  if (!c) return;
+  const raw = (c.body && String(c.body).trim()) || '';
+  const isHtml = /<\s*p[\s>]|<\s*div[\s>]|<\s*h[1-6][\s>]|<\s*ol[\s>]|<\s*ul[\s>]/i.test(raw);
+  if (isHtml) {
+    const { root } = openModal(
+      `<h3 style="margin-top:0">${esc(c.title || 'Contract')}</h3>
+        <p class="phase-note" style="margin:0 0 0.5rem">Status: ${esc(c.status || '—')}</p>
+        <div class="ql-snow" style="max-height:60vh;overflow:auto;text-align:left;border:1px solid var(--cs-border);border-radius:0.5rem"><div class="ql-editor" id="ctViewHtml"></div></div>
+        <p style="margin-top:0.75rem"><button type="button" class="btn btn-primary" data-close-modal>Close</button></p>`,
+      null
+    );
+    const elH = root.querySelector('#ctViewHtml');
+    if (elH) elH.innerHTML = raw || '<p class="phase-note">— (no text saved yet)</p>';
+  } else {
+    openModal(
+      `<h3 style="margin-top:0">${esc(c.title || 'Contract')}</h3>
+        <p class="phase-note" style="margin:0 0 0.5rem">Status: ${esc(c.status || '—')}</p>
+        <pre style="white-space:pre-wrap;font-size:0.9rem;max-height:60vh;overflow:auto;text-align:left;background:var(--cs-surface-2);padding:1rem;border-radius:0.5rem">${raw ? esc(raw) : '— (no text saved yet)'}</pre>
+        <p style="margin-top:0.75rem"><button type="button" class="btn btn-primary" data-close-modal>Close</button></p>`,
+      null
+    );
+  }
+}
+function setQuillBody(quill, html) {
+  if (!quill) return;
+  const h = (html && String(html).trim()) || '';
+  try {
+    quill.setContents([{ insert: '\n' }], 'silent');
+    if (h) quill.clipboard.dangerouslyPasteHTML(0, h, 'user');
+  } catch {
+    try {
+      quill.root.innerHTML = h || '<p><br></p>';
+    } catch {
+      quill.setContents([{ insert: '\n' }]);
+    }
+  }
+}
 function renderContracts() {
+  if (state.ui.contractSel && !state.contracts.some((c) => c.id === state.ui.contractSel)) {
+    state.ui.contractSel = null;
+  }
+  const selId = state.ui.contractSel;
+  const ed = selId ? state.contracts.find((c) => c.id === selId) : null;
+  const isNew = !ed;
+  const curSt = ed ? (ed.status || 'draft') : 'draft';
+  const stOpts = ['draft', 'sent', 'signed', 'void']
+    .map((s) => `<option value="${s}"${curSt === s ? ' selected' : ''}>${s}</option>`)
+    .join('');
+  const list =
+    (state.contracts || []).map((c) => {
+      const st = c.status || 'draft';
+      const bcls =
+        st === 'signed'
+          ? 'badge-paid'
+          : st === 'sent'
+            ? 'badge-sent'
+            : st === 'void'
+              ? 'badge-overdue'
+              : 'badge-draft';
+      return `<button type="button" class="cs-contract-card${c.id === selId ? ' is-active' : ''}" data-ctid="${esc(
+        c.id
+      )}">
+        <span class="cs-contract-card-t">${esc(c.title || 'Untitled')}</span>
+        <span class="cs-contract-card-c">${esc(clientDisplayName(c.client_id))}</span>
+        <span class="cs-contract-card-s"><span class="badge ${bcls}">${esc(st)}</span></span>
+        <span class="cs-contract-card-d">${c.created_at ? formatRelative(c.created_at) : '—'}</span>
+      </button>`;
+    }).join('') || '<p class="phase-note" style="padding:0.75rem 1rem">No saved contracts yet. Use <strong>New contract</strong> to add one.</p>';
   document.getElementById('panel-contracts').innerHTML = `
-    <div class="adm-card">
-      <h2>Add contract / proposal</h2>
-      <form id="formContract" class="adm-form-stack" style="max-width:26rem">
-        <div class="form-group"><label>Client *</label><select name="client_id" required><option>—</option>${clientOptions()}</select></div>
-        <div class="form-group"><label>Project</label><select name="project_id"><option value="">—</option>${projectOptions()}</select></div>
-        <div class="form-group"><label>Title *</label><input name="title" required /></div>
-        <div class="form-group"><label>Status</label>
-          <select name="status"><option value="draft">Draft</option><option value="sent">Sent</option><option value="signed">Signed</option><option value="void">Void</option></select>
-        </div>
-        <div class="form-group"><label>Contract / proposal text</label><textarea name="body" rows="6" placeholder="Write the project scope, deliverables, payment terms, and any other agreements here..."></textarea></div>
-        <div class="form-group"><label>File URL (signed PDF, etc.)</label><input name="file_url" type="url" placeholder="https://…" /></div>
-        <button type="submit" class="btn btn-primary" style="width:100%">Save</button>
-      </form>
-    </div>
-    <div class="adm-card">
-      <h2>Contracts</h2>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>Title</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
-          <tbody>
-            ${state.contracts
-              .map(
-                (c) => `<tr>
-              <td>${esc(c.title)}${c.body ? ` <span class="phase-note" style="font-size:0.75rem">(has text)</span>` : ''}</td>
-              <td>${esc(c.status)}</td>
-              <td>${c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</td>
-              <td>
-                <button type="button" class="btn btn-sm btn-outline" data-vwct="${esc(c.id)}">View</button>
-                <button type="button" class="btn btn-sm btn-outline" data-edct="${esc(c.id)}">Edit</button>
-                <button type="button" class="btn btn-sm btn-outline" data-sndct="${esc(c.id)}">Send to client</button>
-                ${c.file_url ? `<a href="${esc(c.file_url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">File</a>` : ''}
-                <button type="button" class="btn btn-sm" data-delct="${esc(c.id)}" style="color:#b91c1c">Delete</button>
-              </td>
-            </tr>`
-              )
-              .join('') || '<tr><td colspan="4">No contracts yet</td></tr>'}
-          </tbody>
-        </table>
+    <div class="cs-contract-split">
+      <aside class="cs-contract-list" aria-label="Contracts">
+        <div class="cs-contract-list-hd">Contracts</div>
+        <button type="button" class="cs-contract-new" id="ctNew">+ New contract</button>
+        <div class="cs-contract-cards">${list}</div>
+      </aside>
+      <div class="cs-contract-editor">
+        <form id="formContract" class="adm-form-stack">
+          ${ed ? `<input type="hidden" name="contract_id" value="${esc(ed.id)}" />` : ''}
+          <div class="form-group">
+            <label>Client *</label>
+            ${
+              isNew
+                ? `<select name="client_id" required><option value="">—</option>${clientOptions()}</select>`
+                : `<p class="phase-note" style="margin:0 0 0.5rem 0"><strong>${esc(
+                    clientDisplayName(ed.client_id)
+                  )}</strong> — client is fixed for this record.</p>
+                <input type="hidden" name="client_id" value="${esc(ed.client_id)}" />`
+            }
+          </div>
+          <div class="form-group">
+            <label>Project</label>
+            <select name="project_id"><option value="">—</option>${projectOptions(ed && ed.project_id)}</select>
+          </div>
+          <div class="form-group"><label>Title *</label><input name="title" required value="${ed ? esc(ed.title) : ''}" /></div>
+          <div class="form-group"><label>Status</label>
+            <select name="status">${stOpts}</select>
+          </div>
+          <div class="form-group"><label>Contract / proposal</label>
+            <div id="quillContract" class="cs-quill"></div>
+          </div>
+          <div class="form-group"><label>File URL (signed PDF, etc.)</label><input name="file_url" type="url" placeholder="https://…" value="${ed && ed.file_url ? esc(ed.file_url) : ''}" /></div>
+          <div class="cs-contract-actions">
+            <button type="submit" class="btn btn-primary" id="ctSave">Save</button>
+            <button type="button" class="btn btn-outline" id="ctPreview">Preview</button>
+            <button type="button" class="btn btn-outline" id="ctSend"${isNew ? ' disabled' : ''}>Send to client</button>
+            <button type="button" class="btn" id="ctDelete" style="color:#b91c1c; margin-left:auto"${isNew ? ' disabled' : ''}>Delete</button>
+          </div>
+        </form>
       </div>
     </div>`;
-  document.getElementById('formContract')?.addEventListener('submit', (e) => {
+  setTimeout(() => {
+    const quill = initQuillContract();
+    if (ed) setQuillBody(quill, ed.body);
+  }, 0);
+  const p = document.getElementById('panel-contracts');
+  p.querySelector('#ctNew')?.addEventListener('click', () => {
+    state.ui.contractSel = null;
+    renderContracts();
+  });
+  p.querySelectorAll('[data-ctid]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-ctid');
+      if (id) {
+        state.ui.contractSel = id;
+        renderContracts();
+      }
+    });
+  });
+  const doSave = (e) => {
     e.preventDefault();
-    const f = new FormData(e.target);
-    const body = {
-      client_id: f.get('client_id'),
-      project_id: f.get('project_id') || null,
-      title: f.get('title'),
-      status: f.get('status'),
-      file_url: f.get('file_url') || null,
-      body: f.get('body') || null,
-    };
-    withBusy(
-      e.target.querySelector('button'),
-      api('/api/admin/contracts', { method: 'POST', body: JSON.stringify(body) })
-    )
-      .then(() => {
-        toast('Contract saved', 'success');
-        e.target.reset();
-        return loadAll();
-      })
-      .catch((er) => toast(er.message, 'error'));
-  });
-  document.querySelectorAll('[data-delct]').forEach((b) => {
-    b.addEventListener('click', () => {
-      const id = b.getAttribute('data-delct');
-      confirmDialog('Delete', 'Delete this contract record?', () => {
-        api(`/api/admin/contracts/${id}`, { method: 'DELETE' })
-          .then(() => {
-            toast('Deleted', 'success');
-            return loadAll();
-          })
-          .catch((e) => toast(e.message, 'error'));
-      });
-    });
-  });
-  document.querySelectorAll('[data-vwct]').forEach((b) => {
-    b.addEventListener('click', () => {
-      const c = state.contracts.find((x) => x.id === b.getAttribute('data-vwct'));
-      if (!c) return;
-      const body = (c.body && String(c.body).trim()) || '— (no text saved yet)';
-      openModal(
-        `<h3 style="margin-top:0">${esc(c.title)}</h3>
-        <p class="phase-note" style="margin:0 0 0.5rem">Status: ${esc(c.status || '—')}</p>
-        <pre style="white-space:pre-wrap;font-size:0.9rem;max-height:60vh;overflow:auto;text-align:left;background:#f8fafc;padding:1rem;border-radius:0.5rem">${esc(
-          body
-        )}</pre>
-        <p style="margin-top:0.75rem"><button type="button" class="btn btn-primary" data-close-modal>Close</button></p>`,
-        null
-      );
-    });
-  });
-  document.querySelectorAll('[data-edct]').forEach((b) => {
-    b.addEventListener('click', () => {
-      const c = state.contracts.find((x) => x.id === b.getAttribute('data-edct'));
-      if (!c) return;
-      const tid = `edct-title-${c.id}`;
-      const bid = `edct-body-${c.id}`;
-      const sid = `edct-st-${c.id}`;
-      const { close, root } = openModal(
-        `<h3 style="margin-top:0">Edit contract</h3>
-        <div class="form-group"><label>Title</label><input type="text" id="${tid}" class="adm-inp" value="${esc(
-          c.title
-        )}" style="width:100%"/></div>
-        <div class="form-group"><label>Status</label><select id="${sid}" style="width:100%">
-          ${['draft', 'sent', 'signed', 'void']
-            .map((s) => `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s}</option>`)
-            .join('')}
-        </select></div>
-        <div class="form-group"><label>Text</label><textarea id="${bid}" rows="10" style="width:100%;font-size:0.9rem">${esc(
-          c.body || ''
-        )}</textarea></div>
-        <p><button type="button" class="btn btn-primary" id="edct-save">Save</button> <button type="button" class="btn btn-outline" data-close-modal>Cancel</button></p>`,
-        null
-      );
-      root.querySelector('#edct-save')?.addEventListener('click', () => {
-        const title = document.getElementById(tid)?.value;
-        const body = document.getElementById(bid)?.value;
-        const status = document.getElementById(sid)?.value;
-        api(`/api/admin/contracts/${c.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ title, body, status }),
-        })
-          .then(() => {
-            close();
-            toast('Contract updated', 'success');
-            return loadAll();
-          })
-          .catch((e) => toast(e.message, 'error'));
-      });
-    });
-  });
-  document.querySelectorAll('[data-sndct]').forEach((b) => {
-    b.addEventListener('click', () => {
-      const id = b.getAttribute('data-sndct');
+    const f = p.querySelector('#formContract');
+    if (!f) return;
+    const qel = document.getElementById('quillContract');
+    const quill = qel && qel.__q;
+    const text = quill ? quill.getText().trim() : '';
+    const htmlBody = quill && text ? quill.root.innerHTML : null;
+    const cid = f.querySelector('[name=contract_id]')?.value;
+    const subBtn = f.querySelector('#ctSave');
+    if (cid) {
       withBusy(
-        b,
-        api(`/api/admin/contracts/${id}/send`, { method: 'POST' })
-          .then((r) => {
-            toast(r.sent ? 'Email sent' : 'Could not send — check Resend and client email', r.sent ? 'success' : 'warning');
-            return loadAll();
-          })
-          .catch((e) => toast(e.message, 'error'))
-      );
+        subBtn,
+        api(`/api/admin/contracts/${cid}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            title: f.querySelector('[name=title]')?.value,
+            status: f.querySelector('[name=status]')?.value,
+            file_url: f.querySelector('[name=file_url]')?.value || null,
+            project_id: f.querySelector('[name=project_id]')?.value || null,
+            body: htmlBody,
+          }),
+        })
+      )
+        .then(() => {
+          toast('Contract updated', 'success');
+          return loadAll();
+        })
+        .catch((er) => toast(er.message, 'error'));
+    } else {
+      withBusy(
+        subBtn,
+        api('/api/admin/contracts', {
+          method: 'POST',
+          body: JSON.stringify({
+            client_id: f.querySelector('[name=client_id]')?.value,
+            project_id: f.querySelector('[name=project_id]')?.value || null,
+            title: f.querySelector('[name=title]')?.value,
+            status: f.querySelector('[name=status]')?.value,
+            file_url: f.querySelector('[name=file_url]')?.value || null,
+            body: htmlBody,
+          }),
+        })
+      )
+        .then((r) => {
+          toast('Contract saved', 'success');
+          if (r && r.contract && r.contract.id) state.ui.contractSel = r.contract.id;
+          return loadAll();
+        })
+        .catch((er) => toast(er.message, 'error'));
+    }
+  };
+  p.querySelector('#formContract')?.addEventListener('submit', doSave);
+  p.querySelector('#ctPreview')?.addEventListener('click', () => {
+    const f = p.querySelector('#formContract');
+    if (!f) return;
+    const qel = document.getElementById('quillContract');
+    const quill = qel && qel.__q;
+    const text = quill ? quill.getText().trim() : '';
+    const body = quill && text ? quill.root.innerHTML : '';
+    const title = f.querySelector('[name=title]')?.value || 'Contract';
+    const st = f.querySelector('[name=status]')?.value || 'draft';
+    const cid = f.querySelector('[name=contract_id]')?.value;
+    if (ed && cid) {
+      openContractPreview({ ...ed, title, body, status: st });
+    } else {
+      openContractPreview({ title, body, status: st });
+    }
+  });
+  p.querySelector('#ctDelete')?.addEventListener('click', () => {
+    if (!ed) return;
+    confirmDialog('Delete', 'Delete this contract record?', () => {
+      api(`/api/admin/contracts/${ed.id}`, { method: 'DELETE' })
+        .then(() => {
+          toast('Deleted', 'success');
+          state.ui.contractSel = null;
+          return loadAll();
+        })
+        .catch((e) => toast(e.message, 'error'));
     });
+  });
+  p.querySelector('#ctSend')?.addEventListener('click', () => {
+    if (!ed) {
+      toast('Save the contract first', 'error');
+      return;
+    }
+    const btn = p.querySelector('#ctSend');
+    withBusy(
+      btn,
+      api(`/api/admin/contracts/${ed.id}/send`, { method: 'POST' })
+        .then((r) => {
+          toast(
+            r.sent ? 'Email sent' : 'Could not send — check Resend and client email',
+            r.sent ? 'success' : 'warning'
+          );
+          return loadAll();
+        })
+        .catch((e) => toast(e.message, 'error'))
+    );
   });
 }
 
 /* ---------- Settings ---------- */
 function renderSettings() {
-  getEl('panel-settings').innerHTML = `
+  getEl('panel-settings').innerHTML = '<p class="phase-note" style="margin:0">Loading…</p>';
+  api('/api/admin/integrations')
+    .then((d) => {
+      const re = d.resend
+        ? '<span class="badge badge-paid" style="margin-left:6px">Connected</span>'
+        : '<span class="badge badge-overdue" style="margin-left:6px">Not configured</span>';
+      const st = d.stripe
+        ? '<span class="badge badge-paid" style="margin-left:6px">Connected</span>'
+        : '<span class="phase-note" style="margin-left:6px">Not set</span> — <a href="https://dashboard.stripe.com" target="_blank" rel="noopener">Stripe dashboard</a>';
+      getEl('panel-settings').innerHTML = `
     <div class="card cs-settings-sec" style="margin-bottom:0">
-      <p class="cs-set-hint" style="margin:0 0 1.25rem 0">Agency defaults and integrations. Values marked “environment” are set on your host (Railway, etc.), not in this UI.</p>
-      <div style="display:grid;gap:1.75rem;max-width:40rem">
+      <p class="cs-set-hint" style="margin:0 0 1.25rem 0">Agency profile and live integration status. Secrets stay in Railway / server env; this page shows what the server sees (not the secret values themselves).</p>
+      <div style="display:grid;gap:1.75rem;max-width:44rem">
         <section>
           <h3 style="font-size:16px;margin:0 0 0.5rem 0">Agency info</h3>
-          <p class="phase-note" style="margin:0">Name, address, and branding on invoices and contracts: configure via your server env and site settings where applicable.</p>
+          <p class="phase-note" style="margin:0">Company name, address, and public URLs for invoices: use <code>.env</code> / deployment variables and the marketing site as needed.</p>
         </section>
         <section>
           <h3 style="font-size:16px;margin:0 0 0.5rem 0">Billing defaults</h3>
-          <p class="phase-note" style="margin:0">Default hourly rate and invoice terms will live here; today they are set per workflow (Time / Invoices tabs).</p>
+          <p class="phase-note" style="margin:0">Default hourly rate in <strong>Time &amp; Billing</strong> is stored in this browser. Invoice numbering and due days are configured in your database / invoice workflow for now.</p>
         </section>
         <section>
           <h3 style="font-size:16px;margin:0 0 0.5rem 0">Email (Resend)</h3>
-          <p class="phase-note" style="margin:0">Set <code>RESEND_API_KEY</code> and <code>FROM_EMAIL</code> in the server environment. Without them, transactional emails are skipped and the app still works.</p>
+          <p class="phase-note" style="margin:0">Resend ${re} · <code>FROM_EMAIL</code> on server: <strong>${
+        d.fromEmail || '—'
+      }</strong></p>
         </section>
         <section>
-          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Integrations</h3>
-          <p class="phase-note" style="margin:0">Stripe, Calendly, and public URLs: see <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a> and your <code>.env</code> / Railway variables.</p>
+          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Payments (Stripe)</h3>
+          <p class="phase-note" style="margin:0">Stripe ${st}</p>
+        </section>
+        <section>
+          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Public site URL</h3>
+          <p class="phase-note" style="margin:0">Configured as <code>${esc(d.publicUrl || '—')}</code> (used in client emails and portal links).</p>
+        </section>
+        <section>
+          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Calendly &amp; phone (site-wide)</h3>
+          <p class="phase-note" style="margin:0">Update placeholder links and numbers in your HTML or add a small config script — see <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a>.</p>
         </section>
         <section>
           <h3 style="font-size:16px;margin:0 0 0.5rem 0">Danger zone</h3>
-          <p class="phase-note" style="margin:0">Bulk demo data removal is not available here; delete or archive test records in Supabase or with per-entity actions.</p>
+          <p class="phase-note" style="margin:0">There is no bulk delete here. Remove test records in Supabase or with per-entity actions in the admin.</p>
         </section>
       </div>
     </div>`;
+    })
+    .catch(() => {
+      getEl('panel-settings').innerHTML = '<p class="phase-note" style="margin:0">Could not load integration status. Check that you are signed in and the server is running.</p>';
+    });
 }
 
 /* ---------- Activity ---------- */
 function renderActivity() {
-  const ev = state.activity || [];
-  const listHtml = ev.length
-    ? ev
-        .map((a) => {
-          const f = formatActivityEvent(a);
-          return `<li class="activity-item" style="display:flex;gap:14px;align-items:flex-start;list-style:none;border-bottom:1px solid var(--cs-border);padding:14px 0" role="listitem">
+  const raw = state.activity || [];
+  const ev = raw.slice(0, 100);
+  if (!ev.length) {
+    getEl('panel-activity').innerHTML = `
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header" style="border:0">
+        <span class="card-title">Activity</span>
+      </div>
+      <p class="phase-note" style="margin:0">No activity recorded yet. Sign in, create projects, send invoices, and actions will appear here with plain-language descriptions.</p>
+    </div>`;
+    return;
+  }
+  const sorted = [...ev].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const blocks = [];
+  let lastDay = null;
+  sorted.forEach((a) => {
+    const day = activityDateLabel(a.created_at);
+    if (day !== lastDay) {
+      blocks.push(`<li class="cs-act-day" role="presentation" style="list-style:none;padding:12px 0 6px 0;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--cs-text-muted);border-bottom:1px solid var(--cs-border)">${esc(
+        day
+      )}</li>`);
+      lastDay = day;
+    }
+    const f = formatActivityEvent(a);
+    blocks.push(`<li class="activity-item" style="display:flex;gap:14px;align-items:flex-start;list-style:none;border-bottom:1px solid var(--cs-border);padding:14px 0" role="listitem">
             <div class="activity-icon" style="width:32px;height:32px;border-radius:50%;background:var(--cs-accent-light);color:var(--cs-accent);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px">${f.icon}</div>
             <div class="activity-content" style="flex:1;min-width:0">
               <div class="activity-text" style="font-size:13px;line-height:1.5;color:var(--cs-text);margin:0">${f.text}</div>
               <div class="activity-time" style="font-size:11px;margin-top:4px;color:var(--cs-text-muted)">${a.created_at ? formatRelative(a.created_at) : '—'}</div>
             </div>
-          </li>`;
-        })
-        .join('')
-    : '<li class="phase-note" style="list-style:none">No activity recorded yet. Actions you take in this admin (invoices, files, messages, etc.) will show up here.</li>';
+          </li>`);
+  });
   getEl('panel-activity').innerHTML = `
     <div class="card" style="margin-bottom:0">
       <div class="card-header" style="border:0">
@@ -2280,7 +2953,7 @@ function renderActivity() {
       </div>
       <div style="max-height:70vh;overflow:auto">
         <ul style="list-style:none;padding:0;margin:0" role="list">
-          ${listHtml}
+          ${blocks.join('')}
         </ul>
       </div>
     </div>`;
@@ -2339,6 +3012,10 @@ getEl('csQaLead')?.addEventListener('click', () => {
 });
 getEl('csQaInv')?.addEventListener('click', () => {
   showTab('invoices');
+  setTimeout(() => {
+    getEl('invFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    getEl('invc')?.focus();
+  }, 50);
 });
 
 document.getElementById('admLogout')?.addEventListener('click', (e) => {
@@ -2356,7 +3033,7 @@ if (getToken()) {
   if (app) app.style.display = 'flex';
   window.scrollTo(0, 0);
   showTab('dashboard');
-  getEl('panel-dashboard').innerHTML = '<p class="phase-note" style="padding:2rem 0">Loading…</p>';
+  getEl('panel-dashboard').innerHTML = dashboardPanelSkeleton();
   checkDbHealth();
   loadAll();
 } else {
