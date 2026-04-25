@@ -306,8 +306,18 @@ function getDeployEnv() {
 
 function showBanner(msg) {
   const b = document.getElementById('sbErrorBanner');
+  if (!b) return;
+  b.classList.remove('sb-banner--auth');
   b.textContent = msg;
   b.classList.add('is-on');
+}
+
+function showSignInRequired() {
+  const b = document.getElementById('sbErrorBanner');
+  if (!b) return;
+  b.classList.add('is-on', 'sb-banner--auth');
+  b.innerHTML =
+    'Sign in required. <a href="/client-portal.html?agency=1">Open the client portal</a> with an agency account, return here, or open Site Builder from Admin after you sign in.';
 }
 
 function hideEmpty() {
@@ -1633,13 +1643,28 @@ async function runDeploy(kind) {
 }
 
 async function main() {
-  if (!getToken()) return;
+  if (!getToken()) {
+    showSignInRequired();
+    return;
+  }
   initToast();
   if (hasServerError()) {
     /* api sets on fetch */
   }
   const host = document.getElementById('sbMonacoHost');
-  const { monaco, editor } = await initEditor(host);
+  let monaco;
+  let editor;
+  try {
+    const r = await initEditor(host);
+    monaco = r.monaco;
+    editor = r.editor;
+  } catch (e) {
+    console.error(e);
+    showBanner(
+      (e && e.message) || 'Could not load the code editor. Allow scripts from cdn.jsdelivr.net, then hard-refresh (Ctrl+Shift+R).'
+    );
+    return;
+  }
   monacoI = monaco;
   ed = editor;
   ed.onDidChangeModelContent(() => {

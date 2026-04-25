@@ -20,6 +20,13 @@ body {
 #sbErrorBanner.is-on {
   display: block;
 }
+#sbErrorBanner.sb-banner--auth {
+  background: #9a3412;
+  color: #fff;
+}
+#sbErrorBanner a {
+  text-decoration: underline;
+}
 
 #sbApp {
   display: flex;
