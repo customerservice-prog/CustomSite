@@ -7,7 +7,13 @@ const Stripe = require('stripe');
 
 const { getService } = require('../lib/supabase');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
-const { sendWelcomeEmail, sendInvoiceEmail, sendContractEmail } = require('../lib/email');
+const {
+  sendWelcomeEmail,
+  sendInvoiceEmail,
+  sendContractEmail,
+  sendInvoiceCreatedNotice,
+  sendProjectMessageToClient,
+} = require('../lib/email');
 
 const router = express.Router();
 
@@ -43,6 +49,16 @@ router.use(requireAuth, requireAdmin);
 /**
  * True if the service role can read the projects table (schema applied).
  */
+router.get('/integrations', (req, res) => {
+  return res.json({
+    resend: Boolean(process.env.RESEND_API_KEY),
+    stripe: Boolean(process.env.STRIPE_SECRET_KEY),
+    fromEmail: process.env.FROM_EMAIL || '',
+    adminEmail: process.env.ADMIN_EMAIL || '',
+    publicUrl: publicSiteUrl(),
+  });
+});
+
 router.get('/db-health', async (req, res) => {
   try {
     const supabase = getService();
@@ -196,7 +212,11 @@ router.patch('/leads/:id', async (req, res) => {
       .select()
       .single();
     if (error) return res.status(500).json({ error: error.message });
-    await logActivity(supabase, req.profile.id, 'lead.update', 'lead', id, { status });
+    await logActivity(supabase, req.profile.id, 'lead_status_changed', 'lead', id, {
+      status,
+      name: data.name,
+      email: data.email,
+    });
     return res.json({ lead: data });
   } catch (e) {
     console.error(e);
@@ -262,7 +282,7 @@ router.post('/leads/:id/convert', async (req, res) => {
     await supabase.from('leads').update({ status: 'Closed Won' }).eq('id', id);
 
     try {
-      await sendWelcomeEmail(email, tempPassword);
+      await sendWelcomeEmail(email, tempPassword, lead.name);
     } catch (mailErr) {
       console.error(mailErr);
     }
@@ -325,6 +345,30 @@ router.post('/projects', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
     await logActivity(supabase, req.profile.id, 'project_created', 'project', data.id, { name: data.name });
     return res.json({ success: true, project: data });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/project-updates', async (req, res) => {
+  try {
+    const project_id = req.query.project_id;
+    if (!project_id) return res.status(400).json({ error: 'project_id is required' });
+    const supabase = getService();
+    const { data, error } = await supabase
+      .from('project_updates')
+      .select('*')
+      .eq('project_id', project_id)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) {
+      if (String(error.message || '').includes('does not exist')) {
+        return res.json({ updates: [] });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    return res.json({ updates: data || [] });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
@@ -797,6 +841,16 @@ router.post('/projects/:clientId/files', upload.single('file'), async (req, res)
       .single();
 
     if (insErr) return res.status(500).json({ error: insErr.message });
+    try {
+      const { data: pn } = await supabase.from('projects').select('name').eq('id', projectId).maybeSingle();
+      await logActivity(supabase, req.profile.id, 'file_uploaded', 'file', row.id, {
+        filename: req.file.originalname,
+        project_id: projectId,
+        project_name: pn?.name,
+      });
+    } catch (aErr) {
+      console.warn('file_uploaded activity', aErr.message);
+    }
     return res.json({ success: true, file: row });
   } catch (e) {
     console.error(e);
@@ -867,7 +921,7 @@ router.post('/invoices', async (req, res) => {
     const supabase = getService();
     const { data: cli } = await supabase
       .from('users')
-      .select('email')
+      .select('email, full_name')
       .eq('id', client_id)
       .maybeSingle();
 
@@ -902,10 +956,40 @@ router.post('/invoices', async (req, res) => {
         .select()
         .single();
       if (e2) return res.status(500).json({ error: e2.message });
-      await logActivity(supabase, req.profile.id, 'invoice.create', 'invoice', d2.id, null);
+      await logActivity(supabase, req.profile.id, 'invoice_created', 'invoice', d2.id, {
+        amount: amt,
+        client_email: cli?.email,
+        client_name: cli?.full_name,
+      });
+      try {
+        await sendInvoiceCreatedNotice({
+          toEmail: cli?.email,
+          clientName: cli?.full_name || cli?.email,
+          amount: amt,
+          dueDate: due_date,
+          description: description || null,
+        });
+      } catch (em) {
+        console.warn('invoice create email', em.message);
+      }
       return res.json({ success: true, invoice: d2 });
     }
-    await logActivity(supabase, req.profile.id, 'invoice.create', 'invoice', data.id, null);
+    await logActivity(supabase, req.profile.id, 'invoice_created', 'invoice', data.id, {
+      amount: amt,
+      client_email: cli?.email,
+      client_name: cli?.full_name,
+    });
+    try {
+      await sendInvoiceCreatedNotice({
+        toEmail: cli?.email,
+        clientName: cli?.full_name || cli?.email,
+        amount: amt,
+        dueDate: due_date,
+        description: description || null,
+      });
+    } catch (em) {
+      console.warn('invoice create email', em.message);
+    }
     return res.json({ success: true, invoice: data });
   } catch (e) {
     console.error(e);
@@ -943,6 +1027,11 @@ router.patch('/invoices/:id', async (req, res) => {
       .single();
     if (error) return res.status(500).json({ error: error.message });
     await logActivity(supabase, req.profile.id, 'invoice.update', 'invoice', id, patch);
+    if (patch.status === 'paid') {
+      await logActivity(supabase, req.profile.id, 'invoice_paid', 'invoice', id, {
+        amount: data.amount,
+      });
+    }
     return res.json({ success: true, invoice: data });
   } catch (e) {
     console.error(e);
@@ -988,7 +1077,7 @@ router.post('/invoices/:id/send', async (req, res) => {
       dueDate: inv.due_date,
       invoiceId: inv.id,
     });
-    await logActivity(supabase, req.profile.id, 'invoice.send', 'invoice', inv.id, { sent });
+    await logActivity(supabase, req.profile.id, 'invoice_sent', 'invoice', inv.id, { sent });
     return res.json({ success: true, sent });
   } catch (e) {
     console.error(e);
@@ -1119,7 +1208,33 @@ router.post('/messages', async (req, res) => {
       .single();
 
     if (error) return res.status(500).json({ error: error.message });
-    await logActivity(supabase, req.profile.id, 'message.send', 'project', project_id, null);
+    await logActivity(supabase, req.profile.id, 'message_sent', 'project', project_id, null);
+
+    try {
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('id, name, client_id')
+        .eq('id', project_id)
+        .maybeSingle();
+      if (proj && proj.client_id) {
+        const { data: cu } = await supabase
+          .from('users')
+          .select('email, full_name')
+          .eq('id', proj.client_id)
+          .maybeSingle();
+        if (cu?.email) {
+          await sendProjectMessageToClient({
+            toEmail: cu.email,
+            clientName: cu.full_name || cu.email,
+            projectName: proj.name,
+            messageBody: String(content).trim(),
+          });
+        }
+      }
+    } catch (em) {
+      console.warn('message notify email', em.message);
+    }
+
     return res.json({ success: true, message: data });
   } catch (e) {
     console.error(e);
@@ -1153,7 +1268,7 @@ router.post('/time-entries', async (req, res) => {
       }
       return res.status(500).json({ error: error.message });
     }
-    await logActivity(supabase, req.profile.id, 'time.log', 'project', project_id, { hours: h });
+    await logActivity(supabase, req.profile.id, 'time_logged', 'project', project_id, { hours: h });
     return res.json({ success: true, entry: data });
   } catch (e) {
     console.error(e);
@@ -1226,7 +1341,7 @@ router.post('/contracts', async (req, res) => {
       }
       return res.status(500).json({ error: error.message });
     }
-    await logActivity(supabase, req.profile.id, 'contract.create', 'contract', data.id, null);
+    await logActivity(supabase, req.profile.id, 'contract_saved', 'contract', data.id, { title: data.title });
     return res.json({ success: true, contract: data });
   } catch (e) {
     console.error(e);
@@ -1299,7 +1414,7 @@ router.post('/contracts/:id/send', async (req, res) => {
     if (sent) {
       await supabase.from('agency_contracts').update({ status: 'sent' }).eq('id', id);
     }
-    await logActivity(supabase, req.profile.id, 'contract.send', 'contract', id, { sent });
+    await logActivity(supabase, req.profile.id, 'contract_sent', 'contract', id, { sent, title: c.title });
     return res.json({ success: true, sent });
   } catch (e) {
     console.error(e);

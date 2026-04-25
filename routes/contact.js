@@ -11,7 +11,7 @@ async function logPublicLead(supabase, leadId, email) {
       action: 'lead_submitted',
       entity_type: 'lead',
       entity_id: leadId,
-      metadata: { email, source: 'public_contact' },
+      metadata: { email, source: 'public_contact', name: row.name },
     });
   } catch (e) {
     console.warn('agency_activity (lead)', e.message);

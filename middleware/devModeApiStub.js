@@ -203,8 +203,14 @@ function devModeApiStub(req, res, next) {
   if (m === 'DELETE' && /^\/api\/admin\/leads\/[^/]+$/.test(p)) {
     return res.json({ success: true });
   }
+  if (m === 'GET' && p.startsWith('/api/admin/project-updates')) {
+    return res.json({ updates: [] });
+  }
   if (m === 'POST' && p === '/api/admin/project-updates') {
     return res.json({ success: true, update: { id: 'dev-upd' } });
+  }
+  if (m === 'GET' && p === '/api/admin/integrations') {
+    return res.json({ resend: false, stripe: false, fromEmail: '', adminEmail: '', publicUrl: 'http://localhost:3000' });
   }
   if (m === 'PATCH' && /^\/api\/admin\/entity\/project\/[^/]+$/.test(p)) {
     return res.json({ success: true, project: { id: p.split('/').pop(), status: 'development' } });

@@ -166,7 +166,7 @@ function invStatusBadge(st) {
 
 const TAB_CHROME = {
   dashboard: { section: 'Dashboard', page: 'Dashboard', docTitle: 'Dashboard', greet: true, act: '' },
-  leads: { section: 'Pipeline', page: 'Pipeline', docTitle: 'Pipeline', greet: false, act: '<button type="button" class="btn-primary" id="hdrAddLead">+ Add lead</button>' },
+  pipeline: { section: 'Pipeline', page: 'Pipeline', docTitle: 'Pipeline', greet: false, act: '<button type="button" class="btn-primary" id="hdrAddLead">+ Add lead</button>' },
   clients: { section: 'Clients', page: 'Clients', docTitle: 'Clients', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewClient">+ New client</button>' },
   projects: { section: 'Projects', page: 'Projects', docTitle: 'Projects', greet: false, act: '' },
   invoices: { section: 'Invoices', page: 'Invoices', docTitle: 'Invoices', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewInv">+ New invoice</button>' },
@@ -179,14 +179,15 @@ const TAB_CHROME = {
 };
 
 function setUserAvatar() {
-  const el = getEl('csUserAvatar');
+  const initials = getEl('admAvatarInitials');
+  const el = initials || getEl('csUserAvatar');
   if (!el) return;
   const n = parseDisplayName();
   el.textContent = n.slice(0, 2).toUpperCase();
 }
 
 function wireHeaderActions(tab) {
-  if (tab === 'leads') {
+  if (tab === 'pipeline') {
     getEl('hdrAddLead')?.addEventListener('click', () => openAddLeadDrawer());
   }
   if (tab === 'clients') {
@@ -229,6 +230,8 @@ function updatePageHeader(tab) {
   if (actions) actions.innerHTML = c.act || '';
   wireHeaderActions(tab);
   setUserAvatar();
+  const mobileTitle = getEl('admMobileTitle');
+  if (mobileTitle) mobileTitle.textContent = c.page || c.section || tab;
 }
 
 function openDrawer({ title, body, footer, onClose }) {
@@ -342,16 +345,19 @@ function formatActivityEvent(ev) {
 function showTab(name) {
   if (!name) return;
   state.currentTab = name;
-  document.querySelectorAll('button.cs-nav-item[data-tab]').forEach((b) => {
+  document.querySelectorAll('button.adm-sb-item[data-tab], .adm-bbar-item[data-tab]').forEach((b) => {
     const on = b.getAttribute('data-tab') === name;
     b.classList.toggle('active', on);
-    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (b.hasAttribute('aria-selected')) b.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   document.querySelectorAll('.adm-panel[data-panel]').forEach((p) => {
     const on = p.getAttribute('data-panel') === name;
     p.classList.toggle('is-visible', on);
     p.toggleAttribute('hidden', !on);
   });
+  getEl('admSidebar')?.classList.remove('open');
+  const ovl = getEl('admSbOverlay');
+  if (ovl) ovl.setAttribute('hidden', '');
   updatePageHeader(name);
   if (name === 'files') {
     setTimeout(() => document.dispatchEvent(new CustomEvent('adm:files-panel')), 0);
@@ -665,7 +671,7 @@ function renderDashboard() {
     </div>`;
 
   getEl('daQaLead')?.addEventListener('click', () => {
-    showTab('leads');
+    showTab('pipeline');
     setTimeout(() => openAddLeadDrawer(), 0);
   });
   getEl('daQaClient')?.addEventListener('click', () => {
@@ -919,7 +925,7 @@ function renderLeads() {
         <button type="button" class="btn-secondary btn-sm" data-lp="next" ${page >= totalPages ? 'disabled' : ''}>Next</button>
     </div>`;
 
-  getEl('panel-leads').innerHTML = `
+  getEl('panel-pipeline').innerHTML = `
     <div class="cs-lead-toolbar">
       <div class="adm-table-tools" style="margin:0;flex:1;min-width:12rem">
         <input type="search" class="adm-inp" data-leads-search placeholder="Search name, email, company, status…" value="${esc(st.q)}" style="max-width:20rem" />
@@ -932,7 +938,7 @@ function renderLeads() {
     <div id="leadsViewKan" class="card" style="margin-bottom:0;${st.view === 'table' ? 'display:none' : ''}">${kanban}</div>
     <div id="leadsViewTbl" class="card" style="margin-bottom:0;${st.view === 'kanban' ? 'display:none' : ''}">${table}</div>`;
 
-  const panel = getEl('panel-leads');
+  const panel = getEl('panel-pipeline');
   panel.querySelectorAll('[data-lv]').forEach((b) => {
     b.addEventListener('click', () => {
       st.view = b.getAttribute('data-lv') || 'kanban';
@@ -2977,29 +2983,54 @@ function renderAll() {
 function initUserMenu() {
   const m = getEl('csUserMenu');
   const a = getEl('csUserAvatar');
+  const dd = getEl('csUserMenuDd');
   if (!m || !a) return;
   a.addEventListener('click', (e) => {
     e.stopPropagation();
-    m.classList.toggle('open');
-    a.setAttribute('aria-expanded', m.classList.contains('open') ? 'true' : 'false');
+    const open = !m.classList.contains('open');
+    m.classList.toggle('open', open);
+    a.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (dd) {
+      if (open) dd.removeAttribute('hidden');
+      else dd.setAttribute('hidden', '');
+    }
   });
   document.addEventListener('click', (e) => {
     if (!m.contains(e.target)) {
       m.classList.remove('open');
       a.setAttribute('aria-expanded', 'false');
+      if (dd) dd.setAttribute('hidden', '');
     }
   });
 }
 
-document.getElementById('csNav')?.addEventListener('click', (e) => {
-  const t = e.target.closest('button[data-tab]');
-  if (!t) return;
-  const name = t.getAttribute('data-tab');
-  state.currentTab = name;
-  showTab(name);
-  if (name === 'files') {
-    setTimeout(() => document.dispatchEvent(new CustomEvent('adm:files-panel')), 0);
-  }
+function wireMainNav() {
+  const onNav = (e) => {
+    const t = e.target.closest('button[data-tab]');
+    if (!t) return;
+    if (!t.closest('#csNav') && !t.closest('#admBottomBar')) return;
+    const name = t.getAttribute('data-tab');
+    if (!name) return;
+    state.currentTab = name;
+    showTab(name);
+    if (name === 'files') {
+      setTimeout(() => document.dispatchEvent(new CustomEvent('adm:files-panel')), 0);
+    }
+  };
+  getEl('csNav')?.addEventListener('click', onNav);
+  getEl('admBottomBar')?.addEventListener('click', onNav);
+}
+
+wireMainNav();
+
+getEl('admHamburger')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  getEl('admSidebar')?.classList.add('open');
+  getEl('admSbOverlay')?.removeAttribute('hidden');
+});
+getEl('admSbOverlay')?.addEventListener('click', () => {
+  getEl('admSidebar')?.classList.remove('open');
+  getEl('admSbOverlay')?.setAttribute('hidden', '');
 });
 
 getEl('csQaClient')?.addEventListener('click', () => {
@@ -3007,7 +3038,7 @@ getEl('csQaClient')?.addEventListener('click', () => {
   setTimeout(() => openNewClientDrawer(), 0);
 });
 getEl('csQaLead')?.addEventListener('click', () => {
-  showTab('leads');
+  showTab('pipeline');
   setTimeout(() => openAddLeadDrawer(), 0);
 });
 getEl('csQaInv')?.addEventListener('click', () => {
@@ -3030,7 +3061,7 @@ if (getToken()) {
   const app = getEl('admApp');
   const out = getEl('admSignedOut');
   if (out) out.style.display = 'none';
-  if (app) app.style.display = 'flex';
+  if (app) app.style.display = 'block';
   window.scrollTo(0, 0);
   showTab('dashboard');
   getEl('panel-dashboard').innerHTML = dashboardPanelSkeleton();

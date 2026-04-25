@@ -5,125 +5,157 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="description" content="CustomSite agency operations — leads, clients, projects, billing (admin only)." />
-  <title>Admin — CustomSite</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/admin-ds.css" />
-  <link rel="stylesheet" href="css/admin.css" />
+  <title>Dashboard — CustomSite</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+  <link rel="stylesheet" href="/css/admin-ds.css" />
+  <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.6/quill.snow.css" crossorigin="anonymous" />
 </head>
-<body class="adm-page">
-  <div id="admSignedOut" class="cs-signed-out" style="display: none; padding: 4rem 1.5rem; text-align: center; max-width: 40rem; margin: 0 auto; font-size: 15px; color: var(--cs-text, #0f172a)">
+<body class="adm-page" id="admRoot">
+  <div
+    id="admSignedOut"
+    class="cs-signed-out"
+    style="display: none; padding: 4rem 1.5rem; text-align: center; max-width: 40rem; margin: 0 auto; font-size: 15px; color: var(--dark, #0f172a)"
+  >
     <p style="margin: 0 0 1rem">Not signed in.</p>
     <p style="margin: 0">
-      <a href="client-portal.html?agency=1" class="cs-link-a" style="color: #4f46e5; font-weight: 600">Open the client portal</a> and sign in with an agency account to use the admin.
+      <a href="client-portal.html?agency=1" class="cs-link-a" style="color: var(--cs-accent-dark, #4f46e5); font-weight: 600">Open the client portal</a>
+      and sign in with an agency account to use the admin.
     </p>
   </div>
-  <div id="admApp" class="adm-app" style="display: none; flex: 1">
-    <aside class="cs-sidebar" id="csSidebar" aria-label="Main navigation">
-      <div class="cs-sidebar-hd">
-        <div class="cs-sidebar-brand">
-          <div class="cs-logo-sm" aria-hidden="true">CS</div>
-          <span class="cs-sidebar-title">CustomSite</span>
-        </div>
-        <div class="cs-user-menu" id="csUserMenu">
-          <div class="cs-user-avatar" id="csUserAvatar" role="button" tabindex="0" aria-label="Account menu" aria-haspopup="true" aria-expanded="false">—</div>
-          <div class="cs-user-menu-dd" id="csUserMenuDd" role="menu">
+
+  <div id="admApp" class="adm-app-shell" style="display: none; min-height: 100vh">
+    <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+    <aside id="admSidebar" class="adm-sidebar">
+      <div class="adm-sb-header">
+        <a href="/admin.html" class="adm-sb-logo">
+          <span class="logo-mark">CS</span>
+          <span class="logo-word">CustomSite</span>
+        </a>
+        <div id="csUserMenu" class="adm-sb-userwrap" style="position: relative">
+          <div class="adm-sb-avatar" id="csUserAvatar" role="button" tabindex="0" aria-label="Account menu" aria-haspopup="true" aria-expanded="false">
+            <span id="admAvatarInitials">A</span>
+          </div>
+          <div class="adm-avatar-menu" id="csUserMenuDd" role="menu" hidden>
+            <a href="client-portal.html" role="menuitem">My account</a>
             <a href="index.html" role="menuitem">View site</a>
             <a href="dashboard.html" role="menuitem">Client view</a>
             <a href="site-builder.html" target="_blank" rel="noopener" role="menuitem">Site builder</a>
-            <button type="button" id="admLogout" role="menuitem">Sign out</button>
           </div>
         </div>
       </div>
-      <nav class="cs-sidebar-mid" id="csNav" aria-label="Admin sections">
-        <div class="cs-nav-section-label">Workspace</div>
-        <button type="button" class="cs-nav-item active" role="tab" data-tab="dashboard" aria-selected="true">
-          <span class="icon" aria-hidden="true">🏠</span> Dashboard
+
+      <nav class="adm-sb-nav" id="csNav" aria-label="Admin navigation">
+        <p class="adm-sb-section-label">Workspace</p>
+        <button type="button" class="adm-sb-item active" data-tab="dashboard" aria-selected="true">
+          <span>Dashboard</span>
         </button>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="leads" aria-selected="false">
-          <span class="icon" aria-hidden="true">📊</span> Pipeline
+        <button type="button" class="adm-sb-item" data-tab="pipeline">
+          <span>Pipeline</span>
         </button>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="clients" aria-selected="false">
-          <span class="icon" aria-hidden="true">👥</span> Clients
+        <button type="button" class="adm-sb-item" data-tab="clients">
+          <span>Clients</span>
         </button>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="projects" aria-selected="false">
-          <span class="icon" aria-hidden="true">📁</span> Projects
+        <button type="button" class="adm-sb-item" data-tab="projects">
+          <span>Projects</span>
         </button>
-        <div class="cs-nav-section-label">Billing</div>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="invoices" aria-selected="false">
-          <span class="icon" aria-hidden="true">💳</span> Invoices
+
+        <p class="adm-sb-section-label">Billing</p>
+        <button type="button" class="adm-sb-item" data-tab="invoices">
+          <span>Invoices</span>
         </button>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="time" aria-selected="false">
-          <span class="icon" aria-hidden="true">⏱</span> Time &amp; Billing
+        <button type="button" class="adm-sb-item" data-tab="time">
+          <span>Time &amp; Billing</span>
         </button>
-        <div class="cs-nav-section-label">Communication</div>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="messages" aria-selected="false">
-          <span class="icon" aria-hidden="true">💬</span> Messages
+
+        <p class="adm-sb-section-label">Communication</p>
+        <button type="button" class="adm-sb-item" data-tab="messages">
+          <span>Messages</span>
         </button>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="contracts" aria-selected="false">
-          <span class="icon" aria-hidden="true">📄</span> Contracts
+        <button type="button" class="adm-sb-item" data-tab="contracts">
+          <span>Contracts</span>
         </button>
-        <div class="cs-nav-section-label">Tools</div>
-        <a class="cs-nav-item cs-nav-external" href="site-builder.html" target="_blank" rel="noopener">
-          <span class="icon" aria-hidden="true">🔧</span> Site Builder
-        </a>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="files" aria-selected="false">
-          <span class="icon" aria-hidden="true">📂</span> Files
+
+        <p class="adm-sb-section-label">Tools</p>
+        <button type="button" class="adm-sb-item" data-tab="files">
+          <span>Files</span>
         </button>
-        <div class="cs-nav-section-label">Settings</div>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="settings" aria-selected="false">
-          <span class="icon" aria-hidden="true">⚙️</span> Settings
+        <button type="button" class="adm-sb-item" data-tab="activity">
+          <span>Activity</span>
         </button>
-        <button type="button" class="cs-nav-item" role="tab" data-tab="activity" aria-selected="false">
-          <span class="icon" aria-hidden="true">📋</span> Activity
+
+        <p class="adm-sb-section-label">Settings</p>
+        <button type="button" class="adm-sb-item" data-tab="settings">
+          <span>Settings</span>
         </button>
       </nav>
-      <div class="cs-sidebar-footer">
-        <div class="cs-quick-label">Quick actions</div>
-        <div class="cs-quick-row">
-          <button type="button" class="cs-quick-link" id="csQaClient">+ New Client</button>
-          <span style="color: rgba(255,255,255,0.2)">·</span>
-          <button type="button" class="cs-quick-link" id="csQaLead">+ New Lead</button>
-          <span style="color: rgba(255,255,255,0.2)">·</span>
-          <button type="button" class="cs-quick-link" id="csQaInv">+ New Invoice</button>
-        </div>
-        <a class="cs-sb-cta" href="site-builder.html" target="_blank" rel="noopener">🚀 Site Builder →</a>
+
+      <div class="adm-sb-footer">
+        <a href="/index.html" class="adm-sb-footer-link" target="_blank" rel="noopener">View Site</a>
+        <a href="/client-portal.html" class="adm-sb-footer-link" target="_blank" rel="noopener">Client Portal</a>
+        <a href="site-builder.html" class="adm-sb-footer-link" target="_blank" rel="noopener">Site Builder</a>
+        <button class="adm-sb-footer-link" type="button" id="admLogout">Log out</button>
       </div>
     </aside>
-    <div class="cs-main-wrap">
-      <div id="admDbBanner" class="cs-db-bar" hidden></div>
-      <main class="cs-main-content" id="admMain">
-        <div class="cs-main-inner" id="admRoot">
-          <header class="cs-page-header" id="admPageHeader">
-            <p id="admBreadcrumb" class="cs-breadcrumb">CustomSite &gt; Dashboard</p>
-            <div id="admDashGreetWrap" style="display: none">
-              <p id="admGreeting" class="cs-greet"></p>
-              <p id="admSubDate"></p>
-            </div>
-            <div class="cs-page-header-row">
-              <h1 id="admPageTitle">Dashboard</h1>
-              <div id="admPageActions"></div>
-            </div>
-            <div class="cs-page-divider" id="admPageDivider" aria-hidden="true"></div>
-          </header>
-          <div id="panel-dashboard" class="adm-panel is-visible" role="tabpanel" data-panel="dashboard"></div>
-          <div id="panel-leads" class="adm-panel" role="tabpanel" data-panel="leads" hidden></div>
-          <div id="panel-clients" class="adm-panel" role="tabpanel" data-panel="clients" hidden></div>
-          <div id="panel-projects" class="adm-panel" role="tabpanel" data-panel="projects" hidden></div>
-          <div id="panel-invoices" class="adm-panel" role="tabpanel" data-panel="invoices" hidden></div>
-          <div id="panel-files" class="adm-panel" role="tabpanel" data-panel="files" hidden></div>
-          <div id="panel-messages" class="adm-panel" role="tabpanel" data-panel="messages" hidden></div>
-          <div id="panel-time" class="adm-panel" role="tabpanel" data-panel="time" hidden></div>
-          <div id="panel-contracts" class="adm-panel" role="tabpanel" data-panel="contracts" hidden></div>
-          <div id="panel-activity" class="adm-panel" role="tabpanel" data-panel="activity" hidden></div>
-          <div id="panel-settings" class="adm-panel" role="tabpanel" data-panel="settings" hidden></div>
+
+    <div class="adm-sb-overlay" id="admSbOverlay" hidden></div>
+
+    <div class="adm-main" id="admMain">
+      <header class="adm-mobile-bar" id="admMobileBar">
+        <button class="adm-hamburger" type="button" id="admHamburger" aria-label="Open menu">☰</button>
+        <h1 class="adm-mobile-title" id="admMobileTitle">Dashboard</h1>
+      </header>
+
+      <div id="admDbBanner" hidden></div>
+
+      <div class="adm-page-header" id="admPageHeader">
+        <p id="admBreadcrumb" class="cs-breadcrumb" style="font-size: 0.8rem; color: var(--gray, #64748b); margin: 0 0 0.5rem 0">CustomSite &gt; Dashboard</p>
+        <div id="admDashGreetWrap" style="display: none">
+          <p id="admGreeting" class="cs-greet" style="margin: 0; font-size: 1.15rem; font-weight: 600"></p>
+          <p id="admSubDate" style="margin: 0.25rem 0 0 0; font-size: 0.9rem; color: var(--gray, #64748b)"></p>
         </div>
-      </main>
+        <div class="cs-page-header-row" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem">
+          <h1 class="adm-page-title" id="admPageTitle">Dashboard</h1>
+          <div id="admPageActions"></div>
+        </div>
+        <div class="cs-page-divider" id="admPageDivider" aria-hidden="true" style="height: 1px; background: var(--border, rgba(0,0,0,0.08)); margin: 1rem 0 0 0"></div>
+      </div>
+
+      <div data-panel="dashboard" class="adm-panel is-visible" id="panel-dashboard"></div>
+      <div data-panel="pipeline" class="adm-panel" id="panel-pipeline" hidden></div>
+      <div data-panel="clients" class="adm-panel" id="panel-clients" hidden></div>
+      <div data-panel="projects" class="adm-panel" id="panel-projects" hidden></div>
+      <div data-panel="invoices" class="adm-panel" id="panel-invoices" hidden></div>
+      <div data-panel="time" class="adm-panel" id="panel-time" hidden></div>
+      <div data-panel="messages" class="adm-panel" id="panel-messages" hidden></div>
+      <div data-panel="contracts" class="adm-panel" id="panel-contracts" hidden></div>
+      <div data-panel="files" class="adm-panel" id="panel-files" hidden></div>
+      <div data-panel="activity" class="adm-panel" id="panel-activity" hidden></div>
+      <div data-panel="settings" class="adm-panel" id="panel-settings" hidden></div>
     </div>
+
+    <div id="admDrawerRoot"></div>
+    <div id="admModalRoot"></div>
+
+    <div id="toast-container" aria-live="polite"></div>
+
+    <nav class="adm-bottom-bar" id="admBottomBar" aria-label="Mobile navigation">
+      <button type="button" class="adm-bbar-item active" data-tab="dashboard"><span>🏠</span><span>Home</span></button>
+      <button type="button" class="adm-bbar-item" data-tab="pipeline"><span>📋</span><span>Pipeline</span></button>
+      <button type="button" class="adm-bbar-item" data-tab="clients"><span>👥</span><span>Clients</span></button>
+      <button type="button" class="adm-bbar-item" data-tab="invoices"><span>💰</span><span>Invoices</span></button>
+      <button type="button" class="adm-bbar-item" data-tab="settings"><span>⚙️</span><span>Settings</span></button>
+    </nav>
   </div>
-  <div id="admDrawerRoot"></div>
-  <div id="admModalRoot"></div>
-  <script type="module" src="js/auth-bootstrap.js"></script>
-  <script type="module" src="js/admin/app.js"></script>
+
+  <!-- Quick action hooks (used by app.js) -->
+  <button type="button" id="csQaClient" hidden aria-hidden="true" tabindex="-1">QA Client</button>
+  <button type="button" id="csQaLead" hidden aria-hidden="true" tabindex="-1">QA Lead</button>
+  <button type="button" id="csQaInv" hidden aria-hidden="true" tabindex="-1">QA Inv</button>
+
+  <script src="https://cdn.quilljs.com/1.3.6/quill.js" crossorigin="anonymous"></script>
+  <script type="module" src="/js/auth-bootstrap.js"></script>
+  <script type="module" src="/js/admin/app.js"></script>
 </body>
 </html>
