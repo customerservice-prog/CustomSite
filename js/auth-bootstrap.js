@@ -1,6 +1,9 @@
 /**
  * Runs first on app pages. Parses Supabase auth from URL (hash: implicit tokens;
  * ?code= PKCE) into localStorage keys used by /api/auth/* and admin fetch wrappers.
+ * Also syncs an existing Supabase-persisted session (OAuth / magic link) into those
+ * keys on every load — not only when the URL contains tokens (otherwise /admin and
+ * other pages can show "Not signed in" even after a successful sign-in).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
@@ -111,7 +114,6 @@ async function redirectIfLoggedIn() {
 
 async function run() {
   const hadUrlAuth = hasUrlAuthSignal();
-  if (!hadUrlAuth) return;
 
   let res;
   try {
@@ -149,7 +151,18 @@ async function run() {
     }
   }
 
-  await saveSessionToAppKeys(supabase);
+  // Skip the heavy session wait when the user already has an API session from
+  // /api/auth/login (no Supabase browser session) and the URL is not a fresh
+  // OAuth/PKCE return — avoids ~3s delay on every admin load.
+  let hasExistingAppToken = false;
+  try {
+    hasExistingAppToken = Boolean(localStorage.getItem(ACCESS));
+  } catch {
+    hasExistingAppToken = false;
+  }
+  if (hadUrlAuth || !hasExistingAppToken) {
+    await saveSessionToAppKeys(supabase);
+  }
 
   const path = window.location.pathname || '';
   const isIndex =
