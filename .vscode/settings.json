@@ -1,0 +1,28 @@
+{
+  "editor.renderLineHighlight": "all",
+  "editor.selectionHighlight": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.guides.bracketPairsHorizontal": "active",
+  "editor.occurrencesHighlight": "singleFile",
+
+  "scm.diffDecorations": "all",
+  "scm.diffDecorationsGutterVisibility": "always",
+  "git.decorations.enabled": true,
+  "git.enableSmartCommit": true,
+  "git.showInlineOpenFileAction": true,
+
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "package-lock.json": true
+  },
+  "files.exclude": {},
+
+  "editor.quickSuggestions": { "other": "on" },
+  "editor.suggest.snippetsPreventQuickSuggestions": false
+}
