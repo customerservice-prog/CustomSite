@@ -7,6 +7,29 @@ import { filterRows, sortRows, paginate } from './table-helpers.js';
 
 const PER = 25;
 
+const COMMON_TZ = [
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Phoenix',
+  'America/Anchorage',
+  'Pacific/Honolulu',
+  'America/Toronto',
+  'America/Vancouver',
+  'Europe/London',
+  'Europe/Paris',
+  'UTC',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+];
+
+function timezoneDatalistHtml(id) {
+  const safeId = String(id || 'csTzDatalist').replace(/[^a-zA-Z0-9_-]/g, '');
+  const opts = COMMON_TZ.map((z) => `<option value="${esc(z)}"></option>`).join('');
+  return `<datalist id="${safeId}">${opts}</datalist>`;
+}
+
 const state = {
   clients: [],
   projects: [],
@@ -195,13 +218,23 @@ const TAB_CHROME = {
   settings: { section: 'Settings', page: 'Settings', docTitle: 'Settings', greet: false, act: '' },
 };
 
+function readTabFromUrl() {
+  try {
+    const p = new URLSearchParams(window.location.search).get('tab');
+    if (p && TAB_CHROME[p]) return p;
+  } catch {
+    /* */
+  }
+  return 'dashboard';
+}
+
 function setUserAvatar() {
   const initials = getEl('admAvatarInitials');
   const el = initials || getEl('csUserAvatar');
   if (!el) return;
   const t = getToken();
   if (!t) {
-    el.textContent = '—';
+    el.textContent = '?';
     return;
   }
   const fromJwt = () => {
@@ -209,15 +242,15 @@ function setUserAvatar() {
       const part = t.split('.')[1];
       const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
       const p = JSON.parse(atob(b64));
-      const name = p.name || p.user_metadata?.full_name || (p.email && p.email.split('@')[0]) || '—';
+      const name = p.name || p.user_metadata?.full_name || (p.email && p.email.split('@')[0]) || '';
       return String(name);
     } catch {
-      return '—';
+      return '';
     }
   };
   const label = fromJwt();
-  if (label === '—') {
-    el.textContent = '—';
+  if (!label || !String(label).trim()) {
+    el.textContent = '?';
     return;
   }
   const parts = label.trim().split(/\s+/);
@@ -425,6 +458,13 @@ function showTab(name) {
   const ovl = getEl('admSbOverlay');
   if (ovl) ovl.setAttribute('hidden', '');
   updatePageHeader(name);
+  try {
+    const u = new URL(window.location.href);
+    u.searchParams.set('tab', name);
+    history.replaceState(null, '', u.toString());
+  } catch {
+    /* */
+  }
   if (name === 'files') {
     setTimeout(() => document.dispatchEvent(new CustomEvent('adm:files-panel')), 0);
   }
@@ -439,6 +479,12 @@ function showTab(name) {
   }
   if (name === 'contracts') {
     renderContracts();
+  }
+  if (name === 'settings') {
+    renderSettings();
+  }
+  if (name === 'activity') {
+    renderActivity();
   }
 }
 
@@ -690,7 +736,7 @@ function renderDashboard() {
         <div class="cs-kpi-pills" style="margin-top:6px">
           <span class="badge badge-discovery">D ${byPh('discovery')}</span>
           <span class="badge badge-design">De ${byPh('design')}</span>
-          <span class="badge badge-dev">Dev ${byPh('development')}</span>
+          <span class="badge badge-dev" title="Development phase">Dev ${byPh('development')}</span>
           <span class="badge badge-review">R ${byPh('review')}</span>
           <span class="badge badge-live">L ${byPh('live')}</span>
         </div>
@@ -780,7 +826,11 @@ function leadCardHtml(L) {
   return `<div class="lead-card" draggable="true" data-lead-id="${esc(L.id)}">
     <div class="lc-name">${esc(L.name)}</div>
     <div class="lc-sub">${esc(L.email)}</div>
-    <div class="lc-sub">${esc(L.company || '—')}</div>
+    <div class="lc-sub">${
+      L.company && String(L.company).trim()
+        ? esc(L.company)
+        : '<span class="cs-table-empty" aria-label="No company">—</span>'
+    }</div>
     <div class="lc-badges"><span class="badge badge-draft">${esc(src)}</span></div>
     <div class="lc-sub" style="margin-top:6px;color:var(--cs-text-muted)">${L.created_at ? new Date(L.created_at).toLocaleString() : '—'}</div>
   </div>`;
@@ -802,11 +852,11 @@ function openAddLeadDrawer() {
     title: 'Add lead',
     body: `<form id="fAddLead" class="adm-form-stack">
         <p class="phase-note" style="margin-top:0">For prospects from LinkedIn, email, or phone — not just the site form.</p>
-        <div class="form-group"><label>Name *</label><input class="adm-inp" name="name" required /></div>
-        <div class="form-group"><label>Email *</label><input class="adm-inp" name="email" type="email" required /></div>
-        <div class="form-group"><label>Company</label><input class="adm-inp" name="company" /></div>
-        <div class="form-group"><label>Source</label><input class="adm-inp" name="source" placeholder="e.g. LinkedIn" /></div>
-        <div class="form-group"><label>Notes</label><textarea class="adm-inp" name="message" rows="3" placeholder="Context for your team…"></textarea></div>
+        <div class="form-group"><label for="alName">Name *</label><input class="adm-inp" id="alName" name="name" required /></div>
+        <div class="form-group"><label for="alEmail">Email *</label><input class="adm-inp" id="alEmail" name="email" type="email" required /></div>
+        <div class="form-group"><label for="alCo">Company</label><input class="adm-inp" id="alCo" name="company" /></div>
+        <div class="form-group"><label for="alSrc">Source</label><input class="adm-inp" id="alSrc" name="source" placeholder="e.g. LinkedIn" /></div>
+        <div class="form-group"><label for="alMsg">Notes</label><textarea class="adm-inp" id="alMsg" name="message" rows="3" placeholder="Context for your team…"></textarea></div>
       </form>`,
     footer:
       '<button type="button" class="btn-secondary" id="fAddLCancel">Cancel</button> <button type="button" class="btn-primary" id="fAddLGo">Add lead</button>',
@@ -845,17 +895,17 @@ function openLeadDetailDrawer(id) {
   if (!L) return;
   const { close, root } = openDrawer({
     title: 'Lead',
-    body: `<div class="form-group"><label>Status</label>
+    body: `<div class="form-group"><label for="ldSt">Status</label>
       <select class="adm-inp" id="ldSt">${LEAD_STATUSES.map((s) => `<option value="${esc(s)}" ${L.status === s ? 'selected' : ''}>${esc(
         s
       )}</option>`).join('')}</select>
       <p class="phase-note" style="margin:0.35rem 0 0">Saves as soon as you change the dropdown.</p></div>
-      <div class="form-group"><label>Name</label><input class="adm-inp" id="ldName" value="${esc(L.name)}" /></div>
-      <div class="form-group"><label>Email</label><input class="adm-inp" id="ldEmail" type="email" value="${esc(L.email)}" /></div>
-      <div class="form-group"><label>Company</label><input class="adm-inp" id="ldCo" value="${esc(L.company || '')}" /></div>
-      <div class="form-group"><label>Phone</label><input class="adm-inp" id="ldPh" value="${esc(L.phone || '')}" /></div>
-      <div class="form-group"><label>Source</label><input class="adm-inp" id="ldSo" value="${esc(leadSrc(L))}" readonly style="opacity:0.9" /></div>
-      <div class="form-group"><label>Notes</label><textarea class="adm-inp" id="ldMsg" rows="4">${esc(L.message || '')}</textarea></div>
+      <div class="form-group"><label for="ldName">Name</label><input class="adm-inp" id="ldName" value="${esc(L.name)}" /></div>
+      <div class="form-group"><label for="ldEmail">Email</label><input class="adm-inp" id="ldEmail" type="email" value="${esc(L.email)}" /></div>
+      <div class="form-group"><label for="ldCo">Company</label><input class="adm-inp" id="ldCo" value="${esc(L.company || '')}" /></div>
+      <div class="form-group"><label for="ldPh">Phone</label><input class="adm-inp" id="ldPh" value="${esc(L.phone || '')}" /></div>
+      <div class="form-group"><label for="ldSo">Source</label><input class="adm-inp" id="ldSo" value="${esc(leadSrc(L))}" readonly style="opacity:0.9" /></div>
+      <div class="form-group"><label for="ldMsg">Notes</label><textarea class="adm-inp" id="ldMsg" rows="4">${esc(L.message || '')}</textarea></div>
       <p class="phase-note" style="margin:0">Refine or delete from the lead list; status changes appear in <strong>Activity</strong> when the server logs them.</p>`,
     footer: `<button type="button" class="btn-secondary" id="ldClose">Close</button>
       <button type="button" class="btn-ghost" id="ldSave" style="color:var(--cs-accent)">Save details</button>
@@ -978,7 +1028,11 @@ function renderLeads() {
               (L) => `<tr class="pl-row" data-plid="${esc(L.id)}" style="cursor:pointer">
                 <td>${esc(L.name)}</td>
                 <td>${esc(L.email)}</td>
-                <td>${esc(L.company || '—')}</td>
+                <td>${
+                  L.company && String(L.company).trim()
+                    ? esc(L.company)
+                    : '<span class="cs-table-empty" aria-label="No company">—</span>'
+                }</td>
                 <td onclick="event.stopPropagation()"><select class="status-sel adm-inp" data-lid="${esc(L.id)}" style="min-width:9rem">
                   ${LEAD_STATUSES.map((s) => `<option value="${esc(s)}" ${L.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
                 </select></td>
@@ -1010,7 +1064,8 @@ function renderLeads() {
   pipePanel.innerHTML = `
     <div class="cs-lead-toolbar">
       <div class="adm-table-tools" style="margin:0;flex:1;min-width:12rem">
-        <input type="search" class="adm-inp" data-leads-search placeholder="Search name, email, company, status…" value="${esc(st.q)}" style="max-width:20rem" />
+        <label for="leadSearchInp" class="visually-hidden">Search leads</label>
+        <input id="leadSearchInp" type="search" class="adm-inp" data-leads-search placeholder="Search name, email, company, status…" value="${esc(st.q)}" style="max-width:20rem" />
       </div>
       <div class="cs-seg" role="group" aria-label="View">
         <button type="button" class="${st.view === 'kanban' ? 'active' : ''}" data-lv="kanban">Board</button>
@@ -1149,12 +1204,13 @@ function openNewClientDrawer() {
   const { close, root } = openDrawer({
     title: 'Add a new client',
     body: `<form id="fNewCli" class="adm-form-stack">
-        <div class="form-group"><label>Email *</label><input class="adm-inp" name="email" type="email" required /></div>
-        <div class="form-group"><label>Full name *</label><input class="adm-inp" name="full_name" required /></div>
-        <div class="form-group"><label>Company</label><input class="adm-inp" name="company" /></div>
-        <div class="form-group"><label>Phone</label><input class="adm-inp" name="phone" type="tel" /></div>
-        <div class="form-group"><label>Website</label><input class="adm-inp" name="website" type="url" placeholder="https://…" /></div>
-        <div class="form-group"><label>Timezone</label><input class="adm-inp" name="timezone" placeholder="e.g. America/New_York" /></div>
+        <div class="form-group"><label for="ncEmail">Email *</label><input class="adm-inp" id="ncEmail" name="email" type="email" required /></div>
+        <div class="form-group"><label for="ncFn">Full name *</label><input class="adm-inp" id="ncFn" name="full_name" required /></div>
+        <div class="form-group"><label for="ncCo">Company</label><input class="adm-inp" id="ncCo" name="company" /></div>
+        <div class="form-group"><label for="ncPh">Phone</label><input class="adm-inp" id="ncPh" name="phone" type="tel" /></div>
+        <div class="form-group"><label for="ncWw">Website</label><input class="adm-inp" id="ncWw" name="website" type="url" placeholder="https://…" /></div>
+        <div class="form-group"><label for="ncTz">Timezone</label><input class="adm-inp" id="ncTz" name="timezone" list="ncTzDl" placeholder="e.g. America/New_York" autocomplete="off" /></div>
+        ${timezoneDatalistHtml('ncTzDl')}
       </form>`,
     footer: '<button type="button" class="btn-secondary" id="ncCancel">Cancel</button> <button type="button" class="btn-primary" id="ncGo">Create account</button>',
   });
@@ -1238,11 +1294,12 @@ function openClientDrawer(id) {
           </div>
           <div class="cs-dtab-pan open" data-dtabp="ov" style="display:block">
             <p style="margin:0 0 12px" class="phase-note">Email: <strong>${esc(c.email)}</strong> <span class="badge badge-active" style="margin-left:6px">Active</span></p>
-            <div class="form-group"><label>Full name</label><input class="adm-inp" id="cdFn" value="${esc(c.full_name || '')}" /></div>
-            <div class="form-group"><label>Company</label><input class="adm-inp" id="cdCo" value="${esc(c.company || '')}" /></div>
-            <div class="form-group"><label>Phone</label><input class="adm-inp" id="cdPh" value="${esc(c.phone || '')}" /></div>
-            <div class="form-group"><label>Website</label><input class="adm-inp" id="cdWw" value="${esc(c.website || '')}" type="url" /></div>
-            <div class="form-group"><label>Timezone</label><input class="adm-inp" id="cdTz" value="${esc(c.timezone || '')}" /></div>
+            <div class="form-group"><label for="cdFn">Full name</label><input class="adm-inp" id="cdFn" value="${esc(c.full_name || '')}" /></div>
+            <div class="form-group"><label for="cdCo">Company</label><input class="adm-inp" id="cdCo" value="${esc(c.company || '')}" /></div>
+            <div class="form-group"><label for="cdPh">Phone</label><input class="adm-inp" id="cdPh" value="${esc(c.phone || '')}" /></div>
+            <div class="form-group"><label for="cdWw">Website</label><input class="adm-inp" id="cdWw" value="${esc(c.website || '')}" type="url" /></div>
+            <div class="form-group"><label for="cdTz">Timezone</label><input class="adm-inp" id="cdTz" value="${esc(c.timezone || '')}" list="cdTzDl" placeholder="e.g. America/New_York" autocomplete="off" /></div>
+            ${timezoneDatalistHtml('cdTzDl')}
             <button type="button" class="btn-primary" id="cdSave">Save changes</button>
           </div>
           <div class="cs-dtab-pan" data-dtabp="pr" style="display:none">
@@ -1391,7 +1448,11 @@ function renderClients() {
                     <div class="cs-cli-av" style="background:${clientGradientForId(c.id)}">${esc(clientInitials(c))}</div>
                     <div>
                       <div class="cs-cli-name">${esc(c.full_name || c.email || '—')}</div>
-                      <div class="cs-cli-co">${esc(c.company || '—')}</div>
+                      <div class="cs-cli-co">${
+                        c.company && String(c.company).trim()
+                          ? esc(c.company)
+                          : '<span class="cs-table-empty" aria-label="No company">—</span>'
+                      }</div>
                     </div>
                   </div>
                 </td>
@@ -1477,7 +1538,7 @@ function renderProjects() {
   const stepKeys = [
     { k: 'discovery', l: 'Discovery' },
     { k: 'design', l: 'Design' },
-    { k: 'development', l: 'Dev' },
+    { k: 'development', l: 'Development' },
     { k: 'review', l: 'Review' },
     { k: 'live', l: 'Live' },
   ];
@@ -1530,12 +1591,12 @@ function renderProjects() {
         </div>
         <div class="cs-ws-pan" data-wsp="ov" style="display:block">
         <div class="form-group">
-          <label>Internal notes (team only)</label>
+          <label for="wsIntNotes">Internal notes (team only)</label>
           <textarea id="wsIntNotes" rows="3" class="adm-inp" placeholder="Saves to project…" style="width:100%"></textarea>
         </div>
         <div class="form-group" style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:end">
           <div style="flex:1;min-width:10rem">
-            <label>Phase (dropdown)</label>
+            <label for="wsPhase">Phase (dropdown)</label>
             <select id="wsPhase" class="ws-ph">
               <option value="discovery">Discovery</option>
               <option value="design">Design</option>
@@ -1548,14 +1609,16 @@ function renderProjects() {
         </div>
         </div>
         <div class="cs-ws-pan" data-wsp="up" style="display:none">
-        <h4 style="font-size:14px;margin:0 0 8px 0">Recent updates to client</h4>
+        <h4 style="font-size:14px;margin:0 0 8px 0" id="wsUpdH">Recent updates to client</h4>
         <div id="wsUpdList" class="cs-upd-feed" role="log">—</div>
         <div class="form-group" style="margin-top:1rem">
-          <label>Post update to client dashboard</label>
-          <textarea id="wsUpd" rows="3" maxlength="5000" placeholder="Milestone, deliverable, next step…"></textarea>
-          <div class="adm-hint-below"><span id="wsUpdC">0</span> / 5000</div>
+          <label for="wsUpd">Post update to client dashboard</label>
+          <textarea id="wsUpd" class="adm-inp" rows="3" maxlength="5000" placeholder="Milestone, deliverable, next step…"></textarea>
         </div>
-        <button type="button" class="btn btn-primary" id="wsPost" style="max-width:16rem">Post update</button>
+        <div class="cs-upd-foot" style="display:flex;align-items:center;flex-wrap:wrap;gap:0.75rem;margin:0.5rem 0 0 0">
+          <p class="adm-hint-below" style="margin:0" aria-live="polite" id="wsUpdCWrap"><span id="wsUpdC">0</span> <span class="cs-char-limit">/ 5000 characters</span></p>
+          <button type="button" class="btn btn-primary" id="wsPost" style="max-width:16rem">Post update</button>
+        </div>
         </div>
         <div class="cs-ws-pan" data-wsp="fi" style="display:none">
         <h4 style="font-size:14px;margin:0 0 8px 0">Upload</h4>
@@ -1587,13 +1650,13 @@ function renderProjects() {
     <div class="adm-card">
       <h2>Create new project</h2>
       <form id="formNewProj" class="adm-form-stack" style="max-width:28rem">
-        <div class="form-group"><label>Client *</label><select name="client_id" required><option value="">Select…</option>${clientOptions()}</select></div>
-        <div class="form-group"><label>Project name *</label><input name="name" required /></div>
-        <div class="form-group"><label>Website type</label><input name="website_type" /></div>
-        <div class="form-group"><label>Phase</label><select name="status">
+        <div class="form-group"><label for="fnpClient">Client *</label><select id="fnpClient" name="client_id" required class="adm-inp"><option value="">Select…</option>${clientOptions()}</select></div>
+        <div class="form-group"><label for="fnpName">Project name *</label><input class="adm-inp" id="fnpName" name="name" required /></div>
+        <div class="form-group"><label for="fnpWtype">Website type</label><input class="adm-inp" id="fnpWtype" name="website_type" /></div>
+        <div class="form-group"><label for="fnpPhase">Phase</label><select id="fnpPhase" name="status" class="adm-inp">
           <option value="discovery">Discovery</option><option value="design">Design</option><option value="development">Development</option><option value="review">Review</option><option value="live">Live</option>
         </select></div>
-        <div class="form-group"><label>Internal notes</label><textarea name="internal_notes" rows="2"></textarea></div>
+        <div class="form-group"><label for="fnpNotes">Internal notes</label><textarea class="adm-inp" id="fnpNotes" name="internal_notes" rows="2"></textarea></div>
         <button type="submit" class="btn btn-primary" style="width:100%">Create project</button>
       </form>
     </div>`;
@@ -1604,7 +1667,7 @@ function renderProjects() {
     renderProjects();
   });
   if (state._prefillClientId) {
-    const ns = p.querySelector('#formNewProj select[name=client_id]');
+    const ns = p.querySelector('#fnpClient');
     if (ns) ns.value = state._prefillClientId;
     state._prefillClientId = null;
   }
@@ -1874,7 +1937,7 @@ function renderProjects() {
   });
   p.querySelector('#wsScrollNew')?.addEventListener('click', () => {
     p.querySelector('#formNewProj')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    p.querySelector('#formNewProj input[name=name]')?.focus();
+    p.querySelector('#fnpName')?.focus();
   });
   p.querySelectorAll('[data-wst]').forEach((bt) => {
     bt.addEventListener('click', () => {
@@ -1935,11 +1998,12 @@ function renderProjects() {
     b.addEventListener('click', () => {
       const pr = findProject(b.getAttribute('data-edp'));
       if (!pr) return;
+      const eid = `epn${String(pr.id).replace(/[^a-zA-Z0-9]/g, '')}`;
       const html = `<h3 style="margin-top:0">Edit project</h3>
         <form id="epf" class="adm-form-stack">
-          <div class="form-group"><label>Name</label><input name="name" value="${esc(pr.name)}" required /></div>
-          <div class="form-group"><label>Type</label><input name="website_type" value="${esc(pr.website_type || '')}" /></div>
-          <div class="form-group"><label>Internal notes</label><textarea name="internal_notes" rows="2">${esc(pr.internal_notes || '')}</textarea></div>
+          <div class="form-group"><label for="${eid}-name">Name</label><input class="adm-inp" id="${eid}-name" name="name" value="${esc(pr.name)}" required /></div>
+          <div class="form-group"><label for="${eid}-wt">Type</label><input class="adm-inp" id="${eid}-wt" name="website_type" value="${esc(pr.website_type || '')}" /></div>
+          <div class="form-group"><label for="${eid}-n">Internal notes</label><textarea class="adm-inp" id="${eid}-n" name="internal_notes" rows="2">${esc(pr.internal_notes || '')}</textarea></div>
           <button type="submit" class="btn btn-primary">Save</button>
         </form>`;
       const { close, root } = openModal(html);
@@ -2009,14 +2073,25 @@ function renderInvoices() {
         </div>
         <p class="phase-note" style="margin:0 0 12px 0">Line item amounts update the total automatically. Total is read-only.</p>
         <form id="formInv" class="adm-form-stack" style="max-width:100%">
-          <div class="form-group"><label>Client *</label><select name="client_id" id="invc" class="adm-inp" required><option value="">—</option>${clientOptions()}</select></div>
-          <div class="form-group"><label>Project (optional)</label><select name="project_id" id="invp" class="adm-inp"><option value="">—</option>${projectOptions()}</select></div>
-          <div id="lineItems"><div class="form-group li-row" data-idx="0"><label>Line item</label><input class="adm-inp" name="l_desc" placeholder="Description" /><input class="adm-inp invoice-amount-field" name="l_amt" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:0.5rem" /></div></div>
-          <button type="button" class="btn-secondary btn-sm" id="addLine" style="margin-bottom:0.75rem">+ Add line</button>
-          <div class="form-group"><label>Total (USD) — <span class="phase-note" style="font-weight:500">auto-calculated</span></label>
+          <div class="form-group"><label for="invc">Client *</label><select name="client_id" id="invc" class="adm-inp" required><option value="">—</option>${clientOptions()}</select></div>
+          <div class="form-group"><label for="invp">Project (optional)</label><select name="project_id" id="invp" class="adm-inp"><option value="">—</option>${projectOptions()}</select></div>
+          <fieldset class="cs-inv-lineitems" style="border:1px solid var(--cs-border);border-radius:10px;padding:0.75rem 1rem;margin:0 0 0.75rem 0">
+            <legend class="phase-note" style="font-weight:600;padding:0 0.25rem">Line items</legend>
+            <p class="phase-note" style="margin:0 0 0.75rem 0">Each amount is summed into the total below (total is read-only).</p>
+            <div id="lineItems">
+              <div class="form-group li-row" data-idx="0">
+                <label for="invld0">Description</label>
+                <input class="adm-inp" id="invld0" name="l_desc" placeholder="Description" />
+                <label for="invla0" style="margin-top:0.5rem">Amount (USD)</label>
+                <input class="adm-inp invoice-amount-field" id="invla0" name="l_amt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" />
+              </div>
+            </div>
+            <button type="button" class="btn-secondary btn-sm" id="addLine" style="margin-top:0.25rem">+ Add line</button>
+          </fieldset>
+          <div class="form-group"><label for="invoice-total">Total (USD) <span class="phase-note" style="font-weight:500">(auto-calculated)</span></label>
             <input name="amount" type="text" id="invoice-total" inputmode="decimal" required readonly class="adm-inp" style="font-weight:700;font-size:1.1rem;background:var(--cs-surface-2)" value="0.00" aria-readonly="true" /></div>
-          <div class="form-group"><label>Description (summary, optional)</label><input class="adm-inp" name="description" placeholder="e.g. February milestone" /></div>
-          <div class="form-group"><label>Due date</label><input class="adm-inp" name="due_date" type="date" /></div>
+          <div class="form-group"><label for="invDesc">Description (summary, optional)</label><input class="adm-inp" id="invDesc" name="description" placeholder="e.g. February milestone" /></div>
+          <div class="form-group"><label for="invDue">Due date</label><input class="adm-inp" id="invDue" name="due_date" type="date" /></div>
           <button type="submit" class="btn-primary" style="width:100%">Create invoice</button>
         </form>
       </div>
@@ -2089,7 +2164,7 @@ function renderInvoices() {
     const pf = state._prefillInvoice;
     if (p.querySelector('#invc') && pf.client_id) p.querySelector('#invc').value = pf.client_id;
     if (p.querySelector('#invp') && pf.project_id) p.querySelector('#invp').value = pf.project_id;
-    if (p.querySelector('[name=description]') && pf.description) p.querySelector('[name=description]').value = pf.description;
+    if (p.querySelector('#invDesc') && pf.description) p.querySelector('#invDesc').value = pf.description;
     const li = p.querySelector('#lineItems .li-row');
     if (li) {
       const d = li.querySelector('input[name=l_desc]');
@@ -2102,15 +2177,18 @@ function renderInvoices() {
   }
   p.querySelector('#addLine')?.addEventListener('click', () => {
     const c = p.querySelector('#lineItems');
+    const idx = c ? c.querySelectorAll('.li-row').length : 0;
     const d = document.createElement('div');
     d.className = 'form-group li-row';
-    d.innerHTML = `<label>Line item</label><input name="l_desc" placeholder="Description" /><input class="adm-inp invoice-amount-field" name="l_amt" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:0.5rem" />`;
+    d.setAttribute('data-idx', String(idx));
+    d.innerHTML = `<label for="invld${idx}">Description</label><input class="adm-inp" id="invld${idx}" name="l_desc" placeholder="Description" />
+      <label for="invla${idx}" style="margin-top:0.5rem">Amount (USD)</label><input class="adm-inp invoice-amount-field" id="invla${idx}" name="l_amt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" />`;
     c.appendChild(d);
     recalc();
   });
-  p.querySelector('#lineItems')?.addEventListener('input', (e) => {
-    if (e.target && e.target.matches && e.target.matches('input[name=l_amt]')) recalc();
-  });
+  const onLineItemChange = () => recalc();
+  p.querySelector('#lineItems')?.addEventListener('input', onLineItemChange);
+  p.querySelector('#lineItems')?.addEventListener('change', onLineItemChange);
   p.querySelector('#formInv')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const f = e.target;
@@ -2132,8 +2210,8 @@ function renderInvoices() {
       project_id: f.querySelector('#invp').value || null,
       amount: total,
       line_items: lines,
-      description: f.querySelector('[name=description]')?.value || null,
-      due_date: f.querySelector('[name=due_date]')?.value || null,
+      description: f.querySelector('#invDesc')?.value || null,
+      due_date: f.querySelector('#invDue')?.value || null,
     };
     withBusy(
       f.querySelector('button[type=submit]'),
@@ -2251,8 +2329,8 @@ function renderFilesTab() {
       ${
         hasProjects
           ? `<div class="form-group" style="max-width:24rem">
-        <label>Project</label>
-        <select id="fTabP"><option value="">— Select a project —</option>${projectOptions()}</select>
+        <label for="fTabP">Project</label>
+        <select id="fTabP" class="adm-inp"><option value="">— Select a project —</option>${projectOptions()}</select>
       </div>
       <div class="cs-file-drop" id="fTabDrop" role="button" tabindex="0" aria-label="File upload zone">
         <div class="cs-file-drop-ic" aria-hidden="true">📤</div>
@@ -2470,9 +2548,9 @@ function renderMessages() {
         <div class="cs-msg-bubbles" id="msgBub" role="list">${bubbles || '<p class="phase-note" style="padding:1.5rem;margin:0">No messages in this thread yet.</p>'}</div>
         <div class="cs-msg-composer">
           <div class="form-group" style="margin:0">
-            <label>Message</label>
-            <textarea id="msgB" rows="2" maxlength="4000" style="width:100%" placeholder="Type a message… (Ctrl+Enter to send)"></textarea>
-            <div class="adm-hint-below"><span id="msgC">0</span> / 4000</div>
+            <label for="msgB">Message</label>
+            <textarea id="msgB" class="adm-inp" rows="2" maxlength="4000" style="width:100%" placeholder="Type a message… (Ctrl+Enter to send)"></textarea>
+            <div class="adm-hint-below"><span id="msgC">0</span> <span class="cs-char-limit">/ 4000 characters</span></div>
           </div>
           <button type="button" class="btn btn-primary" id="msgS">Send</button>
         </div>`
@@ -2578,10 +2656,10 @@ function renderTime() {
     <div class="adm-card">
       <h2>Log time</h2>
       <form id="formTime" class="adm-form-stack" style="max-width:22rem">
-        <div class="form-group"><label>Project *</label><select name="project_id" required><option value="">—</option>${projectOptions()}</select></div>
-        <div class="form-group"><label>Date</label><input name="worked_date" type="date" value="${esc(today)}" required /></div>
-        <div class="form-group"><label>Hours *</label><input name="hours" type="number" min="0.25" step="0.25" required /></div>
-        <div class="form-group"><label>Description</label><input name="description" placeholder="What you worked on" /></div>
+        <div class="form-group"><label for="teProj">Project *</label><select id="teProj" class="adm-inp" name="project_id" required><option value="">—</option>${projectOptions()}</select></div>
+        <div class="form-group"><label for="teDate">Date</label><input class="adm-inp" id="teDate" name="worked_date" type="date" value="${esc(today)}" required /></div>
+        <div class="form-group"><label for="teHrs">Hours *</label><input class="adm-inp" id="teHrs" name="hours" type="number" min="0.25" step="0.25" required /></div>
+        <div class="form-group"><label for="teDesc">Description</label><input class="adm-inp" id="teDesc" name="description" placeholder="What you worked on" /></div>
         <button type="submit" class="btn btn-primary" style="width:100%">Log</button>
       </form>
     </div>
@@ -2589,7 +2667,7 @@ function renderTime() {
       <h2>Default hourly rate (USD)</h2>
       <p class="phase-note" style="margin:0 0 0.5rem 0">Used to estimate billable totals on this page (stored in your browser only).</p>
       <div class="form-group" style="max-width:10rem">
-        <label>Rate / hr</label>
+        <label for="timeRate">Rate / hr</label>
         <input type="number" id="timeRate" min="1" step="1" class="adm-inp" value="${esc(String(rate))}" />
       </div>
     </div>
@@ -2796,28 +2874,28 @@ function renderContracts() {
         <form id="formContract" class="adm-form-stack">
           ${ed ? `<input type="hidden" name="contract_id" value="${esc(ed.id)}" />` : ''}
           <div class="form-group">
-            <label>Client *</label>
+            ${isNew ? '<label for="ctClient">Client *</label>' : '<span class="phase-note" id="ctClientLabelWrap" style="display:block;font-weight:600;margin:0 0 0.5rem 0">Client</span>'}
             ${
               isNew
-                ? `<select name="client_id" required><option value="">—</option>${clientOptions()}</select>`
-                : `<p class="phase-note" style="margin:0 0 0.5rem 0"><strong>${esc(
+                ? `<select id="ctClient" class="adm-inp" name="client_id" required><option value="">—</option>${clientOptions()}</select>`
+                : `<p class="phase-note" style="margin:0 0 0.5rem 0"><strong id="ctClientLabel">${esc(
                     clientDisplayName(ed.client_id)
                   )}</strong> — client is fixed for this record.</p>
                 <input type="hidden" name="client_id" value="${esc(ed.client_id)}" />`
             }
           </div>
           <div class="form-group">
-            <label>Project</label>
-            <select name="project_id"><option value="">—</option>${projectOptions(ed && ed.project_id)}</select>
+            <label for="ctProj">Project</label>
+            <select id="ctProj" class="adm-inp" name="project_id"><option value="">—</option>${projectOptions(ed && ed.project_id)}</select>
           </div>
-          <div class="form-group"><label>Title *</label><input name="title" required value="${ed ? esc(ed.title) : ''}" /></div>
-          <div class="form-group"><label>Status</label>
-            <select name="status">${stOpts}</select>
+          <div class="form-group"><label for="ctTitle">Title *</label><input class="adm-inp" id="ctTitle" name="title" required value="${ed ? esc(ed.title) : ''}" /></div>
+          <div class="form-group"><label for="ctStatus">Status</label>
+            <select id="ctStatus" class="adm-inp" name="status">${stOpts}</select>
           </div>
-          <div class="form-group"><label>Contract / proposal</label>
-            <div id="quillContract" class="cs-quill"></div>
+          <div class="form-group"><label for="quillContract">Contract / proposal</label>
+            <div id="quillContract" class="cs-quill" tabindex="0" role="textbox" aria-multiline="true"></div>
           </div>
-          <div class="form-group"><label>File URL (signed PDF, etc.)</label><input name="file_url" type="url" placeholder="https://…" value="${ed && ed.file_url ? esc(ed.file_url) : ''}" /></div>
+          <div class="form-group"><label for="ctFileUrl">File URL (signed PDF, etc.)</label><input class="adm-inp" id="ctFileUrl" name="file_url" type="url" placeholder="https://…" value="${ed && ed.file_url ? esc(ed.file_url) : ''}" /></div>
           <div class="cs-contract-actions">
             <button type="submit" class="btn btn-primary" id="ctSave">Save</button>
             <button type="button" class="btn btn-outline" id="ctPreview">Preview</button>
@@ -3168,10 +3246,12 @@ if (typeof globalThis !== 'undefined') {
       if (out) out.style.display = 'none';
       if (app) app.style.display = 'flex';
       window.scrollTo(0, 0);
-      showTab('dashboard');
+      state.currentTab = readTabFromUrl();
+      showTab(state.currentTab);
       const pDash = getEl('panel-dashboard');
-      if (pDash) pDash.innerHTML = dashboardPanelSkeleton();
-      else console.error('panel-dashboard missing');
+      if (pDash) {
+        if (state.currentTab === 'dashboard') pDash.innerHTML = dashboardPanelSkeleton();
+      } else console.error('panel-dashboard missing');
       checkDbHealth();
       loadAll();
       fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + tok } })

@@ -27,26 +27,6 @@
   </div>
 
   <div id="admApp" class="adm-app-shell" style="display: none; min-height: 100vh">
-  <script>
-    (function () {
-      var K = 'customsite_access_token';
-      var t = null;
-      try {
-        t = localStorage.getItem(K) || sessionStorage.getItem(K);
-        if (t && !localStorage.getItem(K)) {
-          try {
-            localStorage.setItem(K, t);
-          } catch (e) {}
-        }
-      } catch (e) {}
-      if (t) {
-        var o = document.getElementById('admSignedOut');
-        var a = document.getElementById('admApp');
-        if (o) o.style.display = 'none';
-        if (a) a.style.display = 'flex';
-      }
-    })();
-  </script>
     <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
     <aside id="admSidebar" class="adm-sidebar">
       <div class="adm-sb-header">
@@ -56,7 +36,7 @@
         </a>
         <div id="csUserMenu" class="adm-sb-userwrap" style="position: relative">
           <div class="adm-sb-avatar" id="csUserAvatar" role="button" tabindex="0" aria-label="Account menu" aria-haspopup="true" aria-expanded="false">
-            <span id="admAvatarInitials">·</span>
+            <span id="admAvatarInitials">?</span>
           </div>
           <div class="adm-avatar-menu" id="csUserMenuDd" role="menu" hidden>
             <a href="client-portal.html" role="menuitem">My account</a>
@@ -125,7 +105,7 @@
     <div class="adm-main" id="admMain">
       <header class="adm-mobile-bar" id="admMobileBar">
         <button class="adm-hamburger" type="button" id="admHamburger" aria-label="Open menu">☰</button>
-        <h1 class="adm-mobile-title" id="admMobileTitle">Dashboard</h1>
+        <p class="adm-mobile-title" id="admMobileTitle" role="status" aria-live="polite">Dashboard</p>
       </header>
 
       <div id="admDbBanner" hidden></div>
@@ -153,7 +133,9 @@
       <div data-panel="contracts" class="adm-panel" id="panel-contracts" hidden></div>
       <div data-panel="files" class="adm-panel" id="panel-files" hidden></div>
       <div data-panel="activity" class="adm-panel" id="panel-activity" hidden></div>
-      <div data-panel="settings" class="adm-panel" id="panel-settings" hidden></div>
+      <div data-panel="settings" class="adm-panel" id="panel-settings" hidden>
+        <p class="phase-note" style="margin:0;padding:1rem">Loading settings…</p>
+      </div>
     </div>
 
     <div id="admDrawerRoot"></div>
@@ -162,19 +144,23 @@
     <div id="toast-container" aria-live="polite"></div>
 
     <nav class="adm-bottom-bar" id="admBottomBar" aria-label="Mobile navigation">
-      <button type="button" class="adm-bbar-item active" data-tab="dashboard"><span>🏠</span><span>Home</span></button>
-      <button type="button" class="adm-bbar-item" data-tab="pipeline"><span>📋</span><span>Pipeline</span></button>
-      <button type="button" class="adm-bbar-item" data-tab="clients"><span>👥</span><span>Clients</span></button>
-      <button type="button" class="adm-bbar-item" data-tab="invoices"><span>💰</span><span>Invoices</span></button>
-      <button type="button" class="adm-bbar-item" data-tab="settings"><span>⚙️</span><span>Settings</span></button>
+      <div class="adm-bbar-scroll" role="tablist" aria-label="Main sections">
+        <button type="button" class="adm-bbar-item active" data-tab="dashboard" role="tab" aria-selected="true">Home</button>
+        <button type="button" class="adm-bbar-item" data-tab="pipeline" role="tab" aria-selected="false">Pipeline</button>
+        <button type="button" class="adm-bbar-item" data-tab="clients" role="tab" aria-selected="false">Clients</button>
+        <button type="button" class="adm-bbar-item" data-tab="projects" role="tab" aria-selected="false">Projects</button>
+        <button type="button" class="adm-bbar-item" data-tab="invoices" role="tab" aria-selected="false">Invoices</button>
+        <button type="button" class="adm-bbar-item" data-tab="time" role="tab" aria-selected="false">Time</button>
+        <button type="button" class="adm-bbar-item" data-tab="messages" role="tab" aria-selected="false">Msgs</button>
+        <button type="button" class="adm-bbar-item" data-tab="contracts" role="tab" aria-selected="false">Deals</button>
+        <button type="button" class="adm-bbar-item" data-tab="files" role="tab" aria-selected="false">Files</button>
+        <button type="button" class="adm-bbar-item" data-tab="activity" role="tab" aria-selected="false">Log</button>
+        <button type="button" class="adm-bbar-item" data-tab="settings" role="tab" aria-selected="false">Settings</button>
+      </div>
     </nav>
   </div>
 
-  <!-- Quick action hooks (used by app.js) -->
-  <button type="button" id="csQaClient" hidden aria-hidden="true" tabindex="-1">QA Client</button>
-  <button type="button" id="csQaLead" hidden aria-hidden="true" tabindex="-1">QA Lead</button>
-  <button type="button" id="csQaInv" hidden aria-hidden="true" tabindex="-1">QA Inv</button>
-
+  <script src="/js/admin/preflight.js"></script>
   <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
   <script type="module" src="/js/auth-bootstrap.js"></script>
   <script type="module" src="/js/admin/app.js"></script>

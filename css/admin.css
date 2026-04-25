@@ -242,6 +242,9 @@
 .adm-drop { border: 2px dashed rgba(0,0,0,0.15); border-radius: 0.5rem; padding: 1.25rem; text-align: center; color: var(--gray); font-size: 0.9rem; transition: background 0.15s, border-color 0.15s; }
 .adm-drop.drag { background: rgba(99, 102, 241, 0.08); border-color: var(--cs-accent); }
 .adm-hint-below { font-size: 0.8rem; color: var(--gray); margin-top: 0.35rem; }
+.cs-table-empty { color: var(--cs-text-muted, #64748b); font-style: italic; }
+.cs-char-limit { color: var(--cs-text-muted, #64748b); font-size: 0.85em; }
+.cs-upd-foot { width: 100%; align-items: center; }
 .adm-err { font-size: 0.8rem; color: #b91c1c; margin-top: 0.25rem; }
 input.adm-invalid { border-color: #b91c1c !important; }
 @media (max-width: 768px) {
@@ -366,15 +369,19 @@ input.adm-invalid { border-color: #b91c1c !important; }
   gap: 0.65rem;
   width: 100%;
   padding: 0.55rem 1rem;
+  -webkit-appearance: none;
+  appearance: none;
   background: none;
   border: none;
   cursor: pointer;
+  font: inherit;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--cs-sb-text);
   border-radius: 0;
   text-align: left;
   transition: background var(--t), color var(--t);
+  margin: 0;
 }
 .adm-sb-item:hover {
   background: var(--cs-sb-hover);
@@ -490,22 +497,37 @@ input.adm-invalid { border-color: #b91c1c !important; }
   z-index: 200;
   padding-bottom: env(safe-area-inset-bottom);
 }
-.adm-bbar-item {
-  flex: 1;
+.adm-bbar-scroll {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 0;
+  width: 100%;
+  scrollbar-width: thin;
+}
+.adm-bbar-item {
+  flex: 0 0 auto;
+  min-width: 4.25rem;
+  max-width: 5.5rem;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.15rem;
-  padding: 0.55rem 0.25rem;
+  padding: 0.5rem 0.35rem;
   min-height: 48px;
   background: none;
   border: none;
   color: var(--cs-sb-text);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
+  line-height: 1.2;
   cursor: pointer;
   font: inherit;
   -webkit-tap-highlight-color: transparent;
+  text-align: center;
 }
 .adm-bbar-item.active {
   color: var(--cs-accent);
