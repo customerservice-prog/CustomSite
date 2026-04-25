@@ -4,14 +4,25 @@ const express = require('express');
 const { getService } = require('../lib/supabase');
 const { sendLeadNotification, sendLeadConfirmation } = require('../lib/email');
 
-async function logPublicLead(supabase, leadId, email) {
+function normalizeLeadUrl(raw) {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  const urls = s.match(/https?:\/\/[^\s'"<>]+/gi);
+  if (urls && urls.length) {
+    return urls[0].replace(/[.,;]+$/, '');
+  }
+  return s.length <= 2000 ? s : s.slice(0, 2000);
+}
+
+async function logPublicLead(supabase, leadId, email, name) {
   try {
     await supabase.from('agency_activity').insert({
       actor_id: null,
       action: 'lead_submitted',
       entity_type: 'lead',
       entity_id: leadId,
-      metadata: { email, source: 'public_contact', name: row.name },
+      metadata: { email, source: 'public_contact', name: name || null },
     });
   } catch (e) {
     console.warn('agency_activity (lead)', e.message);
@@ -59,7 +70,7 @@ router.post('/', contactRateLimit, async (req, res) => {
       budget: (budget && String(budget).trim()) || null,
       timeline: (timeline && String(timeline).trim()) || null,
       message: message.trim(),
-      current_url: (current_url && String(current_url).trim()) || null,
+      current_url: normalizeLeadUrl(current_url),
       status: 'New',
     };
 
@@ -72,7 +83,7 @@ router.post('/', contactRateLimit, async (req, res) => {
     }
 
     try {
-      await logPublicLead(supabase, data.id, row.email);
+      await logPublicLead(supabase, data.id, row.email, row.name);
     } catch (e) {
       /* non-fatal */
     }

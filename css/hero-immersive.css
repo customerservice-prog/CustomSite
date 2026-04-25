@@ -54,7 +54,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 60px 24px 80px;
+  padding: 60px 24px max(5.5rem, 9vh);
   text-align: left;
   background: #050812;
 }

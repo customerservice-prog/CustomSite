@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test test/api.test.js",
+    "test": "node --test test/**/*.test.js",
     "deploy:railway": "npx @railway/cli@latest up"
   },
   "dependencies": {

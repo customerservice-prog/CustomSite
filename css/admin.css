@@ -412,7 +412,10 @@ input.adm-invalid { border-color: #b91c1c !important; }
 /* â”€â”€â”€ App shell: sidebar + main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .adm-app-shell {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
   min-height: 100vh;
   background: var(--cs-bg);
 }

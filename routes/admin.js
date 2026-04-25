@@ -187,6 +187,47 @@ router.get('/leads', async (_req, res) => {
   }
 });
 
+router.get('/leads/export', async (_req, res) => {
+  try {
+    const supabase = getService();
+    const { data, error } = await supabase
+      .from('leads')
+      .select(
+        'id, created_at, name, email, company, status, phone, service_type, budget, timeline, message, current_url'
+      )
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    const rows = data || [];
+    const cols = [
+      'id',
+      'created_at',
+      'name',
+      'email',
+      'company',
+      'status',
+      'phone',
+      'service_type',
+      'budget',
+      'timeline',
+      'message',
+      'current_url',
+    ];
+    const esc = (v) => {
+      const s = v == null ? '' : String(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    const lines = [cols.join(',')].concat(
+      rows.map((r) => cols.map((c) => esc(r[c])).join(','))
+    );
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
+    return res.status(200).send(`\uFEFF${lines.join('\n')}\n`);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.patch('/leads/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -472,6 +513,48 @@ router.get('/by-project/:projectId/files', async (req, res) => {
       .order('uploaded_at', { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
     return res.json({ files: data || [] });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/** Alias for older clients: same as GET /project-updates?project_id= */
+router.get('/by-project/:projectId/updates', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const { data, error } = await supabase
+      .from('project_updates')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) {
+      if (String(error.message || '').includes('does not exist')) {
+        return res.json({ updates: [] });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    return res.json({ updates: data || [] });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/** Per-project invoice list (admin workspace billing tab) */
+router.get('/by-project/:projectId/invoices', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ invoices: data || [] });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });

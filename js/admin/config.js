@@ -11,6 +11,23 @@ export function getToken() {
   }
 }
 
+export function getRefreshToken() {
+  try {
+    return localStorage.getItem(REFRESH_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setSessionTokens(access, refresh) {
+  try {
+    if (access) localStorage.setItem(TOKEN_KEY, access);
+    if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function clearAuth() {
   try {
     localStorage.removeItem(TOKEN_KEY);

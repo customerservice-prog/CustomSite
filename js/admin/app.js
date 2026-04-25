@@ -176,7 +176,14 @@ function invStatusBadge(st) {
 
 const TAB_CHROME = {
   dashboard: { section: 'Dashboard', page: 'Dashboard', docTitle: 'Dashboard', greet: true, act: '' },
-  pipeline: { section: 'Pipeline', page: 'Pipeline', docTitle: 'Pipeline', greet: false, act: '<button type="button" class="btn-primary" id="hdrAddLead">+ Add lead</button>' },
+  pipeline: {
+    section: 'Pipeline',
+    page: 'Pipeline',
+    docTitle: 'Pipeline',
+    greet: false,
+    act:
+      '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center"><button type="button" class="btn-secondary" id="hdrExportLeads">Export CSV</button><button type="button" class="btn-primary" id="hdrAddLead">+ Add lead</button></div>',
+  },
   clients: { section: 'Clients', page: 'Clients', docTitle: 'Clients', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewClient">+ New client</button>' },
   projects: { section: 'Projects', page: 'Projects', docTitle: 'Projects', greet: false, act: '' },
   invoices: { section: 'Invoices', page: 'Invoices', docTitle: 'Invoices', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewInv">+ New invoice</button>' },
@@ -192,13 +199,62 @@ function setUserAvatar() {
   const initials = getEl('admAvatarInitials');
   const el = initials || getEl('csUserAvatar');
   if (!el) return;
-  const n = parseDisplayName();
-  el.textContent = n.slice(0, 2).toUpperCase();
+  const t = getToken();
+  if (!t) {
+    el.textContent = '—';
+    return;
+  }
+  const fromJwt = () => {
+    try {
+      const part = t.split('.')[1];
+      const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+      const p = JSON.parse(atob(b64));
+      const name = p.name || p.user_metadata?.full_name || (p.email && p.email.split('@')[0]) || '—';
+      return String(name);
+    } catch {
+      return '—';
+    }
+  };
+  const label = fromJwt();
+  if (label === '—') {
+    el.textContent = '—';
+    return;
+  }
+  const parts = label.trim().split(/\s+/);
+  const disp =
+    parts.length > 1
+      ? (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+      : label.slice(0, 2).toUpperCase();
+  el.textContent = disp.length ? disp : '?';
 }
 
 function wireHeaderActions(tab) {
   if (tab === 'pipeline') {
     getEl('hdrAddLead')?.addEventListener('click', () => openAddLeadDrawer());
+    getEl('hdrExportLeads')?.addEventListener('click', async () => {
+      const t = getToken();
+      if (!t) return;
+      try {
+        const r = await fetch('/api/admin/leads/export', {
+          headers: { Authorization: `Bearer ${t}` },
+          credentials: 'same-origin',
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error((err && err.error) || r.statusText || 'Export failed');
+        }
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('Leads export downloaded', 'success');
+      } catch (e) {
+        toast(e.message || 'Export failed', 'error');
+      }
+    });
   }
   if (tab === 'clients') {
     getEl('hdrNewClient')?.addEventListener('click', () => openNewClientDrawer());
@@ -3075,6 +3131,10 @@ document.getElementById('admLogout')?.addEventListener('click', (e) => {
   location.href = '/client-portal.html?agency=1';
 });
 
+if (typeof globalThis !== 'undefined') {
+  globalThis.__csAdmin = { showTab, openNewClientDrawer, openAddLeadDrawer };
+}
+
 /** Wait for auth-bootstrap (Supabase URL/code → localStorage) before reading getToken() — otherwise admin shows "Not signed in" during OAuth return. */
 (async function initAdminForSession() {
   try {
@@ -3090,7 +3150,7 @@ document.getElementById('admLogout')?.addEventListener('click', (e) => {
       const app = getEl('admApp');
       const out = getEl('admSignedOut');
       if (out) out.style.display = 'none';
-      if (app) app.style.display = 'block';
+      if (app) app.style.display = 'flex';
       window.scrollTo(0, 0);
       showTab('dashboard');
       const pDash = getEl('panel-dashboard');
@@ -3098,6 +3158,28 @@ document.getElementById('admLogout')?.addEventListener('click', (e) => {
       else console.error('panel-dashboard missing');
       checkDbHealth();
       loadAll();
+      void api('/api/auth/me')
+        .then((d) => {
+          const u = d && d.user;
+          if (!u) return;
+          const el = getEl('admAvatarInitials');
+          if (!el) return;
+          if (u.full_name && u.full_name.trim()) {
+            const parts = u.full_name.trim().split(/\s+/);
+            el.textContent =
+              parts.length > 1
+                ? (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+                : u.full_name.slice(0, 2).toUpperCase();
+            return;
+          }
+          if (u.email) {
+            el.textContent = u.email
+              .split('@')[0]
+              .slice(0, 2)
+              .toUpperCase();
+          }
+        })
+        .catch(() => {});
     } catch (e) {
       console.error('Admin init failed', e);
       const app = getEl('admApp');

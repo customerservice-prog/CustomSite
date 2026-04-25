@@ -170,6 +170,57 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refresh_token: refreshToken } = req.body || {};
+    if (!refreshToken || !String(refreshToken).trim()) {
+      return res.status(400).json({ error: 'refresh_token required' });
+    }
+    if (!isSupabaseConfigured() || !isSupabaseAnonReady()) {
+      return res.status(503).json({ error: 'Token refresh is not available on this server' });
+    }
+    const supabase = getAnon();
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token: String(refreshToken) });
+    if (error || !data.session) {
+      return res.status(401).json({ error: error?.message || 'Session expired' });
+    }
+    const uid = data.user.id;
+    let profile;
+    try {
+      const service = getService();
+      const pr = await service
+        .from('users')
+        .select('id, email, full_name, company, role, created_at')
+        .eq('id', uid)
+        .maybeSingle();
+      if (pr.error) {
+        console.error('users lookup (refresh)', pr.error);
+        return res.status(502).json({ error: 'Could not load profile' });
+      }
+      profile = pr.data;
+    } catch (err) {
+      console.error(err);
+      return res.status(502).json({ error: 'Could not load profile' });
+    }
+    return res.json({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        full_name: profile?.full_name ?? null,
+        company: profile?.company ?? null,
+        role: profile?.role ?? 'client',
+        created_at: profile?.created_at ?? null,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e && e.message ? e.message : 'Refresh failed' });
+  }
+});
+
 router.post('/logout', (_req, res) => {
   return res.json({ success: true });
 });

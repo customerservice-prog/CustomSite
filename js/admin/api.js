@@ -1,26 +1,56 @@
 'use strict';
 
-import { clearAuth, getToken } from './config.js';
+import { clearAuth, getToken, getRefreshToken, setSessionTokens } from './config.js';
 import { toast } from './toast.js';
 
-export async function api(path, options = {}) {
-  const token = getToken();
-  const headers = {
-    ...(options.body && !(options.body instanceof FormData)
-      ? { 'Content-Type': 'application/json' }
-      : {}),
-    ...options.headers,
-  };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  let res;
+let refreshInFlight = null;
+
+async function refreshAccessToken() {
+  const rt = getRefreshToken();
+  if (!rt) return null;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const r = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt }),
+      credentials: 'same-origin',
+    });
+    if (!r.ok) return null;
+    const d = await r.json().catch(() => ({}));
+    if (!d || !d.access_token) return null;
+    setSessionTokens(d.access_token, d.refresh_token || null);
+    return d.access_token;
+  })();
   try {
-    res = await fetch(path, { ...options, headers });
-  } catch (e) {
-    toast('Network error — is the server running?', 'error');
-    throw e;
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
   }
+}
+
+export async function api(path, options = {}) {
+  const { _authRetry, ...fetchOpts } = options;
+  const run = async () => {
+    const token = getToken();
+    const headers = {
+      ...(fetchOpts.body && !(fetchOpts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+      ...fetchOpts.headers,
+    };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    let res;
+    try {
+      res = await fetch(path, { ...fetchOpts, headers });
+    } catch (e) {
+      toast('Network error — is the server running?', 'error');
+      throw e;
+    }
+    return res;
+  };
+
+  let res = await run();
   const text = await res.text();
   let data;
   try {
@@ -34,7 +64,16 @@ export async function api(path, options = {}) {
     err.body = data;
     throw err;
   }
-  if (res.status === 401 || (res.status === 500 && data && (data.code === 'NO_TOKEN' || data.error === 'Unauthorized'))) {
+  const authLikeFailure =
+    res.status === 401 ||
+    (res.status === 500 && data && (data.code === 'NO_TOKEN' || data.error === 'Unauthorized'));
+  if (authLikeFailure) {
+    if (!_authRetry) {
+      const newTok = await refreshAccessToken();
+      if (newTok) {
+        return api(path, { ...options, _authRetry: true });
+      }
+    }
     clearAuth();
     window.location.replace('/client-portal.html?agency=1');
     throw new Error('Session expired — please sign in again.');

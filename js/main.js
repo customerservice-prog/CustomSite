@@ -591,14 +591,36 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 })();
 
 // ============================================
-// Calendly — data-book-call="1" (env CALENDLY_20_MIN wins over JS constant)
+// Calendly — data-book-call="1" (env CALENDLY_20_MIN via /api/config/public)
+// Invalid or placeholder URLs never hydrate — links stay on the contact form anchor.
 // ============================================
 (function initCalendly20Links() {
-  const FALLBACK = 'contact.html';
+  const FALLBACK = 'contact.html#contactForm';
+  /** Mirrors server lib/calendlyUrl.js — only real https://calendly.com/user/event URLs. */
+  function isUsableCalendlyUrl(u) {
+    const s = String(u || '').trim();
+    if (!s || s.toLowerCase().includes('replace-me')) return false;
+    if (!/^https:\/\//i.test(s)) return false;
+    let url;
+    try {
+      url = new URL(s);
+    } catch {
+      return false;
+    }
+    if (url.protocol !== 'https:') return false;
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+    if (host !== 'calendly.com') return false;
+    const parts = url.pathname.split('/').filter(Boolean);
+    return parts.length >= 2;
+  }
   function stripInvalidCalendly() {
     document.querySelectorAll('a[data-book-call="1"]').forEach((a) => {
       const h = a.getAttribute('href') || '';
-      if (h.indexOf('REPLACE-ME') !== -1 || h.indexOf('calendly.com/REPLACE-ME') !== -1) {
+      if (
+        h.indexOf('REPLACE-ME') !== -1 ||
+        h.indexOf('calendly.com/REPLACE-ME') !== -1 ||
+        (/calendly\.com/i.test(h) && !isUsableCalendlyUrl(h))
+      ) {
         a.setAttribute('href', FALLBACK);
         a.removeAttribute('target');
         a.removeAttribute('rel');
@@ -606,8 +628,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
   }
   function applyUrl(u) {
-    if (!u || String(u).indexOf('REPLACE-ME') !== -1) return;
-    if (!/^https?:\/\//i.test(String(u).trim())) return;
+    if (!isUsableCalendlyUrl(u)) return;
     document.querySelectorAll('a[data-book-call="1"]').forEach((a) => {
       a.setAttribute('href', u);
       a.setAttribute('target', '_blank');
@@ -617,18 +638,18 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   stripInvalidCalendly();
   const w =
     (typeof window !== 'undefined' && window.CALENDLY_20_MIN) || null;
-  if (w && String(w).indexOf('REPLACE-ME') === -1) {
+  if (w && isUsableCalendlyUrl(w)) {
     applyUrl(w);
     return;
   }
-  if (CALENDLY_20_MIN && String(CALENDLY_20_MIN).indexOf('REPLACE-ME') === -1) {
+  if (CALENDLY_20_MIN && isUsableCalendlyUrl(CALENDLY_20_MIN)) {
     applyUrl(CALENDLY_20_MIN);
     return;
   }
   fetch('/api/config/public', { credentials: 'same-origin' })
     .then((r) => (r.ok ? r.json() : null))
     .then((j) => {
-      if (j && j.calendly20Min) applyUrl(j.calendly20Min);
+      if (j && j.calendly20Min && isUsableCalendlyUrl(j.calendly20Min)) applyUrl(j.calendly20Min);
       else stripInvalidCalendly();
     })
     .catch(() => {

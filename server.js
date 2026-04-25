@@ -137,6 +137,13 @@ app.get('/robots.txt', (req, res) => {
   res.send(buildRobotsTxt(req.hostname));
 });
 
+/** One canonical home URL: avoid /index.html vs / duplicate content. */
+app.get('/index.html', (req, res) => {
+  const i = req.url.indexOf('?');
+  const q = i >= 0 ? req.url.slice(i) : '';
+  res.redirect(301, '/' + q);
+});
+
 /* Same local SEO HTML as a direct path on customsite.online (not only via dedicated hostnames). */
 const LOCAL_SEO_SLUGS = ['syracuse-web-agency', 'cny-web-agency', 'syracuse-web-designer'];
 LOCAL_SEO_SLUGS.forEach((slug) => {
