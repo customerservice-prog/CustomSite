@@ -115,11 +115,34 @@ async function redirectIfLoggedIn() {
 async function run() {
   const hadUrlAuth = hasUrlAuthSignal();
 
+  let hasExistingAppToken = false;
+  try {
+    hasExistingAppToken = Boolean(localStorage.getItem(ACCESS));
+  } catch {
+    hasExistingAppToken = false;
+  }
+  // Password login (POST /api/auth/login) only writes these keys; no hash/code in the URL.
+  // Skip Supabase + /api/config in that case so admin loads immediately and we never block
+  // the UI on a slow or stuck config fetch.
+  if (hasExistingAppToken && !hadUrlAuth) {
+    return;
+  }
+
+  const ac = new AbortController();
+  const fetchTimer = setTimeout(() => {
+    try {
+      ac.abort();
+    } catch {
+      /* */
+    }
+  }, 10000);
   let res;
   try {
-    res = await fetch('/api/config/public');
+    res = await fetch('/api/config/public', { signal: ac.signal });
   } catch {
     return;
+  } finally {
+    clearTimeout(fetchTimer);
   }
   const cfg = await res.json().catch(() => ({}));
   if (!cfg || !cfg.configured || !cfg.supabaseUrl || !cfg.supabaseAnonKey) return;
@@ -154,7 +177,7 @@ async function run() {
   // Skip the heavy session wait when the user already has an API session from
   // /api/auth/login (no Supabase browser session) and the URL is not a fresh
   // OAuth/PKCE return — avoids ~3s delay on every admin load.
-  let hasExistingAppToken = false;
+  hasExistingAppToken = false;
   try {
     hasExistingAppToken = Boolean(localStorage.getItem(ACCESS));
   } catch {

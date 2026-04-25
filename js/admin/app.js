@@ -3139,7 +3139,12 @@ if (typeof globalThis !== 'undefined') {
 (async function initAdminForSession() {
   try {
     const p = window.__csAuthReady;
-    if (p && typeof p.then === 'function') await p;
+    if (p && typeof p.then === 'function') {
+      await Promise.race([
+        p,
+        new Promise((resolve) => setTimeout(resolve, 12000)),
+      ]);
+    }
   } catch (e) {
     console.warn('auth-bootstrap', e);
   }
