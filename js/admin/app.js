@@ -3189,8 +3189,8 @@ if (typeof globalThis !== 'undefined') {
       console.error('Admin init failed', e);
       const app = getEl('admApp');
       const out = getEl('admSignedOut');
-      if (app) app.style.display = 'none';
-      if (out) {
+            if (app && !getToken()) app.style.display = 'none'; else if (app) app.style.display = 'flex';
+      if (out) out.style.display = getToken() ? 'none' : 'block';
         out.style.display = 'block';
         out.innerHTML = `<p style="margin:0 0 0.5rem 0">Something went wrong loading the admin. Try a <strong>hard refresh</strong> (Ctrl+Shift+R) or check the browser console (F12).</p><p class="phase-note" style="margin:0">Error: ${esc(
           e && e.message ? e.message : String(e)
