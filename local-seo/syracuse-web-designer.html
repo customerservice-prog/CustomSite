@@ -17,94 +17,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    :root { --navy: #0f172a; --gold: #f59e0b; --text: #e2e8f0; --muted: #94a3b8; --white: #fff; --max: 1120px; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(--text); background: var(--navy); line-height: 1.5; }
-    a { color: #7dd3fc; }
-    a:hover { text-decoration: underline; }
-    .container { max-width: var(--max); margin: 0 auto; padding: 0 1.25rem; }
-    .topnav { position: sticky; top: 0; z-index: 100; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(148, 163, 184, 0.15); }
-    .topnav__inner { display: flex; align-items: center; justify-content: space-between; min-height: 64px; flex-wrap: wrap; gap: 0.75rem; }
-    .text-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
-    .logo-mark { width: 36px; height: 36px; background: linear-gradient(135deg, #6366f1, #06b6d4); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 11px; flex-shrink: 0; }
-    .logo-text { font-size: 1.1rem; font-weight: 800; background: linear-gradient(135deg, #6366f1, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .btn { display: inline-flex; padding: 0.55rem 1.1rem; border-radius: 0.4rem; font-weight: 700; font-size: 0.9rem; }
-    .btn--gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #0f172a !important; text-decoration: none; }
-    .btn--gold:hover { filter: brightness(1.05); }
-    .topnav__right { display: flex; align-items: center; gap: 0.75rem 1rem; flex-wrap: wrap; }
-    .phone { color: #94a3b8; font-size: 0.9rem; font-weight: 600; }
-    .phone a { color: #e2e8f0; text-decoration: none; }
-    .phone a:hover { text-decoration: underline; }
-    .hero { padding: 3rem 0 2.5rem; }
-    .hero__grid { display: grid; grid-template-columns: 1fr; gap: 2.25rem; align-items: center; }
-    @media (min-width: 900px) { .hero__grid { grid-template-columns: 1fr 1fr; } }
-    .hero h1 { font-size: clamp(1.65rem, 4vw, 2.35rem); font-weight: 800; line-height: 1.12; color: #fff; margin: 0 0 0.75rem; }
-    .hero .lead { color: #cbd5e1; font-size: 1.05rem; max-width: 40rem; margin: 0 0 0.5rem; }
-    .hero .meta { color: #94a3b8; font-size: 0.92rem; margin: 0.75rem 0 1.25rem; }
-    .mock { max-width: 100%; width: 420px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); }
-    .mock__chrome { height: 32px; background: #2d3748; display: flex; align-items: center; padding: 0 8px; gap: 5px; }
-    .mock__dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
-    .mock__dots span:nth-child(1) { background: #ff5f57; }
-    .mock__dots span:nth-child(2) { background: #febc2e; }
-    .mock__dots span:nth-child(3) { background: #28c840; }
-    .mock__addr { flex: 1; height: 16px; margin: 0 8px; background: #4a5568; border-radius: 3px; }
-    .mock__canvas { background: #ffffff; font-size: 3px; }
-    .mock__navf { display: flex; align-items: center; gap: 3px; padding: 4px 5px; background: #1e293b; }
-    .mock__logo { width: 14px; height: 8px; background: linear-gradient(135deg,#f59e0b,#ea580c); border-radius: 1px; }
-    .mock__pills { display: flex; flex: 1; justify-content: center; gap: 2px; }
-    .mock__pill { height: 5px; width: 12px; background: #64748b; border-radius: 0.5px; }
-    .mock__cta { width: 18px; height: 6px; background: #f97316; border-radius: 0.5px; }
-    .mock__row { display: flex; min-height: 58px; background: #fff7ed; padding: 5px; gap: 4px; }
-    .mock__col1 { flex: 1.1; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
-    .mock__h1a { height: 5px; width: 90%; background: #0f172a; border-radius: 0.5px; }
-    .mock__h1b { height: 5px; width: 55%; background: #ea580c; border-radius: 0.5px; }
-    .mock__sub { height: 3px; width: 85%; background: #94a3b8; border-radius: 0.3px; margin-top: 1px; }
-    .mock__btns { display: flex; gap: 2px; margin-top: 2px; }
-    .mock__b1 { width: 20px; height: 5px; background: #ea580c; border-radius: 0.5px; }
-    .mock__b2 { width: 18px; height: 5px; border: 0.2px solid #94a3b8; border-radius: 0.5px; }
-    .mock__art { flex: 1; background: #e2e8f0; border-radius: 2px; }
-    .mock__cards { display: flex; gap: 3px; padding: 5px; background: #fff; border-top: 1px solid #e2e8f0; }
-    .mock__svc { flex: 1; min-height: 18px; background: #fff7ed; border-radius: 2px; border: 0.2px solid #fdba74; box-shadow: inset 0 2px 0 #f97316; }
-    .btn--ghost { text-decoration: none; border: 2px solid rgba(255,255,255,0.25); color: #fff !important; margin-left: 0.5rem; }
-    .btn--ghost:hover { border-color: #7dd3fc; }
-    .trust { background: #1e293b; font-size: 0.86rem; font-weight: 600; padding: 0.75rem 1rem; }
-    .trust__row { max-width: var(--max); margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.3rem 1rem; }
-    .section { padding: 3.25rem 0; }
-    .section--light { background: #f8fafc; color: #0f172a; }
-    .section h2 { font-size: 1.5rem; font-weight: 800; margin: 0 0 0.4rem; }
-    .sub { color: #64748b; margin: 0 0 1.5rem; max-width: 40rem; }
-    .whogrid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-    @media (min-width: 700px) { .whogrid { grid-template-columns: repeat(3, 1fr); } }
-    .wcard { background: #fff; border-radius: 12px; border: 1px solid rgba(0,0,0,0.07); padding: 1.15rem; }
-    .wcard h3 { font-size: 0.95rem; margin: 0.35rem 0 0.4rem; color: #0f172a; }
-    .wcard p { font-size: 0.88rem; color: #475569; margin: 0; }
-    .wic { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: #eef2ff; border-radius: 8px; color: #4f46e5; }
-    .steps { display: grid; grid-template-columns: 1fr; gap: 1rem; counter-reset: s; }
-    @media (min-width: 800px) { .steps { grid-template-columns: repeat(4, 1fr); } }
-    .step { position: relative; background: #0b1220; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 1.1rem; }
-    .step::before { counter-increment: s; content: counter(s); position: absolute; top: 0.75rem; right: 0.75rem; font-size: 0.7rem; font-weight: 800; color: #6366f1; }
-    .step h3 { color: #fff; font-size: 0.95rem; margin: 0 0 0.35rem; }
-    .step p { color: #94a3b8; font-size: 0.85rem; margin: 0; }
-    .price-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-    @media (min-width: 900px) { .price-grid { grid-template-columns: repeat(3, 1fr); } }
-    .pc { background: #fff; border-radius: 12px; padding: 1.35rem; border: 1px solid #e2e8f0; }
-    .pc h3 { margin: 0; font-size: 1rem; color: #0f172a; }
-    .pc .tag { font-size: 0.75rem; color: #64748b; margin: 0.2rem 0 0.5rem; }
-    .pc .p { font-size: 1.6rem; font-weight: 800; color: #4f46e5; }
-    .testi { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-    @media (min-width: 768px) { .testi { grid-template-columns: repeat(3, 1fr); } }
-    .tcard { background: #0f172a; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.15rem; font-size: 0.9rem; }
-    .tcard .st { color: #fbbf24; margin-bottom: 0.35rem; }
-    details.faq { background: #f1f5f9; border-radius: 8px; margin-bottom: 0.4rem; border: 1px solid rgba(0,0,0,0.06); }
-    details.faq summary { padding: 0.8rem 0.9rem; cursor: pointer; font-weight: 700; color: #0f172a; }
-    details.faq p { margin: 0; padding: 0 0.9rem 0.85rem; color: #475569; font-size: 0.9rem; }
-    .cta { background: linear-gradient(120deg, #4f46e5, #0e7490); padding: 2.5rem 1.25rem; text-align: center; }
-    .footer { background: #020617; padding: 2rem; font-size: 0.85rem; color: #94a3b8; text-align: center; }
-    .footer a { color: #cbd5e1; }
-    .f-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 0.8rem; margin: 0.6rem 0; }
-  </style>
-  <script type="application/ld+json">
+  <link rel="stylesheet" href="/css/landing-domains.css" />
+<script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@graph": [
@@ -130,29 +44,39 @@
     ]
   }
   </script>
-  <script src="../js/main.js" defer></script>
+  <script src="/js/main.js" defer></script>
+  <script src="/js/landing-domains.js" defer></script>
 </head>
-<body>
-  <header class="topnav">
+<body class="ld-page">
+  <div class="ld-nav-backdrop" id="ldNavBackdrop" hidden></div>
+  <header class="topnav" id="ldTopnav">
     <div class="container topnav__inner">
       <a class="logo text-logo" href="https://syracusewebdesigner.com/" aria-label="Home">
         <span class="logo-mark" id="nav-logo-mark">SWD</span>
         <span class="logo-text" id="nav-brand-name">Syracuse Web Designer</span>
       </a>
-      <div class="topnav__right">
+      <button type="button" class="ld-menu-btn" id="ldMenuBtn" aria-label="Open menu" aria-controls="ldTopnavRight" aria-expanded="false">
+        <span class="ld-menu-btn__bar" aria-hidden="true"></span>
+        <span class="ld-menu-btn__bar" aria-hidden="true"></span>
+        <span class="ld-menu-btn__bar" aria-hidden="true"></span>
+      </button>
+      <div class="topnav__right" id="ldTopnavRight">
         <span class="phone">{{NAV_CONTACT_LINE}}</span>
         <a class="btn btn--gold" href="https://customsite.online/contact.html" data-book-call="1">Book a free 20-min call</a>
       </div>
     </div>
   </header>
 
+  <div class="ld-hero-shell">
+    <div class="ld-hero-aurora" aria-hidden="true"></div>
+    <div class="ld-hero-dots" aria-hidden="true"></div>
   <section class="hero">
     <div class="container hero__grid">
       <div>
         <h1>A Syracuse Web Designer Who Actually Gets Local Business</h1>
         <p class="lead">You need a site that works &mdash; one that loads fast, looks professional, and brings in leads. I build custom websites for Syracuse small businesses starting at $799. No templates, no bloated agencies, no runaround.</p>
         <p class="meta">Based in Syracuse, NY · Fast replies · Speak directly with your designer</p>
-        <div>
+        <div class="hero__cta">
           <a class="btn btn--gold" href="https://customsite.online/contact.html" data-book-call="1">Book a free 20-min call</a>
           <a class="btn btn--ghost" href="https://customsite.online/portfolio.html">See work</a>
         </div>
@@ -188,6 +112,7 @@
       </div>
     </div>
   </section>
+  </div>
 
   <div class="trust" role="region" aria-label="What to expect">
     <div class="trust__row">

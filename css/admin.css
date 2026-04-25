@@ -458,7 +458,13 @@ input.adm-invalid { border-color: #b91c1c !important; }
   color: #fff;
   font-size: 1.2rem;
   cursor: pointer;
-  padding: 0;
+  padding: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.35rem;
 }
 
 /* â”€â”€â”€ Sidebar overlay (mobile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -486,14 +492,17 @@ input.adm-invalid { border-color: #b91c1c !important; }
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.15rem;
-  padding: 0.5rem 0.25rem;
+  padding: 0.55rem 0.25rem;
+  min-height: 48px;
   background: none;
   border: none;
   color: var(--cs-sb-text);
   font-size: 0.65rem;
   cursor: pointer;
   font: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 .adm-bbar-item.active {
   color: var(--cs-accent);
@@ -515,7 +524,7 @@ input.adm-invalid { border-color: #b91c1c !important; }
   }
   .adm-main {
     margin-left: 0;
-    padding: 0 1rem 5rem;
+    padding: max(0.5rem, env(safe-area-inset-top, 0)) 1rem 5rem;
   }
   .adm-mobile-bar {
     display: flex;
@@ -525,6 +534,13 @@ input.adm-invalid { border-color: #b91c1c !important; }
   }
   .adm-bottom-bar {
     display: flex;
+  }
+  body.adm-page {
+    overflow-x: hidden;
+  }
+  .adm-app-shell {
+    min-height: 100dvh;
+    min-height: 100svh;
   }
 }
 
