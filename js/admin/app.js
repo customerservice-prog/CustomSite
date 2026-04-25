@@ -34,6 +34,16 @@ function esc(s) {
 function getEl(id) {
   return document.getElementById(id);
 }
+/** Create mount node if layout HTML is out of date (avoids null dereference on modal/drawer). */
+function ensureEl(id) {
+  let n = getEl(id);
+  if (!n) {
+    n = document.createElement('div');
+    n.id = id;
+    document.body.appendChild(n);
+  }
+  return n;
+}
 
 const LEAD_STATUSES = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost', 'Closed Won', 'Closed Lost'];
 
@@ -235,7 +245,7 @@ function updatePageHeader(tab) {
 }
 
 function openDrawer({ title, body, footer, onClose }) {
-  const root = getEl('admDrawerRoot');
+  const root = ensureEl('admDrawerRoot');
   root.innerHTML = `
     <div class="cs-drawer-overlay open" id="admDBack"></div>
     <div class="cs-drawer open" id="admDPanel" role="dialog" aria-modal="true" aria-label="${esc(title || 'Panel')}">
@@ -377,14 +387,14 @@ function showTab(name) {
 }
 
 function openModal(html, onClose) {
-  const root = document.getElementById('admModalRoot');
+  const root = ensureEl('admModalRoot');
   root.innerHTML = `<div class="adm-modal-backdrop" role="dialog"><div class="adm-modal">${html}</div></div>`;
   const bd = root.querySelector('.adm-modal-backdrop');
   const close = () => {
     root.innerHTML = '';
     if (onClose) onClose();
   };
-  bd.addEventListener('click', (e) => {
+  bd?.addEventListener('click', (e) => {
     if (e.target === bd) close();
   });
   const x = root.querySelector('[data-close-modal]');
@@ -401,7 +411,7 @@ function confirmDialog(title, text, onConfirm) {
       <button type="button" class="btn btn-primary" id="admConfirmGo">Confirm</button>
     </div>`;
   const { close, root } = openModal(html);
-  root.querySelector('#admConfirmGo').addEventListener('click', () => {
+  root?.querySelector('#admConfirmGo')?.addEventListener('click', () => {
     onConfirm();
     close();
   });
@@ -457,7 +467,12 @@ async function loadAll() {
   } catch (e) {
     toast(e.message || 'Failed to load', 'error');
   }
-  renderAll();
+  try {
+    renderAll();
+  } catch (e) {
+    console.error('renderAll', e);
+    toast(e.message || 'Could not build admin screens. Hard-refresh the page (Ctrl+Shift+R).', 'error');
+  }
 }
 
 function projectOptions(projectId) {
@@ -925,7 +940,12 @@ function renderLeads() {
         <button type="button" class="btn-secondary btn-sm" data-lp="next" ${page >= totalPages ? 'disabled' : ''}>Next</button>
     </div>`;
 
-  getEl('panel-pipeline').innerHTML = `
+  const pipePanel = getEl('panel-pipeline') || getEl('panel-leads');
+  if (!pipePanel) {
+    console.error('renderLeads: #panel-pipeline (or #panel-leads) missing from DOM');
+    return;
+  }
+  pipePanel.innerHTML = `
     <div class="cs-lead-toolbar">
       <div class="adm-table-tools" style="margin:0;flex:1;min-width:12rem">
         <input type="search" class="adm-inp" data-leads-search placeholder="Search name, email, company, status…" value="${esc(st.q)}" style="max-width:20rem" />
@@ -938,7 +958,7 @@ function renderLeads() {
     <div id="leadsViewKan" class="card" style="margin-bottom:0;${st.view === 'table' ? 'display:none' : ''}">${kanban}</div>
     <div id="leadsViewTbl" class="card" style="margin-bottom:0;${st.view === 'kanban' ? 'display:none' : ''}">${table}</div>`;
 
-  const panel = getEl('panel-pipeline');
+  const panel = pipePanel;
   panel.querySelectorAll('[data-lv]').forEach((b) => {
     b.addEventListener('click', () => {
       st.view = b.getAttribute('data-lv') || 'kanban';
@@ -3056,17 +3076,32 @@ document.getElementById('admLogout')?.addEventListener('click', (e) => {
 });
 
 if (getToken()) {
-  initToast();
-  initUserMenu();
-  const app = getEl('admApp');
-  const out = getEl('admSignedOut');
-  if (out) out.style.display = 'none';
-  if (app) app.style.display = 'block';
-  window.scrollTo(0, 0);
-  showTab('dashboard');
-  getEl('panel-dashboard').innerHTML = dashboardPanelSkeleton();
-  checkDbHealth();
-  loadAll();
+  try {
+    initToast();
+    initUserMenu();
+    const app = getEl('admApp');
+    const out = getEl('admSignedOut');
+    if (out) out.style.display = 'none';
+    if (app) app.style.display = 'block';
+    window.scrollTo(0, 0);
+    showTab('dashboard');
+    const pDash = getEl('panel-dashboard');
+    if (pDash) pDash.innerHTML = dashboardPanelSkeleton();
+    else console.error('panel-dashboard missing');
+    checkDbHealth();
+    loadAll();
+  } catch (e) {
+    console.error('Admin init failed', e);
+    const app = getEl('admApp');
+    const out = getEl('admSignedOut');
+    if (app) app.style.display = 'none';
+    if (out) {
+      out.style.display = 'block';
+      out.innerHTML = `<p style="margin:0 0 0.5rem 0">Something went wrong loading the admin. Try a <strong>hard refresh</strong> (Ctrl+Shift+R) or check the browser console (F12).</p><p class="phase-note" style="margin:0">Error: ${esc(
+        e && e.message ? e.message : String(e)
+      )}</p><p style="margin:0.75rem 0 0 0"><a href="client-portal.html?agency=1" class="cs-link-a" style="font-weight:600">Client portal</a></p>`;
+    }
+  }
 } else {
   const app = getEl('admApp');
   const out = getEl('admSignedOut');
