@@ -241,21 +241,6 @@ app.use(async (req, res, next) => {
   return next();
 });
 
-// TEMP: one-time password reset — remove after use
-app.post('/api/temp-set-pw', async (req, res) => {
-    try {
-          const supa = require('@supabase/supabase-js');
-          const admin = supa.createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY);
-          const { data: { users }, error: listErr } = await admin.auth.admin.listUsers();
-          if (listErr) return res.status(500).json({ error: listErr.message });
-          const user = users.find(u => u.email === req.body.email);
-          if (!user) return res.status(404).json({ error: 'user not found' });
-          const { error } = await admin.auth.admin.updateUserById(user.id, { password: req.body.password });
-          if (error) return res.status(500).json({ error: error.message });
-          res.json({ ok: true, id: user.id });
-    } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.use(
   express.static(path.join(__dirname), {
     extensions: ['html'],
     etag: true,
