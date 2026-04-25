@@ -8,7 +8,7 @@ param(
   [switch] $Force
 )
 $ErrorActionPreference = "Stop"
-Set-Location (Split-Path (Split-Path $PSScriptRoot))
+Set-Location (Split-Path $PSScriptRoot)
 if (-not (Test-Path .git)) { throw "No .git in project root. Open the CustomSite folder as the workspace root." }
 $has = git remote get-url origin 2>$null
 if ($LASTEXITCODE -eq 0) {
