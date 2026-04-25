@@ -5,17 +5,29 @@
  * Clones #live-builder at loop end to reset CSS keyframes.
  */
 (function initLiveBuilderLoop() {
-  const CYCLE_MS = 8000;
-  const TO_PREVIEW_MS = 2200;
+  const CYCLE_MS = 9200;
+  const TO_PREVIEW_MS = 2600;
   const LABEL_CODE = '1 · Write HTML & CSS';
   const LABEL_PREVIEW = '2 · From code to live site';
 
   let toPreview;
   let toLoop;
+  let labelFirst = true;
 
   function setLabel(text) {
     const label = document.getElementById('heroBuildStepLabel');
-    if (label) label.textContent = text;
+    if (!label) return;
+    if (labelFirst) {
+      labelFirst = false;
+      label.textContent = text;
+      return;
+    }
+    label.style.transition = 'opacity 0.3s ease';
+    label.style.opacity = '0';
+    window.setTimeout(function () {
+      label.textContent = text;
+      label.style.opacity = '1';
+    }, 200);
   }
 
   function clearTimers() {
