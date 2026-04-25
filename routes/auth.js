@@ -190,6 +190,26 @@ router.post('/login', async (req, res) => {
           profile = ins.data;
         }
       }
+      if (
+        profile
+        && isBootstrapAdminEmail(profile.email)
+        && profile.role === 'client'
+        && isSupabaseConfigured()
+      ) {
+        try {
+          const up = await service.from('users').update({ role: 'admin' }).eq('id', profile.id);
+          if (!up.error) {
+            const again = await service
+              .from('users')
+              .select('id, email, full_name, company, role, created_at')
+              .eq('id', profile.id)
+              .maybeSingle();
+            if (again.data) profile = again.data;
+          }
+        } catch (e) {
+          console.warn('bootstrap admin role upgrade', e.message);
+        }
+      }
     } catch (err) {
       console.error(err);
       return res.status(502).json({ error: 'Could not load profile' });

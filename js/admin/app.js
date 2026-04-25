@@ -477,8 +477,14 @@ let loadPromise;
 async function checkDbHealth() {
   const el = document.getElementById('admDbBanner');
   if (!el) return;
+  const t = getToken();
+  if (!t) return;
   try {
-    const d = await api('/api/admin/db-health');
+    const r = await fetch('/api/admin/db-health', { headers: { Authorization: 'Bearer ' + t } });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 401 || r.status === 403) {
+      return;
+    }
     if (d && d.ok) {
       el.innerHTML = '';
       el.hidden = true;
@@ -492,7 +498,7 @@ async function checkDbHealth() {
     )}</span>${esc(
       hint
     )} Follow the <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">setup guide</a> in order (it links the SQL you need in Supabase).`;
-  } catch (e) {
+  } catch {
     el.innerHTML = '';
     el.hidden = true;
   }
@@ -3148,7 +3154,12 @@ if (typeof globalThis !== 'undefined') {
   } catch (e) {
     console.warn('auth-bootstrap', e);
   }
-  if (getToken()) {
+  let tok = getToken();
+  for (let i = 0; i < 20 && !tok; i += 1) {
+    await new Promise((r) => setTimeout(r, 40));
+    tok = getToken();
+  }
+  if (tok) {
     try {
       initToast();
       initUserMenu();
@@ -3163,9 +3174,11 @@ if (typeof globalThis !== 'undefined') {
       else console.error('panel-dashboard missing');
       checkDbHealth();
       loadAll();
-      void api('/api/auth/me')
+      fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + tok } })
+        .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
-          const u = d && d.user;
+          if (!d) return;
+          const u = d.user;
           if (!u) return;
           const el = getEl('admAvatarInitials');
           if (!el) return;
@@ -3189,10 +3202,10 @@ if (typeof globalThis !== 'undefined') {
       console.error('Admin init failed', e);
       const app = getEl('admApp');
       const out = getEl('admSignedOut');
-            if (app && !getToken()) app.style.display = 'none'; else if (app) app.style.display = 'flex';
-      if (out) out.style.display = getToken() ? 'none' : 'block';
+      if (app) app.style.display = 'none';
+      if (out) {
         out.style.display = 'block';
-        out.innerHTML = `<p style="margin:0 0 0.5rem 0">Something went wrong loading the admin. Try a <strong>hard refresh</strong> (Ctrl+Shift+R) or check the browser console (F12).</p><p class="phase-note" style="margin:0">Error: ${esc(
+        out.innerHTML = `<p style="margin:0 0 0.5rem 0">Something went wrong loading the admin. Try a <strong>hard refresh</strong> (Ctrl+Shift+R).</p><p class="phase-note" style="margin:0">Error: ${esc(
           e && e.message ? e.message : String(e)
         )}</p><p style="margin:0.75rem 0 0 0"><a href="/client-portal.html?agency=1" class="cs-link-a" style="font-weight:600">Client portal</a></p>`;
       }
