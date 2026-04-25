@@ -335,7 +335,10 @@
 .macbook-screen-inner {
   position: absolute;
   inset: 0;
-  background: #0f172a;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(99, 102, 241, 0.12), transparent 55%),
+    linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  min-height: 100%;
 }
 
 /* Live “site building” mini-preview: phase 1 = code, phase 2 = page builds */

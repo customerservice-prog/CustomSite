@@ -1200,6 +1200,18 @@ img {
   transition: opacity 0.45s ease, transform 0.45s ease;
 }
 
+/* Fail-safe: main homepage sections must never render as empty white bands if JS/CSS order fails */
+#services,
+#services .services-grid,
+#services .service-card,
+#industries,
+#industries .industry-pills,
+#industries .industry-pill,
+section.trust-section .section-header {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
 /* === UTILITY === */
 .text-center { text-align: center; }
 .text-gradient {
@@ -1279,8 +1291,11 @@ img {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-@media (min-width: 1000px) {
-  .process-timeline { grid-template-columns: repeat(3, 1fr); }
+/* One row of four on wide screens; 2×2 on tablet — no orphan fourth card */
+@media (min-width: 1100px) {
+  .process-timeline {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 .process-timeline__item {
   background: #fff;

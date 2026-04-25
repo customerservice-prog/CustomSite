@@ -99,7 +99,8 @@
     ]
   }
   </script>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="32x32" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/hero-immersive.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -372,6 +373,20 @@
     </div>
   </section>
 
+  <section class="section section--tight tech-strip-section" aria-label="Tools and platforms">
+    <div class="container" style="text-align: center; max-width: 720px; margin: 0 auto">
+      <p class="tech-strip__head">Built with the same stack serious businesses expect</p>
+      <ul class="tech-strip" role="list">
+        <li class="tech-strip__item"><img class="tech-strip__logoimg" width="20" height="20" src="https://cdn.simpleicons.org/wordpress/1e293b" alt="" loading="lazy" decoding="async" />WordPress</li>
+        <li class="tech-strip__item"><img class="tech-strip__logoimg" width="20" height="20" src="https://cdn.simpleicons.org/shopify/1e293b" alt="" loading="lazy" decoding="async" />Shopify</li>
+        <li class="tech-strip__item"><img class="tech-strip__logoimg" width="20" height="20" src="https://cdn.simpleicons.org/stripe/1e293b" alt="" loading="lazy" decoding="async" />Stripe</li>
+        <li class="tech-strip__item"><img class="tech-strip__logoimg" width="20" height="20" src="https://cdn.simpleicons.org/googleanalytics/1e293b" alt="" loading="lazy" decoding="async" />Analytics</li>
+        <li class="tech-strip__item"><img class="tech-strip__logoimg" width="20" height="20" src="https://cdn.simpleicons.org/react/1e293b" alt="" loading="lazy" decoding="async" />React</li>
+        <li class="tech-strip__item"><img class="tech-strip__logoimg" width="20" height="20" src="https://cdn.simpleicons.org/mailchimp/1e293b" alt="" loading="lazy" decoding="async" />Mailchimp</li>
+      </ul>
+    </div>
+  </section>
+
   <section class="section" id="about" style="background: var(--light)">
     <div class="container" style="max-width: 52rem; margin: 0 auto">
       <div class="section-header" style="text-align: center; margin-bottom: 2rem">
@@ -381,15 +396,15 @@
       </div>
       <ul class="team-grid" style="list-style: none; padding: 0; margin: 0 0 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem" role="list">
         <li class="testimonial-card" style="text-align: center; margin: 0">
-          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 3.25rem; height: 3.25rem; font-size: 1rem" aria-hidden="true">BP</span><span><strong>Bryan P.</strong><br><span class="testimonial-card__loc">Founder &amp; strategy lead</span></span></p>
+          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 5rem; height: 5rem; font-size: 1.05rem" aria-hidden="true">BP</span><span><strong>Bryan P.</strong><br><span class="testimonial-card__loc">Founder &amp; strategy lead</span></span></p>
           <p style="font-size: 0.9rem; color: var(--gray); line-height: 1.5; margin: 0">Scopes every project. Your point of contact from first call to launch.</p>
         </li>
         <li class="testimonial-card" style="text-align: center; margin: 0">
-          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 3.25rem; height: 3.25rem; font-size: 0.9rem" aria-hidden="true">DS</span><span><strong>Design team</strong><br><span class="testimonial-card__loc">UI/UX &amp; visual</span></span></p>
+          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 5rem; height: 5rem; font-size: 1rem" aria-hidden="true">DS</span><span><strong>Design team</strong><br><span class="testimonial-card__loc">UI/UX &amp; visual</span></span></p>
           <p style="font-size: 0.9rem; color: var(--gray); line-height: 1.5; margin: 0">Conversion-focused layouts for service, retail, and hospitality.</p>
         </li>
         <li class="testimonial-card" style="text-align: center; margin: 0">
-          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 3.25rem; height: 3.25rem; font-size: 0.9rem" aria-hidden="true">DT</span><span><strong>Dev team</strong><br><span class="testimonial-card__loc">Build &amp; launch</span></span></p>
+          <p class="testimonial-author" style="justify-content: center; flex-direction: column; margin-bottom: 0.75rem"><span class="author-avatar" style="width: 5rem; height: 5rem; font-size: 1rem" aria-hidden="true">DT</span><span><strong>Dev team</strong><br><span class="testimonial-card__loc">Build &amp; launch</span></span></p>
           <p style="font-size: 0.9rem; color: var(--gray); line-height: 1.5; margin: 0">Custom HTML, CSS, JS, e-commerce, booking flows, and client portals &mdash; not generic templates.</p>
         </li>
       </ul>
@@ -503,7 +518,7 @@
           <div class="stars" aria-hidden="true">★★★★★</div>
           <p>“We went from a buried Google listing to the top half of page one for our main service in about six weeks. The new site is fast on phones and the form is simple — most leads land there now.”</p>
           <p class="testimonial-author"><span class="author-avatar" aria-hidden="true">MK</span><span><strong>Marcus K.</strong> — Owner, Kim&rsquo;s HVAC<br><span class="testimonial-card__loc">Greater Chicago, IL</span></span></p>
-          <p class="testimonial-card__cs"><a href="case-studies.html#local-hvac">Read case study &rarr;</a></p>
+          <p class="testimonial-card__cs"><a href="case-studies.html#hvac">Read case study &rarr;</a></p>
         </div>
         <div class="testimonial-card">
           <div class="stars" aria-hidden="true">★★★★★</div>
@@ -515,7 +530,7 @@
           <div class="stars" aria-hidden="true">★★★★★</div>
           <p>“The care plan is worth it — I am not chasing a generic host. Updates and security are handled, and the site stays quick. Our clients actually book from the new flow.”</p>
           <p class="testimonial-author"><span class="author-avatar" aria-hidden="true">AL</span><span><strong>Amanda L.</strong> — Lead clinician, Northfield Dental Co.<br><span class="testimonial-card__loc">Suburban professional practice</span></span></p>
-          <p class="testimonial-card__cs"><a href="case-studies.html#practice">Read case study &rarr;</a></p>
+          <p class="testimonial-card__cs"><a href="case-studies.html#dental">Read case study &rarr;</a></p>
         </div>
       </div>
     </div>

@@ -272,7 +272,16 @@ function renderLeads() {
                   <td>${esc(L.email)}</td>
                   <td>${esc(L.company || '—')}</td>
                   <td><select class="status-sel" data-lid="${esc(L.id)}">
-                    ${['New', 'Contacted', 'Proposal Sent', 'Closed Won', 'Closed Lost']
+                    ${[
+                      'New',
+                      'Contacted',
+                      'Qualified',
+                      'Proposal Sent',
+                      'Won',
+                      'Lost',
+                      'Closed Won',
+                      'Closed Lost',
+                    ]
                       .map(
                         (s) => `<option value="${esc(s)}" ${L.status === s ? 'selected' : ''}>${esc(s)}</option>`
                       )
@@ -1039,7 +1048,8 @@ function renderInvoices() {
         <div class="form-group"><label>Project (optional)</label><select name="project_id" id="invp"><option value="">—</option>${projectOptions()}</select></div>
         <div id="lineItems"><div class="form-group li-row" data-idx="0"><label>Line item</label><input name="l_desc" placeholder="Description" /><input name="l_amt" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:0.5rem" /></div></div>
         <button type="button" class="btn btn-outline btn-sm" id="addLine" style="margin-bottom:0.75rem">+ Add line</button>
-        <div class="form-group"><label>Total (USD) *</label><input name="amount" type="number" id="invt" step="0.01" min="0" required readonly /></div>
+        <p class="hint" style="margin:0 0 0.5rem">Total updates automatically from line item amounts below.</p>
+        <div class="form-group"><label>Total (USD) * <span class="phase-note" style="font-weight:400">(auto)</span></label><input name="amount" type="number" id="invt" step="0.01" min="0" required readonly /></div>
         <div class="form-group"><label>Description (summary, optional)</label><input name="description" placeholder="e.g. February milestone" /></div>
         <div class="form-group"><label>Due date</label><input name="due_date" type="date" /></div>
         <button type="submit" class="btn btn-primary" style="width:100%">Create invoice</button>
@@ -1065,6 +1075,7 @@ function renderInvoices() {
               <td>${i.due_date || '—'}</td>
               <td>${i.created_at ? new Date(i.created_at).toLocaleString() : '—'}</td>
               <td>
+                <button type="button" class="btn btn-sm btn-outline" data-vwinv="${esc(i.id)}">View</button>
                 <button type="button" class="btn btn-sm btn-outline" data-markpaid="${esc(i.id)}" ${
   i.status === 'paid' ? 'disabled' : ''
 }>Mark paid</button>
@@ -1142,6 +1153,34 @@ function renderInvoices() {
         return loadAll();
       })
       .catch((er) => toast(er.message, 'error'));
+  });
+  p.querySelectorAll('[data-vwinv]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-vwinv');
+      const inv = state.invoices.find((x) => x.id === id);
+      if (!inv) return;
+      const lines = Array.isArray(inv.line_items) ? inv.line_items : [];
+      const linesHtml = lines.length
+        ? lines
+            .map(
+              (li) =>
+                `<tr><td>${esc(li.description || '')}</td><td style="text-align:right">$${Number(li.amount).toFixed(
+                  2
+                )}</td></tr>`
+            )
+            .join('')
+        : '<tr><td colspan="2" class="phase-note">No line items on file (older invoices may only show a total)</td></tr>';
+      openModal(
+        `<h3 style="margin-top:0">Invoice</h3>
+        <p><strong>Total:</strong> $${Number(inv.amount).toFixed(2)} &nbsp; <strong>Status:</strong> ${esc(
+          inv.status
+        )} &nbsp; <strong>Due:</strong> ${esc(inv.due_date || '—')}</p>
+        ${inv.description ? `<p class="phase-note">${esc(inv.description)}</p>` : ''}
+        <div style="overflow-x:auto"><table style="width:100%;font-size:0.9rem;border-collapse:collapse"><thead><tr><th style="text-align:left;border-bottom:1px solid #e2e8f0;padding:0.35rem 0">Line</th><th style="text-align:right;border-bottom:1px solid #e2e8f0;padding:0.35rem 0">Amount</th></tr></thead><tbody>${linesHtml}</tbody></table></div>
+        <p style="margin-top:1rem"><button type="button" class="btn btn-primary" data-close-modal>Close</button></p>`,
+        null
+      );
+    });
   });
   p.querySelectorAll('[data-markpaid]').forEach((b) => {
     b.addEventListener('click', () => {
@@ -1419,7 +1458,7 @@ function renderContracts() {
         <div class="form-group"><label>Status</label>
           <select name="status"><option value="draft">Draft</option><option value="sent">Sent</option><option value="signed">Signed</option><option value="void">Void</option></select>
         </div>
-        <div class="form-group"><label>Contract / proposal text</label><textarea name="body" rows="6" placeholder="Scope, terms, or summary (stored in the database)"></textarea></div>
+        <div class="form-group"><label>Contract / proposal text</label><textarea name="body" rows="6" placeholder="Write the project scope, deliverables, payment terms, and any other agreements here..."></textarea></div>
         <div class="form-group"><label>File URL (signed PDF, etc.)</label><input name="file_url" type="url" placeholder="https://…" /></div>
         <button type="submit" class="btn btn-primary" style="width:100%">Save</button>
       </form>
@@ -1437,8 +1476,10 @@ function renderContracts() {
               <td>${esc(c.status)}</td>
               <td>${c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</td>
               <td>
-                ${c.body ? `<button type="button" class="btn btn-sm btn-outline" data-vwct="${esc(c.id)}">View text</button> ` : ''}
-                ${c.file_url ? `<a href="${esc(c.file_url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">File</a>` : '—'}
+                <button type="button" class="btn btn-sm btn-outline" data-vwct="${esc(c.id)}">View</button>
+                <button type="button" class="btn btn-sm btn-outline" data-edct="${esc(c.id)}">Edit</button>
+                <button type="button" class="btn btn-sm btn-outline" data-sndct="${esc(c.id)}">Send to client</button>
+                ${c.file_url ? `<a href="${esc(c.file_url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">File</a>` : ''}
                 <button type="button" class="btn btn-sm" data-delct="${esc(c.id)}" style="color:#b91c1c">Delete</button>
               </td>
             </tr>`
@@ -1487,13 +1528,69 @@ function renderContracts() {
     b.addEventListener('click', () => {
       const c = state.contracts.find((x) => x.id === b.getAttribute('data-vwct'));
       if (!c) return;
+      const body = (c.body && String(c.body).trim()) || '— (no text saved yet)';
       openModal(
         `<h3 style="margin-top:0">${esc(c.title)}</h3>
+        <p class="phase-note" style="margin:0 0 0.5rem">Status: ${esc(c.status || '—')}</p>
         <pre style="white-space:pre-wrap;font-size:0.9rem;max-height:60vh;overflow:auto;text-align:left;background:#f8fafc;padding:1rem;border-radius:0.5rem">${esc(
-          c.body || ''
+          body
         )}</pre>
         <p style="margin-top:0.75rem"><button type="button" class="btn btn-primary" data-close-modal>Close</button></p>`,
         null
+      );
+    });
+  });
+  document.querySelectorAll('[data-edct]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const c = state.contracts.find((x) => x.id === b.getAttribute('data-edct'));
+      if (!c) return;
+      const tid = `edct-title-${c.id}`;
+      const bid = `edct-body-${c.id}`;
+      const sid = `edct-st-${c.id}`;
+      const { close, root } = openModal(
+        `<h3 style="margin-top:0">Edit contract</h3>
+        <div class="form-group"><label>Title</label><input type="text" id="${tid}" class="adm-inp" value="${esc(
+          c.title
+        )}" style="width:100%"/></div>
+        <div class="form-group"><label>Status</label><select id="${sid}" style="width:100%">
+          ${['draft', 'sent', 'signed', 'void']
+            .map((s) => `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s}</option>`)
+            .join('')}
+        </select></div>
+        <div class="form-group"><label>Text</label><textarea id="${bid}" rows="10" style="width:100%;font-size:0.9rem">${esc(
+          c.body || ''
+        )}</textarea></div>
+        <p><button type="button" class="btn btn-primary" id="edct-save">Save</button> <button type="button" class="btn btn-outline" data-close-modal>Cancel</button></p>`,
+        null
+      );
+      root.querySelector('#edct-save')?.addEventListener('click', () => {
+        const title = document.getElementById(tid)?.value;
+        const body = document.getElementById(bid)?.value;
+        const status = document.getElementById(sid)?.value;
+        api(`/api/admin/contracts/${c.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ title, body, status }),
+        })
+          .then(() => {
+            close();
+            toast('Contract updated', 'success');
+            return loadAll();
+          })
+          .catch((e) => toast(e.message, 'error'));
+      });
+    });
+  });
+  document.querySelectorAll('[data-sndct]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-sndct');
+      withBusy(
+        b,
+        api(`/api/admin/contracts/${id}/send`, { method: 'POST' })
+          .then((r) => {
+            toast(r.sent ? 'Email sent' : 'Could not send — check Resend and client email', r.sent ? 'success' : 'warning');
+            return loadAll();
+          })
+          .catch((e) => toast(e.message, 'error'))
       );
     });
   });

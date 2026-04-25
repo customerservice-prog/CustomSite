@@ -7,7 +7,7 @@ const Stripe = require('stripe');
 
 const { getService } = require('../lib/supabase');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
-const { sendWelcomeEmail, sendInvoiceEmail } = require('../lib/email');
+const { sendWelcomeEmail, sendInvoiceEmail, sendContractEmail } = require('../lib/email');
 
 const router = express.Router();
 
@@ -109,7 +109,16 @@ router.put('/leads/:id', async (req, res) => {
     if (budget !== undefined) patch.budget = budget;
     if (timeline !== undefined) patch.timeline = timeline;
     if (status != null) {
-      const allowed = ['New', 'Contacted', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
+      const allowed = [
+        'New',
+        'Contacted',
+        'Qualified',
+        'Proposal Sent',
+        'Won',
+        'Lost',
+        'Closed Won',
+        'Closed Lost',
+      ];
       if (!allowed.includes(status)) {
         return res.status(400).json({ error: 'Invalid status', allowed });
       }
@@ -166,7 +175,16 @@ router.patch('/leads/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body || {};
-    const allowed = ['New', 'Contacted', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
+    const allowed = [
+      'New',
+      'Contacted',
+      'Qualified',
+      'Proposal Sent',
+      'Won',
+      'Lost',
+      'Closed Won',
+      'Closed Lost',
+    ];
     if (!status || !allowed.includes(status)) {
       return res.status(400).json({ error: 'Invalid status', allowed });
     }
@@ -1254,6 +1272,35 @@ router.delete('/contracts/:id', async (req, res) => {
     const { error } = await supabase.from('agency_contracts').delete().eq('id', req.params.id);
     if (error) return res.status(500).json({ error: error.message });
     return res.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/contracts/:id/send', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supabase = getService();
+    const { data: c, error } = await supabase.from('agency_contracts').select('*').eq('id', id).single();
+    if (error || !c) return res.status(404).json({ error: 'Contract not found' });
+    let toEmail = null;
+    if (c.client_id) {
+      const { data: u } = await supabase.from('users').select('email').eq('id', c.client_id).maybeSingle();
+      toEmail = u?.email;
+    }
+    if (!toEmail) return res.status(400).json({ error: 'No client email for this record' });
+    const { sent } = await sendContractEmail({
+      toEmail,
+      title: c.title,
+      body: c.body,
+      contractId: c.id,
+    });
+    if (sent) {
+      await supabase.from('agency_contracts').update({ status: 'sent' }).eq('id', id);
+    }
+    await logActivity(supabase, req.profile.id, 'contract.send', 'contract', id, { sent });
+    return res.json({ success: true, sent });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });

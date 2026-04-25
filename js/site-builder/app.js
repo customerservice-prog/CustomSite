@@ -364,7 +364,7 @@ function refreshPreview() {
     ifr.onload = () => {
       try {
         const doc = ifr.contentDocument;
-        if (doc && buildMode === 'vibe' && vibeCustomCss.trim()) {
+        if (doc && vibeCustomCss.trim()) {
           injectVibeInPreviewDocument(doc);
         }
       } catch (e) {
@@ -426,7 +426,7 @@ function htmlWithPreviewBase(raw) {
 }
 
 function injectVibeInPreviewDocument(doc) {
-  if (!doc || buildMode !== 'vibe' || !vibeCustomCss.trim()) return;
+  if (!doc || !vibeCustomCss.trim()) return;
   try {
     let el = doc.getElementById('sb-vibe-override');
     if (!el) {
@@ -1533,6 +1533,10 @@ function showCommandPalette() {
   };
 }
 function openInit() {
+  if (!projectId) {
+    toast('Select a project in the bar above (or create one in Admin) before choosing a starter.', 'error');
+    return;
+  }
   const m = document.getElementById('sbInitModal');
   const g = document.getElementById('sbInitGrid');
   g.replaceChildren();
@@ -1701,10 +1705,13 @@ async function main() {
     document.getElementById('sbInitModal').classList.remove('is-on');
   });
   document.getElementById('sbInitConfirm')?.addEventListener('click', async () => {
+    if (!projectId) {
+      toast('Select a project first.', 'error');
+      return;
+    }
     const sel = document.querySelector('input[name="tpl"]:checked');
     const tpl = (sel && sel.value) || 'basic';
     document.getElementById('sbInitModal').classList.remove('is-on');
-    if (!projectId) return;
     const ok = await showConfirm('Init starter', 'Overwrite or create starter files?');
     if (!ok) return;
     try {

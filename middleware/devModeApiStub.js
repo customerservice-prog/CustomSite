@@ -236,6 +236,9 @@ function devModeApiStub(req, res, next) {
   if (m === 'DELETE' && /^\/api\/admin\/contracts\/[^/]+$/.test(p)) {
     return res.json({ success: true });
   }
+  if (m === 'POST' && /^\/api\/admin\/contracts\/[^/]+\/send$/.test(p)) {
+    return res.json({ success: true, sent: true });
+  }
   if (m === 'POST' && p === '/api/admin/time-entries') {
     return res.json({ success: true, entry: { id: 'dev-te' } });
   }

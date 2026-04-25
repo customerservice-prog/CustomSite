@@ -122,7 +122,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
   // Content visibility must never depend on IntersectionObserver (see April 2026 audit). Mark visible for any legacy CSS.
   function runFadeIn() {
     const elements = document.querySelectorAll(
-      '.step-card, .service-card, .testimonial-card, .portfolio-card, .price-card, .section-header, .about-founder, .industry-pills, .process-timeline__item, .why-not-fiverr, .results-splash__list li, .results-splash, .pricing-preview, #pricing-preview, .testimonials, #why-us, .tech-strip-section'
+      '.step-card, .service-card, .testimonial-card, .portfolio-card, .price-card, .section-header, .about-founder, .industry-pills, .process-timeline__item, .why-not-fiverr, .results-splash__list li, .results-splash, .pricing-preview, #pricing-preview, .testimonials, #why-us, .tech-strip-section, .tech-strip__item, section#services, section#industries, section.trust-section, .services-grid, .services, .results-splash__link, .case-study-block'
     );
     elements.forEach((el) => {
       el.classList.add('fade-in', 'visible');
