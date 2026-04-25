@@ -24,7 +24,9 @@ const { isSupabaseConfigured } = require('./lib/supabase');
 const { isDevAuthEnabled } = require('./lib/devAuth');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number.parseInt(String(process.env.PORT || '3000'), 10) || 3000;
+/** Bind all interfaces so http://127.0.0.1:PORT and http://localhost:PORT work; required on Railway/Docker. */
+const BIND_HOST = process.env.BIND_HOST || '0.0.0.0';
 
 // Railway, Render, etc. set X-Forwarded-* — needed for correct https:// host in preview URLs
 app.set('trust proxy', 1);
@@ -221,12 +223,26 @@ app.use((err, _req, res, _next) => {
 module.exports = { app };
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`CustomSite server listening on ${PORT}`);
+  const server = app.listen(PORT, BIND_HOST, () => {
+    const url = `http://127.0.0.1:${PORT}`;
+    console.log(`CustomSite server listening on ${BIND_HOST}:${PORT}`);
+    console.log(`  Open: ${url}/  or  http://localhost:${PORT}/index.html`);
     if (isDevAuthEnabled() && !isSupabaseConfigured()) {
       console.log(
         `  Local dev login: email=${process.env.DEV_ADMIN_EMAIL} (set in .env; no Supabase on this run)`
       );
     }
+  });
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      console.error(
+        `\n[${err.code}] Port ${PORT} is already in use. Another process is using it (or a second CustomSite instance).\n` +
+          `  • Stop the other app, or set a different port, e.g.  PowerShell:  $env:PORT=3001; npm start  \n` +
+          `  • Then use http://127.0.0.1:3001/ in the browser (not file://).\n`
+      );
+    } else {
+      console.error(err);
+    }
+    process.exit(1);
   });
 }
