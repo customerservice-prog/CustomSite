@@ -24,13 +24,21 @@ import { ActionCard } from '@/components/ui/action-card';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Avatar } from '@/components/ui/avatar';
 import { StatusDot } from '@/components/ui/status-dot';
-import { useDashboardMetrics, useClients, useProjects, useMessageThreads, useActivitiesFeed } from '@/store/hooks';
+import {
+  useDashboardMetrics,
+  useClients,
+  useProjects,
+  useMessageThreads,
+  useActivitiesFeed,
+  usePipelineColumnStats,
+} from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
 
 export function DashboardPage() {
   const { setCommandOpen } = useShell();
   const m = useDashboardMetrics();
+  const pipelineCols = usePipelineColumnStats();
   const clients = useClients();
   const projects = useProjects();
   const threads = useMessageThreads();
@@ -187,7 +195,7 @@ export function DashboardPage() {
             </Link>
           </div>
           <div className="flex flex-wrap gap-2">
-            {m.pipelineCols.map(({ stage, count, value }) => (
+            {pipelineCols.map(({ stage, count, value }) => (
               <div key={stage} className="min-w-[140px] flex-1 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{stage}</p>
                 <p className="mt-1 text-lg font-bold text-slate-900">{count}</p>

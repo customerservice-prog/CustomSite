@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { useShallow } from 'zustand/shallow';
+import { PIPELINE_STAGES } from '@/lib/statuses';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
 
@@ -39,6 +41,20 @@ export function useUnreadNotificationCount() {
   return useAppStore((s) => sel.getUnreadNotificationCount(s));
 }
 
+/** Derived from leads with useMemo — avoids useShallow + fresh row objects (would infinite-loop). */
+export function usePipelineColumnStats() {
+  const leads = useLeads();
+  return useMemo(
+    () =>
+      PIPELINE_STAGES.map((stage) => {
+        const col = leads.filter((l) => l.stage === stage);
+        const value = col.reduce((s, l) => s + l.value, 0);
+        return { stage, count: col.length, value };
+      }),
+    [leads]
+  );
+}
+
 export function useDashboardMetrics() {
   return useAppStore(
     useShallow((s) => ({
@@ -54,7 +70,6 @@ export function useDashboardMetrics() {
       draftInvoices: sel.getDraftInvoiceCount(s),
       leadCount: sel.leadsList(s).length,
       attentionCount: sel.getAttentionItemCount(s),
-      pipelineCols: sel.getPipelineColumnStats(s),
     }))
   );
 }
