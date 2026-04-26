@@ -3,6 +3,7 @@
 
 [build]
 builder = "nixpacks"
+buildCommand = "npm run build:admin"
 
 [deploy]
 startCommand = "npm start"
