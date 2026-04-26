@@ -1,0 +1,23 @@
+/** First path segment → display title for breadcrumbs */
+export const routeMeta: Record<string, { title: string; segment: string }> = {
+  dashboard: { title: 'Dashboard', segment: 'dashboard' },
+  pipeline: { title: 'Pipeline', segment: 'pipeline' },
+  clients: { title: 'Clients', segment: 'clients' },
+  projects: { title: 'Projects', segment: 'projects' },
+  tasks: { title: 'Tasks', segment: 'tasks' },
+  calendar: { title: 'Calendar', segment: 'calendar' },
+  invoices: { title: 'Invoices', segment: 'invoices' },
+  payments: { title: 'Payments', segment: 'payments' },
+  'time-tracking': { title: 'Time tracking', segment: 'time-tracking' },
+  expenses: { title: 'Expenses', segment: 'expenses' },
+  messages: { title: 'Messages', segment: 'messages' },
+  contracts: { title: 'Contracts', segment: 'contracts' },
+  proposals: { title: 'Proposals', segment: 'proposals' },
+  forms: { title: 'Forms', segment: 'forms' },
+  files: { title: 'Files', segment: 'files' },
+  activity: { title: 'Activity', segment: 'activity' },
+  reports: { title: 'Reports', segment: 'reports' },
+  'site-builder': { title: 'Site Builder', segment: 'site-builder' },
+  'client-portal': { title: 'Client Portal', segment: 'client-portal' },
+  settings: { title: 'Settings', segment: 'settings' },
+};

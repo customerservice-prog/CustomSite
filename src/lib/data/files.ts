@@ -1,0 +1,22 @@
+import type { AgencyFile } from '@/lib/types/entities';
+
+export const filesSeed: AgencyFile[] = [
+  {
+    id: 'f1',
+    name: 'Brand guidelines v3.pdf',
+    projectId: 'p1',
+    clientId: 'c1',
+    uploaded: 'Apr 20',
+    size: '2.4 MB',
+    createdAt: '2026-04-20T12:00:00.000Z',
+  },
+  {
+    id: 'f2',
+    name: 'Homepage copy.docx',
+    projectId: 'p3',
+    clientId: 'c2',
+    uploaded: 'Apr 21',
+    size: '180 KB',
+    createdAt: '2026-04-21T12:00:00.000Z',
+  },
+];

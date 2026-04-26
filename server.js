@@ -241,6 +241,24 @@ app.use(async (req, res, next) => {
   return next();
 });
 
+/** React admin SPA (Vite build → dist-admin/). Dev: `npm run admin:dev` → open /admin-spa.html on Vite port. */
+const adminSpaHtml = path.join(__dirname, 'dist-admin', 'admin-spa.html');
+app.get('/admin.html', async (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  try {
+    await fs.access(adminSpaHtml);
+    res.sendFile(adminSpaHtml);
+  } catch {
+    res
+      .status(503)
+      .type('html')
+      .send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin — build required</title></head><body style="font-family:system-ui,Segoe UI,sans-serif;padding:2rem;max-width:40rem;line-height:1.5">
+<h1 style="font-size:1.25rem">Admin UI not built</h1>
+<p>Run <code style="background:#f1f5f9;padding:0.15rem 0.4rem;border-radius:4px">npm run build:admin</code> then reload. For local development run <code style="background:#f1f5f9;padding:0.15rem 0.4rem;border-radius:4px">npm run admin:dev</code> and open <strong>/admin-spa.html</strong> on the Vite URL.</p>
+</body></html>`);
+  }
+});
+
 app.use(
   express.static(path.join(__dirname), {
     extensions: ['html'],

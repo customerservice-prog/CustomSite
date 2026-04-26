@@ -41,10 +41,29 @@ const state = {
   timeEntries: [],
   table: {},
   currentTab: 'dashboard',
-  ui: { projectClientId: null, msgProjectId: null, msgQ: '', timePeriod: 'month', contractSel: null },
+  ui: {
+    projectClientId: null,
+    msgProjectId: null,
+    msgQ: '',
+    timePeriod: 'month',
+    contractSel: null,
+    clientDetailId: null,
+    clientDetailTab: 'overview',
+    projectDetailId: null,
+    projectDetailTab: 'overview',
+    clientsView: 'table',
+    invoicesView: 'table',
+    filePresetProjectId: null,
+  },
   _prefillClientId: null,
   _prefillInvoice: null,
 };
+
+/** Cached GET /clients/:id for full-page client detail */
+let _clientDetailCache = { id: null, data: null };
+
+/** Skip one `renderDashboard()` so the loading skeleton stays up until `loadAll` finishes. */
+let _skipNextDashboardPaint = false;
 
 function esc(s) {
   return String(s ?? '')
@@ -211,24 +230,147 @@ function invStatusBadge(st) {
 }
 
 const TAB_CHROME = {
-  dashboard: { section: 'Dashboard', page: 'Dashboard', docTitle: 'Dashboard', greet: true, act: '' },
+  dashboard: {
+    section: 'Dashboard',
+    page: 'Dashboard',
+    docTitle: 'Dashboard',
+    greet: true,
+    act: `<div class="adm-header-actions-inner">
+      <button type="button" class="adm-btn adm-btn--primary adm-btn--sm" id="dashHdrCreate">Quick Create</button>
+      <a href="/index.html" class="adm-btn adm-btn--secondary adm-btn--sm" id="dashHdrSite" target="_blank" rel="noopener">View Site</a>
+    </div>`,
+    sub: 'Overview of your clients, projects, pipeline, billing, and communication.',
+  },
   pipeline: {
     section: 'Pipeline',
     page: 'Pipeline',
     docTitle: 'Pipeline',
     greet: false,
+    sub: 'Leads and opportunities by stage. Drag cards on the board or use the table.',
     act:
-      '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center"><button type="button" class="btn-secondary" id="hdrExportLeads">Export CSV</button><button type="button" class="btn-primary" id="hdrAddLead">+ Add lead</button></div>',
+      '<div class="adm-header-actions-inner"><button type="button" class="btn-secondary btn-sm" id="hdrExportLeads">Export CSV</button><button type="button" class="btn-primary btn-sm" id="hdrAddLead">+ Add lead</button></div>',
   },
-  clients: { section: 'Clients', page: 'Clients', docTitle: 'Clients', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewClient">+ New client</button>' },
-  projects: { section: 'Projects', page: 'Projects', docTitle: 'Projects', greet: false, act: '' },
-  invoices: { section: 'Invoices', page: 'Invoices', docTitle: 'Invoices', greet: false, act: '<button type="button" class="btn-primary" id="hdrNewInv">+ New invoice</button>' },
-  files: { section: 'Files', page: 'Files', docTitle: 'Files', greet: false, act: '' },
-  messages: { section: 'Messages', page: 'Messages', docTitle: 'Messages', greet: false, act: '' },
-  time: { section: 'Time & Billing', page: 'Time & Billing', docTitle: 'Time & Billing', greet: false, act: '' },
-  contracts: { section: 'Contracts', page: 'Contracts', docTitle: 'Contracts', greet: false, act: '' },
-  activity: { section: 'Activity', page: 'Activity', docTitle: 'Activity', greet: false, act: '' },
-  settings: { section: 'Settings', page: 'Settings', docTitle: 'Settings', greet: false, act: '' },
+  clients: {
+    section: 'Clients',
+    page: 'Clients',
+    docTitle: 'Clients',
+    greet: false,
+    sub: 'Accounts, contacts, project rollups, balances, and activity.',
+    act: '<button type="button" class="adm-btn adm-btn--primary adm-btn--sm" id="hdrNewClient">+ Add Client</button>',
+  },
+  projects: {
+    section: 'Projects',
+    page: 'Projects',
+    docTitle: 'Projects',
+    greet: false,
+    sub: 'Delivery workspace, phases, files, and client updates.',
+    act: '',
+  },
+  tasks: {
+    section: 'Tasks',
+    page: 'Tasks',
+    docTitle: 'Tasks',
+    greet: false,
+    sub: 'Task lists and assignments (preview).',
+    act: '',
+  },
+  calendar: {
+    section: 'Calendar',
+    page: 'Calendar',
+    docTitle: 'Calendar',
+    greet: false,
+    sub: 'Deadlines and milestones across projects (preview).',
+    act: '',
+  },
+  invoices: {
+    section: 'Invoices',
+    page: 'Invoices',
+    docTitle: 'Invoices',
+    greet: false,
+    sub: 'Create, send, and track invoices.',
+    act: '<button type="button" class="btn-primary btn-sm" id="hdrNewInv">+ New invoice</button>',
+  },
+  payments: {
+    section: 'Payments',
+    page: 'Payments',
+    docTitle: 'Payments',
+    greet: false,
+    sub: 'Stripe payouts and payment history (preview).',
+    act: '',
+  },
+  files: { section: 'Files', page: 'Files', docTitle: 'Files', greet: false, sub: 'Uploads and downloads by project.', act: '' },
+  messages: {
+    section: 'Messages',
+    page: 'Messages',
+    docTitle: 'Messages',
+    greet: false,
+    sub: 'Client and project threads.',
+    act: '',
+  },
+  time: {
+    section: 'Time tracking',
+    page: 'Time tracking',
+    docTitle: 'Time tracking',
+    greet: false,
+    sub: 'Log hours and roll into invoices.',
+    act: '',
+  },
+  expenses: {
+    section: 'Expenses',
+    page: 'Expenses',
+    docTitle: 'Expenses',
+    greet: false,
+    sub: 'Track billable costs (preview).',
+    act: '',
+  },
+  contracts: {
+    section: 'Contracts',
+    page: 'Contracts',
+    docTitle: 'Contracts',
+    greet: false,
+    sub: 'Draft, send, and track signatures.',
+    act: '',
+  },
+  proposals: {
+    section: 'Proposals',
+    page: 'Proposals',
+    docTitle: 'Proposals',
+    greet: false,
+    sub: 'Scoped offers and pricing (preview).',
+    act: '',
+  },
+  forms: {
+    section: 'Forms',
+    page: 'Forms',
+    docTitle: 'Forms',
+    greet: false,
+    sub: 'Lead capture and intake forms (preview).',
+    act: '',
+  },
+  activity: {
+    section: 'Activity',
+    page: 'Activity',
+    docTitle: 'Activity',
+    greet: false,
+    sub: 'Audit trail of sign-ins and key actions.',
+    act: '',
+  },
+  reports: {
+    section: 'Reports',
+    page: 'Reports',
+    docTitle: 'Reports',
+    greet: false,
+    sub: 'Revenue, utilization, and pipeline analytics (preview).',
+    act: '',
+  },
+  settings: {
+    section: 'Settings',
+    page: 'Settings',
+    docTitle: 'Settings',
+    greet: false,
+    sub: 'Integrations, agency defaults, and environment status.',
+    act: '',
+  },
 };
 
 function readTabFromUrl() {
@@ -239,6 +381,171 @@ function readTabFromUrl() {
     /* */
   }
   return 'dashboard';
+}
+
+function hydrateRouteFromUrl() {
+  try {
+    const u = new URL(window.location.href);
+    const cid = u.searchParams.get('clientId');
+    const pid = u.searchParams.get('projectId');
+    const ctab = u.searchParams.get('ctab');
+    const ptab = u.searchParams.get('ptab');
+    if (cid && state.clients.some((c) => c.id === cid)) {
+      state.ui.clientDetailId = cid;
+      if (ctab) state.ui.clientDetailTab = ctab;
+    } else if (cid) {
+      state.ui.clientDetailId = null;
+    }
+    if (pid && state.projects.some((p) => p.id === pid)) {
+      state.ui.projectDetailId = pid;
+      if (ptab) state.ui.projectDetailTab = ptab;
+    } else if (pid) {
+      state.ui.projectDetailId = null;
+    }
+  } catch {
+    /* */
+  }
+}
+
+function pushAdminUrl() {
+  try {
+    const u = new URL(window.location.href);
+    u.searchParams.set('tab', state.currentTab);
+    if (state.currentTab === 'clients' && state.ui.clientDetailId) {
+      u.searchParams.set('clientId', state.ui.clientDetailId);
+      u.searchParams.set('ctab', state.ui.clientDetailTab || 'overview');
+    } else {
+      u.searchParams.delete('clientId');
+      u.searchParams.delete('ctab');
+    }
+    if (state.currentTab === 'projects' && state.ui.projectDetailId) {
+      u.searchParams.set('projectId', state.ui.projectDetailId);
+      u.searchParams.set('ptab', state.ui.projectDetailTab || 'overview');
+    } else {
+      u.searchParams.delete('projectId');
+      u.searchParams.delete('ptab');
+    }
+    history.replaceState(null, '', u.toString());
+  } catch {
+    /* */
+  }
+}
+
+function openLead(L) {
+  const s = String(L.status || '');
+  return !['Closed Won', 'Closed Lost', 'Won', 'Lost'].includes(s);
+}
+
+function deriveClientProductStatus(c) {
+  const em = String(c.email || '').toLowerCase();
+  const openLeadMatch = state.leads.some((L) => openLead(L) && String(L.email || '').toLowerCase() === em);
+  const nP = state.projects.filter((p) => p.client_id === c.id).length;
+  if (openLeadMatch && nP === 0) return { key: 'lead', label: 'Lead', cls: 'adm-pill--warn' };
+  if (nP === 0) return { key: 'inactive', label: 'Inactive', cls: 'adm-pill--muted' };
+  return { key: 'active', label: 'Active', cls: 'adm-pill--ok' };
+}
+
+function projectOnHold(projectId) {
+  try {
+    const raw = localStorage.getItem('cs_proj_on_hold');
+    const o = raw ? JSON.parse(raw) : {};
+    return !!o[projectId];
+  } catch {
+    return false;
+  }
+}
+
+function setProjectOnHold(projectId, on) {
+  try {
+    const raw = localStorage.getItem('cs_proj_on_hold');
+    const o = raw ? JSON.parse(raw) : {};
+    if (on) o[projectId] = true;
+    else delete o[projectId];
+    localStorage.setItem('cs_proj_on_hold', JSON.stringify(o));
+  } catch {
+    /* */
+  }
+}
+
+function projectTasksKey(pid) {
+  return `cs_proj_tasks_${pid}`;
+}
+
+function loadProjectTasks(pid) {
+  try {
+    const raw = localStorage.getItem(projectTasksKey(pid));
+    const a = raw ? JSON.parse(raw) : [];
+    return Array.isArray(a) ? a : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveProjectTasks(pid, tasks) {
+  try {
+    localStorage.setItem(projectTasksKey(pid), JSON.stringify(tasks));
+  } catch {
+    /* */
+  }
+}
+
+function deriveProjectProductStatus(p) {
+  if (projectOnHold(p.id)) return { label: 'On hold', cls: 'adm-pill--warn' };
+  const s = String(p.status || 'discovery').toLowerCase();
+  if (s === 'live') return { label: 'Completed', cls: 'adm-pill--ok' };
+  if (s === 'discovery') return { label: 'Draft', cls: 'adm-pill--muted' };
+  return { label: 'Active', cls: 'adm-pill--info' };
+}
+
+function leadPipelineValueEstimate() {
+  return state.leads.filter(openLead).reduce((sum, L) => {
+    const raw = String(L.budget || '').replace(/[^0-9.]/g, '');
+    const n = parseFloat(raw);
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+}
+
+function tasksDueTodayCount() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 86400000);
+  const n = state.invoices.filter((i) => {
+    if (!i.due_date || String(i.status || '').toLowerCase() === 'paid') return false;
+    const d = new Date(i.due_date);
+    return !Number.isNaN(d.getTime()) && d >= today && d < tomorrow;
+  }).length;
+  if (n) return n;
+  if (!state.clients.length && !state.projects.length) return 3;
+  return 0;
+}
+
+function navigateToClientDetail(id, tab = 'overview') {
+  state.ui.clientDetailId = id;
+  state.ui.clientDetailTab = tab;
+  _clientDetailCache = { id: null, data: null };
+  showTab('clients');
+}
+
+function closeClientDetail() {
+  state.ui.clientDetailId = null;
+  state.ui.clientDetailTab = 'overview';
+  _clientDetailCache = { id: null, data: null };
+  pushAdminUrl();
+  renderClients();
+}
+
+function navigateToProjectDetail(id, tab = 'overview') {
+  state.ui.projectDetailId = id;
+  state.ui.projectDetailTab = tab;
+  state._lastActProject = id;
+  showTab('projects');
+}
+
+function closeProjectDetail() {
+  state.ui.projectDetailId = null;
+  state.ui.projectDetailTab = 'overview';
+  pushAdminUrl();
+  renderProjects();
 }
 
 function setUserAvatar() {
@@ -283,6 +590,11 @@ function setUserAvatar() {
 }
 
 function wireHeaderActions(tab) {
+  if (tab === 'dashboard') {
+    getEl('dashHdrCreate')?.addEventListener('click', () => {
+      getEl('admQuickCreateBtn')?.click();
+    });
+  }
   if (tab === 'pipeline') {
     getEl('hdrAddLead')?.addEventListener('click', () => openAddLeadDrawer());
     getEl('hdrExportLeads')?.addEventListener('click', async () => {
@@ -322,36 +634,46 @@ function wireHeaderActions(tab) {
 }
 
 function updatePageHeader(tab) {
-  const c = TAB_CHROME[tab] || { section: tab, page: tab, docTitle: tab, greet: false, act: '' };
+  const c = TAB_CHROME[tab] || {
+    section: tab,
+    page: tab,
+    docTitle: tab,
+    greet: false,
+    act: '',
+    sub: '',
+  };
   const docT = c.docTitle || c.page || c.section || tab;
   if (typeof document !== 'undefined') {
     document.title = `${docT} — CustomSite Admin`;
   }
-  const bc = getEl('admBreadcrumb');
   const crumbCur = getEl('admCrumbCurrent');
+  if (crumbCur) {
+    crumbCur.textContent = c.section || c.page || tab;
+  }
   const title = getEl('admPageTitle');
+  const subEl = getEl('admPageSubtitle');
   const greetWrap = getEl('admDashGreetWrap');
   const g = getEl('admGreeting');
   const sd = getEl('admSubDate');
   const div = getEl('admPageDivider');
   const actions = getEl('admPageActions');
-  if (crumbCur) {
-    crumbCur.textContent = c.section || c.page || tab;
-  } else if (bc) {
-    bc.textContent = `CustomSite › ${c.section || c.page || tab}`;
-  }
   if (title) title.textContent = c.page;
-  if (greetWrap) greetWrap.style.display = c.greet ? 'block' : 'none';
-  if (c.greet && g && sd) {
-    g.textContent = getGreeting();
-    sd.textContent = new Date().toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+  if (greetWrap) {
+    if (tab === 'dashboard' && c.greet && g && sd) {
+      g.textContent = getGreeting();
+      sd.textContent = new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      greetWrap.style.display = 'block';
+    } else {
+      greetWrap.style.display = 'none';
+    }
   }
-  if (div) div.style.display = c.greet || tab !== 'dashboard' ? 'block' : 'block';
+  if (subEl) subEl.textContent = c.sub || '';
+  if (div) div.style.display = 'block';
   if (actions) actions.innerHTML = c.act || '';
   wireHeaderActions(tab);
   setUserAvatar();
@@ -472,8 +794,33 @@ function formatActivityEvent(ev) {
   return { icon: '🔔', text: esc(`${a}${ev.entity_type ? ' · ' + ev.entity_type : ''}`), rel };
 }
 
+const PLACEHOLDER_PANELS = new Set(['tasks', 'calendar', 'payments', 'expenses', 'proposals', 'forms', 'reports']);
+
+function renderPlaceholderTab(name) {
+  const el = getEl(`panel-${name}`);
+  if (!el) return;
+  const meta = TAB_CHROME[name] || { page: name, sub: '' };
+  el.innerHTML = `
+    <div class="adm-placeholder">
+      <h2>${esc(meta.page || name)}</h2>
+      <p>${esc(meta.sub || '')}</p>
+      <p class="phase-note" style="margin-top:0.75rem">This module is on the roadmap. Your live workflows stay in Dashboard, Pipeline, Clients, Projects, Billing, and Messages.</p>
+      <button type="button" class="btn-primary btn-sm" id="admPhBack">Back to dashboard</button>
+    </div>`;
+  el.querySelector('#admPhBack')?.addEventListener('click', () => showTab('dashboard'));
+}
+
 function showTab(name) {
   if (!name) return;
+  if (name !== 'clients') {
+    state.ui.clientDetailId = null;
+    state.ui.clientDetailTab = 'overview';
+    _clientDetailCache = { id: null, data: null };
+  }
+  if (name !== 'projects') {
+    state.ui.projectDetailId = null;
+    state.ui.projectDetailTab = 'overview';
+  }
   state.currentTab = name;
   document.querySelectorAll('button.adm-sb-item[data-tab], .adm-bbar-item[data-tab]').forEach((b) => {
     const on = b.getAttribute('data-tab') === name;
@@ -494,12 +841,22 @@ function showTab(name) {
   const ovl = getEl('admSbOverlay');
   if (ovl) ovl.setAttribute('hidden', '');
   updatePageHeader(name);
-  try {
-    const u = new URL(window.location.href);
-    u.searchParams.set('tab', name);
-    history.replaceState(null, '', u.toString());
-  } catch {
-    /* */
+  pushAdminUrl();
+  if (name === 'dashboard') {
+    if (_skipNextDashboardPaint) {
+      _skipNextDashboardPaint = false;
+    } else {
+      renderDashboard();
+    }
+  }
+  if (name === 'pipeline') {
+    renderLeads();
+  }
+  if (name === 'clients') {
+    renderClients();
+  }
+  if (name === 'projects') {
+    renderProjects();
   }
   if (name === 'files') {
     setTimeout(() => document.dispatchEvent(new CustomEvent('adm:files-panel')), 0);
@@ -521,6 +878,9 @@ function showTab(name) {
   }
   if (name === 'activity') {
     renderActivity();
+  }
+  if (PLACEHOLDER_PANELS.has(name)) {
+    renderPlaceholderTab(name);
   }
 }
 
@@ -611,6 +971,7 @@ async function loadAll() {
   } catch (e) {
     toast(e.message || 'Failed to load', 'error');
   }
+  hydrateRouteFromUrl();
   try {
     renderAll();
   } catch (e) {
@@ -663,6 +1024,102 @@ function syncPhaseDropdown(selPrj, phaseEl) {
   }
 }
 
+function clientUnpaidTotal(clientId) {
+  return state.invoices
+    .filter((i) => i.client_id === clientId && String(i.status || 'pending').toLowerCase() !== 'paid')
+    .reduce((a, i) => a + Number(i.amount || 0), 0);
+}
+
+function clientLastActivityInfo(clientId) {
+  const times = [];
+  const c = state.clients.find((x) => x.id === clientId);
+  if (c?.created_at) times.push(new Date(c.created_at).getTime());
+  for (const i of state.invoices || []) {
+    if (i.client_id !== clientId) continue;
+    const t = i.updated_at || i.created_at;
+    if (t) times.push(new Date(t).getTime());
+  }
+  for (const m of state.messages || []) {
+    const p = state.projects.find((pr) => pr.id === m.project_id);
+    if (p && p.client_id === clientId && m.created_at) times.push(new Date(m.created_at).getTime());
+  }
+  if (!times.length) return { ts: 0, label: '—' };
+  const max = Math.max(...times);
+  return { ts: max, label: formatRelative(new Date(max).toISOString()) };
+}
+
+function messagesAwaitingReply() {
+  const mySub = parseJwtSub();
+  const allMsgs = state.messages || [];
+  let threads = 0;
+  for (const p of state.projects || []) {
+    const pmsgs = allMsgs.filter((m) => m.project_id === p.id);
+    if (!pmsgs.length) continue;
+    const needsAttention = mySub
+      ? pmsgs.some((m) => m.sender_id && m.sender_id !== mySub && m.is_read !== true)
+      : pmsgs.some((m) => m.is_read !== true);
+    if (needsAttention) threads += 1;
+  }
+  return threads;
+}
+
+function setNavBadge(tab, n) {
+  const el = document.querySelector(`#admApp [data-nav-badge="${tab}"]`);
+  if (!el) return;
+  if (n > 0) {
+    el.textContent = n > 99 ? '99+' : String(n);
+    el.removeAttribute('hidden');
+  } else {
+    el.textContent = '';
+    el.setAttribute('hidden', '');
+  }
+}
+
+function updateSidebarBadges() {
+  const pipe = state.leads.filter((l) => !['Closed Won', 'Closed Lost', 'Won', 'Lost'].includes(l.status)).length;
+  setNavBadge('pipeline', pipe);
+  const unpaidN = state.invoices.filter((i) => String(i.status || 'pending').toLowerCase() !== 'paid').length;
+  setNavBadge('invoices', unpaidN);
+  setNavBadge('messages', messagesAwaitingReply());
+}
+
+function updateNotifBadgeCount() {
+  const el = getEl('admNotifBadge');
+  if (!el) return;
+  const unpaidN = state.invoices.filter((i) => String(i.status || 'pending').toLowerCase() !== 'paid').length;
+  const contractsPending = (state.contracts || []).filter((c) => {
+    const s = String(c.status || 'draft').toLowerCase();
+    return s !== 'signed' && s !== 'completed' && s !== 'declined';
+  }).length;
+  const n = messagesAwaitingReply() + unpaidN + contractsPending;
+  if (n > 0) {
+    el.textContent = String(Math.min(99, n));
+    el.removeAttribute('hidden');
+  } else {
+    el.setAttribute('hidden', '');
+  }
+}
+
+function syncShellProfileFromSession(user) {
+  const nameEl = getEl('admSbProfileName');
+  const avEl = getEl('admSbProfileAv');
+  if (!nameEl || !avEl) return;
+  let label = '';
+  if (user && (user.full_name || user.email)) {
+    label = (user.full_name && String(user.full_name).trim()) || user.email.split('@')[0] || '';
+  }
+  if (!label) {
+    label = parseDisplayName();
+    if (label === 'there') label = 'Your account';
+  }
+  nameEl.textContent = label;
+  const parts = String(label).trim().split(/\s+/);
+  avEl.textContent =
+    parts.length > 1
+      ? (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+      : String(label).slice(0, 2).toUpperCase();
+}
+
 /* ---------- Dashboard ---------- */
 function clientGradientForId(id) {
   const gradients = [
@@ -711,36 +1168,194 @@ function activityDateLabel(iso) {
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+function revenuePaidThisMonth() {
+  const sm = startOfMonth();
+  return state.invoices
+    .filter((i) => {
+      if ((i.status || '').toLowerCase() !== 'paid') return false;
+      const raw = i.paid_at || i.updated_at || i.created_at;
+      return raw && new Date(raw) >= sm;
+    })
+    .reduce((a, i) => a + Number(i.amount || 0), 0);
+}
+
 function renderDashboard() {
+  const now = new Date();
   const open = state.projects.filter((p) => !['live'].includes(p.status));
   const byPh = (ph) => state.projects.filter((p) => p.status === ph).length;
   const unpaid = state.invoices
-    .filter((i) => (i.status || 'pending') !== 'paid')
+    .filter((i) => String(i.status || 'pending').toLowerCase() !== 'paid')
     .reduce((a, i) => a + Number(i.amount || 0), 0);
-  const unpaidCount = state.invoices.filter((i) => (i.status || 'pending') !== 'paid').length;
-  const newLeads = state.leads.filter((l) => l.status === 'New').length;
-  const pipe = state.leads.filter((l) => !['Closed Won', 'Closed Lost'].includes(l.status)).length;
+  const unpaidCount = state.invoices.filter((i) => String(i.status || 'pending').toLowerCase() !== 'paid').length;
+  const pipe = state.leads.filter((l) => !['Closed Won', 'Closed Lost', 'Won', 'Lost'].includes(l.status)).length;
   const clientsMo = countThisMonth(state.clients, 'created_at');
   const leadsMo = countThisMonth(state.leads, 'created_at');
   const projsMo = countThisMonth(state.projects, 'created_at');
+  const revMo = revenuePaidThisMonth();
+  const msgAwait = messagesAwaitingReply();
+  const contractsPending = (state.contracts || []).filter((c) => {
+    const s = String(c.status || 'draft').toLowerCase();
+    return s !== 'signed' && s !== 'completed' && s !== 'declined';
+  }).length;
+  const overdueN = state.invoices.filter((i) => String(i.status || '').toLowerCase() === 'overdue').length;
+  const draftN = state.invoices.filter((i) => String(i.status || '').toLowerCase() === 'draft').length;
+  const activeClientKpi = state.clients.filter((c) => deriveClientProductStatus(c).key === 'active').length;
+  const tasksDue = tasksDueTodayCount();
+  const weekAhead = new Date(now.getTime() + 7 * 86400000);
+  const dueSoonN = state.invoices.filter((i) => {
+    if (!i.due_date || String(i.status || 'pending').toLowerCase() === 'paid') return false;
+    const d = new Date(i.due_date);
+    return !Number.isNaN(d.getTime()) && d >= now && d <= weekAhead;
+  }).length;
+  const pipeValEst = leadPipelineValueEstimate();
 
-  const actEvents = (state.activity || []).slice(0, 10);
+  const b = leadBuckets(state.leads);
+  const stageRows = [
+    { label: 'New', n: b['0'].length },
+    { label: 'Contacted', n: b['1'].length },
+    { label: 'Qualified', n: b['2'].length },
+    { label: 'Proposal', n: b['3'].length },
+    { label: 'Won', n: b.won.length },
+  ];
+  const maxStage = Math.max(1, ...stageRows.map((r) => r.n));
+
+  const delivPhases = [
+    { k: 'discovery', l: 'Discovery' },
+    { k: 'design', l: 'Design' },
+    { k: 'development', l: 'Development' },
+    { k: 'review', l: 'Review' },
+    { k: 'live', l: 'Live' },
+  ];
+  const maxDeliv = Math.max(1, ...delivPhases.map(({ k }) => byPh(k)));
+  const nLive = byPh('live');
+  const nTotalProj = state.projects.length;
+  const pctLive = nTotalProj ? Math.round((nLive / nTotalProj) * 100) : 0;
+
+  const actEvents = (state.activity || []).slice(0, 8);
   const actHtml = actEvents.length
-    ? `<ul class="cs-activity-tl" role="list">
+    ? `<ul class="adm-feed-list" role="list">
         ${actEvents
           .map((ev) => {
             const f = formatActivityEvent(ev);
-            return `<li><span class="cs-act-icon" aria-hidden="true">${f.icon}</span><div class="cs-act-body"><div>${f.text}</div><div class="cs-act-time">${f.rel}</div></div></li>`;
+            return `<li role="listitem"><span class="adm-feed-ico" aria-hidden="true">${f.icon}</span><div class="adm-feed-body"><div>${f.text}</div><div class="adm-feed-time">${f.rel}</div></div></li>`;
           })
           .join('')}
       </ul>`
-    : '<p class="phase-note" style="margin:0">No activity yet — actions in admin will show here.</p>';
+    : `<div class="adm-empty-inline">
+        <p class="phase-note" style="margin:0">No activity recorded yet. Invoices, messages, and project updates will appear here.</p>
+        <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-dash-go="clients" style="margin-top:0.75rem">Add a client</button>
+      </div>`;
 
-  const clientSitesRows = state.clients.slice(0, 12).map((c) => {
+  const upcomingInv = state.invoices
+    .filter((i) => i.due_date && String(i.status || 'pending').toLowerCase() !== 'paid')
+    .filter((i) => {
+      const d = new Date(i.due_date);
+      return !Number.isNaN(d.getTime()) && d >= now && d <= weekAhead;
+    })
+    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+    .slice(0, 5);
+
+  const deadlineRows = [];
+  for (const i of upcomingInv) {
+    deadlineRows.push({
+      kind: 'Invoice',
+      label: i.client_label || 'Invoice',
+      dateStr: i.due_date || '—',
+      demo: false,
+    });
+  }
+  if (!deadlineRows.length) {
+    const d1 = new Date(now.getTime() + 3 * 86400000);
+    const d2 = new Date(now.getTime() + 6 * 86400000);
+    deadlineRows.push(
+      { kind: 'Milestone', label: 'Example: Design sign-off review', dateStr: d1.toLocaleDateString('en-US'), demo: true },
+      { kind: 'Task', label: 'Example: Publish staging for QA', dateStr: d2.toLocaleDateString('en-US'), demo: true }
+    );
+  }
+  const upcomingHtml = `<ul class="adm-feed-list" style="margin:0;padding:0;list-style:none">
+      ${deadlineRows
+        .map(
+          (r) =>
+            `<li style="display:flex;justify-content:space-between;gap:0.5rem;align-items:flex-start;padding:0.5rem 0;border-bottom:1px solid #f1f5f9;font-size:0.8125rem">
+          <span><strong style="font-weight:600;color:var(--adm-text)">${esc(r.kind)}</strong> · ${esc(r.label)}${
+              r.demo ? '<span class="adm-demo-pill">Demo</span>' : ''
+            }</span><span class="phase-note" style="white-space:nowrap">${esc(r.dateStr)}</span>
+        </li>`
+        )
+        .join('')}
+    </ul>`;
+
+  const mySub = parseJwtSub();
+  const allMsgs = state.messages || [];
+  const msgPreviewRows = (state.projects || [])
+    .map((p) => {
+      const pmsgs = allMsgs.filter((m) => m.project_id === p.id);
+      if (!pmsgs.length) return null;
+      const last = pmsgs.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+      const raw = String(last.content || last.body || '').replace(/\s+/g, ' ').trim();
+      const prev = raw.slice(0, 90);
+      const needsReply = !!(mySub && last.sender_id && last.sender_id !== mySub);
+      return { p, who: clientDisplayName(p.client_id), prev, time: last.created_at, needsReply };
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.time) - new Date(a.time))
+    .slice(0, 4);
+  const msgHtml = msgPreviewRows.length
+    ? msgPreviewRows
+        .map(
+          (r) =>
+            `<button type="button" class="adm-msg-prev" data-dash-msg-project="${esc(r.p.id)}">
+      <span class="adm-msg-prev__dot" ${r.needsReply ? '' : 'hidden'} aria-hidden="true"></span>
+      <div class="adm-msg-prev__body">
+        <div class="adm-msg-prev__who">${esc(r.who)} · ${esc(r.p.name || 'Project')}</div>
+        <div class="adm-msg-prev__snippet">${esc(r.prev)}${r.prev.length >= 90 ? '…' : ''}</div>
+      </div>
+      <span class="adm-msg-prev__time">${r.time ? formatRelative(r.time) : '—'}</span>
+    </button>`
+        )
+        .join('')
+    : `<div class="adm-empty-inline">
+        <p class="phase-note" style="margin:0">No project threads yet. Messages are organized per client project.</p>
+        <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-dash-go="messages" style="margin-top:0.75rem">Open messages</button>
+      </div>`;
+
+  const unpaidTop = state.invoices
+    .filter((i) => String(i.status || 'pending').toLowerCase() !== 'paid')
+    .slice(0, 5);
+  const unpaidRows = unpaidTop.length
+    ? unpaidTop
+        .map(
+          (i) =>
+            `<tr><td>${esc(i.client_label || '—')}</td><td style="text-align:right;font-weight:600">$${Number(i.amount || 0).toFixed(2)}</td><td>${invStatusBadge(i.status)}</td><td>${esc(i.due_date || '—')}</td></tr>`
+        )
+        .join('')
+    : '<tr><td colspan="4" class="phase-note">No outstanding invoices — great work.</td></tr>';
+
+  const recentInv = [...state.invoices]
+    .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
+    .slice(0, 5);
+  const recentInvRows = recentInv.length
+    ? recentInv
+        .map(
+          (i) =>
+            `<tr><td>${esc(i.client_label || '—')}</td><td style="text-align:right;font-weight:600">$${Number(i.amount || 0).toFixed(
+              2
+            )}</td><td>${invStatusBadge(i.status)}</td><td class="phase-note">${esc(i.due_date || '—')}</td></tr>`
+        )
+        .join('')
+    : '<tr><td colspan="4" class="phase-note">Create an invoice to see billing history here.</td></tr>';
+
+  const openP = state.projects.filter((p) => p.status !== 'live');
+  const onTrack = openP.filter((p) => ['discovery', 'design', 'development'].includes(p.status)).length;
+  const atRisk = openP.filter((p) => p.status === 'review').length;
+  const blocked = 0;
+  const completed = state.projects.filter((p) => p.status === 'live').length;
+
+  const clientSitesRows = state.clients.slice(0, 8).map((c) => {
     const projs = state.projects.filter((p) => p.client_id === c.id);
     const live = projs.find((p) => p.status === 'live' && p.custom_domain);
     const hasDom = projs.some((p) => p.custom_domain);
-    const stLabel = live ? 'Live' : hasDom ? 'DNS Pending' : 'Not deployed';
+    const stLabel = live ? 'Live' : hasDom ? 'DNS pending' : 'Not deployed';
     const stIcon = live ? '🟢' : hasDom ? '🟡' : '⚪';
     const dom = (live && live.custom_domain) || projs.find((p) => p.custom_domain)?.custom_domain || '—';
     const pid = projs[0]?.id || '';
@@ -748,87 +1363,250 @@ function renderDashboard() {
         <td>${esc(c.full_name || c.email)}</td>
         <td>${esc(dom)}</td>
         <td><span class="phase-note">${stIcon} ${stLabel}</span></td>
-        <td><a href="site-builder.html?project=${esc(
+        <td style="text-align:right"><a href="site-builder.html?project=${esc(
           pid
-        )}" target="_blank" rel="noopener" class="btn-secondary btn-sm" style="display:inline-block;text-decoration:none" onclick="event.stopPropagation()">Go live →</a></td>
+        )}" target="_blank" rel="noopener" class="adm-btn adm-btn--secondary adm-btn--sm" style="display:inline-block" onclick="event.stopPropagation()">Builder</a></td>
       </tr>`;
   });
 
+  const kpi = (opts) => `<button type="button" class="adm-stat-card" data-dash-go="${esc(opts.go)}">
+    <div class="adm-stat-card__top">
+      <span class="adm-stat-card__icon ${opts.ic}" aria-hidden="true">${opts.emoji}</span>
+    </div>
+    <div class="adm-stat-card__value">${opts.val}</div>
+    <div class="adm-stat-card__label">${esc(opts.lab)}</div>
+    <div class="adm-stat-card__hint">${opts.hint}</div>
+    ${opts.trend ? `<div class="adm-stat-card__trend ${opts.trendCls || 'adm-stat-card__trend--muted'}">${opts.trend}</div>` : ''}
+  </button>`;
+
   getEl('panel-dashboard').innerHTML = `
-    <div class="cs-kpi-row">
-      <div class="cs-kpi">
-        <div class="cs-kpi-top">
-          <div class="cs-kpi-icon indigo" aria-hidden="true">👥</div>
-        </div>
-        <div class="cs-kpi-n">${state.clients.length}</div>
-        <div class="cs-kpi-l">Active clients</div>
-        <div class="cs-kpi-trend up">+${clientsMo} this month</div>
+    <p class="phase-note" style="margin:0 0 1rem 0;font-size:0.9375rem;max-width:42rem;line-height:1.5">
+      <strong style="color:var(--adm-text)">What needs your attention right now</strong> — overdue cash, replies, signatures, and delivery deadlines in one glance.
+    </p>
+    <div class="pt-kpi-strip">
+      ${kpi({
+        go: 'clients',
+        emoji: '👥',
+        ic: 'adm-stat-card__icon--indigo',
+        val: String(activeClientKpi),
+        lab: 'Active clients',
+        hint: 'With live delivery work.',
+        trend: `+${clientsMo} new this month`,
+        trendCls: 'adm-stat-card__trend--up',
+      })}
+      ${kpi({
+        go: 'invoices',
+        emoji: '💵',
+        ic: 'adm-stat-card__icon--emerald',
+        val: `$${revMo.toFixed(2)}`,
+        lab: 'Revenue (month)',
+        hint: 'Collected this month.',
+        trend: revMo > 0 ? 'Cash in' : 'Record payments',
+        trendCls: 'adm-stat-card__trend--muted',
+      })}
+      ${kpi({
+        go: 'invoices',
+        emoji: '🧾',
+        ic: 'adm-stat-card__icon--amber',
+        val: `$${unpaid.toFixed(2)}`,
+        lab: 'Outstanding invoices',
+        hint: 'Unpaid AR.',
+        trend: `${unpaidCount} open`,
+        trendCls: unpaidCount ? 'adm-stat-card__trend--down' : 'adm-stat-card__trend--muted',
+      })}
+      ${kpi({
+        go: 'projects',
+        emoji: '📁',
+        ic: 'adm-stat-card__icon--emerald',
+        val: String(open.length),
+        lab: 'Active projects',
+        hint: 'Not yet live.',
+        trend: `+${projsMo} new`,
+        trendCls: 'adm-stat-card__trend--up',
+      })}
+      ${kpi({
+        go: 'tasks',
+        emoji: '✓',
+        ic: 'adm-stat-card__icon--slate',
+        val: String(tasksDue),
+        lab: 'Due today',
+        hint: 'Invoices & follow-ups due today.',
+        trend: dueSoonN ? `${dueSoonN} more in 7d` : 'Clear runway',
+        trendCls: 'adm-stat-card__trend--muted',
+      })}
+    </div>
+
+    <h2 class="adm-dash-card__title" style="margin:1.25rem 0 0.75rem 0;font-size:0.9375rem;font-weight:700;color:var(--adm-text)">Attention required</h2>
+    <div class="pt-attention">
+      <div class="pt-attention-card">
+        <div class="pt-attention-card__label">Overdue invoices</div>
+        <div class="pt-attention-card__val">${overdueN}</div>
+        <div class="pt-attention-card__hint">Past due — collect or extend terms.</div>
+        <button type="button" class="pt-link" data-dash-go="invoices">Review invoices →</button>
       </div>
-      <div class="cs-kpi">
-        <div class="cs-kpi-top"><div class="cs-kpi-icon emerald" aria-hidden="true">📁</div></div>
-        <div class="cs-kpi-n">${open.length}</div>
-        <div class="cs-kpi-l">Open projects</div>
-        <div class="cs-kpi-micro">Projects by phase</div>
-        <div class="cs-kpi-pills" style="margin-top:6px">
-          <span class="badge badge-discovery">D ${byPh('discovery')}</span>
-          <span class="badge badge-design">De ${byPh('design')}</span>
-          <span class="badge badge-dev" title="Development phase">Devel. ${byPh('development')}</span>
-          <span class="badge badge-review">R ${byPh('review')}</span>
-          <span class="badge badge-live">L ${byPh('live')}</span>
-        </div>
-        <div class="cs-kpi-trend muted" style="margin-top:4px">+${projsMo} new this month</div>
+      <div class="pt-attention-card">
+        <div class="pt-attention-card__label">Due in 7 days</div>
+        <div class="pt-attention-card__val">${dueSoonN}</div>
+        <div class="pt-attention-card__hint">Upcoming invoice dates.</div>
+        <button type="button" class="pt-link" data-dash-go="invoices">See schedule →</button>
       </div>
-      <div class="cs-kpi">
-        <div class="cs-kpi-top"><div class="cs-kpi-icon amber" aria-hidden="true">💰</div></div>
-        <div class="cs-kpi-n">$${unpaid.toFixed(2)}</div>
-        <div class="cs-kpi-l">Revenue (unpaid)</div>
-        <div class="cs-kpi-trend muted">${unpaidCount} invoice${unpaidCount === 1 ? '' : 's'} outstanding</div>
+      <div class="pt-attention-card">
+        <div class="pt-attention-card__label">Unread / reply threads</div>
+        <div class="pt-attention-card__val">${msgAwait}</div>
+        <div class="pt-attention-card__hint">Client messages needing a reply.</div>
+        <button type="button" class="pt-link" data-dash-go="messages">Open inbox →</button>
       </div>
-      <div class="cs-kpi">
-        <div class="cs-kpi-top"><div class="cs-kpi-icon rose" aria-hidden="true">📬</div></div>
-        <div class="cs-kpi-n">${newLeads}</div>
-        <div class="cs-kpi-l">New leads</div>
-        <div class="cs-kpi-trend up">${pipe} in pipeline</div>
-        <div class="cs-kpi-trend muted" style="margin-top:2px">+${leadsMo} this month</div>
+      <div class="pt-attention-card">
+        <div class="pt-attention-card__label">Contracts pending</div>
+        <div class="pt-attention-card__val">${contractsPending}</div>
+        <div class="pt-attention-card__hint">Awaiting signature or send.</div>
+        <button type="button" class="pt-link" data-dash-go="contracts">Contracts →</button>
       </div>
     </div>
-    <div class="cs-dash-2">
-      <div class="card" style="margin-bottom:0">
-        <div class="card-header" style="border:0;padding-bottom:0;margin-bottom:12px">
-          <span class="card-title">Client sites — hosting</span>
-        </div>
-        <div class="data-table-wrap" style="border:0">
-          <table class="data-table">
-            <thead><tr><th>Client</th><th>Domain</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-              ${
-                state.clients.length
-                  ? clientSitesRows.join('')
-                  : '<tr><td colspan="7" class="phase-note" style="cursor:default">No clients yet. Create a client in the Clients tab.</td></tr>'
-              }
-            </tbody>
-          </table>
-        </div>
+
+    <div class="pt-pipe-snap">
+      <div class="pt-pipe-snap__row">
+        <h3 class="pt-pipe-snap__title">Pipeline snapshot</h3>
+        <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-dash-go="pipeline">View pipeline</button>
       </div>
-      <div class="card" style="margin-bottom:0">
-        <div class="card-header" style="border:0;padding-bottom:0;margin-bottom:12px">
-          <span class="card-title">Quick actions</span>
+      <p class="phase-note" style="margin:0 0 0.75rem 0;font-size:0.8125rem">
+        <strong>${pipe}</strong> open leads · estimated <strong>$${pipeValEst.toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong> from parsed budgets
+      </p>
+      <div class="adm-pipeline-bars" style="margin:0">
+        ${stageRows
+          .map(
+            (r) => `<div class="adm-pipeline-row">
+            <span class="adm-pipeline-row__label">${esc(r.label)}</span>
+            <div class="adm-pipeline-row__track"><div class="adm-pipeline-row__fill" style="width:${Math.max(8, Math.round((r.n / maxStage) * 100))}%"></div></div>
+            <span class="adm-pipeline-row__n">${r.n}</span>
+          </div>`
+          )
+          .join('')}
+      </div>
+    </div>
+
+    <h2 class="adm-dash-card__title" style="margin:1.25rem 0 0.75rem 0;font-size:0.9375rem;font-weight:700;color:var(--adm-text)">Work queues</h2>
+    <div class="pt-queue-grid">
+      <div class="pt-queue">
+        <div class="pt-queue__title">Tasks &amp; follow-ups</div>
+        ${upcomingHtml}
+      </div>
+      <div class="pt-queue">
+        <div class="pt-queue__title">Messages</div>
+        ${msgHtml}
+      </div>
+      <div class="pt-queue">
+        <div class="pt-queue__title">Recent activity</div>
+        ${actHtml}
+      </div>
+    </div>
+
+    <div class="adm-dash-card" style="margin-bottom:1rem">
+        <div class="adm-dash-card__hd">
+          <h2 class="adm-dash-card__title">Delivery pipeline</h2>
+          <a href="#" class="adm-dash-card__link" data-dash-go="projects">All projects →</a>
         </div>
-        <div class="cs-qa-tiles">
-          <button type="button" class="cs-qa-tile" id="daQaLead"><span class="qi">➕</span><span class="ql">Add New Lead</span></button>
-          <button type="button" class="cs-qa-tile" id="daQaClient"><span class="qi">👤</span><span class="ql">Create Client</span></button>
-          <button type="button" class="cs-qa-tile" id="daQaInv"><span class="qi">📄</span><span class="ql">New Invoice</span></button>
-          <button type="button" class="cs-qa-tile" id="daQaMsg"><span class="qi">💬</span><span class="ql">Send Message</span></button>
+        <p class="phase-note" style="margin:0 0 0.75rem 0;font-size:0.8125rem">Discovery → live: where work sits across client sites.</p>
+        <div class="adm-delivery-pipeline">
+          ${delivPhases
+            .map(
+              ({ k, l }) => `<div class="adm-deliv-row">
+            <span class="adm-deliv-row__label">${esc(l)}</span>
+            <div class="adm-deliv-row__track"><div class="adm-deliv-row__fill" style="width:${Math.max(6, Math.round((byPh(k) / maxDeliv) * 100))}%"></div></div>
+            <span class="adm-deliv-row__n">${byPh(k)}</span>
+          </div>`
+            )
+            .join('')}
+        </div>
+        <div class="adm-deliv-summary">
+          <span><strong>${nLive}</strong> live / ${nTotalProj} total</span>
+          <span>${pctLive}% shipped</span>
+        </div>
+    </div>
+
+    <div class="adm-dash-grid-2">
+      <div class="adm-dash-card">
+        <div class="adm-dash-card__hd">
+          <h2 class="adm-dash-card__title">Revenue &amp; invoices</h2>
+          <a href="#" class="adm-dash-card__link" data-dash-go="invoices">Open invoices →</a>
+        </div>
+        <div class="adm-bill-metrics">
+          <div class="adm-bill-metric"><div class="adm-bill-metric__val">$${unpaid.toFixed(2)}</div><div class="adm-bill-metric__lab">Total unpaid</div></div>
+          <div class="adm-bill-metric"><div class="adm-bill-metric__val">$${revMo.toFixed(2)}</div><div class="adm-bill-metric__lab">Paid this month</div></div>
+          <div class="adm-bill-metric"><div class="adm-bill-metric__val">${overdueN}</div><div class="adm-bill-metric__lab">Overdue</div></div>
+          <div class="adm-bill-metric"><div class="adm-bill-metric__val">${draftN}</div><div class="adm-bill-metric__lab">Drafts</div></div>
+        </div>
+        <p class="phase-note" style="margin:0 0 0.5rem 0;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Recent invoices</p>
+        <table class="adm-mini-table">
+          <thead><tr><th>Client</th><th style="text-align:right">Amount</th><th>Status</th><th>Due</th></tr></thead>
+          <tbody>${recentInvRows}</tbody>
+        </table>
+      </div>
+      <div class="adm-dash-card">
+        <div class="adm-dash-card__hd">
+          <h2 class="adm-dash-card__title">Project health</h2>
+          <a href="#" class="adm-dash-card__link" data-dash-go="projects">Details →</a>
+        </div>
+        <p class="phase-note" style="margin:0 0 0.85rem 0;font-size:0.8125rem">Snapshot by delivery phase. “At risk” highlights projects in review.</p>
+        <div class="adm-health-grid">
+          <div class="adm-health-card"><div class="adm-health-card__n">${onTrack}</div><div class="adm-health-card__lab">On track</div></div>
+          <div class="adm-health-card"><div class="adm-health-card__n">${atRisk}</div><div class="adm-health-card__lab">At risk</div></div>
+          <div class="adm-health-card"><div class="adm-health-card__n">${blocked}</div><div class="adm-health-card__lab">Blocked</div></div>
+          <div class="adm-health-card"><div class="adm-health-card__n">${completed}</div><div class="adm-health-card__lab">Completed</div></div>
         </div>
       </div>
     </div>
-    <div class="card" style="margin-bottom:0">
-      <div class="card-header" style="border:0">
-        <span class="card-title">Recent activity</span>
+
+    <div class="adm-dash-card" style="margin-bottom:1rem">
+      <div class="adm-dash-card__hd">
+        <h2 class="adm-dash-card__title">Quick actions</h2>
       </div>
-      ${actHtml}
+      <div class="adm-quick-grid adm-quick-grid--dense">
+        <button type="button" class="adm-quick-tile" id="daQaClient"><span class="adm-quick-tile__ico">👤</span><span class="adm-quick-tile__lab">Add Client</span></button>
+        <button type="button" class="adm-quick-tile" id="daQaLead"><span class="adm-quick-tile__ico">📬</span><span class="adm-quick-tile__lab">Add Lead</span></button>
+        <button type="button" class="adm-quick-tile" id="daQaProj"><span class="adm-quick-tile__ico">📁</span><span class="adm-quick-tile__lab">Create Project</span></button>
+        <button type="button" class="adm-quick-tile" id="daQaInv"><span class="adm-quick-tile__ico">🧾</span><span class="adm-quick-tile__lab">Send Invoice</span></button>
+        <button type="button" class="adm-quick-tile" id="daQaContract"><span class="adm-quick-tile__ico">📄</span><span class="adm-quick-tile__lab">Send Contract</span></button>
+        <button type="button" class="adm-quick-tile" id="daQaFile"><span class="adm-quick-tile__ico">📎</span><span class="adm-quick-tile__lab">Upload File</span></button>
+        <button type="button" class="adm-quick-tile" id="daQaTask"><span class="adm-quick-tile__ico">✓</span><span class="adm-quick-tile__lab">New Task</span></button>
+        <button type="button" class="adm-quick-tile" id="daQaBuilder"><span class="adm-quick-tile__ico">🛠</span><span class="adm-quick-tile__lab">Site Builder</span></button>
+      </div>
+    </div>
+
+    <div class="adm-dash-card" style="margin-bottom:0">
+      <div class="adm-dash-card__hd">
+        <h2 class="adm-dash-card__title">Client sites &amp; hosting</h2>
+        <a href="#" class="adm-dash-card__link" data-dash-go="clients">All clients →</a>
+      </div>
+      <div class="data-table-wrap" style="border:0">
+        <table class="data-table">
+          <thead><tr><th>Client</th><th>Domain</th><th>Status</th><th style="text-align:right">Action</th></tr></thead>
+          <tbody>
+            ${
+              state.clients.length
+                ? clientSitesRows.join('')
+                : '<tr><td colspan="4" class="phase-note" style="cursor:default">No clients yet — add one from Quick actions or the Clients tab.</td></tr>'
+            }
+          </tbody>
+        </table>
+      </div>
     </div>`;
 
+  const panel = getEl('panel-dashboard');
+  panel?.querySelectorAll('[data-dash-go]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const go = el.getAttribute('data-dash-go');
+      if (go) showTab(go);
+    });
+  });
+  panel?.querySelectorAll('[data-dash-msg-project]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const pid = el.getAttribute('data-dash-msg-project');
+      state.ui.msgProjectId = pid || null;
+      showTab('messages');
+    });
+  });
   getEl('daQaLead')?.addEventListener('click', () => {
     showTab('pipeline');
     setTimeout(() => openAddLeadDrawer(), 0);
@@ -837,13 +1615,18 @@ function renderDashboard() {
     showTab('clients');
     setTimeout(() => openNewClientDrawer(), 0);
   });
-  getEl('daQaInv')?.addEventListener('click', () => {
-    showTab('invoices');
+  getEl('daQaProj')?.addEventListener('click', () => showTab('projects'));
+  getEl('daQaInv')?.addEventListener('click', () => showTab('invoices'));
+  getEl('daQaFile')?.addEventListener('click', () => {
+    showTab('files');
+    setTimeout(() => document.dispatchEvent(new CustomEvent('adm:files-panel')), 0);
   });
-  getEl('daQaMsg')?.addEventListener('click', () => {
-    showTab('messages');
+  getEl('daQaContract')?.addEventListener('click', () => showTab('contracts'));
+  getEl('daQaTask')?.addEventListener('click', () => showTab('tasks'));
+  getEl('daQaBuilder')?.addEventListener('click', () => {
+    window.open('site-builder.html', '_blank', 'noopener');
   });
-  getEl('panel-dashboard')?.querySelectorAll('.go-dash-client').forEach((row) => {
+  panel?.querySelectorAll('.go-dash-client').forEach((row) => {
     row.addEventListener('click', () => {
       const id = row.getAttribute('data-cid');
       showTab('clients');
@@ -1453,32 +2236,745 @@ function openClientDrawer(id) {
     .catch((e) => toast(e.message, 'error'));
 }
 
+async function renderClientDetailPage(id) {
+  const panel = getEl('panel-clients');
+  const tab = state.ui.clientDetailTab || 'overview';
+  if (!panel) return;
+  panel.innerHTML = `<div class="pt-detail" aria-busy="true">
+    <div class="pt-skel" style="height:28px;width:45%;max-width:280px;border-radius:8px"></div>
+    <div class="pt-skel-line" style="width:70%"></div>
+    <div class="pt-skel-line" style="width:55%"></div>
+  </div>`;
+
+  if (_clientDetailCache.id !== id || !_clientDetailCache.data) {
+    try {
+      const d = await api(`/api/admin/clients/${id}`);
+      _clientDetailCache = { id, data: d };
+    } catch (e) {
+      panel.innerHTML = `<div class="pt-detail">
+        <button type="button" class="pt-detail__back" data-cli-back>← Back to clients</button>
+        <p class="phase-note" role="alert" style="margin-top:1rem">Could not load this client. ${esc(e.message || '')}</p>
+      </div>`;
+      panel.querySelector('[data-cli-back]')?.addEventListener('click', () => closeClientDetail());
+      return;
+    }
+  }
+
+  const bundle = _clientDetailCache.data;
+  const c = bundle.client;
+  const projs = bundle.projects || [];
+  const invs = (state.invoices || []).filter((i) => i.client_id === id);
+  const paid = invs.filter((i) => (i.status || '') === 'paid').reduce((a, i) => a + Number(i.amount || 0), 0);
+  const out = invs.filter((i) => (i.status || 'pending') !== 'paid').reduce((a, i) => a + Number(i.amount || 0), 0);
+  const nk = clientNotesKey(id);
+  let notes = '';
+  try {
+    notes = localStorage.getItem(nk) || '';
+  } catch {
+    /* */
+  }
+  const pst = deriveClientProductStatus(c);
+  const tabKeys = ['overview', 'projects', 'invoices', 'messages', 'files', 'notes'];
+  const tabBtn = (k, label) =>
+    `<button type="button" class="pt-tab${tab === k ? ' is-active' : ''}" data-ctab="${k}" role="tab" aria-selected="${tab === k ? 'true' : 'false'}">${label}</button>`;
+
+  const invRows = invs
+    .map(
+      (i) =>
+        `<tr><td>$${Number(i.amount).toFixed(2)}</td><td>${invStatusBadge(i.status)}</td><td>${esc(i.project_name || '—')}</td><td>${esc(
+          i.due_date || '—'
+        )}</td></tr>`
+    )
+    .join('');
+  const prRows = projs
+    .map(
+      (p) =>
+        `<tr class="pt-row-clickable" data-open-proj="${esc(p.id)}"><td>${esc(p.name)}</td><td>${phBadge(p.status)}</td><td><a class="adm-link" href="site-builder.html?project=${esc(
+          p.id
+        )}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Builder</a></td></tr>`
+    )
+    .join('');
+
+  const msgRows = projs
+    .map((p) => {
+      const pmsgs = (state.messages || []).filter((m) => m.project_id === p.id);
+      const last = pmsgs.length
+        ? pmsgs.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+        : null;
+      const snip = last ? String(last.content || '').slice(0, 60) : '—';
+      return `<tr><td>${esc(p.name)}</td><td class="phase-note">${esc(snip)}${snip.length >= 60 ? '…' : ''}</td><td style="text-align:right"><button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-open-thread="${esc(
+        p.id
+      )}">Open</button></td></tr>`;
+    })
+    .join('');
+
+  const fileRows = projs
+    .map(
+      (p) =>
+        `<tr><td>${esc(p.name)}</td><td style="text-align:right"><button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-go-files="${esc(
+          p.id
+        )}">Files</button></td></tr>`
+    )
+    .join('');
+
+  const panOverview = `<div class="form-group"><label for="cdfFn">Full name</label><input class="adm-inp" id="cdfFn" value="${esc(
+    c.full_name || ''
+  )}" /></div>
+    <div class="form-group"><label for="cdfCo">Company</label><input class="adm-inp" id="cdfCo" value="${esc(c.company || '')}" /></div>
+    <div class="form-group"><label for="cdfPh">Phone</label><input class="adm-inp" id="cdfPh" value="${esc(c.phone || '')}" /></div>
+    <div class="form-group"><label for="cdfWw">Website</label><input class="adm-inp" id="cdfWw" value="${esc(c.website || '')}" type="url" /></div>
+    <div class="form-group"><label for="cdfTz">Timezone</label><input class="adm-inp" id="cdfTz" value="${esc(c.timezone || '')}" list="cdfTzDl" autocomplete="off" /></div>
+    ${timezoneDatalistHtml('cdfTzDl')}
+    <p class="phase-note" style="margin:0 0 0.75rem 0">Paid <strong>$${paid.toFixed(2)}</strong> · Outstanding <strong>$${out.toFixed(2)}</strong></p>
+    <button type="button" class="adm-btn adm-btn--primary adm-btn--sm" id="cdfSave">Save changes</button>`;
+
+  const panProjects = `<div class="pt-table-card"><div class="pt-table-scroller"><table class="pt-table"><thead><tr><th>Project</th><th>Phase</th><th></th></tr></thead><tbody>
+    ${projs.length ? prRows : '<tr><td colspan="3" class="phase-note">No projects yet.</td></tr>'}</tbody></table></div>
+    <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" id="cdfNewP" style="margin-top:0.75rem">+ New project</button></div>`;
+
+  const panInv = `<div class="pt-table-card"><div class="pt-table-scroller"><table class="pt-table"><thead><tr><th>Amount</th><th>Status</th><th>Project</th><th>Due</th></tr></thead><tbody>
+    ${invs.length ? invRows : '<tr><td colspan="4" class="phase-note">No invoices.</td></tr>'}</tbody></table></div>
+    <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" id="cdfNewI" style="margin-top:0.75rem">+ New invoice</button></div>`;
+
+  const panMsg = `<div class="pt-table-card"><div class="pt-table-scroller"><table class="pt-table"><thead><tr><th>Project</th><th>Latest</th><th></th></tr></thead><tbody>
+    ${projs.length ? msgRows : '<tr><td colspan="3" class="phase-note">No projects — no message threads.</td></tr>'}</tbody></table></div></div>`;
+
+  const panFiles = `<div class="pt-table-card"><div class="pt-table-scroller"><table class="pt-table"><thead><tr><th>Project</th><th></th></tr></thead><tbody>
+    ${projs.length ? fileRows : '<tr><td colspan="2" class="phase-note">No projects.</td></tr>'}</tbody></table></div></div>`;
+
+  const panNotes = `<p class="phase-note">Internal notes (this browser only)</p><textarea class="adm-inp" id="cdfNotes" rows="10" style="width:100%">${esc(notes)}</textarea>`;
+
+  const panels = { overview: panOverview, projects: panProjects, invoices: panInv, messages: panMsg, files: panFiles, notes: panNotes };
+
+  panel.innerHTML = `<div class="pt-detail">
+    <button type="button" class="pt-detail__back" data-cli-back>← Clients</button>
+    <div class="pt-detail__head">
+      <div>
+        <h1 class="pt-detail__title">${esc(c.full_name || c.email)} <span class="adm-pill ${pst.cls}">${esc(pst.label)}</span></h1>
+        <p class="pt-detail__meta">${esc(c.email)}${c.company ? ` · ${esc(c.company)}` : ''}</p>
+      </div>
+      <div class="pt-page-head__actions">
+        <button type="button" class="adm-btn adm-btn--danger adm-btn--sm" id="cdfDel">Delete client</button>
+      </div>
+    </div>
+    <div class="pt-tabs" role="tablist">${tabKeys.map((k) => tabBtn(k, k.charAt(0).toUpperCase() + k.slice(1))).join('')}</div>
+    ${tabKeys
+      .map(
+        (k) =>
+          `<div class="pt-tab-panel${tab === k ? ' is-active' : ''}" data-ctab-panel="${k}" role="tabpanel">${panels[k]}</div>`
+      )
+      .join('')}
+  </div>`;
+
+  panel.querySelector('[data-cli-back]')?.addEventListener('click', () => closeClientDetail());
+  panel.querySelectorAll('[data-ctab]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const k = b.getAttribute('data-ctab');
+      if (k) {
+        state.ui.clientDetailTab = k;
+        pushAdminUrl();
+        renderClientDetailPage(id);
+      }
+    });
+  });
+  panel.querySelector('#cdfSave')?.addEventListener('click', () => {
+    api(`/api/admin/clients/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        full_name: panel.querySelector('#cdfFn')?.value,
+        company: panel.querySelector('#cdfCo')?.value || null,
+        phone: panel.querySelector('#cdfPh')?.value || null,
+        website: panel.querySelector('#cdfWw')?.value || null,
+        timezone: panel.querySelector('#cdfTz')?.value || null,
+      }),
+    })
+      .then(() => {
+        toast('Client updated', 'success');
+        _clientDetailCache = { id: null, data: null };
+        return loadAll();
+      })
+      .catch((e) => toast(e.message, 'error'));
+  });
+  panel.querySelector('#cdfNewP')?.addEventListener('click', () => {
+    state._prefillClientId = id;
+    showTab('projects');
+    renderProjects();
+  });
+  panel.querySelector('#cdfNewI')?.addEventListener('click', () => {
+    state._prefillClientId = id;
+    showTab('invoices');
+    renderInvoices();
+  });
+  panel.querySelectorAll('[data-open-thread]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.ui.msgProjectId = b.getAttribute('data-open-thread');
+      showTab('messages');
+      renderMessages();
+    });
+  });
+  panel.querySelectorAll('[data-go-files]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.ui.filePresetProjectId = b.getAttribute('data-go-files');
+      showTab('files');
+      renderFilesTab();
+    });
+  });
+  panel.querySelectorAll('[data-open-proj]').forEach((row) => {
+    row.addEventListener('click', () => {
+      const pid = row.getAttribute('data-open-proj');
+      if (pid) navigateToProjectDetail(pid);
+    });
+  });
+  panel.querySelector('#cdfNotes')?.addEventListener('blur', (e) => {
+    try {
+      localStorage.setItem(nk, e.target.value);
+      toast('Notes saved locally', 'success');
+    } catch {
+      /* */
+    }
+  });
+  panel.querySelector('#cdfDel')?.addEventListener('click', () => {
+    confirmDialog('Delete client', 'Removes the client from Auth and the portal. This cannot be undone.', () => {
+      api(`/api/admin/clients/${id}`, { method: 'DELETE' })
+        .then(() => {
+          toast('Client deleted', 'success');
+          closeClientDetail();
+          return loadAll();
+        })
+        .catch((e) => toast(e.message, 'error'));
+    });
+  });
+}
+
+async function renderProjectDetailPage(id) {
+  const panel = getEl('panel-projects');
+  const tab = state.ui.projectDetailTab || 'overview';
+  if (!panel) return;
+
+  const pr0 = findProject(id);
+  if (!pr0) {
+    panel.innerHTML = `<div class="pt-detail">
+      <button type="button" class="pt-detail__back" data-proj-back>← Projects</button>
+      <p class="phase-note" role="alert" style="margin-top:1rem">This project is no longer available.</p>
+    </div>`;
+    panel.querySelector('[data-proj-back]')?.addEventListener('click', () => closeProjectDetail());
+    return;
+  }
+
+  panel.innerHTML = `<div class="pt-detail" aria-busy="true">
+    <div class="pt-skel" style="height:28px;width:45%;max-width:320px;border-radius:8px"></div>
+    <div class="pt-skel-line" style="width:70%"></div>
+    <div class="pt-skel-line" style="width:55%"></div>
+  </div>`;
+
+  let updates = [];
+  let files = [];
+  try {
+    const [ur, fr] = await Promise.all([
+      api(`/api/admin/project-updates?project_id=${encodeURIComponent(id)}`),
+      api(`/api/admin/by-project/${encodeURIComponent(id)}/files`),
+    ]);
+    updates = ur.updates || [];
+    files = fr.files || [];
+  } catch (e) {
+    toast(e.message || 'Could not load project data', 'error');
+  }
+
+  const pr = findProject(id);
+  if (!pr) {
+    panel.innerHTML = `<div class="pt-detail">
+      <button type="button" class="pt-detail__back" data-proj-back>← Projects</button>
+      <p class="phase-note" role="alert" style="margin-top:1rem">This project is no longer available.</p>
+    </div>`;
+    panel.querySelector('[data-proj-back]')?.addEventListener('click', () => closeProjectDetail());
+    return;
+  }
+
+  const reload = () => {
+    void renderProjectDetailPage(id);
+  };
+  const c = pr.client || {};
+  const pst = deriveProjectProductStatus(pr);
+  const invs = (state.invoices || []).filter((i) => i.project_id === id);
+  const paid = invs.filter((i) => (i.status || '') === 'paid').reduce((a, i) => a + Number(i.amount || 0), 0);
+  const out = invs.filter((i) => String(i.status || 'pending').toLowerCase() !== 'paid').reduce((a, i) => a + Number(i.amount || 0), 0);
+  const tot = invs.reduce((a, i) => a + Number(i.amount || 0), 0);
+  const te = (state.timeEntries || []).filter((t) => t.project_id === id);
+  const hrs = te.reduce((a, t) => a + (Number(t.hours) || 0), 0);
+  const rate = getDefaultHourlyRate();
+  const tasks = loadProjectTasks(id);
+  const pmsgs = (state.messages || []).filter((m) => m.project_id === id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const tabKeys = ['overview', 'tasks', 'timeline', 'files', 'messages', 'billing'];
+  const tabBtn = (k, label) =>
+    `<button type="button" class="pt-tab${tab === k ? ' is-active' : ''}" data-ptab="${k}" role="tab" aria-selected="${tab === k ? 'true' : 'false'}">${label}</button>`;
+
+  const invRows = invs
+    .map(
+      (i) =>
+        `<tr><td>$${Number(i.amount).toFixed(2)}</td><td>${invStatusBadge(i.status)}</td><td>${esc(i.due_date || '—')}</td></tr>`
+    )
+    .join('');
+
+  const updRows = updates.length
+    ? updates
+        .slice()
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .map(
+          (u) =>
+            `<li class="pt-feed-li">
+          <div class="pt-feed-li__meta">${u.created_at ? esc(formatRelative(u.created_at)) : '—'}</div>
+          <div class="pt-feed-li__body">${esc(u.message || '')}</div>
+        </li>`
+        )
+        .join('')
+    : '';
+
+  const fileRows = files.length
+    ? files
+        .map(
+          (f) =>
+            `<tr>
+          <td><a class="adm-link" href="${esc(f.file_url)}" target="_blank" rel="noopener">${esc(f.file_name)}</a></td>
+          <td>${f.uploaded_at ? esc(formatShortDateTime(f.uploaded_at)) : '—'}</td>
+          <td style="text-align:right"><button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" data-pd-delf="${esc(f.id)}">Remove</button></td>
+        </tr>`
+        )
+        .join('')
+    : '';
+
+  const msgRows = pmsgs.length
+    ? pmsgs
+        .slice()
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .map(
+          (m) =>
+            `<tr><td class="phase-note">${esc(formatRelative(m.created_at))}</td><td>${esc(String(m.content || '').slice(0, 120))}${
+              String(m.content || '').length > 120 ? '…' : ''
+            }</td></tr>`
+        )
+        .join('')
+    : '';
+
+  const taskItems = tasks.length
+    ? tasks
+        .map(
+          (t) =>
+            `<li class="pt-task-row">
+          <label class="pt-task-row__lab"><input type="checkbox" data-pd-task="${esc(t.id)}" ${t.done ? 'checked' : ''} /> <span>${esc(
+            t.title || 'Task'
+          )}</span></label>
+          <button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" data-pd-taskdel="${esc(t.id)}">Remove</button>
+        </li>`
+        )
+        .join('')
+    : '';
+
+  const panOverview = `<div class="pt-detail__grid2">
+    <div>
+      <p class="phase-note" style="margin:0 0 0.5rem">Client</p>
+      <p style="margin:0 0 1rem"><button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-pd-goclient>Open ${esc(
+        clientDisplayName(pr.client_id)
+      )}</button></p>
+      <p class="phase-note" style="margin:0 0 0.5rem">Website type</p>
+      <p style="margin:0 0 1rem">${pr.website_type ? esc(pr.website_type) : '<span class="phase-note">—</span>'}</p>
+      <div class="form-group" style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:flex-end">
+        <div style="flex:1;min-width:10rem">
+          <label for="pdPhase">Delivery phase</label>
+          <select id="pdPhase" class="adm-select">
+            <option value="discovery" ${(pr.status || 'discovery') === 'discovery' ? 'selected' : ''}>Discovery</option>
+            <option value="design" ${pr.status === 'design' ? 'selected' : ''}>Design</option>
+            <option value="development" ${pr.status === 'development' ? 'selected' : ''}>Development</option>
+            <option value="review" ${pr.status === 'review' ? 'selected' : ''}>Review</option>
+            <option value="live" ${pr.status === 'live' ? 'selected' : ''}>Live</option>
+          </select>
+        </div>
+        <button type="button" class="adm-btn adm-btn--primary adm-btn--sm" id="pdApplyPh">Apply</button>
+      </div>
+      <p class="phase-note" style="margin:1rem 0 0.35rem"><label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer"><input type="checkbox" id="pdHold" ${
+        projectOnHold(id) ? 'checked' : ''
+      } /> Mark project on hold</label></p>
+    </div>
+    <div>
+      <p class="phase-note" style="margin:0 0 0.5rem">Internal notes</p>
+      <textarea id="pdIntNotes" class="adm-inp" rows="8" style="width:100%" placeholder="Team-only context…">${esc(pr.internal_notes || '')}</textarea>
+      <p style="margin:0.75rem 0 0">
+        <a class="adm-btn adm-btn--secondary adm-btn--sm" href="site-builder.html?project=${esc(id)}" target="_blank" rel="noopener">Open Site Builder</a>
+      </p>
+    </div>
+  </div>`;
+
+  const panTasks = `<p class="phase-note" style="margin:0 0 0.75rem">Checklist for this project (stored in this browser).</p>
+    <ul class="pt-task-list" style="list-style:none;padding:0;margin:0 0 1rem">${taskItems || '<li class="phase-note">No tasks yet.</li>'}</ul>
+    <div class="form-group" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:flex-end;max-width:28rem">
+      <div style="flex:1;min-width:12rem">
+        <label for="pdNewTask">New task</label>
+        <input type="text" id="pdNewTask" class="adm-inp" placeholder="e.g. Send contract for sign-off" style="width:100%" />
+      </div>
+      <button type="button" class="adm-btn adm-btn--primary adm-btn--sm" id="pdAddTask">Add</button>
+    </div>`;
+
+  const panTimeline = `<ul class="pt-feed" style="list-style:none;padding:0;margin:0 0 1rem">${updRows || '<li class="phase-note">No client-facing updates yet.</li>'}</ul>
+    <div class="form-group">
+      <label for="pdUpd">Post update (visible on client dashboard)</label>
+      <textarea id="pdUpd" class="adm-inp" rows="3" maxlength="5000" placeholder="Milestone, deliverable, next step…" style="width:100%"></textarea>
+    </div>
+    <button type="button" class="adm-btn adm-btn--primary adm-btn--sm" id="pdPostUpd">Post update</button>`;
+
+  const panFiles = `<div class="adm-drop" id="pdDrop">Drag files here or <label class="adm-link" style="cursor:pointer"><input type="file" id="pdFile" style="display:none" /> browse</label></div>
+    <p class="adm-hint-below" id="pdFname">No file selected</p>
+    <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" id="pdUpload">Upload</button>
+    <p class="phase-note" style="margin:1rem 0 0.25rem">Or add a public <strong>https</strong> file URL:</p>
+    <div class="form-group" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:flex-end;max-width:32rem">
+      <div style="flex:1;min-width:12rem">
+        <label for="pdFileUrl">File URL</label>
+        <input type="url" id="pdFileUrl" class="adm-inp" placeholder="https://…" style="width:100%" />
+      </div>
+      <div style="min-width:9rem">
+        <label for="pdFileUrlName">Display name</label>
+        <input type="text" id="pdFileUrlName" class="adm-inp" placeholder="e.g. sitemap.pdf" style="width:100%" />
+      </div>
+    </div>
+    <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" id="pdAddUrl" style="margin-top:0.5rem">Add link</button>
+    <div class="pt-table-card" style="margin-top:1rem"><div class="pt-table-scroller"><table class="pt-table"><thead><tr><th>File</th><th>Uploaded</th><th></th></tr></thead><tbody>
+      ${fileRows || '<tr><td colspan="3" class="phase-note">No files yet.</td></tr>'}
+    </tbody></table></div></div>`;
+
+  const panMsg = `<div class="pt-table-card"><div class="pt-table-scroller"><table class="pt-table"><thead><tr><th>When</th><th>Message</th></tr></thead><tbody>
+    ${msgRows || '<tr><td colspan="2" class="phase-note">No messages in this thread yet.</td></tr>'}
+  </tbody></table></div></div>
+  <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" id="pdOpenMsg">Open in Messages</button>`;
+
+  const panBilling = `<p style="margin:0 0 0.75rem">Total invoiced: <strong>$${tot.toFixed(2)}</strong> · Paid: <strong>$${paid.toFixed(
+    2
+  )}</strong> · Outstanding: <strong>$${out.toFixed(2)}</strong></p>
+    <p style="margin:0 0 0.75rem">Time logged: <strong>${hrs.toFixed(2)}</strong> h · Est. billable at default rate: <strong>$${(
+    hrs * rate
+  ).toFixed(2)}</strong></p>
+    <div class="pt-table-card"><div class="pt-table-scroller"><table class="pt-table"><thead><tr><th>Amount</th><th>Status</th><th>Due</th></tr></thead><tbody>
+      ${invs.length ? invRows : '<tr><td colspan="3" class="phase-note">No invoices for this project.</td></tr>'}
+    </tbody></table></div></div>
+    <button type="button" class="adm-btn adm-btn--primary adm-btn--sm" id="pdInv" style="margin-top:0.75rem">+ Create invoice</button>`;
+
+  const panels = {
+    overview: panOverview,
+    tasks: panTasks,
+    timeline: panTimeline,
+    files: panFiles,
+    messages: panMsg,
+    billing: panBilling,
+  };
+
+  panel.innerHTML = `<div class="pt-detail">
+    <button type="button" class="pt-detail__back" data-proj-back>← Projects</button>
+    <div class="pt-detail__head">
+      <div>
+        <h1 class="pt-detail__title">${esc(pr.name)} <span class="adm-pill ${pst.cls}">${esc(pst.label)}</span></h1>
+        <p class="pt-detail__meta">${esc(c.email || '')}${c.company ? ` · ${esc(c.company)}` : ''} · ${phBadge(pr.status)}</p>
+      </div>
+      <div class="pt-page-head__actions">
+        <button type="button" class="adm-btn adm-btn--danger adm-btn--sm" id="pdDel">Delete project</button>
+      </div>
+    </div>
+    <div class="pt-tabs" role="tablist">${tabKeys.map((k) => tabBtn(k, k.charAt(0).toUpperCase() + k.slice(1))).join('')}</div>
+    ${tabKeys
+      .map(
+        (k) =>
+          `<div class="pt-tab-panel${tab === k ? ' is-active' : ''}" data-ptab-panel="${k}" role="tabpanel">${panels[k]}</div>`
+      )
+      .join('')}
+  </div>`;
+
+  panel.querySelector('[data-proj-back]')?.addEventListener('click', () => closeProjectDetail());
+  panel.querySelectorAll('[data-ptab]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const k = b.getAttribute('data-ptab');
+      if (k) {
+        state.ui.projectDetailTab = k;
+        pushAdminUrl();
+        void renderProjectDetailPage(id);
+      }
+    });
+  });
+
+  panel.querySelector('[data-pd-goclient]')?.addEventListener('click', () => {
+    if (pr.client_id) navigateToClientDetail(pr.client_id);
+  });
+
+  panel.querySelector('#pdApplyPh')?.addEventListener('click', () => {
+    const stp = panel.querySelector('#pdPhase')?.value;
+    if (!stp) return;
+    withBusy(panel.querySelector('#pdApplyPh'), api(`/api/admin/entity/project/${id}`, { method: 'PATCH', body: JSON.stringify({ status: stp }) }))
+      .then(() => {
+        toast('Phase updated', 'success');
+        return loadAll();
+      })
+      .then(reload)
+      .catch((e) => toast(e.message, 'error'));
+  });
+
+  panel.querySelector('#pdHold')?.addEventListener('change', (e) => {
+    setProjectOnHold(id, !!e.target.checked);
+    toast(e.target.checked ? 'Marked on hold' : 'Hold cleared', 'success');
+    reload();
+  });
+
+  panel.querySelector('#pdIntNotes')?.addEventListener('blur', (e) => {
+    const v = e.target.value;
+    api(`/api/admin/entity/project/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ internal_notes: v && String(v).trim() ? String(v) : null }),
+    })
+      .then(() => {
+        const p = findProject(id);
+        if (p) p.internal_notes = v;
+        toast('Notes saved', 'success');
+      })
+      .catch(() => {});
+  });
+
+  panel.querySelector('#pdAddTask')?.addEventListener('click', () => {
+    const inp = panel.querySelector('#pdNewTask');
+    const title = inp && String(inp.value || '').trim();
+    if (!title) {
+      toast('Enter a task title', 'error');
+      return;
+    }
+    const list = loadProjectTasks(id);
+    list.push({ id: `t_${Date.now()}`, title, done: false });
+    saveProjectTasks(id, list);
+    inp.value = '';
+    toast('Task added', 'success');
+    reload();
+  });
+
+  panel.querySelectorAll('[data-pd-task]').forEach((bx) => {
+    bx.addEventListener('change', () => {
+      const tid = bx.getAttribute('data-pd-task');
+      const list = loadProjectTasks(id).map((t) => (t.id === tid ? { ...t, done: !!bx.checked } : t));
+      saveProjectTasks(id, list);
+    });
+  });
+
+  panel.querySelectorAll('[data-pd-taskdel]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const tid = b.getAttribute('data-pd-taskdel');
+      saveProjectTasks(
+        id,
+        loadProjectTasks(id).filter((t) => t.id !== tid)
+      );
+      toast('Task removed', 'success');
+      reload();
+    });
+  });
+
+  panel.querySelector('#pdPostUpd')?.addEventListener('click', () => {
+    const msg = panel.querySelector('#pdUpd')?.value?.trim();
+    if (!msg) {
+      toast('Enter an update', 'error');
+      return;
+    }
+    withBusy(panel.querySelector('#pdPostUpd'), api('/api/admin/project-updates', { method: 'POST', body: JSON.stringify({ project_id: id, message: msg }) }))
+      .then(() => {
+        toast('Update posted', 'success');
+        return loadAll();
+      })
+      .then(reload)
+      .catch((e) => toast(e.message, 'error'));
+  });
+
+  const pdFi = panel.querySelector('#pdFile');
+  panel.querySelector('#pdDrop')?.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    panel.querySelector('#pdDrop')?.classList.add('drag');
+  });
+  panel.querySelector('#pdDrop')?.addEventListener('dragleave', () => panel.querySelector('#pdDrop')?.classList.remove('drag'));
+  panel.querySelector('#pdDrop')?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    panel.querySelector('#pdDrop')?.classList.remove('drag');
+    if (e.dataTransfer.files[0] && pdFi) {
+      pdFi.files = e.dataTransfer.files;
+      const fn = panel.querySelector('#pdFname');
+      if (fn) fn.textContent = e.dataTransfer.files[0].name;
+    }
+  });
+  pdFi?.addEventListener('change', () => {
+    const fn = panel.querySelector('#pdFname');
+    if (fn) fn.textContent = pdFi.files[0] ? pdFi.files[0].name : 'No file selected';
+  });
+
+  panel.querySelector('#pdUpload')?.addEventListener('click', () => {
+    if (!pdFi?.files[0]) {
+      toast('Choose a file', 'error');
+      return;
+    }
+    const cid = pr.client_id;
+    const fd = new FormData();
+    fd.append('file', pdFi.files[0]);
+    withBusy(panel.querySelector('#pdUpload'), api(`/api/admin/projects/${cid}/files`, { method: 'POST', body: fd }))
+      .then(() => {
+        toast('Uploaded', 'success');
+        pdFi.value = '';
+        const fn = panel.querySelector('#pdFname');
+        if (fn) fn.textContent = 'No file selected';
+        return loadAll();
+      })
+      .then(reload)
+      .catch((e) => toast(e.message, 'error'));
+  });
+
+  panel.querySelector('#pdAddUrl')?.addEventListener('click', () => {
+    const u = panel.querySelector('#pdFileUrl')?.value?.trim();
+    if (!u) {
+      toast('Enter a file URL', 'error');
+      return;
+    }
+    if (!/^https?:\/\//i.test(u)) {
+      toast('URL must start with http:// or https://', 'error');
+      return;
+    }
+    const cid = pr.client_id;
+    const body = { file_url: u, file_name: panel.querySelector('#pdFileUrlName')?.value?.trim() || null };
+    withBusy(panel.querySelector('#pdAddUrl'), api(`/api/admin/projects/${cid}/file-link`, { method: 'POST', body: JSON.stringify(body) }))
+      .then(() => {
+        toast('File link added', 'success');
+        const uEl = panel.querySelector('#pdFileUrl');
+        const nEl = panel.querySelector('#pdFileUrlName');
+        if (uEl) uEl.value = '';
+        if (nEl) nEl.value = '';
+        return loadAll();
+      })
+      .then(reload)
+      .catch((e) => toast(e.message, 'error'));
+  });
+
+  panel.querySelectorAll('[data-pd-delf]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const fid = b.getAttribute('data-pd-delf');
+      confirmDialog('Remove file', 'Remove this file record?', () => {
+        api(`/api/admin/files/${fid}`, { method: 'DELETE' })
+          .then(() => {
+            toast('File removed', 'success');
+            return loadAll();
+          })
+          .then(reload)
+          .catch((e) => toast(e.message, 'error'));
+      });
+    });
+  });
+
+  panel.querySelector('#pdOpenMsg')?.addEventListener('click', () => {
+    state.ui.msgProjectId = id;
+    showTab('messages');
+  });
+
+  panel.querySelector('#pdInv')?.addEventListener('click', () => {
+    state._prefillClientId = pr.client_id;
+    state._prefillInvoice = {
+      client_id: pr.client_id,
+      project_id: id,
+      line_desc: `Services — ${pr.name || 'Project'}`,
+      amount: Math.max(0, hrs * rate),
+      description: `Time and materials — ${pr.name || 'project'}`,
+    };
+    showTab('invoices');
+    setTimeout(() => getEl('invFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  });
+
+  panel.querySelector('#pdDel')?.addEventListener('click', () => {
+    confirmDialog('Delete project', 'Removes the project and related data. Continue?', () => {
+      api(`/api/admin/entity/project/${id}`, { method: 'DELETE' })
+        .then(() => {
+          toast('Project deleted', 'success');
+          closeProjectDetail();
+          return loadAll();
+        })
+        .catch((e) => toast(e.message, 'error'));
+    });
+  });
+}
+
 /* ---------- Clients ---------- */
 function renderClients() {
-  const st = (state.table.clients = state.table.clients || { q: '', sort: 'email', dir: 'asc', page: 1 });
+  if (state.ui.clientDetailId) {
+    void renderClientDetailPage(state.ui.clientDetailId);
+    return;
+  }
+  const st = (state.table.clients = state.table.clients || {
+    q: '',
+    sort: 'name',
+    dir: 'asc',
+    status: 'all',
+    page: 1,
+  });
   let rows = filterRows(state.clients, st.q, ['email', 'full_name', 'company', 'phone', 'website']);
-  rows = sortRows(rows, st.sort, st.dir);
+  if (st.status && st.status !== 'all') {
+    rows = rows.filter((c) => deriveClientProductStatus(c).key === st.status);
+  }
+  if (st.sort === 'last') {
+    const dir = st.dir === 'desc' ? -1 : 1;
+    rows = rows.slice().sort((a, b) => {
+      const ta = clientLastActivityInfo(a.id).ts;
+      const tb = clientLastActivityInfo(b.id).ts;
+      if (ta === tb) return dir * String(a.full_name || a.email).localeCompare(String(b.full_name || b.email));
+      return dir * (ta - tb);
+    });
+  } else if (st.sort === 'unpaid') {
+    const dir = st.dir === 'desc' ? -1 : 1;
+    rows = rows.slice().sort((a, b) => {
+      const ua = clientUnpaidTotal(a.id);
+      const ub = clientUnpaidTotal(b.id);
+      if (ua === ub) return String(a.full_name || a.email).localeCompare(String(b.full_name || b.email));
+      return dir * (ua - ub);
+    });
+  } else if (st.sort === 'name') {
+    rows = sortRows(rows, 'full_name', st.dir, (r) => r.full_name || r.email || '');
+  } else {
+    rows = sortRows(rows, st.sort, st.dir);
+  }
   const { slice, page, totalPages } = paginate(rows, st.page, PER);
 
   getEl('panel-clients').innerHTML = `
-    <div class="card" style="margin-bottom:0">
-      <div class="card-header" style="border:0">
-        <span class="card-title">All clients</span>
+    <div class="adm-pro-panel">
+      <div class="adm-pro-panel__hd">
+        <div>
+          <h2 class="adm-pro-panel__title">Clients</h2>
+          <p class="adm-pro-panel__sub">Accounts, contacts, project rollups, and balances. Search and sort the full roster.</p>
+        </div>
+        <button type="button" class="adm-btn adm-btn--primary adm-btn--sm" id="cliHdrAdd">+ Add Client</button>
       </div>
-      <div class="adm-table-tools">
-        <input type="search" class="adm-inp" data-cq placeholder="Filter clients…" value="${esc(st.q)}" style="max-width:22rem" />
+      <div class="adm-toolbar">
+        <div class="adm-toolbar__grow">
+          <input type="search" class="adm-inp" data-cq placeholder="Search name, email, company…" value="${esc(st.q)}" style="width:100%;max-width:22rem" />
+        </div>
+        <label class="visually-hidden" for="cliFiltStatus">Status</label>
+        <select id="cliFiltStatus" class="adm-select" data-cfilt>
+          <option value="all" ${st.status === 'all' ? 'selected' : ''}>All statuses</option>
+          <option value="active" ${st.status === 'active' ? 'selected' : ''}>Active</option>
+          <option value="lead" ${st.status === 'lead' ? 'selected' : ''}>Lead</option>
+          <option value="inactive" ${st.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+        </select>
+        <label class="visually-hidden" for="cliSort">Sort</label>
+        <select id="cliSort" class="adm-select" data-csort>
+          <option value="name:asc" ${st.sort === 'name' && st.dir === 'asc' ? 'selected' : ''}>Name A–Z</option>
+          <option value="name:desc" ${st.sort === 'name' && st.dir === 'desc' ? 'selected' : ''}>Name Z–A</option>
+          <option value="email:asc" ${st.sort === 'email' && st.dir === 'asc' ? 'selected' : ''}>Email A–Z</option>
+          <option value="last:desc" ${st.sort === 'last' && st.dir === 'desc' ? 'selected' : ''}>Last activity</option>
+          <option value="unpaid:desc" ${st.sort === 'unpaid' && st.dir === 'desc' ? 'selected' : ''}>Unpaid balance</option>
+        </select>
       </div>
-      <div class="data-table-wrap" style="border:0;box-shadow:none">
-        <table class="data-table cs-cli-tbl" style="cursor:default">
+      <div class="adm-pro-table-wrap">
+        <table class="adm-pro-table cs-cli-tbl" style="cursor:default">
           <thead>
             <tr>
               <th>Client</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Website</th>
-              <th>Projects</th>
               <th>Status</th>
-              <th style="text-align:right">Actions</th>
+              <th>Email</th>
+              <th>Company</th>
+              <th>Projects</th>
+              <th class="adm-num">Unpaid</th>
+              <th>Last activity</th>
+              <th class="adm-num">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1486,65 +2982,78 @@ function renderClients() {
               slice.length
                 ? slice
                     .map((c) => {
-                const nP = state.projects.filter((p) => p.client_id === c.id).length;
-                return `<tr>
+                      const nP = state.projects.filter((p) => p.client_id === c.id).length;
+                      const unpaid = clientUnpaidTotal(c.id);
+                      const lastAct = clientLastActivityInfo(c.id);
+                      const pst = deriveClientProductStatus(c);
+                      return `<tr>
                 <td>
                   <div class="cs-cli-cell">
                     <div class="cs-cli-av" style="background:${clientGradientForId(c.id)}">${esc(clientInitials(c))}</div>
                     <div>
                       <div class="cs-cli-name">${esc(c.full_name || c.email || '—')}</div>
-                      <div class="cs-cli-co">${
-                        c.company && String(c.company).trim()
-                          ? esc(c.company)
-                          : '<span class="cs-table-empty" aria-label="No company">—</span>'
-                      }</div>
                     </div>
                   </div>
                 </td>
+                <td><span class="adm-pill ${pst.cls}">${esc(pst.label)}</span></td>
                 <td>${esc(c.email)}</td>
                 <td>${
-                  c.phone && String(c.phone).trim()
-                    ? esc(c.phone)
-                    : '<span class="cs-table-empty" aria-label="No phone">—</span>'
+                  c.company && String(c.company).trim()
+                    ? esc(c.company)
+                    : '<span class="cs-table-empty" aria-label="No company">—</span>'
                 }</td>
-                <td>${
-                  c.website && String(c.website).trim()
-                    ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer" class="tbl-link">${esc(c.website)}</a>`
-                    : '<span class="cs-table-empty" aria-label="No website">—</span>'
-                }</td>
-                <td><button type="button" class="badge badge-active" data-fpc="${esc(c.id)}" style="border:0;cursor:pointer;font:inherit">${nP} project${
-                  nP === 1 ? '' : 's'
-                }</button></td>
-                <td><span class="badge badge-active">Active</span></td>
-                <td style="text-align:right" class="cs-td-act">
-                  <span class="cs-act-icons">
-                  <button type="button" class="btn-secondary btn-sm" data-viewc="${esc(c.id)}">View</button>
-                  </span>
+                <td><button type="button" class="adm-badge adm-badge--active" data-fpc="${esc(
+                  c.id
+                )}" style="border:0;cursor:pointer;font:inherit;padding:0.2rem 0.55rem">${nP}</button></td>
+                <td class="adm-num" style="font-weight:600">${unpaid > 0 ? `$${unpaid.toFixed(2)}` : '—'}</td>
+                <td class="phase-note">${esc(lastAct.label)}</td>
+                <td class="adm-num">
+                  <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-viewc="${esc(c.id)}">View</button>
                 </td>
               </tr>`;
                     })
                     .join('')
-                : `<tr><td colspan="7" class="adm-empty-td"><p class="adm-empty-title">No clients yet</p><p class="phase-note" style="margin:0.35rem 0 0.75rem">Convert a lead or add a client to get started.</p><button type="button" class="btn-primary btn-sm" data-cli-empty-add>Add client</button></td></tr>`
+                : `<tr><td colspan="8" style="padding:2rem 1.25rem;text-align:center">
+                  <p class="adm-pro-panel__title" style="margin:0 0 0.35rem 0;font-size:1rem">No clients match</p>
+                  <p class="phase-note" style="margin:0 0 1rem 0">Convert a lead or add a client to populate this list.</p>
+                  <button type="button" class="adm-btn adm-btn--primary adm-btn--sm" data-cli-empty-add>Add client</button>
+                </td></tr>`
             }
           </tbody>
         </table>
       </div>
-      <div class="adm-pager">
-        <span>Page ${page} / ${totalPages}</span>
-        <button type="button" class="btn-secondary btn-sm" data-cp="prev" ${page <= 1 ? 'disabled' : ''}>Prev</button>
-        <button type="button" class="btn-secondary btn-sm" data-cp="next" ${page >= totalPages ? 'disabled' : ''}>Next</button>
+      <div class="adm-toolbar" style="border-top:1px solid var(--adm-border);border-bottom:none;justify-content:space-between">
+        <span class="phase-note" style="font-size:0.8125rem">Page ${page} of ${totalPages}</span>
+        <div style="display:flex;gap:0.5rem">
+          <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-cp="prev" ${page <= 1 ? 'disabled' : ''}>Previous</button>
+          <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" data-cp="next" ${page >= totalPages ? 'disabled' : ''}>Next</button>
+        </div>
       </div>
     </div>`;
 
   const p = getEl('panel-clients');
+  p.querySelector('#cliHdrAdd')?.addEventListener('click', () => openNewClientDrawer());
   p.querySelector('[data-cq]')?.addEventListener('input', (e) => {
     st.q = e.target.value;
     st.page = 1;
     renderClients();
   });
+  p.querySelector('[data-cfilt]')?.addEventListener('change', (e) => {
+    st.status = e.target.value;
+    st.page = 1;
+    renderClients();
+  });
+  p.querySelector('[data-csort]')?.addEventListener('change', (e) => {
+    const v = String(e.target.value || '');
+    const [k, d] = v.split(':');
+    st.sort = k || 'name';
+    st.dir = d || 'asc';
+    st.page = 1;
+    renderClients();
+  });
   p.querySelector('[data-cli-empty-add]')?.addEventListener('click', () => openNewClientDrawer());
   p.querySelectorAll('[data-viewc]').forEach((b) => {
-    b.addEventListener('click', () => openClientDrawer(b.getAttribute('data-viewc')));
+    b.addEventListener('click', () => navigateToClientDetail(b.getAttribute('data-viewc')));
   });
   p.querySelectorAll('[data-fpc]').forEach((b) => {
     b.addEventListener('click', (e) => {
@@ -1566,6 +3075,10 @@ function renderClients() {
 
 /* ---------- Projects + workspace ---------- */
 function renderProjects() {
+  if (state.ui.projectDetailId) {
+    void renderProjectDetailPage(state.ui.projectDetailId);
+    return;
+  }
   const st = (state.table.projects = state.table.projects || { q: '', page: 1, sort: 'name', dir: 'asc' });
   let list = state.projects;
   if (state.ui && state.ui.projectClientId) {
@@ -1586,11 +3099,14 @@ function renderProjects() {
     ? rows
         .map((p) => {
           const c = p.client || {};
-          return `<button type="button" class="cs-proj-tile${p.id === selPrj ? ' is-sel' : ''}" data-pselect="${esc(p.id)}">
+          return `<div class="cs-proj-tile-wrap${p.id === selPrj ? ' is-sel-wrap' : ''}" data-pwrap="${esc(p.id)}">
+      <button type="button" class="cs-proj-tile${p.id === selPrj ? ' is-sel' : ''}" data-pselect="${esc(p.id)}">
         <span class="cs-proj-tile-n">${esc(p.name)}</span>
         <span class="cs-proj-tile-c">${esc(c.email || c.full_name || '—')}</span>
         <span class="cs-proj-tile-ph">${phBadge(p.status)}</span>
-      </button>`;
+      </button>
+      <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm cs-proj-tile-view" data-pdetail="${esc(p.id)}">View project</button>
+    </div>`;
         })
         .join('')
     : '<p class="phase-note" style="padding:0.5rem 0.25rem">No projects — create one below.</p>';
@@ -1802,6 +3318,10 @@ function renderProjects() {
   const syncWs = () => {
     const id = p.querySelector('#wsProject')?.value;
     state._lastActProject = id;
+    p.querySelectorAll('.cs-proj-tile').forEach((t) => t.classList.toggle('is-sel', !!id && t.getAttribute('data-pselect') === id));
+    p.querySelectorAll('.cs-proj-tile-wrap').forEach((w) =>
+      w.classList.toggle('is-sel-wrap', !!id && w.getAttribute('data-pwrap') === id)
+    );
     const pr = findProject(id);
     const el = p.querySelector('#wsCtx');
     const ph = p.querySelector('#wsPhase');
@@ -1989,9 +3509,13 @@ function renderProjects() {
       const id = b.getAttribute('data-pselect');
       const sel = p.querySelector('#wsProject');
       if (sel) sel.value = id;
-      state._lastActProject = id;
-      p.querySelectorAll('.cs-proj-tile').forEach((t) => t.classList.toggle('is-sel', t.getAttribute('data-pselect') === id));
       syncWs();
+    });
+  });
+  p.querySelectorAll('[data-pdetail]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const pid = b.getAttribute('data-pdetail');
+      if (pid) navigateToProjectDetail(pid);
     });
   });
   p.querySelector('#wsScrollNew')?.addEventListener('click', () => {
@@ -3122,43 +4646,115 @@ function buildSettingsPanelHtml(d) {
   const st =
     d && d.stripe
       ? '<span class="badge badge-paid" style="margin-left:6px">Connected</span>'
-      : '<span class="phase-note" style="margin-left:6px">Not set</span> — <a href="https://dashboard.stripe.com" target="_blank" rel="noopener">Stripe dashboard</a>';
+      : '<span class="phase-note" style="margin-left:6px">Not set</span> — <a class="adm-link" href="https://dashboard.stripe.com" target="_blank" rel="noopener">Stripe dashboard</a>';
   const fromE = d && d.fromEmail != null ? d.fromEmail : '—';
   const pubU = d && d.publicUrl != null && String(d.publicUrl).trim() ? d.publicUrl : '—';
   return `
-    <div class="card cs-settings-sec" style="margin-bottom:0" id="settingsRoot">
-      <p class="cs-set-hint" style="margin:0 0 1.25rem 0">Agency profile and live integration status. Secrets stay in Railway / server env; this page shows what the server sees (not the secret values themselves).</p>
-      <div style="display:grid;gap:1.75rem;max-width:44rem">
-        <section>
-          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Agency info</h3>
-          <p class="phase-note" style="margin:0">Company name, address, and public URLs for invoices: use <code>.env</code> / deployment variables and the marketing site as needed.</p>
-        </section>
-        <section>
-          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Billing defaults</h3>
-          <p class="phase-note" style="margin:0">Default hourly rate in <strong>Time &amp; Billing</strong> is stored in this browser. Invoice numbering and due days are configured in your database / invoice workflow for now.</p>
-        </section>
-        <section>
-          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Email (Resend)</h3>
-          <p class="phase-note" id="settingsResendLine" style="margin:0">Resend ${re} · <code>FROM_EMAIL</code> on server: <strong>${esc(fromE)}</strong></p>
-        </section>
-        <section>
-          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Payments (Stripe)</h3>
-          <p class="phase-note" id="settingsStripeLine" style="margin:0">Stripe ${st}</p>
-        </section>
-        <section>
-          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Public site URL</h3>
-          <p class="phase-note" id="settingsUrlLine" style="margin:0">Configured as <code>${esc(pubU)}</code> (used in client emails and portal links).</p>
-        </section>
-        <section>
-          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Calendly &amp; phone (site-wide)</h3>
-          <p class="phase-note" style="margin:0">Update placeholder links and numbers in your HTML or add a small config script — see <a href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a>.</p>
-        </section>
-        <section>
-          <h3 style="font-size:16px;margin:0 0 0.5rem 0">Danger zone</h3>
-          <p class="phase-note" style="margin:0">There is no bulk delete here. Remove test records in Supabase or with per-entity actions in the admin.</p>
-        </section>
+    <div class="adm-settings" id="settingsRoot">
+      <p class="phase-note" style="margin:0 0 1rem 0;max-width:40rem;line-height:1.55">
+        Configure how your agency appears to clients and what the server can reach. Secrets stay in your host environment — this page only reflects non-secret status.
+      </p>
+      <div class="adm-tabs" role="tablist" aria-label="Settings sections">
+        <button type="button" class="adm-tab is-active" data-stab="general" role="tab" aria-selected="true">General</button>
+        <button type="button" class="adm-tab" data-stab="branding" role="tab" aria-selected="false">Branding</button>
+        <button type="button" class="adm-tab" data-stab="team" role="tab" aria-selected="false">Team</button>
+        <button type="button" class="adm-tab" data-stab="billing" role="tab" aria-selected="false">Billing</button>
+        <button type="button" class="adm-tab" data-stab="notifications" role="tab" aria-selected="false">Notifications</button>
+        <button type="button" class="adm-tab" data-stab="portal" role="tab" aria-selected="false">Client Portal</button>
+        <button type="button" class="adm-tab" data-stab="integrations" role="tab" aria-selected="false">Integrations</button>
+        <button type="button" class="adm-tab" data-stab="security" role="tab" aria-selected="false">Security</button>
+      </div>
+
+      <div class="adm-tab-panel is-active" data-stab-panel="general" role="tabpanel">
+        <div class="adm-set-block">
+          <h3>Agency profile</h3>
+          <p>Company name, address, and defaults for PDFs and emails are driven by your deployment configuration and this workspace. Keep the public marketing URL accurate so invoice links resolve for clients.</p>
+        </div>
+        <div class="adm-set-block">
+          <h3>Public site URL</h3>
+          <p id="settingsUrlLine">Configured as <code>${esc(pubU)}</code> (used in client emails and portal links).</p>
+        </div>
+        <div class="adm-set-block">
+          <h3>Calendly &amp; phone</h3>
+          <p>Update booking links and phone numbers in your site HTML or centralized config — see <a class="adm-link" href="docs/LAUNCH-PHASES.md" target="_blank" rel="noopener">Launch phases</a>.</p>
+        </div>
+      </div>
+
+      <div class="adm-tab-panel" data-stab-panel="branding" role="tabpanel">
+        <div class="adm-set-block">
+          <h3>Logo &amp; colors</h3>
+          <p>Agency branding on invoices, the client portal, and builder previews will pull from your template and CSS. Central theme controls are on the roadmap.</p>
+        </div>
+      </div>
+
+      <div class="adm-tab-panel" data-stab-panel="team" role="tabpanel">
+        <div class="adm-set-block">
+          <h3>Seat management</h3>
+          <p>Invite teammates through your auth provider. Role-based permissions for projects and billing are planned for the next major release.</p>
+        </div>
+      </div>
+
+      <div class="adm-tab-panel" data-stab-panel="billing" role="tabpanel">
+        <div class="adm-set-block">
+          <h3>Agency billing defaults</h3>
+          <p>Default hourly rate in <strong>Time Tracking</strong> is stored in this browser. Invoice numbering and net terms follow your live API workflow.</p>
+        </div>
+      </div>
+
+      <div class="adm-tab-panel" data-stab-panel="notifications" role="tabpanel">
+        <div class="adm-set-block">
+          <h3>Alerts</h3>
+          <p>Email alerts for overdue invoices, contract signatures, and new portal messages will use your connected email provider (see Integrations).</p>
+        </div>
+      </div>
+
+      <div class="adm-tab-panel" data-stab-panel="portal" role="tabpanel">
+        <div class="adm-set-block">
+          <h3>Client experience</h3>
+          <p>Clients sign in through the hosted portal. Tune intake fields and which modules (messages, files, invoices) appear per project in upcoming portal settings.</p>
+        </div>
+      </div>
+
+      <div class="adm-tab-panel" data-stab-panel="integrations" role="tabpanel">
+        <div class="adm-set-block">
+          <h3>Email (Resend)</h3>
+          <p id="settingsResendLine">Resend ${re} · <code>FROM_EMAIL</code> on server: <strong>${esc(fromE)}</strong></p>
+        </div>
+        <div class="adm-set-block">
+          <h3>Payments (Stripe)</h3>
+          <p id="settingsStripeLine">Stripe ${st}</p>
+        </div>
+      </div>
+
+      <div class="adm-tab-panel" data-stab-panel="security" role="tabpanel">
+        <div class="adm-set-block">
+          <h3>Session &amp; data</h3>
+          <p>Sessions are issued by Supabase. Use strong passwords, sign out on shared devices, and restrict production keys to your deployment host only.</p>
+        </div>
+        <div class="adm-set-block">
+          <h3>Danger zone</h3>
+          <p>There is no bulk delete here. Remove test data in Supabase or via individual entity actions in this admin.</p>
+        </div>
       </div>
     </div>`;
+}
+
+function wireSettingsTabs() {
+  const root = getEl('settingsRoot');
+  if (!root) return;
+  const tabs = root.querySelectorAll('.adm-tab[data-stab]');
+  const panels = root.querySelectorAll('.adm-tab-panel[data-stab-panel]');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const k = tab.getAttribute('data-stab');
+      tabs.forEach((t) => {
+        const on = t === tab;
+        t.classList.toggle('is-active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      panels.forEach((p) => p.classList.toggle('is-active', p.getAttribute('data-stab-panel') === k));
+    });
+  });
 }
 
 function renderSettings() {
@@ -3168,17 +4764,22 @@ function renderSettings() {
     return;
   }
   el.innerHTML = buildSettingsPanelHtml(null);
+  wireSettingsTabs();
   api('/api/admin/integrations')
     .then((d) => {
       const box = getEl('panel-settings');
-      if (box) box.innerHTML = buildSettingsPanelHtml(d);
+      if (box) {
+        box.innerHTML = buildSettingsPanelHtml(d);
+        wireSettingsTabs();
+      }
     })
     .catch((err) => {
       console.error('admin: integrations', err);
       const box = getEl('panel-settings');
       if (box) {
         box.innerHTML = `${buildSettingsPanelHtml(null)}
-        <p class="phase-note" id="settingsErr" style="margin:1rem 0 0 0" role="alert">Could not refresh integration status from the server. The sections above are still valid. Check your session and that <code>/api/admin/integrations</code> is reachable, then use <button type="button" class="btn-secondary btn-sm" id="settingsRetry" style="margin-top:0.5rem">Retry</button></p>`;
+        <p class="phase-note" id="settingsErr" style="margin:1rem 0 0 0" role="alert">Could not refresh integration status from the server. The sections above are still valid. Check your session and that <code>/api/admin/integrations</code> is reachable, then use <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm" id="settingsRetry" style="margin-top:0.5rem">Retry</button></p>`;
+        wireSettingsTabs();
         box.querySelector('#settingsRetry')?.addEventListener('click', () => renderSettings());
       }
     });
@@ -3243,6 +4844,8 @@ function renderAll() {
   renderContracts();
   renderActivity();
   renderSettings();
+  updateSidebarBadges();
+  updateNotifBadgeCount();
   showTab(state.currentTab);
 }
 
@@ -3251,6 +4854,11 @@ function initUserMenu() {
   const a = getEl('csUserAvatar');
   const dd = getEl('csUserMenuDd');
   if (!m || !a) return;
+  const closeDd = () => {
+    m.classList.remove('open');
+    a.setAttribute('aria-expanded', 'false');
+    if (dd) dd.setAttribute('hidden', '');
+  };
   a.addEventListener('click', (e) => {
     e.stopPropagation();
     const open = !m.classList.contains('open');
@@ -3261,12 +4869,36 @@ function initUserMenu() {
       else dd.setAttribute('hidden', '');
     }
   });
-  document.addEventListener('click', (e) => {
-    if (!m.contains(e.target)) {
-      m.classList.remove('open');
-      a.setAttribute('aria-expanded', 'false');
-      if (dd) dd.setAttribute('hidden', '');
+  a.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      a.click();
     }
+  });
+  document.addEventListener('click', (e) => {
+    if (!m.contains(e.target)) closeDd();
+  });
+  dd?.querySelectorAll('[data-user-act]').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const act = btn.getAttribute('data-user-act');
+      closeDd();
+      if (act === 'profile') {
+        showTab('settings');
+      } else if (act === 'account') {
+        showTab('settings');
+      } else if (act === 'billing') {
+        showTab('settings');
+        setTimeout(() => {
+          getEl('settingsRoot')?.querySelector('.adm-tab[data-stab="billing"]')?.click();
+        }, 0);
+      } else if (act === 'help') {
+        toast('For help, contact your agency owner or use the contact form on the marketing site.', 'info');
+      } else if (act === 'logout') {
+        clearAuth();
+        location.href = '/client-portal.html?agency=1';
+      }
+    });
   });
 }
 
@@ -3287,6 +4919,115 @@ function wireMainNav() {
   root.addEventListener('click', onNav);
 }
 
+function initAdminShell() {
+  const app = getEl('admApp');
+  const collapseBtn = getEl('admSidebarCollapse');
+  if (collapseBtn && app) {
+    const k = 'cs_admin_sb_collapsed';
+    if (localStorage.getItem(k) === '1') app.classList.add('is-sidebar-collapsed');
+    collapseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      app.classList.toggle('is-sidebar-collapsed');
+      localStorage.setItem(k, app.classList.contains('is-sidebar-collapsed') ? '1' : '');
+      collapseBtn.setAttribute(
+        'aria-label',
+        app.classList.contains('is-sidebar-collapsed') ? 'Expand sidebar' : 'Collapse sidebar'
+      );
+    });
+  }
+
+  const qBtn = getEl('admQuickCreateBtn');
+  const qMenu = getEl('admQuickCreateMenu');
+  if (qBtn && qMenu) {
+    qBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = qMenu.hasAttribute('hidden');
+      if (open) qMenu.removeAttribute('hidden');
+      else qMenu.setAttribute('hidden', '');
+      qBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', () => {
+      qMenu.setAttribute('hidden', '');
+      qBtn.setAttribute('aria-expanded', 'false');
+    });
+    qMenu.addEventListener('click', (e) => e.stopPropagation());
+    qMenu.querySelectorAll('[data-qcreate]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        qMenu.setAttribute('hidden', '');
+        qBtn.setAttribute('aria-expanded', 'false');
+        const k = btn.getAttribute('data-qcreate');
+        if (k === 'lead') {
+          showTab('pipeline');
+          setTimeout(() => openAddLeadDrawer(), 0);
+        } else if (k === 'client') {
+          showTab('clients');
+          setTimeout(() => openNewClientDrawer(), 0);
+        } else if (k === 'project') showTab('projects');
+        else if (k === 'invoice') showTab('invoices');
+        else if (k === 'file') {
+          showTab('files');
+          setTimeout(() => document.dispatchEvent(new CustomEvent('adm:files-panel')), 0);
+        } else if (k === 'contract') showTab('contracts');
+        else if (k === 'task') showTab('tasks');
+      });
+    });
+  }
+
+  const wsBtn = getEl('admWsBtn');
+  const wsMenu = getEl('admWsMenu');
+  if (wsBtn && wsMenu) {
+    wsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = wsMenu.hasAttribute('hidden');
+      if (open) wsMenu.removeAttribute('hidden');
+      else wsMenu.setAttribute('hidden', '');
+      wsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', () => {
+      wsMenu.setAttribute('hidden', '');
+      wsBtn.setAttribute('aria-expanded', 'false');
+    });
+    wsMenu.addEventListener('click', (e) => e.stopPropagation());
+    wsMenu.querySelectorAll('[data-ws-pick]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const k = b.getAttribute('data-ws-pick');
+        wsMenu.setAttribute('hidden', '');
+        wsBtn.setAttribute('aria-expanded', 'false');
+        if (k === 'add') toast('Additional workspaces can be linked once multi-tenant billing is enabled.', 'info');
+      });
+    });
+  }
+
+  const nBtn = getEl('admNotifBtn');
+  const nPop = getEl('admNotifPop');
+  if (nBtn && nPop) {
+    nBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = nPop.hasAttribute('hidden');
+      if (open) nPop.removeAttribute('hidden');
+      else nPop.setAttribute('hidden', '');
+      nBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', () => {
+      nPop.setAttribute('hidden', '');
+      nBtn.setAttribute('aria-expanded', 'false');
+    });
+    nPop.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  const search = getEl('admGlobalSearch');
+  if (search) {
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const q = String(search.value || '').trim();
+        if (q) toast('Global search is coming soon. Use filters on Clients, Pipeline, and Invoices.', 'info');
+      }
+    });
+  }
+}
+
+initAdminShell();
 wireMainNav();
 
 getEl('admHamburger')?.addEventListener('click', (e) => {
@@ -3306,7 +5047,7 @@ document.getElementById('admLogout')?.addEventListener('click', (e) => {
 });
 
 if (typeof globalThis !== 'undefined') {
-  globalThis.__csAdmin = { showTab, openNewClientDrawer, openAddLeadDrawer };
+  globalThis.__csAdmin = { showTab, openNewClientDrawer, openAddLeadDrawer, navigateToClientDetail, navigateToProjectDetail };
 }
 
 /** Wait for auth-bootstrap (Supabase URL/code → localStorage) before reading getToken() — otherwise admin shows "Not signed in" during OAuth return. */
@@ -3337,13 +5078,15 @@ if (typeof globalThis !== 'undefined') {
       // Must not use display:flex here — it overrides the stylesheet and turns #admApp into
       // a row flex (main + portal roots + bottom bar), crushing .adm-main to ~1/5 viewport.
       if (app) app.style.display = 'block';
+      syncShellProfileFromSession(null);
       window.scrollTo(0, 0);
       state.currentTab = readTabFromUrl();
+      const pDash0 = getEl('panel-dashboard');
+      if (state.currentTab === 'dashboard' && pDash0) {
+        pDash0.innerHTML = dashboardPanelSkeleton();
+        _skipNextDashboardPaint = true;
+      }
       showTab(state.currentTab);
-      const pDash = getEl('panel-dashboard');
-      if (pDash) {
-        if (state.currentTab === 'dashboard') pDash.innerHTML = dashboardPanelSkeleton();
-      } else console.error('panel-dashboard missing');
       checkDbHealth();
       loadAll();
       fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + tok } })
@@ -3352,6 +5095,7 @@ if (typeof globalThis !== 'undefined') {
           if (!d) return;
           const u = d.user;
           if (!u) return;
+          syncShellProfileFromSession(u);
           const el = getEl('admAvatarInitials');
           const av = getEl('csUserAvatar');
           if (!el) return;
