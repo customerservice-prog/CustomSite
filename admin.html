@@ -35,8 +35,8 @@
           <span class="logo-word">CustomSite</span>
         </a>
         <div id="csUserMenu" class="adm-sb-userwrap" style="position: relative">
-          <div class="adm-sb-avatar" id="csUserAvatar" role="button" tabindex="0" aria-label="Account menu" aria-haspopup="true" aria-expanded="false">
-            <span id="admAvatarInitials">?</span>
+          <div class="adm-sb-avatar adm-avatar-empty" id="csUserAvatar" role="button" tabindex="0" aria-label="Account menu" aria-haspopup="true" aria-expanded="false">
+            <span id="admAvatarInitials" class="adm-avatar-initials" aria-hidden="true"></span>
           </div>
           <div class="adm-avatar-menu" id="csUserMenuDd" role="menu" hidden>
             <a href="client-portal.html" role="menuitem">My account</a>
@@ -103,6 +103,7 @@
     <div class="adm-sb-overlay" id="admSbOverlay" hidden></div>
 
     <div class="adm-main" id="admMain">
+      <div class="adm-content">
       <header class="adm-mobile-bar" id="admMobileBar">
         <button class="adm-hamburger" type="button" id="admHamburger" aria-label="Open menu">☰</button>
         <p class="adm-mobile-title" id="admMobileTitle" role="status" aria-live="polite">Dashboard</p>
@@ -111,7 +112,7 @@
       <div id="admDbBanner" hidden></div>
 
       <div class="adm-page-header" id="admPageHeader">
-        <p id="admBreadcrumb" class="cs-breadcrumb" style="font-size: 0.8rem; color: var(--gray, #64748b); margin: 0 0 0.5rem 0">CustomSite &gt; Dashboard</p>
+        <p id="admBreadcrumb" class="cs-breadcrumb adm-breadcrumb" style="font-size: 0.8rem; color: var(--gray, #64748b); margin: 0 0 0.5rem 0">CustomSite <span class="adm-bc-sep" aria-hidden="true">›</span> <span id="admCrumbCurrent">Dashboard</span></p>
         <div id="admDashGreetWrap" style="display: none">
           <p id="admGreeting" class="cs-greet" style="margin: 0; font-size: 1.15rem; font-weight: 600"></p>
           <p id="admSubDate" style="margin: 0.25rem 0 0 0; font-size: 0.9rem; color: var(--gray, #64748b)"></p>
@@ -136,6 +137,7 @@
       <div data-panel="settings" class="adm-panel" id="panel-settings" hidden>
         <p class="phase-note" style="margin:0;padding:1rem">Loading settings…</p>
       </div>
+      </div>
     </div>
 
     <div id="admDrawerRoot"></div>
@@ -151,10 +153,10 @@
         <button type="button" class="adm-bbar-item" data-tab="projects" role="tab" aria-selected="false">Projects</button>
         <button type="button" class="adm-bbar-item" data-tab="invoices" role="tab" aria-selected="false">Invoices</button>
         <button type="button" class="adm-bbar-item" data-tab="time" role="tab" aria-selected="false">Time</button>
-        <button type="button" class="adm-bbar-item" data-tab="messages" role="tab" aria-selected="false">Msgs</button>
-        <button type="button" class="adm-bbar-item" data-tab="contracts" role="tab" aria-selected="false">Deals</button>
+        <button type="button" class="adm-bbar-item" data-tab="messages" role="tab" aria-selected="false">Messages</button>
+        <button type="button" class="adm-bbar-item" data-tab="contracts" role="tab" aria-selected="false">Contracts</button>
         <button type="button" class="adm-bbar-item" data-tab="files" role="tab" aria-selected="false">Files</button>
-        <button type="button" class="adm-bbar-item" data-tab="activity" role="tab" aria-selected="false">Log</button>
+        <button type="button" class="adm-bbar-item" data-tab="activity" role="tab" aria-selected="false">Activity</button>
         <button type="button" class="adm-bbar-item" data-tab="settings" role="tab" aria-selected="false">Settings</button>
       </div>
     </nav>

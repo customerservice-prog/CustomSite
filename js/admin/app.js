@@ -153,6 +153,19 @@ function timeEntryInPeriod(iso, period) {
   return true;
 }
 
+function formatShortDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function formatRelative(iso) {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return '—';
@@ -230,11 +243,12 @@ function readTabFromUrl() {
 
 function setUserAvatar() {
   const initials = getEl('admAvatarInitials');
-  const el = initials || getEl('csUserAvatar');
-  if (!el) return;
+  const wrap = getEl('csUserAvatar');
+  if (!initials || !wrap) return;
   const t = getToken();
   if (!t) {
-    el.textContent = '?';
+    initials.textContent = '';
+    wrap.classList.add('adm-avatar-empty');
     return;
   }
   const fromJwt = () => {
@@ -250,7 +264,8 @@ function setUserAvatar() {
   };
   const label = fromJwt();
   if (!label || !String(label).trim()) {
-    el.textContent = '?';
+    initials.textContent = '';
+    wrap.classList.add('adm-avatar-empty');
     return;
   }
   const parts = label.trim().split(/\s+/);
@@ -258,7 +273,13 @@ function setUserAvatar() {
     parts.length > 1
       ? (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
       : label.slice(0, 2).toUpperCase();
-  el.textContent = disp.length ? disp : '?';
+  if (disp && disp.length) {
+    wrap.classList.remove('adm-avatar-empty');
+    initials.textContent = disp;
+  } else {
+    initials.textContent = '';
+    wrap.classList.add('adm-avatar-empty');
+  }
 }
 
 function wireHeaderActions(tab) {
@@ -307,13 +328,18 @@ function updatePageHeader(tab) {
     document.title = `${docT} — CustomSite Admin`;
   }
   const bc = getEl('admBreadcrumb');
+  const crumbCur = getEl('admCrumbCurrent');
   const title = getEl('admPageTitle');
   const greetWrap = getEl('admDashGreetWrap');
   const g = getEl('admGreeting');
   const sd = getEl('admSubDate');
   const div = getEl('admPageDivider');
   const actions = getEl('admPageActions');
-  if (bc) bc.textContent = `CustomSite > ${c.section}`;
+  if (crumbCur) {
+    crumbCur.textContent = c.section || c.page || tab;
+  } else if (bc) {
+    bc.textContent = `CustomSite › ${c.section || c.page || tab}`;
+  }
   if (title) title.textContent = c.page;
   if (greetWrap) greetWrap.style.display = c.greet ? 'block' : 'none';
   if (c.greet && g && sd) {
@@ -866,7 +892,7 @@ function openAddLeadDrawer() {
         <div class="form-group"><label for="alEmail">Email *</label><input class="adm-inp" id="alEmail" name="email" type="email" required /></div>
         <div class="form-group"><label for="alCo">Company</label><input class="adm-inp" id="alCo" name="company" /></div>
         <div class="form-group"><label for="alSrc">Source</label><input class="adm-inp" id="alSrc" name="source" placeholder="e.g. LinkedIn" /></div>
-        <div class="form-group"><label for="alMsg">Notes</label><textarea class="adm-inp" id="alMsg" name="message" rows="3" placeholder="Context for your team…"></textarea></div>
+        <div class="form-group"><label for="alMsg">Notes</label><textarea class="adm-inp" id="alMsg" name="message" rows="4" placeholder="Context for your team…"></textarea></div>
       </form>`,
     footer:
       '<button type="button" class="btn-secondary" id="fAddLCancel">Cancel</button> <button type="button" class="btn-primary" id="fAddLGo">Add lead</button>',
@@ -1033,11 +1059,13 @@ function renderLeads() {
           </tr>
         </thead>
         <tbody>
-          ${slice
-            .map(
-              (L) => `<tr class="pl-row" data-plid="${esc(L.id)}" style="cursor:pointer">
-                <td>${esc(L.name)}</td>
-                <td>${esc(L.email)}</td>
+          ${
+            slice.length
+              ? slice
+                  .map(
+                    (L) => `<tr class="pl-row" data-plid="${esc(L.id)}" style="cursor:pointer">
+                <td class="lead-td-name">${esc(L.name)}</td>
+                <td class="lead-td-email">${esc(L.email)}</td>
                 <td>${
                   L.company && String(L.company).trim()
                     ? esc(L.company)
@@ -1046,17 +1074,21 @@ function renderLeads() {
                 <td onclick="event.stopPropagation()"><select class="status-sel adm-inp" data-lid="${esc(L.id)}" style="min-width:9rem">
                   ${LEAD_STATUSES.map((s) => `<option value="${esc(s)}" ${L.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
                 </select></td>
-                <td onclick="event.stopPropagation()">
+                <td class="lead-tbl-actions" onclick="event.stopPropagation()">
+                  <div class="lead-tbl-act-row" role="group" aria-label="Row actions">
                   <button type="button" class="btn-secondary btn-sm" data-ldv="${esc(L.id)}">View</button>
                   <button type="button" class="btn-ghost btn-sm" data-cvlead="${esc(L.id)}" ${
                     L.status === 'Closed Won' || L.status === 'Closed Lost' ? 'disabled' : ''
                   }>Convert</button>
-                  <button type="button" class="btn-ghost btn-sm" style="color:var(--cs-danger)" data-dellead="${esc(L.id)}">Delete</button>
+                  <button type="button" class="btn-danger btn-sm" data-dellead="${esc(L.id)}">Delete</button>
+                  </div>
                 </td>
-                <td>${L.created_at ? new Date(L.created_at).toLocaleString() : '—'}</td>
+                <td class="lead-tbl-date">${L.created_at ? formatShortDateTime(L.created_at) : '—'}</td>
               </tr>`
-            )
-            .join('')}
+                  )
+                  .join('')
+              : `<tr><td colspan="6" class="adm-empty-td"><p class="adm-empty-title">No leads in this view</p><p class="phase-note" style="margin:0.35rem 0 0">Add a lead from the pipeline toolbar or your site’s contact form.</p></td></tr>`
+          }
         </tbody>
       </table>
     </div>
@@ -1450,8 +1482,10 @@ function renderClients() {
             </tr>
           </thead>
           <tbody>
-            ${slice
-              .map((c) => {
+            ${
+              slice.length
+                ? slice
+                    .map((c) => {
                 const nP = state.projects.filter((p) => p.client_id === c.id).length;
                 return `<tr>
                 <td>
@@ -1482,12 +1516,16 @@ function renderClients() {
                   nP === 1 ? '' : 's'
                 }</button></td>
                 <td><span class="badge badge-active">Active</span></td>
-                <td style="text-align:right">
+                <td style="text-align:right" class="cs-td-act">
+                  <span class="cs-act-icons">
                   <button type="button" class="btn-secondary btn-sm" data-viewc="${esc(c.id)}">View</button>
+                  </span>
                 </td>
               </tr>`;
-              })
-              .join('')}
+                    })
+                    .join('')
+                : `<tr><td colspan="7" class="adm-empty-td"><p class="adm-empty-title">No clients yet</p><p class="phase-note" style="margin:0.35rem 0 0.75rem">Convert a lead or add a client to get started.</p><button type="button" class="btn-primary btn-sm" data-cli-empty-add>Add client</button></td></tr>`
+            }
           </tbody>
         </table>
       </div>
@@ -1504,6 +1542,7 @@ function renderClients() {
     st.page = 1;
     renderClients();
   });
+  p.querySelector('[data-cli-empty-add]')?.addEventListener('click', () => openNewClientDrawer());
   p.querySelectorAll('[data-viewc]').forEach((b) => {
     b.addEventListener('click', () => openClientDrawer(b.getAttribute('data-viewc')));
   });
@@ -2099,11 +2138,15 @@ function renderInvoices() {
             <legend class="phase-note" style="font-weight:600;padding:0 0.25rem">Line items</legend>
             <p class="phase-note" style="margin:0 0 0.75rem 0">Each amount is summed into the total below (total is read-only).</p>
             <div id="lineItems">
-              <div class="form-group li-row" data-idx="0">
-                <label for="invld0">Description</label>
-                <input class="adm-inp" id="invld0" name="l_desc" placeholder="Description" />
-                <label for="invla0" style="margin-top:0.5rem">Amount (USD)</label>
-                <input class="adm-inp invoice-amount-field" id="invla0" name="l_amt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" />
+              <div class="form-group li-row cs-inv-line-pair" data-idx="0">
+                <div class="cs-inv-line-field">
+                  <label for="invld0">Description</label>
+                  <input class="adm-inp" id="invld0" name="l_desc" placeholder="Description" />
+                </div>
+                <div class="cs-inv-line-field">
+                  <label for="invla0">Amount (USD)</label>
+                  <input class="adm-inp invoice-amount-field" id="invla0" name="l_amt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" />
+                </div>
               </div>
             </div>
             <button type="button" class="btn-secondary btn-sm" id="addLine" style="margin-top:0.25rem">+ Add line</button>
@@ -2129,16 +2172,18 @@ function renderInvoices() {
             </tr>
           </thead>
           <tbody>
-            ${slice
-              .map(
-                (i) => `<tr>
+            ${
+              slice.length
+                ? slice
+                    .map(
+                      (i) => `<tr>
               <td>${esc(i.client_label || '—')}</td>
               <td>$${Number(i.amount).toFixed(2)}</td>
               <td>${invStatusBadge(i.status)}</td>
               <td>${esc(i.project_name || '—')}</td>
               <td>${i.due_date || '—'}</td>
-              <td>${i.created_at ? new Date(i.created_at).toLocaleString() : '—'}</td>
-              <td style="text-align:right;white-space:nowrap">
+              <td class="cs-td-dt">${i.created_at ? new Date(i.created_at).toLocaleString() : '—'}</td>
+              <td style="text-align:right" class="cs-td-act">
                 <span class="cs-act-icons">
                 <button type="button" class="btn-ghost btn-sm" title="View" data-vwinv="${esc(i.id)}" aria-label="View">👁</button>
                 <button type="button" class="btn-ghost btn-sm" title="Send email" data-sndinv="${esc(i.id)}" aria-label="Send">✉</button>
@@ -2148,12 +2193,18 @@ function renderInvoices() {
                 <button type="button" class="btn-ghost btn-sm" title="Stripe pay link" data-payinv="${esc(i.id)}" ${
   i.status === 'paid' ? 'disabled' : ''
 } aria-label="Pay link">💳</button>
-                <button type="button" class="btn-ghost btn-sm" title="Delete" style="color:var(--cs-danger)" data-delinv="${esc(i.id)}" aria-label="Delete">🗑</button>
+                <button type="button" class="btn-danger btn-sm" title="Delete" data-delinv="${esc(i.id)}" aria-label="Delete">🗑</button>
                 </span>
               </td>
             </tr>`
-              )
-              .join('')}
+                    )
+                    .join('')
+                : `<tr><td colspan="7" class="adm-empty-td">
+                <p class="adm-empty-title">No invoices yet</p>
+                <p class="phase-note" style="margin:0.35rem 0 0.75rem">Create your first invoice with the form on the left, or from a project’s detail view.</p>
+                <button type="button" class="btn-primary btn-sm" data-inv-gotoform>Create invoice</button>
+              </td></tr>`
+            }
           </tbody>
         </table>
         </div>
@@ -2173,9 +2224,9 @@ function renderInvoices() {
   }
   const recalc = () => {
     let t = 0;
-    p.querySelectorAll('.li-row').forEach((row) => {
-      const v = row.querySelector('input[name=l_amt]')?.value;
-      t += Number(v) || 0;
+    p.querySelectorAll('input.invoice-amount-field').forEach((inp) => {
+      const n = parseFloat(String(inp.value || '').replace(/,/g, ''));
+      t += Number.isFinite(n) ? n : 0;
     });
     const invt = p.querySelector('#invoice-total');
     if (invt) invt.value = t.toFixed(2);
@@ -2199,10 +2250,10 @@ function renderInvoices() {
     const c = p.querySelector('#lineItems');
     const idx = c ? c.querySelectorAll('.li-row').length : 0;
     const d = document.createElement('div');
-    d.className = 'form-group li-row';
+    d.className = 'form-group li-row cs-inv-line-pair';
     d.setAttribute('data-idx', String(idx));
-    d.innerHTML = `<label for="invld${idx}">Description</label><input class="adm-inp" id="invld${idx}" name="l_desc" placeholder="Description" />
-      <label for="invla${idx}" style="margin-top:0.5rem">Amount (USD)</label><input class="adm-inp invoice-amount-field" id="invla${idx}" name="l_amt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" />`;
+    d.innerHTML = `<div class="cs-inv-line-field"><label for="invld${idx}">Description</label><input class="adm-inp" id="invld${idx}" name="l_desc" placeholder="Description" /></div>
+      <div class="cs-inv-line-field"><label for="invla${idx}">Amount (USD)</label><input class="adm-inp invoice-amount-field" id="invla${idx}" name="l_amt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" /></div>`;
     c.appendChild(d);
     recalc();
   });
@@ -2210,6 +2261,10 @@ function renderInvoices() {
   const onLineItemChange = () => recalc();
   formInv?.addEventListener('input', onLineItemChange);
   formInv?.addEventListener('change', onLineItemChange);
+  p.querySelector('[data-inv-gotoform]')?.addEventListener('click', () => {
+    getEl('invFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    getEl('invc')?.focus();
+  });
   p.querySelector('#formInv')?.addEventListener('submit', (e) => {
     e.preventDefault();
     recalc();
@@ -2339,6 +2394,7 @@ function renderInvoices() {
     renderInvoices();
   });
   recalc();
+  queueMicrotask(() => recalc());
 }
 
 /* ---------- Files tab ---------- */
@@ -3278,7 +3334,9 @@ if (typeof globalThis !== 'undefined') {
       const app = getEl('admApp');
       const out = getEl('admSignedOut');
       if (out) out.style.display = 'none';
-      if (app) app.style.display = 'flex';
+      // Must not use display:flex here — it overrides the stylesheet and turns #admApp into
+      // a row flex (main + portal roots + bottom bar), crushing .adm-main to ~1/5 viewport.
+      if (app) app.style.display = 'block';
       window.scrollTo(0, 0);
       state.currentTab = readTabFromUrl();
       showTab(state.currentTab);
@@ -3295,6 +3353,7 @@ if (typeof globalThis !== 'undefined') {
           const u = d.user;
           if (!u) return;
           const el = getEl('admAvatarInitials');
+          const av = getEl('csUserAvatar');
           if (!el) return;
           if (u.full_name && u.full_name.trim()) {
             const parts = u.full_name.trim().split(/\s+/);
@@ -3302,6 +3361,7 @@ if (typeof globalThis !== 'undefined') {
               parts.length > 1
                 ? (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
                 : u.full_name.slice(0, 2).toUpperCase();
+            av?.classList.remove('adm-avatar-empty');
             return;
           }
           if (u.email) {
@@ -3309,6 +3369,7 @@ if (typeof globalThis !== 'undefined') {
               .split('@')[0]
               .slice(0, 2)
               .toUpperCase();
+            av?.classList.remove('adm-avatar-empty');
           }
         })
         .catch(() => {});

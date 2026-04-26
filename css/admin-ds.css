@@ -31,10 +31,17 @@ body.adm-page {
   background: var(--cs-bg);
 }
 
-/* ----- Shell ----- */
+/* ----- Shell -----
+ * Do not use flex row on #admApp: in-flow children (main, drawer root, modal root,
+ * toast, bottom bar) would each become flex items and split the viewport width
+ * (e.g. ~280px "main" on desktop). Use block flow + .adm-main width: calc(100% - sidebar). */
 #admApp {
   min-height: 100vh;
-  display: flex;
+  display: block;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: clip;
 }
 
 /* Sidebar (spec) */
@@ -159,7 +166,8 @@ body.adm-page {
 }
 
 .nav-item,
-.cs-nav-item {
+.cs-nav-item,
+.adm-sidebar .adm-sb-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -172,27 +180,37 @@ body.adm-page {
   margin: 1px 8px;
   transition: all 0.15s ease;
   border: none;
+  -webkit-appearance: none;
+  appearance: none;
   background: none;
   width: calc(100% - 16px);
   text-align: left;
   font-family: inherit;
+  box-sizing: border-box;
+  max-width: none;
 }
 
 .nav-item:hover,
-.cs-nav-item:hover {
+.cs-nav-item:hover,
+.adm-sidebar .adm-sb-item:hover {
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.9);
 }
 
 .nav-item.active,
 .cs-nav-item.active,
-.cs-nav-item[aria-selected='true'] {
+.cs-nav-item[aria-selected='true'],
+.adm-sidebar .adm-sb-item.active,
+.adm-sidebar .adm-sb-item[aria-selected='true'] {
   background: rgba(99, 102, 241, 0.15);
   color: #a5b4fc;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 0 var(--cs-accent, #6366f1);
 }
 
 .nav-item .icon,
-.cs-nav-item .icon {
+.cs-nav-item .icon,
+.adm-sidebar .adm-sb-item .icon {
   font-size: 15px;
   width: 20px;
   text-align: center;
@@ -775,13 +793,19 @@ button.btn-sm,
 /* Dashboard KPI */
 .cs-kpi-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
   margin-bottom: 24px;
+  width: 100%;
 }
 @media (max-width: 1100px) {
   .cs-kpi-row {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .cs-kpi-row {
+    grid-template-columns: 1fr;
   }
 }
 .cs-kpi {
@@ -1219,22 +1243,6 @@ button.btn-sm,
 /* Dashboard skeleton */
 .cs-dash-skel {
   padding: 0.5rem 0 2rem 0;
-}
-.cs-kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-@media (max-width: 1024px) {
-  .cs-kpi-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-@media (max-width: 600px) {
-  .cs-kpi-row {
-    grid-template-columns: 1fr;
-  }
 }
 .cs-skel-block {
   background: var(--cs-surface-2);
