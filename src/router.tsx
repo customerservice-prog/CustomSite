@@ -13,7 +13,17 @@ import { MessagesPage } from '@/pages/messages-page';
 import { SettingsPage } from '@/pages/settings-page';
 import { SiteBuilderPage } from '@/pages/site-builder-page';
 import { ClientPortalPage } from '@/pages/client-portal-page';
-import { ModuleTablePage } from '@/pages/module-table-page';
+import { TasksPage } from '@/pages/tasks-page';
+import { ActivityPage } from '@/pages/activity-page';
+import { FilesPage } from '@/pages/files-page';
+import { ContractsPage } from '@/pages/contracts-page';
+import { ProposalsPage } from '@/pages/proposals-page';
+import { FormsPage } from '@/pages/forms-page';
+import { PaymentsPage } from '@/pages/payments-page';
+import { ExpensesPage } from '@/pages/expenses-page';
+import { TimeTrackingPage } from '@/pages/time-tracking-page';
+import { CalendarPage } from '@/pages/calendar-page';
+import { ReportsPage } from '@/pages/reports-page';
 
 export const router = createHashRouter([
   {
@@ -31,20 +41,20 @@ export const router = createHashRouter([
       { path: 'clients/:clientId', element: <ClientDetailPage /> },
       { path: 'projects', element: <ProjectsPage /> },
       { path: 'projects/:projectId', element: <ProjectDetailPage /> },
-      { path: 'tasks', element: <ModuleTablePage module="tasks" /> },
-      { path: 'calendar', element: <ModuleTablePage module="calendar" /> },
+      { path: 'tasks', element: <TasksPage /> },
+      { path: 'calendar', element: <CalendarPage /> },
       { path: 'invoices', element: <InvoicesPage /> },
       { path: 'invoices/:invoiceId', element: <InvoiceDetailPage /> },
-      { path: 'payments', element: <ModuleTablePage module="payments" /> },
-      { path: 'time-tracking', element: <ModuleTablePage module="time-tracking" /> },
-      { path: 'expenses', element: <ModuleTablePage module="expenses" /> },
+      { path: 'payments', element: <PaymentsPage /> },
+      { path: 'time-tracking', element: <TimeTrackingPage /> },
+      { path: 'expenses', element: <ExpensesPage /> },
       { path: 'messages', element: <MessagesPage /> },
-      { path: 'contracts', element: <ModuleTablePage module="contracts" /> },
-      { path: 'proposals', element: <ModuleTablePage module="proposals" /> },
-      { path: 'forms', element: <ModuleTablePage module="forms" /> },
-      { path: 'files', element: <ModuleTablePage module="files" /> },
-      { path: 'activity', element: <ModuleTablePage module="activity" /> },
-      { path: 'reports', element: <ModuleTablePage module="reports" /> },
+      { path: 'contracts', element: <ContractsPage /> },
+      { path: 'proposals', element: <ProposalsPage /> },
+      { path: 'forms', element: <FormsPage /> },
+      { path: 'files', element: <FilesPage /> },
+      { path: 'activity', element: <ActivityPage /> },
+      { path: 'reports', element: <ReportsPage /> },
       { path: 'site-builder', element: <SiteBuilderPage /> },
       { path: 'client-portal', element: <ClientPortalPage /> },
       { path: 'settings', element: <SettingsPage /> },

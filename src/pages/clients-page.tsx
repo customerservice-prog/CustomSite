@@ -40,7 +40,7 @@ export function ClientsPage() {
       header={
         <PageHeader
           title="Clients"
-          description="Accounts and relationships — counts and balances stay in sync with projects and invoices in the store."
+          description="Every account in one place — health, ownership, and open balances across projects and billing."
           actions={
             <Button type="button" className="gap-2" onClick={() => openModal('create-client')}>
               <Plus className="h-4 w-4" />
@@ -105,8 +105,8 @@ export function ClientsPage() {
 
       {rows.length === 0 && !q && status === 'all' && ownerId === 'all' ? (
         <EmptyState
-          title="No clients yet"
-          description="Create your first client — it will appear here and log activity automatically."
+          title="No clients yet — this is your account hub"
+          description="Add your first retainer or project client here. Everything else—engagements, invoices, approvals, and threads—rolls up from this record so you always know who owes what and what’s shipping."
           action={
             <Button type="button" onClick={() => openModal('create-client')}>
               Create client

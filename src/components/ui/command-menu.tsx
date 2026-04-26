@@ -29,7 +29,7 @@ export function CommandMenu() {
 
   const commands = useMemo<Cmd[]>(
     () => [
-      { id: 'dash', label: 'Go to Dashboard', hint: 'Navigation', icon: LayoutDashboard, run: () => navigate('/dashboard') },
+      { id: 'dash', label: 'Go to Command center', hint: 'Navigation', icon: LayoutDashboard, run: () => navigate('/dashboard') },
       { id: 'pipe', label: 'Go to Pipeline', hint: 'Navigation', icon: Workflow, run: () => navigate('/pipeline') },
       { id: 'cli', label: 'Go to Clients', hint: 'Navigation', icon: Users, run: () => navigate('/clients') },
       { id: 'proj', label: 'Go to Projects', hint: 'Navigation', icon: FolderKanban, run: () => navigate('/projects') },

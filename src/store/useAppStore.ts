@@ -1,11 +1,45 @@
 import { create } from 'zustand';
-import type { Activity, ActivityType, AppNotificationKind, Client, Invoice, Lead, Message, Project, Task } from '@/lib/types/entities';
-import type { ClientStatus, ProjectStatus } from '@/lib/statuses';
+import type {
+  Activity,
+  ActivityType,
+  AgencyFile,
+  AppNotificationKind,
+  Client,
+  Expense,
+  Invoice,
+  Lead,
+  Message,
+  Project,
+  Task,
+} from '@/lib/types/entities';
+import type { ClientStatus, PipelineStage, ProjectStatus } from '@/lib/statuses';
+import { PIPELINE_STAGES } from '@/lib/statuses';
+import { computeClientBalance, computeClientLifetimeValue } from '@/lib/domain-sync';
 import { createBootstrapEntities, sortActivityIds } from '@/lib/data';
 import { nextInvoiceNumber } from '@/lib/data/invoices';
 import { formatRelativeShort } from '@/lib/format-relative';
 import type { ActiveModal, RootState, ToastItem } from '@/store/root-state';
 import { newId, isoNow } from '@/store/ids';
+
+const DELIVERY_PHASE_FLOW: ProjectStatus[] = ['Planning', 'Design', 'Development', 'Review', 'Live'];
+
+const PRE_WIN_PIPELINE = PIPELINE_STAGES.slice(0, PIPELINE_STAGES.indexOf('Won')) as PipelineStage[];
+
+function nextClientsAfterInvoices(s: RootState, invoices: RootState['invoices'], clientId: string): RootState['clients'] {
+  const c = s.clients[clientId];
+  if (!c) return s.clients;
+  const list = Object.values(invoices);
+  const now = isoNow();
+  return {
+    ...s.clients,
+    [clientId]: {
+      ...c,
+      balance: computeClientBalance(list, clientId),
+      lifetimeValue: computeClientLifetimeValue(list, clientId),
+      updatedAt: now,
+    },
+  };
+}
 
 type LogActivityInput = {
   type: ActivityType;
@@ -42,29 +76,43 @@ export interface AppStore extends RootState {
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
 
-  addClient: (input: {
-    name: string;
-    company: string;
-    email: string;
-    phone?: string;
-    status?: ClientStatus;
-    ownerId?: string;
-  }) => string;
-  addProject: (input: {
-    name: string;
-    clientId: string;
-    budget: number;
-    due: string;
-    status?: ProjectStatus;
-    ownerId?: string;
-  }) => string;
+  addClient: (
+    input: {
+      name: string;
+      company: string;
+      email: string;
+      phone?: string;
+      status?: ClientStatus;
+      ownerId?: string;
+    },
+    options?: { silent?: boolean }
+  ) => string;
+  addProject: (
+    input: {
+      name: string;
+      clientId: string;
+      budget: number;
+      due: string;
+      status?: ProjectStatus;
+      ownerId?: string;
+    },
+    options?: { silent?: boolean; skipStarterTasks?: boolean }
+  ) => string;
   addInvoice: (input: {
     clientId: string;
     projectId: string | null;
     amount: number;
     dueDate: string;
   }) => string;
-  addTask: (input: { projectId: string; title: string; due: string; assigneeId?: string }) => string;
+  addTask: (input: { projectId: string; title: string; due: string; assigneeId?: string }, options?: { silent?: boolean }) => string;
+  addFile: (input: {
+    name: string;
+    projectId: string;
+    clientId: string;
+    size?: string;
+    folder?: string;
+    visibility: AgencyFile['visibility'];
+  }) => string;
   addLead: (input: {
     name: string;
     company: string;
@@ -77,6 +125,18 @@ export interface AppStore extends RootState {
   markInvoicePaid: (invoiceId: string) => void;
   completeTask: (taskId: string) => void;
   appendTeamMessage: (threadId: string, body: string) => void;
+
+  advanceProjectPhase: (projectId: string) => void;
+  advanceLeadStage: (leadId: string) => void;
+  convertWonLead: (leadId: string) => string | null;
+  addExpense: (input: {
+    projectId: string;
+    vendor: string;
+    category: string;
+    amount: number;
+    reimbursable?: boolean;
+    date: string;
+  }) => string;
 }
 
 const boot = createBootstrapEntities();
@@ -97,7 +157,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setMobileSidebarOpen: (open) => set((s) => ({ ui: { ...s.ui, mobileSidebarOpen: open } })),
   setCommandPaletteOpen: (open) => set((s) => ({ ui: { ...s.ui, commandPaletteOpen: open } })),
   openModal: (modal) => set((s) => ({ ui: { ...s.ui, activeModal: modal } })),
-  closeModal: () => set((s) => ({ ui: { ...s.ui, activeModal: null } })),
+  closeModal: () =>
+    set((s) => ({
+      ui: {
+        ...s.ui,
+        activeModal: null,
+        selectedClientId: null,
+        selectedProjectId: null,
+      },
+    })),
   setSelectedClientId: (id) => set((s) => ({ ui: { ...s.ui, selectedClientId: id } })),
   setSelectedProjectId: (id) => set((s) => ({ ui: { ...s.ui, selectedProjectId: id } })),
   setHydration: (status, error) => set({ hydration: { status, error } }),
@@ -172,7 +240,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       ),
     })),
 
-  addClient: (input) => {
+  addClient: (input, options) => {
+    const silent = options?.silent;
     const id = newId('client');
     const now = isoNow();
     const ownerId = input.ownerId ?? get().currentUserId;
@@ -195,20 +264,30 @@ export const useAppStore = create<AppStore>((set, get) => ({
       type: 'client_created',
       entityKind: 'client',
       entityId: id,
-      title: `${client.name} added to workspace`,
+      title: `${client.name} added as ${client.status === 'Lead' ? 'lead' : 'client'} · ${client.company}`,
+      metadata: { clientId: id },
     });
-    get().pushNotification({
-      kind: 'system',
-      title: 'New client',
-      body: client.name,
-      href: `/clients/${id}`,
-      entityId: id,
-    });
-    get().toast(`${client.name} created`, 'success');
+    if (!silent) {
+      get().pushNotification({
+        kind: 'system',
+        title: 'New client',
+        body: client.name,
+        href: `/clients/${id}`,
+        entityId: id,
+      });
+      get().toast(`${client.name} created`, 'success');
+    }
     return id;
   },
 
-  addProject: (input) => {
+  addProject: (input, options) => {
+    const silent = options?.silent;
+    const skipTasks = options?.skipStarterTasks;
+    const client = get().clients[input.clientId];
+    if (!client) {
+      if (!silent) get().toast('Pick a valid client — projects always belong to a client.', 'error');
+      return '';
+    }
     const id = newId('project');
     const now = isoNow();
     const ownerId = input.ownerId ?? get().currentUserId;
@@ -224,15 +303,53 @@ export const useAppStore = create<AppStore>((set, get) => ({
       createdAt: now,
       updatedAt: now,
     };
-    set((s) => ({ projects: { ...s.projects, [id]: project } }));
-    const client = get().clients[input.clientId];
+    const starterStubs = skipTasks
+      ? []
+      : [
+          { title: 'Discovery checklist', due: 'This week' },
+          { title: 'Stakeholder kickoff session', due: 'Next week' },
+          { title: 'Scope sign-off', due: 'Next week' },
+        ];
+    const taskRows: Task[] = starterStubs.map((stub) => ({
+      id: newId('task'),
+      projectId: id,
+      title: stub.title,
+      status: 'Todo' as const,
+      due: stub.due,
+      assigneeId: ownerId,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    const taskMap = Object.fromEntries(taskRows.map((t) => [t.id, t]));
+    set((s) => ({
+      projects: { ...s.projects, [id]: project },
+      tasks: { ...s.tasks, ...taskMap },
+      clients: {
+        ...s.clients,
+        [input.clientId]: {
+          ...s.clients[input.clientId]!,
+          lastActivityLabel: formatRelativeShort(now),
+          updatedAt: now,
+        },
+      },
+    }));
+    for (const t of taskRows) {
+      get().logActivity({
+        type: 'task_created',
+        entityKind: 'task',
+        entityId: t.id,
+        title: `Task “${t.title}” added to ${project.name}`,
+        metadata: { projectId: id, clientId: input.clientId },
+      });
+    }
     get().logActivity({
       type: 'project_created',
       entityKind: 'project',
       entityId: id,
-      title: `Project “${project.name}” created${client ? ` for ${client.company}` : ''}`,
+      title: `Project “${project.name}” opened for ${client.company}`,
+      metadata: { clientId: input.clientId, projectId: id },
     });
-    get().toast(`Project “${project.name}” created`, 'success');
+    if (!silent) get().toast(`Project “${project.name}” created with starter tasks`, 'success');
     return id;
   },
 
@@ -252,21 +369,39 @@ export const useAppStore = create<AppStore>((set, get) => ({
       createdAt: now,
       updatedAt: now,
     };
-    set((s) => ({ invoices: { ...s.invoices, [id]: invoice } }));
+    set((s) => {
+      const invoices = { ...s.invoices, [id]: invoice };
+      return {
+        invoices,
+        clients: nextClientsAfterInvoices(s, invoices, input.clientId),
+      };
+    });
+    const client = get().clients[input.clientId];
+    const proj = input.projectId ? get().projects[input.projectId] : undefined;
     get().logActivity({
       type: 'invoice_created',
       entityKind: 'invoice',
       entityId: id,
-      title: `${number} drafted`,
+      title: `${number} drafted for ${client?.name ?? 'client'}${proj ? ` · ${proj.name}` : ''} · $${invoice.amount.toLocaleString()}`,
+      metadata: {
+        clientId: input.clientId,
+        projectId: input.projectId ?? undefined,
+      },
     });
-    get().toast(`${number} created`, 'success');
+    get().toast(`${number} created — client balance updated`, 'success');
     return id;
   },
 
-  addTask: (input) => {
+  addTask: (input, options) => {
+    const silent = options?.silent;
     const id = newId('task');
     const now = isoNow();
     const assigneeId = input.assigneeId ?? get().currentUserId;
+    const project = get().projects[input.projectId];
+    if (!project) {
+      if (!silent) get().toast('Tasks must belong to a project.', 'error');
+      return '';
+    }
     const task: Task = {
       id,
       projectId: input.projectId,
@@ -282,9 +417,50 @@ export const useAppStore = create<AppStore>((set, get) => ({
       type: 'task_created',
       entityKind: 'task',
       entityId: id,
-      title: `Task: ${task.title}`,
+      title: `Task “${task.title}” on ${project.name}`,
+      metadata: { projectId: input.projectId, clientId: project.clientId },
     });
-    get().toast('Task added', 'success');
+    if (!silent) get().toast('Task added', 'success');
+    return id;
+  },
+
+  addFile: (input) => {
+    const id = newId('file');
+    const now = isoNow();
+    const uploaded = new Date(now).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const project = get().projects[input.projectId];
+    const row: AgencyFile = {
+      id,
+      name: input.name.trim(),
+      projectId: input.projectId,
+      clientId: input.clientId,
+      uploaded,
+      size: input.size?.trim() || '—',
+      createdAt: now,
+      folder: input.folder?.trim() || 'General',
+      visibility: input.visibility,
+    };
+    set((s) => ({
+      files: { ...s.files, [id]: row },
+      clients: s.clients[input.clientId]
+        ? {
+            ...s.clients,
+            [input.clientId]: {
+              ...s.clients[input.clientId]!,
+              lastActivityLabel: formatRelativeShort(now),
+              updatedAt: now,
+            },
+          }
+        : s.clients,
+    }));
+    get().logActivity({
+      type: 'file_uploaded',
+      entityKind: 'file',
+      entityId: id,
+      title: `File “${row.name}” uploaded to ${project?.name ?? 'project'}`,
+      metadata: { projectId: input.projectId, clientId: input.clientId },
+    });
+    get().toast('File added to library', 'success');
     return id;
   },
 
@@ -302,6 +478,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       lastActivityLabel: 'Just now',
       createdAt: now,
       updatedAt: now,
+      convertedClientId: null,
     };
     set((s) => ({ leads: { ...s.leads, [id]: lead } }));
     get().logActivity({
@@ -319,22 +496,34 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (!inv || inv.status === 'Void') return;
     const now = isoNow();
     const sentLabel = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    set((s) => ({
-      invoices: {
+    const wasDraft = inv.status === 'Draft';
+    set((s) => {
+      const invoices = {
         ...s.invoices,
         [invoiceId]: {
           ...inv,
-          status: inv.status === 'Draft' ? 'Sent' : inv.status,
+          status: inv.status === 'Draft' ? ('Sent' as const) : inv.status,
           sentDate: inv.sentDate ?? sentLabel,
           updatedAt: now,
         },
-      },
-    }));
+      };
+      return {
+        invoices,
+        clients: nextClientsAfterInvoices(s, invoices, inv.clientId),
+      };
+    });
+    const client = get().clients[inv.clientId];
     get().logActivity({
       type: 'invoice_sent',
       entityKind: 'invoice',
       entityId: invoiceId,
-      title: `${inv.number} sent`,
+      title: wasDraft
+        ? `${inv.number} sent to ${client?.name ?? 'client'} — due ${inv.dueDate}`
+        : `${inv.number} updated (delivery)`,
+      metadata: {
+        clientId: inv.clientId,
+        projectId: inv.projectId ?? undefined,
+      },
     });
     get().pushNotification({
       kind: 'invoice',
@@ -343,47 +532,56 @@ export const useAppStore = create<AppStore>((set, get) => ({
       href: `/invoices/${invoiceId}`,
       entityId: invoiceId,
     });
-    get().toast(`${inv.number} marked sent`, 'success');
+    get().toast(`${inv.number} is on its way — client notified and AR updated.`, 'success');
   },
 
   markInvoicePaid: (invoiceId) => {
     const inv = get().invoices[invoiceId];
-    if (!inv) return;
+    if (!inv || inv.status === 'Paid') return;
     const now = isoNow();
-    set((s) => ({
-      invoices: {
-        ...s.invoices,
-        [invoiceId]: { ...inv, status: 'Paid', updatedAt: now },
-      },
-    }));
     const payId = newId('pay');
-    set((s) => ({
-      payments: {
+    const client = get().clients[inv.clientId];
+    set((s) => {
+      const invoices = {
+        ...s.invoices,
+        [invoiceId]: { ...inv, status: 'Paid' as const, updatedAt: now },
+      };
+      const payments = {
         ...s.payments,
         [payId]: {
           id: payId,
           invoiceId,
           clientId: inv.clientId,
           amount: inv.amount,
-          status: 'completed',
+          status: 'completed' as const,
           method: 'Recorded',
           createdAt: now,
         },
-      },
-    }));
+      };
+      return {
+        invoices,
+        payments,
+        clients: nextClientsAfterInvoices({ ...s, invoices }, invoices, inv.clientId),
+      };
+    });
     get().logActivity({
       type: 'invoice_paid',
       entityKind: 'invoice',
       entityId: invoiceId,
-      title: `${inv.number} marked paid`,
+      title: `${inv.number} marked paid · $${inv.amount.toLocaleString()}${client ? ` · ${client.company}` : ''}`,
+      metadata: {
+        clientId: inv.clientId,
+        projectId: inv.projectId ?? undefined,
+      },
     });
-    get().toast(`${inv.number} paid`, 'success');
+    get().toast(`${inv.number} marked paid — revenue recognized and client balance cleared.`, 'success');
   },
 
   completeTask: (taskId) => {
     const t = get().tasks[taskId];
-    if (!t) return;
+    if (!t || t.status === 'Done') return;
     const now = isoNow();
+    const project = get().projects[t.projectId];
     set((s) => ({
       tasks: {
         ...s.tasks,
@@ -394,9 +592,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
       type: 'task_completed',
       entityKind: 'task',
       entityId: taskId,
-      title: `Completed: ${t.title}`,
+      title: `Task done: “${t.title}”${project ? ` · ${project.name}` : ''}`,
+      metadata: {
+        projectId: t.projectId,
+        clientId: project?.clientId,
+      },
     });
-    get().toast('Task completed', 'success');
+    get().toast('Task marked complete — your delivery snapshot just updated.', 'success');
   },
 
   appendTeamMessage: (threadId, body) => {
@@ -413,25 +615,195 @@ export const useAppStore = create<AppStore>((set, get) => ({
       createdAt: now,
       timeLabel,
     };
-    set((s) => ({
-      messages: { ...s.messages, [msgId]: msg },
-      messageThreads: {
-        ...s.messageThreads,
-        [threadId]: {
-          ...thread,
-          preview: body.trim().slice(0, 120),
-          status: 'Replied',
-          updatedAt: now,
-          lastActivityLabel: formatRelativeShort(now),
+    set((s) => {
+      const clientRow = s.clients[thread.clientId];
+      return {
+        messages: { ...s.messages, [msgId]: msg },
+        messageThreads: {
+          ...s.messageThreads,
+          [threadId]: {
+            ...thread,
+            preview: body.trim().slice(0, 120),
+            status: 'Replied',
+            updatedAt: now,
+            lastActivityLabel: formatRelativeShort(now),
+          },
         },
-      },
-    }));
+        clients: clientRow
+          ? {
+              ...s.clients,
+              [thread.clientId]: {
+                ...clientRow,
+                lastActivityLabel: formatRelativeShort(now),
+                updatedAt: now,
+              },
+            }
+          : s.clients,
+      };
+    });
+    const project = get().projects[thread.projectId];
     get().logActivity({
       type: 'message_received',
       entityKind: 'message',
       entityId: threadId,
-      title: `Reply sent in thread with ${thread.participant}`,
-      metadata: { threadId },
+      title: `Reply to ${thread.participant}${project ? ` · ${project.name}` : ''}`,
+      metadata: {
+        threadId,
+        clientId: thread.clientId,
+        projectId: thread.projectId,
+      },
     });
+  },
+
+  advanceProjectPhase: (projectId) => {
+    const p = get().projects[projectId];
+    if (!p) return;
+    let next: ProjectStatus | null = null;
+    if (p.status === 'On Hold') {
+      next = 'Development';
+    } else {
+      const i = DELIVERY_PHASE_FLOW.indexOf(p.status);
+      if (i >= 0 && i < DELIVERY_PHASE_FLOW.length - 1) next = DELIVERY_PHASE_FLOW[i + 1]!;
+    }
+    if (!next) {
+      get().toast('This project is already in its delivery end state.', 'info');
+      return;
+    }
+    const prev = p.status;
+    const now = isoNow();
+    set((s) => ({
+      projects: {
+        ...s.projects,
+        [projectId]: { ...p, status: next!, updatedAt: now },
+      },
+    }));
+    get().logActivity({
+      type: 'project_phase_changed',
+      entityKind: 'project',
+      entityId: projectId,
+      title: `“${p.name}” moved ${prev} → ${next}`,
+      metadata: { clientId: p.clientId, projectId, from: prev, to: next },
+    });
+    get().toast(`Phase updated: ${next}`, 'success');
+  },
+
+  advanceLeadStage: (leadId) => {
+    const lead = get().leads[leadId];
+    if (!lead) return;
+    const idx = PRE_WIN_PIPELINE.indexOf(lead.stage);
+    if (idx < 0 || idx >= PRE_WIN_PIPELINE.length - 1) {
+      if (lead.stage === 'Contract Sent') {
+        get().toast('Ready to win — use Mark won & create client.', 'info');
+      } else if (lead.stage === 'Won' || lead.stage === 'Lost') {
+        get().toast('This opportunity is already closed.', 'info');
+      }
+      return;
+    }
+    const nextStage = PRE_WIN_PIPELINE[idx + 1]!;
+    const prev = lead.stage;
+    const now = isoNow();
+    set((s) => ({
+      leads: {
+        ...s.leads,
+        [leadId]: { ...lead, stage: nextStage, updatedAt: now, lastActivityLabel: formatRelativeShort(now) },
+      },
+    }));
+    get().logActivity({
+      type: 'lead_stage_changed',
+      entityKind: 'lead',
+      entityId: leadId,
+      title: `${lead.company}: ${prev} → ${nextStage}`,
+      metadata: { from: prev, to: nextStage, clientId: lead.convertedClientId ?? undefined },
+    });
+    get().toast(`${lead.company} → ${nextStage}`, 'success');
+  },
+
+  convertWonLead: (leadId) => {
+    const lead = get().leads[leadId];
+    if (!lead) return null;
+    if (lead.convertedClientId) {
+      get().toast('This lead was already converted.', 'info');
+      return lead.convertedClientId;
+    }
+    const email = `contact.${lead.id.replace(/[^a-z0-9]/gi, '').slice(0, 10)}@won.local`;
+    const clientId = get().addClient(
+      {
+        name: lead.name,
+        company: lead.company,
+        email,
+        phone: '',
+        status: 'Active',
+        ownerId: lead.ownerId,
+      },
+      { silent: true }
+    );
+    const kickoffBudget = Math.max(8000, Math.round(lead.value * 0.12));
+    const projectId = get().addProject(
+      {
+        name: `Kickoff — ${lead.company}`,
+        clientId,
+        budget: kickoffBudget,
+        due: '30 days',
+        status: 'Planning',
+        ownerId: lead.ownerId,
+      },
+      { silent: true }
+    );
+    const now = isoNow();
+    set((s) => ({
+      leads: {
+        ...s.leads,
+        [leadId]: {
+          ...lead,
+          stage: 'Won',
+          convertedClientId: clientId,
+          updatedAt: now,
+          lastActivityLabel: 'Converted',
+        },
+      },
+    }));
+    get().logActivity({
+      type: 'lead_won',
+      entityKind: 'lead',
+      entityId: leadId,
+      title: `Won: ${lead.company} → client + kickoff project`,
+      metadata: { clientId, projectId },
+    });
+    get().toast(`${lead.company} is now a client with a kickoff project.`, 'success');
+    return clientId;
+  },
+
+  addExpense: (input) => {
+    const project = get().projects[input.projectId];
+    if (!project) {
+      get().toast('Expenses must be tied to a project.', 'error');
+      return '';
+    }
+    const id = newId('exp');
+    const now = isoNow();
+    const clientId = project.clientId;
+    const row: Expense = {
+      id,
+      projectId: input.projectId,
+      clientId,
+      vendor: input.vendor.trim(),
+      category: input.category.trim(),
+      amount: Math.max(0, input.amount),
+      reimbursable: input.reimbursable ?? false,
+      date: input.date,
+      status: 'Pending',
+      createdAt: now,
+      updatedAt: now,
+    };
+    set((s) => ({ expenses: { ...s.expenses, [id]: row } }));
+    get().logActivity({
+      type: 'expense_recorded',
+      entityKind: 'project',
+      entityId: input.projectId,
+      title: `Expense · ${row.vendor} · $${row.amount.toLocaleString()} · ${project.name}`,
+      metadata: { projectId: input.projectId, clientId, expenseId: id },
+    });
+    get().toast('Expense recorded on project', 'success');
+    return id;
   },
 }));

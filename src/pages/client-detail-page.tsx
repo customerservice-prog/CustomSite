@@ -10,13 +10,15 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
 import {
+  clientHealthBadgeVariant,
   clientStatusBadgeVariant,
   contractStatusBadgeVariant,
   invoiceStatusBadgeVariant,
   messageStatusBadgeVariant,
 } from '@/lib/statuses';
+import { clientHealthLabel, clientHealthLevel, daysSinceIso } from '@/lib/system-intelligence';
 import { useShell } from '@/context/shell-context';
-import { useClient, useActivitiesFeed } from '@/store/hooks';
+import { useClient, useClientActivityFeed } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
 
@@ -24,8 +26,9 @@ export function ClientDetailPage() {
   const { clientId } = useParams();
   const { toast } = useShell();
   const client = useClient(clientId);
-  const activitiesFeed = useActivitiesFeed();
+  const clientActivity = useClientActivityFeed(clientId);
   const openModal = useAppStore((s) => s.openModal);
+  const setSelectedClientId = useAppStore((s) => s.setSelectedClientId);
 
   const clientProjects = useAppStore(
     useShallow((s) => (clientId ? sel.getProjectsForClient(s, clientId) : []))
@@ -43,28 +46,32 @@ export function ClientDetailPage() {
     useShallow((s) => (clientId ? sel.getContractsForClient(s, clientId) : []))
   );
   const projectsMap = useAppStore(useShallow((s) => s.projects));
+  const store = useAppStore((s) => s);
 
   const [noteDraft, setNoteDraft] = useState(
     'Retainer renewed verbally — send updated MSA before kickoff.'
   );
 
-  const timeline = useMemo(() => {
-    if (!client) return [];
-    const pids = new Set(clientProjects.map((p) => p.id));
-    return activitiesFeed.filter((a) => a.entityId === client.id || pids.has(a.entityId));
-  }, [activitiesFeed, client, clientProjects]);
+  const activeProjects = useMemo(() => clientProjects.filter((p) => p.status !== 'Live'), [clientProjects]);
+  const pastProjects = useMemo(() => clientProjects.filter((p) => p.status === 'Live'), [clientProjects]);
+  const pendingContracts = useMemo(
+    () => clientContracts.filter((c) => c.status === 'Sent' || c.status === 'Viewed'),
+    [clientContracts]
+  );
 
   if (!client) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
         <h1 className="text-lg font-bold text-slate-900">Client not found</h1>
-        <p className="mt-2 text-sm text-slate-500">This id is not in the workspace store.</p>
+        <p className="mt-2 text-sm text-slate-500">We could not find this client in your workspace.</p>
         <Link to="/clients" className={buttonClassName('primary', 'mt-6 inline-flex')}>
           Back to clients
         </Link>
       </div>
     );
   }
+
+  const clientHealth = clientHealthLevel(store, client.id);
 
   return (
     <DetailPageLayout
@@ -73,10 +80,66 @@ export function ClientDetailPage() {
       title={client.name}
       meta={
         <span>
-          {client.company} · Last activity {client.lastActivityLabel}
+          {client.company} · Last touch {client.lastActivityLabel} · Paid revenue (invoices) ${client.lifetimeValue.toLocaleString()}
         </span>
       }
-      badge={<Badge variant={clientStatusBadgeVariant(client.status)}>{client.status}</Badge>}
+      badge={
+        <span className="flex flex-wrap items-center gap-2">
+          <Badge variant={clientStatusBadgeVariant(client.status)}>{client.status}</Badge>
+          <Badge variant={clientHealthBadgeVariant(clientHealth)}>{clientHealthLabel(clientHealth)}</Badge>
+        </span>
+      }
+      sidebar={
+        <>
+          <Card className="p-4 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Account pulse</p>
+            <ul className="mt-3 space-y-2 text-sm text-slate-700">
+              <li className="flex justify-between gap-2">
+                <span>Open balance</span>
+                <span className="font-bold tabular-nums text-slate-900">
+                  {client.balance > 0 ? `$${client.balance.toLocaleString()}` : '—'}
+                </span>
+              </li>
+              <li className="flex justify-between gap-2">
+                <span>Active projects</span>
+                <span className="font-semibold">{activeProjects.length}</span>
+              </li>
+              <li className="flex justify-between gap-2">
+                <span>Delivered</span>
+                <span className="font-semibold">{pastProjects.length}</span>
+              </li>
+              {pendingContracts.length > 0 && (
+                <li className="text-amber-800">
+                  {pendingContracts.length} contract{pendingContracts.length === 1 ? '' : 's'} awaiting signature
+                </li>
+              )}
+            </ul>
+            {client.balance > 0 && (
+              <Link to="/invoices" className={`${buttonClassName('secondary', 'mt-4 w-full justify-center text-xs')}`}>
+                Collect balance
+              </Link>
+            )}
+          </Card>
+          <Card className="p-4 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">What to do next</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-slate-600">
+              {client.balance > 0 && (
+                <li>
+                  Outstanding balance ${client.balance.toLocaleString()} — collect or confirm payment timing
+                </li>
+              )}
+              {clientThreads.some((t) => t.status === 'Unread') && <li>Reply to an unread thread in Messages</li>}
+              {clientInvoices.some((i) => i.status === 'Overdue') && <li>Follow up on an overdue invoice</li>}
+              {daysSinceIso(client.updatedAt) >= 10 && <li>No account activity in 10+ days — schedule a check-in</li>}
+              {activeProjects.length === 0 && <li>Open a project so delivery has a home</li>}
+              {!clientThreads.some((t) => t.status === 'Unread') &&
+                !clientInvoices.some((i) => i.status === 'Overdue') &&
+                activeProjects.length > 0 &&
+                daysSinceIso(client.updatedAt) < 10 && <li>Review milestones and portal previews</li>}
+            </ul>
+          </Card>
+        </>
+      }
       actions={
         <>
           <Button type="button" variant="secondary" className="gap-2">
@@ -87,8 +150,8 @@ export function ClientDetailPage() {
             type="button"
             className="gap-2"
             onClick={() => {
+              if (client) setSelectedClientId(client.id);
               openModal('create-project');
-              toast('Pick client in modal or we can pre-select via store next.', 'info');
             }}
           >
             <Plus className="h-4 w-4" />
@@ -167,32 +230,87 @@ export function ClientDetailPage() {
             label: 'Projects',
             content:
               clientProjects.length === 0 ? (
-                <p className="text-sm text-slate-500">No active projects — convert a lead or create one.</p>
+                <Card className="border-dashed border-slate-200 bg-slate-50/60 p-8 text-center">
+                  <p className="font-semibold text-slate-800">Every client record needs at least one project</p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Projects hold tasks, files, messages, and billing. Create one to start delivery — or win a pipeline deal to auto-generate a
+                    kickoff.
+                  </p>
+                  <Button
+                    type="button"
+                    className="mt-4 gap-2"
+                    onClick={() => {
+                      setSelectedClientId(client.id);
+                      openModal('create-project');
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    New project
+                  </Button>
+                </Card>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHeadCell>Project</TableHeadCell>
-                      <TableHeadCell>Status</TableHeadCell>
-                      <TableHeadCell className="text-right">Budget</TableHeadCell>
-                      <TableHeadCell className="text-right">Due</TableHeadCell>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clientProjects.map((p) => (
-                      <TableRow key={p.id} clickable>
-                        <TableCell>
-                          <Link to={`/projects/${p.id}`} className="font-semibold text-indigo-700 hover:text-indigo-900">
-                            {p.name}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{p.status}</TableCell>
-                        <TableCell className="text-right tabular-nums">${p.budget.toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-slate-500">{p.due}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Active delivery</h3>
+                    {activeProjects.length === 0 ? (
+                      <p className="mt-2 text-sm text-slate-500">No active builds — only delivered work below.</p>
+                    ) : (
+                      <Table className="mt-3">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHeadCell>Project</TableHeadCell>
+                            <TableHeadCell>Status</TableHeadCell>
+                            <TableHeadCell className="text-right">Budget</TableHeadCell>
+                            <TableHeadCell className="text-right">Due</TableHeadCell>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {activeProjects.map((p) => (
+                            <TableRow key={p.id} clickable>
+                              <TableCell>
+                                <Link to={`/projects/${p.id}`} className="font-semibold text-indigo-700 hover:text-indigo-900">
+                                  {p.name}
+                                </Link>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="neutral">{p.status}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">${p.budget.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-slate-500">{p.due}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+                  {pastProjects.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Delivered</h3>
+                      <Table className="mt-3">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHeadCell>Project</TableHeadCell>
+                            <TableHeadCell>Status</TableHeadCell>
+                            <TableHeadCell className="text-right">Budget</TableHeadCell>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pastProjects.map((p) => (
+                            <TableRow key={p.id} clickable>
+                              <TableCell>
+                                <Link to={`/projects/${p.id}`} className="font-semibold text-indigo-700 hover:text-indigo-900">
+                                  {p.name}
+                                </Link>
+                              </TableCell>
+                              <TableCell>Live</TableCell>
+                              <TableCell className="text-right tabular-nums">${p.budget.toLocaleString()}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
               ),
           },
           {
@@ -299,15 +417,19 @@ export function ClientDetailPage() {
             label: 'Activity',
             content: (
               <Card className="p-5">
-                <ul className="space-y-4">
-                  {(timeline.length ? timeline : activitiesFeed.slice(0, 5)).map((a) => (
-                    <li key={a.id} className="relative border-l-2 border-indigo-100 pl-4">
-                      <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-indigo-500" />
-                      <p className="text-sm font-medium text-slate-800">{a.title}</p>
-                      <p className="text-xs text-slate-400">{a.timeLabel}</p>
-                    </li>
-                  ))}
-                </ul>
+                {clientActivity.length === 0 ? (
+                  <p className="text-sm text-slate-500">Activity will appear as invoices, tasks, and messages move on this account.</p>
+                ) : (
+                  <ul className="space-y-4">
+                    {clientActivity.slice(0, 25).map((a) => (
+                      <li key={a.id} className="relative border-l-2 border-indigo-100 pl-4">
+                        <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-indigo-500" />
+                        <p className="text-sm font-medium text-slate-800">{a.title}</p>
+                        <p className="text-xs text-slate-400">{a.timeLabel}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Card>
             ),
           },

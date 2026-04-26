@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Plus, Search, DollarSign, FileWarning, Send, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/page-header';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
 import { invoiceStatusBadgeVariant, type InvoiceStatus } from '@/lib/statuses';
 import { cn } from '@/lib/utils';
+import { INVOICE_GROUP_LABEL, INVOICE_GROUP_ORDER, invoiceLedgerGroup } from '@/lib/operating-layer';
 import { useInvoices, useClients, useProjects } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -55,7 +56,7 @@ export function InvoicesPage() {
       header={
         <PageHeader
           title="Invoices"
-          description="All rows read from normalized store state — creating an invoice updates metrics everywhere."
+          description="Track invoices, payment status, and outstanding balances in one ledger."
           actions={
             <Button type="button" className="gap-2" onClick={() => openModal('create-invoice')}>
               <Plus className="h-4 w-4" />
@@ -82,7 +83,7 @@ export function InvoicesPage() {
       }
     >
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Paid (sample)" value={`$${paidMonth.toLocaleString()}`} hint="Paid in store" icon={CheckCircle} />
+        <MetricCard label="Paid (period)" value={`$${paidMonth.toLocaleString()}`} hint="Cash received" icon={CheckCircle} />
         <MetricCard label="Outstanding" value={`$${outstanding.toLocaleString()}`} hint="Excludes void" icon={DollarSign} />
         <MetricCard label="Overdue" value={String(overdueCount)} hint="Needs follow-up" icon={FileWarning} />
         <MetricCard label="Drafts" value={String(draftCount)} hint="Ready to send" icon={Send} />
@@ -120,7 +121,17 @@ export function InvoicesPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((inv) => {
+          {INVOICE_GROUP_ORDER.map((group) => {
+            const subset = rows.filter((inv) => invoiceLedgerGroup(inv) === group);
+            if (!subset.length) return null;
+            return (
+              <Fragment key={group}>
+                <TableRow className="bg-slate-100/95 hover:bg-slate-100/95">
+                  <TableCell colSpan={8} className="py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    {INVOICE_GROUP_LABEL[group]}
+                  </TableCell>
+                </TableRow>
+                {subset.map((inv) => {
             const client = clientMap[inv.clientId];
             const proj = inv.projectId ? projectMap[inv.projectId] : null;
             return (
@@ -144,6 +155,9 @@ export function InvoicesPage() {
                   </Link>
                 </TableCell>
               </TableRow>
+            );
+                })}
+              </Fragment>
             );
           })}
         </TableBody>

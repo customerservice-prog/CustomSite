@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LayoutGrid, Plus, Search, Table2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
@@ -12,7 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { PROJECT_STATUSES, projectStatusBadgeVariant, type ProjectStatus } from '@/lib/statuses';
+import {
+  PROJECT_STATUSES,
+  projectHealthBadgeVariant,
+  projectStatusBadgeVariant,
+  type ProjectStatus,
+} from '@/lib/statuses';
+import { projectHealthLabel, projectHealthLevel } from '@/lib/system-intelligence';
 import { cn } from '@/lib/utils';
 import { useProjects, useClients } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
@@ -21,12 +27,27 @@ export function ProjectsPage() {
   const projects = useProjects();
   const clients = useClients();
   const users = useAppStore(useShallow((s) => s.users));
+  const store = useAppStore((s) => s);
   const openModal = useAppStore((s) => s.openModal);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
-  const [view, setView] = useState<'table' | 'cards'>('table');
+  const [view, setView] = useState<'table' | 'cards'>(() => {
+    if (typeof window === 'undefined') return 'table';
+    const v = window.localStorage.getItem('projects:view');
+    return v === 'cards' ? 'cards' : 'table';
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem('projects:view', view);
+  }, [view]);
 
   const clientMap = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c])), [clients]);
+
+  const healthByProjectId = useMemo(() => {
+    const m: Record<string, ReturnType<typeof projectHealthLevel>> = {};
+    for (const p of projects) m[p.id] = projectHealthLevel(store, p.id);
+    return m;
+  }, [projects, store]);
 
   const rows = useMemo(() => {
     return projects.filter((p) => {
@@ -45,7 +66,7 @@ export function ProjectsPage() {
       header={
         <PageHeader
           title="Projects"
-          description="Projects reference clients by id — budgets and phases update the command center selectors."
+          description="Plan phases, burn down budgets, and keep every engagement tied to the right client."
           actions={
             <Button type="button" className="gap-2" onClick={() => openModal('create-project')}>
               <Plus className="h-4 w-4" />
@@ -128,6 +149,7 @@ export function ProjectsPage() {
               const client = clientMap[p.clientId];
               const owner = users[p.ownerId];
               const pct = Math.min(100, Math.round((p.spent / p.budget) * 100));
+              const hl = healthByProjectId[p.id] ?? 'healthy';
               return (
                 <TableRow key={p.id} clickable>
                   <TableCell>
@@ -138,6 +160,9 @@ export function ProjectsPage() {
                   <TableCell>{client?.company ?? '—'}</TableCell>
                   <TableCell>
                     <Badge variant={projectStatusBadgeVariant(p.status)}>{p.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={projectHealthBadgeVariant(hl)}>{projectHealthLabel(hl)}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums font-medium">${p.budget.toLocaleString()}</TableCell>
                   <TableCell>
@@ -155,14 +180,18 @@ export function ProjectsPage() {
           {rows.map((p) => {
             const client = clientMap[p.clientId];
             const pct = Math.min(100, Math.round((p.spent / p.budget) * 100));
+            const hl = healthByProjectId[p.id] ?? 'healthy';
             return (
               <Link key={p.id} to={`/projects/${p.id}`} className="block">
                 <Card className="h-full border-slate-200/80 p-4 transition hover:border-indigo-200 hover:shadow-md">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-bold text-slate-900">{p.name}</h3>
-                    <Badge variant={projectStatusBadgeVariant(p.status)} className="shrink-0">
-                      {p.status}
-                    </Badge>
+                    <span className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge variant={projectStatusBadgeVariant(p.status)}>{p.status}</Badge>
+                      <Badge variant={projectHealthBadgeVariant(hl)} className="text-[10px]">
+                        {projectHealthLabel(hl)}
+                      </Badge>
+                    </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">{client?.company}</p>
                   <p className="mt-3 text-sm font-semibold text-slate-700">

@@ -1,6 +1,6 @@
 /** First path segment → display title for breadcrumbs */
 export const routeMeta: Record<string, { title: string; segment: string }> = {
-  dashboard: { title: 'Dashboard', segment: 'dashboard' },
+  dashboard: { title: 'Command center', segment: 'dashboard' },
   pipeline: { title: 'Pipeline', segment: 'pipeline' },
   clients: { title: 'Clients', segment: 'clients' },
   projects: { title: 'Projects', segment: 'projects' },

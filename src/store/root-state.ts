@@ -5,6 +5,7 @@ import type {
   Client,
   Contract,
   EntityMap,
+  Expense,
   Invoice,
   Lead,
   Message,
@@ -34,6 +35,7 @@ export interface RootState {
   messageThreads: EntityMap<MessageThread>;
   messages: EntityMap<Message>;
   files: EntityMap<AgencyFile>;
+  expenses: EntityMap<Expense>;
   activities: EntityMap<Activity>;
   activityIds: string[];
   notifications: EntityMap<AppNotification>;

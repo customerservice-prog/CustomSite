@@ -65,6 +65,8 @@ export type Lead = {
   lastActivityLabel: string;
   createdAt: string;
   updatedAt: string;
+  /** Set when this lead is converted from Won → client record. */
+  convertedClientId?: string | null;
 };
 
 export type Task = {
@@ -99,11 +101,16 @@ export type Payment = {
   status: 'pending' | 'completed' | 'failed';
   method: string;
   createdAt: string;
+  /** Processor settlement state */
+  processorStatus?: 'settled' | 'pending' | 'processing';
+  /** Payout to bank */
+  payoutStatus?: 'paid_out' | 'scheduled' | 'in_transit';
 };
 
 export type Contract = {
   id: string;
   clientId: string;
+  projectId?: string | null;
   title: string;
   status: ContractStatus;
   value: number;
@@ -111,6 +118,9 @@ export type Contract = {
   updatedAt: string;
   /** Short display string for tables */
   updatedLabel: string;
+  sentDate?: string | null;
+  viewedDate?: string | null;
+  signedDate?: string | null;
 };
 
 export type MessageThread = {
@@ -141,6 +151,24 @@ export type AgencyFile = {
   uploaded: string;
   size: string;
   createdAt: string;
+  folder?: string;
+  /** Who can see this in the client portal */
+  visibility: 'Internal' | 'Client-visible';
+};
+
+/** Billable spend tied to a project (source of truth: project + client derived). */
+export type Expense = {
+  id: string;
+  projectId: string;
+  clientId: string;
+  vendor: string;
+  category: string;
+  amount: number;
+  reimbursable: boolean;
+  date: string;
+  status: 'Pending' | 'Approved' | 'Reimbursed';
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ActivityType =
@@ -153,9 +181,13 @@ export type ActivityType =
   | 'task_created'
   | 'task_completed'
   | 'lead_created'
+  | 'lead_stage_changed'
+  | 'lead_won'
   | 'contract_signed'
   | 'file_uploaded'
   | 'project_updated'
+  | 'project_phase_changed'
+  | 'expense_recorded'
   | 'other';
 
 export type Activity = {

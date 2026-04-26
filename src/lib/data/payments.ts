@@ -9,6 +9,8 @@ export const paymentsSeed: Payment[] = [
     status: 'completed',
     method: 'ACH',
     createdAt: '2026-04-01T14:00:00.000Z',
+    processorStatus: 'settled',
+    payoutStatus: 'paid_out',
   },
   {
     id: 'pay2',
@@ -18,5 +20,18 @@ export const paymentsSeed: Payment[] = [
     status: 'completed',
     method: 'Card',
     createdAt: '2026-03-20T16:00:00.000Z',
+    processorStatus: 'settled',
+    payoutStatus: 'paid_out',
+  },
+  {
+    id: 'pay3',
+    invoiceId: 'i1',
+    clientId: 'c1',
+    amount: 8500,
+    status: 'pending',
+    method: 'Card',
+    createdAt: '2026-04-24T11:00:00.000Z',
+    processorStatus: 'processing',
+    payoutStatus: 'scheduled',
   },
 ];

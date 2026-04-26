@@ -6,10 +6,12 @@ import { DetailPageLayout } from '@/components/layout/templates/detail-page-layo
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonClassName } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { invoiceStatusBadgeVariant } from '@/lib/statuses';
+import { invoiceStatusBadgeVariant, messageStatusBadgeVariant, taskStatusBadgeVariant } from '@/lib/statuses';
+import { hoursSinceIso } from '@/lib/system-intelligence';
 import { useShell } from '@/context/shell-context';
 import { useInvoice, useActivitiesFeed } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
+import * as sel from '@/store/selectors';
 
 export function InvoiceDetailPage() {
   const { invoiceId } = useParams();
@@ -22,6 +24,12 @@ export function InvoiceDetailPage() {
   const client = useAppStore(useShallow((s) => (invoice ? s.clients[invoice.clientId] : undefined)));
   const project = useAppStore(
     useShallow((s) => (invoice?.projectId ? s.projects[invoice.projectId] : undefined))
+  );
+  const relatedTasks = useAppStore(
+    useShallow((s) => (invoice?.projectId ? sel.getTasksForProject(s, invoice.projectId).slice(0, 6) : []))
+  );
+  const relatedThreads = useAppStore(
+    useShallow((s) => (invoice ? sel.getThreadsForClient(s, invoice.clientId).slice(0, 4) : []))
   );
 
   const invoiceActivity = useMemo(() => {
@@ -67,7 +75,7 @@ export function InvoiceDetailPage() {
             type="button"
             variant="secondary"
             className="gap-2"
-            onClick={() => toast('Reminder scheduled (demo).', 'success')}
+            onClick={() => toast('Reminder queued — client will see a payment nudge.', 'success')}
           >
             <RefreshCw className="h-4 w-4" />
             Remind
@@ -144,6 +152,72 @@ export function InvoiceDetailPage() {
                 <dd className="font-medium tabular-nums text-slate-800">{invoice.dueDate}</dd>
               </div>
             </dl>
+          </Card>
+          <Card className="p-5">
+            <h3 className="text-sm font-bold text-slate-900">Related context</h3>
+            <p className="mt-1 text-xs text-slate-500">Jump to the people, project, tasks, and threads tied to this bill.</p>
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-slate-500">Client</dt>
+                <dd>
+                  {client ? (
+                    <Link to={`/clients/${client.id}`} className="font-semibold text-indigo-700 hover:text-indigo-900">
+                      {client.name}
+                    </Link>
+                  ) : (
+                    '—'
+                  )}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-slate-500">Project</dt>
+                <dd>
+                  {project ? (
+                    <Link to={`/projects/${project.id}`} className="font-semibold text-indigo-700 hover:text-indigo-900">
+                      {project.name}
+                    </Link>
+                  ) : (
+                    <span className="text-slate-600">Not linked</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+            {relatedTasks.length > 0 && (
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Tasks on this project</p>
+                <ul className="mt-2 space-y-2">
+                  {relatedTasks.map((t) => (
+                    <li key={t.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="min-w-0 truncate font-medium text-slate-800">{t.title}</span>
+                      <Badge variant={taskStatusBadgeVariant(t.status)} className="shrink-0 text-[10px]">
+                        {t.status}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {relatedThreads.length > 0 && (
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Client messages</p>
+                <ul className="mt-2 space-y-2">
+                  {relatedThreads.map((th) => (
+                    <li key={th.id}>
+                      <Link to="/messages" className="block rounded-lg border border-slate-100 px-2 py-1.5 text-xs hover:bg-slate-50">
+                        <span className="font-semibold text-slate-900">{th.participant}</span>
+                        <span className="mt-0.5 block line-clamp-1 text-slate-500">{th.preview}</span>
+                        <span className="mt-1 flex items-center justify-between gap-2">
+                          <Badge variant={messageStatusBadgeVariant(th.status)} className="text-[10px]">
+                            {th.status}
+                          </Badge>
+                          <span className="text-[10px] text-slate-400">Updated {hoursSinceIso(th.updatedAt)}h ago</span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Card>
           <Card className="p-5">
             <h3 className="text-sm font-bold text-slate-900">Activity</h3>

@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MoreHorizontal } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import type { Client } from '@/lib/types/entities';
-import { clientStatusBadgeVariant } from '@/lib/statuses';
+import { clientHealthLabel, clientHealthLevel } from '@/lib/system-intelligence';
+import { clientHealthBadgeVariant, clientStatusBadgeVariant } from '@/lib/statuses';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { IconButton } from '@/components/ui/icon-button';
@@ -13,6 +15,12 @@ export function ClientsTable({ rows }: { rows: Client[] }) {
   const navigate = useNavigate();
   const users = useAppStore(useShallow((s) => s.users));
   const projects = useAppStore(useShallow((s) => s.projects));
+  const store = useAppStore((s) => s);
+  const healthById = useMemo(() => {
+    const m: Record<string, ReturnType<typeof clientHealthLevel>> = {};
+    for (const c of rows) m[c.id] = clientHealthLevel(store, c.id);
+    return m;
+  }, [rows, store]);
 
   if (rows.length === 0) {
     return (
@@ -53,6 +61,11 @@ export function ClientsTable({ rows }: { rows: Client[] }) {
               <TableCell>
                 <Badge variant={clientStatusBadgeVariant(c.status)} className="font-semibold">
                   {c.status}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Badge variant={clientHealthBadgeVariant(healthById[c.id] ?? 'strong')} className="font-semibold">
+                  {clientHealthLabel(healthById[c.id] ?? 'strong')}
                 </Badge>
               </TableCell>
               <TableCell className="text-right tabular-nums font-medium">{projectCount}</TableCell>

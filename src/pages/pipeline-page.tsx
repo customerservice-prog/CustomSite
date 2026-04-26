@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Filter, Plus, Search } from 'lucide-react';
 import { KanbanPageLayout } from '@/components/layout/templates/kanban-page-layout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -17,6 +18,8 @@ import { useShallow } from 'zustand/shallow';
 export function PipelinePage() {
   const leads = useLeads();
   const addLead = useAppStore((s) => s.addLead);
+  const advanceLeadStage = useAppStore((s) => s.advanceLeadStage);
+  const convertWonLead = useAppStore((s) => s.convertWonLead);
   const users = useAppStore(useShallow((s) => s.users));
   const toast = useAppStore((s) => s.toast);
   const [q, setQ] = useState('');
@@ -61,7 +64,7 @@ export function PipelinePage() {
         header={
           <PageHeader
             title="Pipeline"
-            description="Leads are entities in the store — adding a card logs activity and updates dashboard selectors."
+            description="Qualify opportunities, move stages with confidence, and convert wins without losing context."
             actions={
               <Button type="button" className="gap-2" onClick={() => setModalOpen(true)}>
                 <Plus className="h-4 w-4" />
@@ -162,6 +165,33 @@ export function PipelinePage() {
                               </div>
                               <span className="text-[10px] font-medium text-slate-400">{l.lastActivityLabel}</span>
                             </div>
+                            {stage !== 'Won' && stage !== 'Lost' && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  className="flex-1 px-2 py-1.5 text-[11px]"
+                                  onClick={() => advanceLeadStage(l.id)}
+                                >
+                                  Advance stage
+                                </Button>
+                                <Button
+                                  type="button"
+                                  className="flex-1 px-2 py-1.5 text-[11px]"
+                                  onClick={() => convertWonLead(l.id)}
+                                >
+                                  Mark won
+                                </Button>
+                              </div>
+                            )}
+                            {l.convertedClientId && (
+                              <p className="mt-2 text-[11px] font-semibold text-emerald-700">
+                                Client created —{' '}
+                                <Link to={`/clients/${l.convertedClientId}`} className="underline">
+                                  open record
+                                </Link>
+                              </p>
+                            )}
                           </Card>
                         );
                       })

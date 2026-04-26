@@ -9,6 +9,7 @@ import {
   PROJECT_STATUSES,
   TASK_STATUSES,
 } from './status-constants';
+import type { ClientHealthLevel, ProjectHealthLevel } from './system-intelligence';
 
 export type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
@@ -69,4 +70,16 @@ export function messageStatusBadgeVariant(s: MessageThreadStatus): BadgeVariant 
   if (s === 'Unread') return 'info';
   if (s === 'Waiting') return 'warning';
   return 'neutral';
+}
+
+export function projectHealthBadgeVariant(h: ProjectHealthLevel): BadgeVariant {
+  if (h === 'blocked') return 'danger';
+  if (h === 'at_risk') return 'warning';
+  return 'success';
+}
+
+export function clientHealthBadgeVariant(h: ClientHealthLevel): BadgeVariant {
+  if (h === 'at_risk') return 'danger';
+  if (h === 'needs_attention') return 'warning';
+  return 'success';
 }

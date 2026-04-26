@@ -51,6 +51,24 @@ export function invoicesList(state: RootState): Invoice[] {
   return Object.values(state.invoices);
 }
 
+export function filesList(state: RootState): AgencyFile[] {
+  return Object.values(state.files).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
+export function paymentsList(state: RootState) {
+  return Object.values(state.payments).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
+export function contractsList(state: RootState): Contract[] {
+  return Object.values(state.contracts).sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+}
+
 export function threadsList(state: RootState): MessageThread[] {
   return Object.values(state.messageThreads).sort(
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -59,6 +77,84 @@ export function threadsList(state: RootState): MessageThread[] {
 
 export function activitiesListNewestFirst(state: RootState): Activity[] {
   return state.activityIds.map((id) => state.activities[id]).filter(Boolean);
+}
+
+/** Activity rows that belong to this project (strict relationship graph). */
+export function getActivitiesForProject(state: RootState, projectId: string): Activity[] {
+  const proj = state.projects[projectId];
+  if (!proj) return [];
+  return activitiesListNewestFirst(state).filter((a) => {
+    if (a.metadata?.projectId === projectId) return true;
+    if (a.entityKind === 'project' && a.entityId === projectId) return true;
+    if (a.entityKind === 'task') {
+      const t = state.tasks[a.entityId];
+      return t?.projectId === projectId;
+    }
+    if (a.entityKind === 'invoice') {
+      const inv = state.invoices[a.entityId];
+      return inv?.projectId === projectId;
+    }
+    if (a.entityKind === 'file') {
+      const f = state.files[a.entityId];
+      return f?.projectId === projectId;
+    }
+    if (a.entityKind === 'contract') {
+      const ct = state.contracts[a.entityId];
+      return ct?.projectId === projectId;
+    }
+    if (a.entityKind === 'message') {
+      const tid = a.metadata?.threadId;
+      if (tid) return state.messageThreads[tid]?.projectId === projectId;
+    }
+    return false;
+  });
+}
+
+/** Everything tied to this client across projects, billing, and comms. */
+export function getActivitiesForClient(state: RootState, clientId: string): Activity[] {
+  return activitiesListNewestFirst(state).filter((a) => {
+    if (a.metadata?.clientId === clientId) return true;
+    if (a.entityId === clientId && a.entityKind === 'client') return true;
+    if (a.entityKind === 'project') {
+      const p = state.projects[a.entityId];
+      return p?.clientId === clientId;
+    }
+    if (a.entityKind === 'invoice') {
+      const inv = state.invoices[a.entityId];
+      return inv?.clientId === clientId;
+    }
+    if (a.entityKind === 'contract') {
+      const ct = state.contracts[a.entityId];
+      return ct?.clientId === clientId;
+    }
+    if (a.entityKind === 'message') {
+      const tid = a.metadata?.threadId;
+      if (tid) return state.messageThreads[tid]?.clientId === clientId;
+    }
+    if (a.entityKind === 'file') {
+      const f = state.files[a.entityId];
+      return f?.clientId === clientId;
+    }
+    if (a.entityKind === 'task') {
+      const t = state.tasks[a.entityId];
+      const p = t ? state.projects[t.projectId] : undefined;
+      return p?.clientId === clientId;
+    }
+    if (a.entityKind === 'lead' && a.type === 'lead_won') {
+      return a.metadata?.clientId === clientId;
+    }
+    return false;
+  });
+}
+
+export function expensesList(state: RootState) {
+  return Object.values(state.expenses).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
+export function getExpensesForProject(state: RootState, projectId: string) {
+  return expensesList(state).filter((e) => e.projectId === projectId);
 }
 
 export function notificationsList(state: RootState): AppNotification[] {
@@ -153,6 +249,10 @@ export function getInvoicesForClient(state: RootState, clientId: string): Invoic
 
 export function getContractsForClient(state: RootState, clientId: string): Contract[] {
   return Object.values(state.contracts).filter((c) => c.clientId === clientId);
+}
+
+export function getContractsForProject(state: RootState, projectId: string): Contract[] {
+  return Object.values(state.contracts).filter((c) => c.projectId === projectId);
 }
 
 export function getFilesForClient(state: RootState, clientId: string): AgencyFile[] {

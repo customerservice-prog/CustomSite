@@ -9,6 +9,8 @@ export const filesSeed: AgencyFile[] = [
     uploaded: 'Apr 20',
     size: '2.4 MB',
     createdAt: '2026-04-20T12:00:00.000Z',
+    folder: 'Brand',
+    visibility: 'Client-visible',
   },
   {
     id: 'f2',
@@ -18,5 +20,18 @@ export const filesSeed: AgencyFile[] = [
     uploaded: 'Apr 21',
     size: '180 KB',
     createdAt: '2026-04-21T12:00:00.000Z',
+    folder: 'Copy',
+    visibility: 'Client-visible',
+  },
+  {
+    id: 'f3',
+    name: 'Internal — margin analysis.xlsx',
+    projectId: 'p2',
+    clientId: 'c2',
+    uploaded: 'Apr 19',
+    size: '92 KB',
+    createdAt: '2026-04-19T12:00:00.000Z',
+    folder: 'Finance',
+    visibility: 'Internal',
   },
 ];

@@ -13,9 +13,9 @@ export function AppShellLayout() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <Sidebar />
-      <div className="lg:pl-72">
+      <div className="min-w-0 lg:pl-72">
         <Header breadcrumbs={crumbs} />
-        <main className="px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>
       </div>

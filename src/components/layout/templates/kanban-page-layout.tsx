@@ -16,7 +16,7 @@ export function KanbanPageLayout({
     <div className={cn('space-y-6', className)}>
       {header}
       {toolbar}
-      <div className="overflow-x-auto pb-2">{board}</div>
+      <div className="scroll-table overflow-x-auto pb-2">{board}</div>
     </div>
   );
 }

@@ -132,7 +132,7 @@ export function SettingsPage() {
               </div>
             </div>
             <Card className="border-dashed border-slate-200 bg-slate-50/80 p-8 text-center text-sm text-slate-500">
-              Logo upload — connect S3 or Supabase storage.
+              Upload your logo for invoices, proposals, and the client portal.
             </Card>
           </div>
         )}

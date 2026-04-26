@@ -7,14 +7,14 @@ export type Crumb = { label: string; to?: string };
 export function crumbsFromMatches(matches: UIMatch[]): Crumb[] {
   const state = useAppStore.getState();
   const last = matches[matches.length - 1];
-  if (!last) return [{ label: 'CustomSite', to: '/dashboard' }, { label: 'Dashboard' }];
+  if (!last) return [{ label: 'CustomSite', to: '/dashboard' }, { label: routeMeta.dashboard.title }];
 
   const path = last.pathname.replace(/\/$/, '') || '/';
   const params = last.params as Record<string, string | undefined>;
   const base: Crumb[] = [{ label: 'CustomSite', to: '/dashboard' }];
 
   if (path === '/dashboard' || path === '/' || path === '') {
-    return [...base, { label: 'Dashboard' }];
+    return [...base, { label: routeMeta.dashboard.title }];
   }
 
   const segments = path.split('/').filter(Boolean);

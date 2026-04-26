@@ -3,11 +3,13 @@ import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { useClients, useProjects } from '@/store/hooks';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useClients, useInvoices, useProjects } from '@/store/hooks';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 export function CreateEntityModals() {
   const activeModal = useAppStore((s) => s.ui.activeModal);
+  const selectedClientId = useAppStore((s) => s.ui.selectedClientId);
+  const selectedProjectId = useAppStore((s) => s.ui.selectedProjectId);
   const closeModal = useAppStore((s) => s.closeModal);
   const addClient = useAppStore((s) => s.addClient);
   const addProject = useAppStore((s) => s.addProject);
@@ -15,7 +17,14 @@ export function CreateEntityModals() {
   const addTask = useAppStore((s) => s.addTask);
   const clients = useClients();
   const projects = useProjects();
+  const invoices = useInvoices();
   const currentUserId = useAppStore((s) => s.currentUserId);
+
+  function averagePaidForClient(clientId: string): number {
+    const paid = invoices.filter((i) => i.clientId === clientId && i.status === 'Paid');
+    if (!paid.length) return 2500;
+    return Math.round(paid.reduce((s, i) => s + i.amount, 0) / paid.length);
+  }
 
   const [clientForm, setClientForm] = useState({
     name: '',
@@ -50,6 +59,23 @@ export function CreateEntityModals() {
     if (!invoiceForm.clientId) return [];
     return projects.filter((p) => p.clientId === invoiceForm.clientId);
   }, [projects, invoiceForm.clientId]);
+
+  useEffect(() => {
+    if (activeModal === 'create-project' && selectedClientId) {
+      setProjectForm((f) => ({ ...f, clientId: selectedClientId }));
+    }
+  }, [activeModal, selectedClientId]);
+
+  useEffect(() => {
+    if (activeModal === 'create-task' && selectedProjectId) {
+      const proj = projects.find((p) => p.id === selectedProjectId);
+      setTaskForm((f) => ({
+        ...f,
+        projectId: selectedProjectId,
+        due: proj?.due ?? f.due,
+      }));
+    }
+  }, [activeModal, selectedProjectId, projects]);
 
   if (activeModal === 'create-client') {
     return (
@@ -143,13 +169,14 @@ export function CreateEntityModals() {
               type="button"
               onClick={() => {
                 if (!projectForm.clientId || !projectForm.name.trim()) return;
-                addProject({
+                const pid = addProject({
                   name: projectForm.name,
                   clientId: projectForm.clientId,
                   budget: Math.max(0, Number(projectForm.budget) || 0),
                   due: projectForm.due,
                   ownerId: projectForm.ownerId,
                 });
+                if (!pid) return;
                 setProjectForm({ name: '', clientId: '', budget: '24000', due: 'Jun 30', ownerId: currentUserId });
                 closeModal();
               }}
@@ -169,7 +196,11 @@ export function CreateEntityModals() {
           <Field label="Client">
             <Select
               value={invoiceForm.clientId}
-              onChange={(e) => setInvoiceForm((f) => ({ ...f, clientId: e.target.value, projectId: '' }))}
+              onChange={(e) => {
+                const cid = e.target.value;
+                const avg = cid ? averagePaidForClient(cid) : 2500;
+                setInvoiceForm((f) => ({ ...f, clientId: cid, projectId: '', amount: String(avg) }));
+              }}
             >
               <option value="">Select client…</option>
               {clientOptions.map((o) => (
@@ -182,7 +213,15 @@ export function CreateEntityModals() {
           <Field label="Project (optional)">
             <Select
               value={invoiceForm.projectId}
-              onChange={(e) => setInvoiceForm((f) => ({ ...f, projectId: e.target.value }))}
+              onChange={(e) => {
+                const pid = e.target.value;
+                const proj = projects.find((p) => p.id === pid);
+                setInvoiceForm((f) => ({
+                  ...f,
+                  projectId: pid,
+                  dueDate: proj?.due ?? f.dueDate,
+                }));
+              }}
               disabled={!invoiceForm.clientId}
             >
               <option value="">None</option>
@@ -234,7 +273,14 @@ export function CreateEntityModals() {
       <Modal open title="Create task" onClose={closeModal}>
         <div className="space-y-3">
           <Field label="Project">
-            <Select value={taskForm.projectId} onChange={(e) => setTaskForm((f) => ({ ...f, projectId: e.target.value }))}>
+            <Select
+              value={taskForm.projectId}
+              onChange={(e) => {
+                const pid = e.target.value;
+                const proj = projects.find((p) => p.id === pid);
+                setTaskForm((f) => ({ ...f, projectId: pid, due: proj?.due ?? f.due }));
+              }}
+            >
               <option value="">Select project…</option>
               {projects.map((p) => {
                 const c = clients.find((x) => x.id === p.clientId);

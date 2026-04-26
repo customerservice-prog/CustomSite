@@ -12,6 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { messageStatusBadgeVariant } from '@/lib/statuses';
 import { useShell } from '@/context/shell-context';
+import {
+  MESSAGE_GROUP_LABEL,
+  MESSAGE_GROUP_ORDER,
+  messageInboxGroup,
+  type MessageInboxGroup,
+} from '@/lib/operating-layer';
 import { useMessageThreads } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
@@ -40,6 +46,18 @@ export function MessagesPage() {
     });
   }, [allThreads, q, unreadOnly]);
 
+  const groupedThreads = useMemo(() => {
+    const g: Record<MessageInboxGroup, typeof threads> = {
+      awaiting_you: [],
+      waiting_on_client: [],
+      recent: [],
+    };
+    for (const t of threads) {
+      g[messageInboxGroup(t)].push(t);
+    }
+    return g;
+  }, [threads]);
+
   useEffect(() => {
     if (threads.length && !threads.some((t) => t.id === selectedId)) {
       setSelectedId(threads[0].id);
@@ -59,14 +77,14 @@ export function MessagesPage() {
     if (!draft.trim() || !selected) return;
     appendTeamMessage(selected.id, draft.trim());
     setDraft('');
-    toast('Message sent.', 'success');
+    toast('Delivered — your client sees this in their thread.', 'success');
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Messages"
-        description="Threads and messages live in the store — replies update previews, activity, and unread counts downstream."
+        description="Grouped by who owes the next move — you first, then the client, then everything that’s cooling off."
       />
 
       <SplitInboxLayout
@@ -98,7 +116,12 @@ export function MessagesPage() {
             </div>
             <ul className="min-h-0 flex-1 overflow-y-auto">
               {threads.length === 0 ? (
-                <li className="p-6 text-center text-sm text-slate-500">No threads match.</li>
+                <li className="p-6 text-center text-sm text-slate-600">
+                  <p className="font-medium text-slate-800">No conversations here</p>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                    Adjust filters or keep shipping work — client threads show up as soon as someone replies in the portal or you log a message.
+                  </p>
+                </li>
               ) : (
                 threads.map((t) => (
                   <li key={t.id}>

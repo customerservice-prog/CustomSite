@@ -26,52 +26,56 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   to: string;
-  badge?: number;
+  /** When true, sidebar replaces this with a live count from workspace data. */
+  badgeFromStore?: 'unread-messages' | 'pending-contracts';
 }
 
 export const navGroups: { label: string; items: NavItem[] }[] = [
   {
-    label: 'Workspace',
+    label: 'Command center',
+    items: [{ label: 'Command center', to: '/dashboard', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Sales',
     items: [
-      { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
       { label: 'Pipeline', to: '/pipeline', icon: Kanban },
-      { label: 'Clients', to: '/clients', icon: Users },
-      { label: 'Projects', to: '/projects', icon: FolderKanban },
-      { label: 'Tasks', to: '/tasks', icon: CheckSquare },
-      { label: 'Calendar', to: '/calendar', icon: CalendarDays },
-    ],
-  },
-  {
-    label: 'Billing',
-    items: [
-      { label: 'Invoices', to: '/invoices', icon: Receipt },
-      { label: 'Payments', to: '/payments', icon: CreditCard },
-      { label: 'Time tracking', to: '/time-tracking', icon: Clock },
-      { label: 'Expenses', to: '/expenses', icon: Wallet },
-    ],
-  },
-  {
-    label: 'Communication',
-    items: [
-      { label: 'Messages', to: '/messages', icon: MessageSquare, badge: 3 },
-      { label: 'Contracts', to: '/contracts', icon: FileSignature, badge: 2 },
       { label: 'Proposals', to: '/proposals', icon: FileText },
       { label: 'Forms', to: '/forms', icon: ClipboardList },
     ],
   },
   {
-    label: 'Resources',
+    label: 'Delivery',
     items: [
+      { label: 'Clients', to: '/clients', icon: Users },
+      { label: 'Projects', to: '/projects', icon: FolderKanban },
+      { label: 'Tasks', to: '/tasks', icon: CheckSquare },
+      { label: 'Calendar', to: '/calendar', icon: CalendarDays },
       { label: 'Files', to: '/files', icon: Files },
       { label: 'Activity', to: '/activity', icon: Activity },
-      { label: 'Reports', to: '/reports', icon: BarChart3 },
     ],
   },
   {
-    label: 'Admin',
+    label: 'Money',
     items: [
-      { label: 'Site Builder', to: '/site-builder', icon: Wand2 },
-      { label: 'Client Portal', to: '/client-portal', icon: ShieldCheck },
+      { label: 'Invoices', to: '/invoices', icon: Receipt },
+      { label: 'Payments', to: '/payments', icon: CreditCard },
+      { label: 'Expenses', to: '/expenses', icon: Wallet },
+      { label: 'Time tracking', to: '/time-tracking', icon: Clock },
+    ],
+  },
+  {
+    label: 'Communication',
+    items: [
+      { label: 'Messages', to: '/messages', icon: MessageSquare, badgeFromStore: 'unread-messages' },
+      { label: 'Contracts', to: '/contracts', icon: FileSignature, badgeFromStore: 'pending-contracts' },
+    ],
+  },
+  {
+    label: 'Growth & admin',
+    items: [
+      { label: 'Reports', to: '/reports', icon: BarChart3 },
+      { label: 'Client portal', to: '/client-portal', icon: ShieldCheck },
+      { label: 'Site builder', to: '/site-builder', icon: Wand2 },
       { label: 'Settings', to: '/settings', icon: Settings },
     ],
   },

@@ -11,6 +11,7 @@ export function DetailPageLayout({
   badge,
   actions,
   children,
+  sidebar,
   className,
 }: {
   backHref: string;
@@ -19,6 +20,8 @@ export function DetailPageLayout({
   meta?: ReactNode;
   badge?: ReactNode;
   actions?: ReactNode;
+  /** Operational column: next actions, risk, recency — keeps the hub feeling “alive”. */
+  sidebar?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -43,7 +46,14 @@ export function DetailPageLayout({
           {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
         </div>
       </div>
-      {children}
+      {sidebar ? (
+        <div className="grid gap-8 lg:grid-cols-[1fr_minmax(280px,340px)] lg:items-start">
+          <div className="min-w-0 space-y-8">{children}</div>
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">{sidebar}</aside>
+        </div>
+      ) : (
+        children
+      )}
     </div>
   );
 }

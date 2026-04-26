@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { CheckCircle2, X } from 'lucide-react';
 import { useShell } from '@/context/shell-context';
 import { IconButton } from '@/components/ui/icon-button';
 import { cn } from '@/lib/utils';
@@ -17,12 +17,15 @@ export function ToastStack() {
         <div
           key={t.id}
           className={cn(
-            'pointer-events-auto flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lg ring-1 transition duration-200',
+            'toast-enter pointer-events-auto flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lg ring-1 transition duration-200',
             t.variant === 'success' && 'border-emerald-100 bg-white text-emerald-950 ring-emerald-100',
             t.variant === 'error' && 'border-red-100 bg-white text-red-950 ring-red-100',
             t.variant === 'info' && 'border-indigo-100 bg-white text-slate-900 ring-indigo-100'
           )}
         >
+          {t.variant === 'success' && (
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
+          )}
           <p className="min-w-0 flex-1 text-sm font-medium">{t.message}</p>
           <IconButton
             type="button"

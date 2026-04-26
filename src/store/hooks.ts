@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { PIPELINE_STAGES } from '@/lib/statuses';
+import { buildTodayActions } from '@/lib/command-center';
+import { buildAutomatedInsights, buildPriorityQueue, revenueHealthSnapshot } from '@/lib/system-intelligence';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
 
-/** Future: replace with `useClients()` that fetches from API and hydrates the store. */
 export function useClients() {
   return useAppStore(useShallow((s) => sel.clientsList(s)));
 }
@@ -23,6 +24,18 @@ export function useTasks() {
 
 export function useInvoices() {
   return useAppStore(useShallow((s) => sel.invoicesList(s)));
+}
+
+export function useFiles() {
+  return useAppStore(useShallow((s) => sel.filesList(s)));
+}
+
+export function usePayments() {
+  return useAppStore(useShallow((s) => sel.paymentsList(s)));
+}
+
+export function useContracts() {
+  return useAppStore(useShallow((s) => sel.contractsList(s)));
 }
 
 export function useMessageThreads() {
@@ -53,6 +66,34 @@ export function usePipelineColumnStats() {
       }),
     [leads]
   );
+}
+
+export function useTodayActions(limit = 8) {
+  return useAppStore(useShallow((s) => buildTodayActions(s, limit)));
+}
+
+export function usePriorityQueue(limit = 14) {
+  return useAppStore(useShallow((s) => buildPriorityQueue(s, limit)));
+}
+
+export function useAutomatedInsights() {
+  return useAppStore(useShallow((s) => buildAutomatedInsights(s)));
+}
+
+export function useRevenueHealth() {
+  return useAppStore(useShallow((s) => revenueHealthSnapshot(s)));
+}
+
+export function useExpenses() {
+  return useAppStore(useShallow((s) => sel.expensesList(s)));
+}
+
+export function useProjectActivities(projectId: string | undefined) {
+  return useAppStore(useShallow((s) => (projectId ? sel.getActivitiesForProject(s, projectId) : [])));
+}
+
+export function useClientActivityFeed(clientId: string | undefined) {
+  return useAppStore(useShallow((s) => (clientId ? sel.getActivitiesForClient(s, clientId) : [])));
 }
 
 export function useDashboardMetrics() {
