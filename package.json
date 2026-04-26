@@ -8,12 +8,13 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test test/**/*.test.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npx tsc --noEmit",
+    "launch:check": "npm run typecheck && npm test && npm run build:admin",
     "deploy:railway": "npx @railway/cli@latest up",
-    "admin:dev": "vite",
+    "admin:dev": "npx vite",
     "build": "npm run build:admin",
-    "build:admin": "vite build && vite build --config vite.conversion-demo.config.ts",
-    "preview:admin": "vite preview"
+    "build:admin": "npx vite build && npx vite build --config vite.conversion-demo.config.ts",
+    "preview:admin": "npx vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
