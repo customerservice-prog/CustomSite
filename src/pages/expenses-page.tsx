@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useExpenses, useProjects } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { useShallow } from 'zustand/shallow';
+import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 
 export function ExpensesPage() {
   const rows = useExpenses();
@@ -61,23 +62,34 @@ export function ExpensesPage() {
     <>
       <TablePageLayout
         header={
-          <PageHeader
-            title="Expenses"
-            description="Every expense belongs to a project — that keeps margins, invoices, and client records honest."
-            actions={
-              <Button
-                type="button"
-                className="gap-2"
-                onClick={() => {
-                  if (projects.length) setProjectId(projects[0].id);
-                  setModalOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                Add expense
-              </Button>
-            }
-          />
+          <div className="space-y-4">
+            <PageHeader
+              title="Expenses"
+              description="Capture costs against projects so invoices and margins reflect reality — then return to Pulse to see if money still makes sense."
+              actions={
+                <Button
+                  type="button"
+                  className="gap-2"
+                  onClick={() => {
+                    if (projects.length) setProjectId(projects[0].id);
+                    setModalOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add expense
+                </Button>
+              }
+            />
+            <PageMomentumStrip title="What to do next">
+              <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
+              <MomentumSep />
+              <MomentumChip to="/projects">Projects</MomentumChip>
+              <MomentumSep />
+              <MomentumChip to="/invoices">Invoices</MomentumChip>
+              <MomentumSep />
+              <MomentumChip to="/payments">Payments</MomentumChip>
+            </PageMomentumStrip>
+          </div>
         }
       >
         <TableToolbar>

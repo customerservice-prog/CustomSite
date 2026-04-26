@@ -17,6 +17,7 @@ import * as sel from '@/store/selectors';
 import { DataRowMenu } from '@/components/workspace/data-row-menu';
 import type { Task } from '@/lib/types/entities';
 import { TASK_BUCKET_LABEL, TASK_BUCKET_ORDER, taskDueBucket } from '@/lib/operating-layer';
+import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 
 type SortKey = 'title' | 'due' | 'status' | 'project';
 
@@ -80,16 +81,27 @@ export function TasksPage() {
   return (
     <TablePageLayout
       header={
-        <PageHeader
-          title="Tasks"
-          description="Assign work, track due dates, and clear blockers across every project."
-          actions={
-            <Button type="button" className="gap-2" onClick={() => openModal('create-task')}>
-              <Plus className="h-4 w-4" />
-              New task
-            </Button>
-          }
-        />
+        <div className="space-y-4">
+          <PageHeader
+            title="Tasks"
+            description="Assign work, track due dates, and clear blockers across every project."
+            actions={
+              <Button type="button" className="gap-2" onClick={() => openModal('create-task')}>
+                <Plus className="h-4 w-4" />
+                New task
+              </Button>
+            }
+          />
+          <PageMomentumStrip>
+            <MomentumChip to="/dashboard">Studio pulse</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/projects">Projects</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/invoices">Invoices</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/messages">Messages</MomentumChip>
+          </PageMomentumStrip>
+        </div>
       }
     >
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">

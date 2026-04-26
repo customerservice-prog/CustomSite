@@ -20,6 +20,8 @@ import { nextInvoiceNumber } from '@/lib/data/invoices';
 import { formatRelativeShort } from '@/lib/format-relative';
 import type { ActiveModal, RootState, ToastItem } from '@/store/root-state';
 import { newId, isoNow } from '@/store/ids';
+import { planAutonomousActions } from '@/lib/autonomous-operator-cycle';
+import type { OperatorEvent } from '@/store/operator-state';
 
 const DELIVERY_PHASE_FLOW: ProjectStatus[] = ['Planning', 'Design', 'Development', 'Review', 'Live'];
 
@@ -125,6 +127,11 @@ export interface AppStore extends RootState {
   markInvoicePaid: (invoiceId: string) => void;
   completeTask: (taskId: string) => void;
   appendTeamMessage: (threadId: string, body: string) => void;
+  /** Advance a closed execution loop (resets tier clocks in demo — mirrors scheduled jobs server-side). */
+  advanceExecutionLoop: (priorityItemId: string) => void;
+  /** Run confidence-gated autonomous touches (default-on; user can undo). */
+  processAutonomousOperatorCycle: () => void;
+  undoOperatorEvent: (eventId: string) => void;
 
   advanceProjectPhase: (projectId: string) => void;
   advanceLeadStage: (leadId: string) => void;
@@ -652,6 +659,326 @@ export const useAppStore = create<AppStore>((set, get) => ({
         projectId: thread.projectId,
       },
     });
+  },
+
+  advanceExecutionLoop: (priorityItemId) => {
+    const s = get();
+    if (priorityItemId.startsWith('crit-block-bulk-')) {
+      const projectId = priorityItemId.slice('crit-block-bulk-'.length);
+      const p = s.projects[projectId];
+      if (!p) return;
+      const now = isoNow();
+      set((st) => ({
+        projects: { ...st.projects, [projectId]: { ...p, updatedAt: now } },
+      }));
+      get().logActivity({
+        type: 'other',
+        entityKind: 'project',
+        entityId: projectId,
+        title: `Delivery loop · stall nudge logged on “${p.name}”`,
+        metadata: { clientId: p.clientId, projectId },
+      });
+      get().toast('Stall logged — delivery loop clock reset.', 'success');
+      return;
+    }
+    if (priorityItemId.startsWith('crit-block-')) {
+      const taskId = priorityItemId.slice('crit-block-'.length);
+      const t = s.tasks[taskId];
+      if (!t) return;
+      const now = isoNow();
+      set((st) => ({
+        tasks: { ...st.tasks, [taskId]: { ...t, updatedAt: now } },
+      }));
+      get().logActivity({
+        type: 'other',
+        entityKind: 'task',
+        entityId: taskId,
+        title: `Delivery loop · client nudge logged on “${t.title}”`,
+        metadata: { projectId: t.projectId },
+      });
+      get().toast('Nudge logged — blocker loop clock reset.', 'success');
+      return;
+    }
+    if (priorityItemId.startsWith('crit-inv-')) {
+      const invoiceId = priorityItemId.slice('crit-inv-'.length);
+      const inv = s.invoices[invoiceId];
+      if (!inv) return;
+      const now = isoNow();
+      set((st) => {
+        const invoices = { ...st.invoices, [invoiceId]: { ...inv, updatedAt: now } };
+        return { invoices, clients: nextClientsAfterInvoices(st, invoices, inv.clientId) };
+      });
+      get().logActivity({
+        type: 'other',
+        entityKind: 'invoice',
+        entityId: invoiceId,
+        title: `Revenue loop · collection touch logged · ${inv.number}`,
+        metadata: { clientId: inv.clientId, projectId: inv.projectId ?? undefined },
+      });
+      get().toast('Collection touch logged — revenue loop clock reset.', 'success');
+      return;
+    }
+    if (priorityItemId.startsWith('crit-msg-')) {
+      const threadId = priorityItemId.slice('crit-msg-'.length);
+      get().appendTeamMessage(
+        threadId,
+        'Thanks for your note — I’m on this and will follow up with specifics shortly.'
+      );
+      get().toast('Holding reply sent — communication loop advanced.', 'success');
+      return;
+    }
+    if (priorityItemId.startsWith('imp-due-')) {
+      const taskId = priorityItemId.slice('imp-due-'.length);
+      const t = s.tasks[taskId];
+      if (!t) return;
+      const now = isoNow();
+      set((st) => ({
+        tasks: { ...st.tasks, [taskId]: { ...t, updatedAt: now } },
+      }));
+      get().logActivity({
+        type: 'other',
+        entityKind: 'task',
+        entityId: taskId,
+        title: `Delivery loop · due-today item acknowledged · “${t.title}”`,
+        metadata: { projectId: t.projectId },
+      });
+      get().toast('Due-today loop advanced — clock reset.', 'success');
+      return;
+    }
+    if (priorityItemId.startsWith('imp-burn-')) {
+      const projectId = priorityItemId.slice('imp-burn-'.length);
+      const p = s.projects[projectId];
+      if (!p) return;
+      const now = isoNow();
+      set((st) => ({
+        projects: { ...st.projects, [projectId]: { ...p, updatedAt: now } },
+      }));
+      get().logActivity({
+        type: 'other',
+        entityKind: 'project',
+        entityId: projectId,
+        title: `Delivery loop · scope check-in logged · “${p.name}”`,
+        metadata: { clientId: p.clientId, projectId },
+      });
+      get().toast('Scope check-in logged — burn loop clock reset.', 'success');
+    }
+  },
+
+  processAutonomousOperatorCycle: () => {
+    const planned = planAutonomousActions(get());
+    for (const p of planned) {
+      if (p.type === 'invoice_reminder') {
+        const inv = get().invoices[p.invoiceId];
+        if (!inv) continue;
+        const now = isoNow();
+        const evId = newId('ope');
+        const prev = get().operator.autonomy.invoiceReminders[p.invoiceId] ?? { count: 0, lastAutoAt: null };
+        const nextCount = prev.count + 1;
+        set((s) => {
+          const invoices = { ...s.invoices, [p.invoiceId]: { ...inv, updatedAt: now } };
+          const event: OperatorEvent = {
+            id: evId,
+            createdAt: now,
+            kind: 'auto_invoice_reminder',
+            title: `Payment reminder recorded · ${inv.number}`,
+            detail: `Client nudged ${nextCount} of 2 by the operator — next escalation queues if cash stays idle.`,
+            rationale: p.rationale,
+            confidence: p.confidence,
+            entityKind: 'invoice',
+            entityId: p.invoiceId,
+            priorityItemId: p.priorityItemId,
+            reversible: true,
+            undone: false,
+          };
+          return {
+            invoices,
+            clients: nextClientsAfterInvoices(s, invoices, inv.clientId),
+            operator: {
+              events: [event, ...s.operator.events],
+              autonomy: {
+                ...s.operator.autonomy,
+                invoiceReminders: {
+                  ...s.operator.autonomy.invoiceReminders,
+                  [p.invoiceId]: { count: nextCount, lastAutoAt: now },
+                },
+              },
+            },
+          };
+        });
+        get().pushNotification({
+          kind: 'invoice',
+          title: 'Operator · reminder recorded',
+          body: inv.number,
+          href: `/invoices/${p.invoiceId}`,
+          entityId: p.invoiceId,
+        });
+        get().logActivity({
+          type: 'other',
+          entityKind: 'invoice',
+          entityId: p.invoiceId,
+          title: `Autonomous operator · ${inv.number} · nudge ${nextCount}`,
+          metadata: { operatorEventId: evId },
+        });
+        continue;
+      }
+      if (p.type === 'thread_holding') {
+        const threadId = p.threadId;
+        const th0 = get().messageThreads[threadId];
+        if (!th0) continue;
+        get().appendTeamMessage(
+          threadId,
+          'Quick update — I’m on this and will follow up with specifics today. Thanks for your patience.'
+        );
+        const now = isoNow();
+        const evId = newId('ope');
+        set((s) => ({
+          operator: {
+            events: [
+              {
+                id: evId,
+                createdAt: now,
+                kind: 'auto_holding_reply',
+                title: `Holding reply sent · ${th0.participant}`,
+                detail:
+                  'Default holding reply was sent — review the thread if you want a different tone.',
+                rationale: p.rationale,
+                confidence: p.confidence,
+                entityKind: 'message',
+                entityId: threadId,
+                priorityItemId: p.priorityItemId,
+                reversible: true,
+                undone: false,
+              },
+              ...s.operator.events,
+            ],
+            autonomy: {
+              ...s.operator.autonomy,
+              threadHoldingReplies: {
+                ...s.operator.autonomy.threadHoldingReplies,
+                [threadId]: { count: 1, lastAutoAt: now },
+              },
+            },
+          },
+        }));
+        get().pushNotification({
+          kind: 'message',
+          title: 'Operator · holding reply',
+          body: th0.participant,
+          href: '/messages',
+          entityId: threadId,
+        });
+        get().logActivity({
+          type: 'other',
+          entityKind: 'message',
+          entityId: threadId,
+          title: `Autonomous operator · holding reply · ${th0.participant}`,
+          metadata: { threadId, operatorEventId: evId },
+        });
+        continue;
+      }
+      if (p.type === 'delivery_nudge_project') {
+        const proj = get().projects[p.projectId];
+        if (!proj) continue;
+        const now = isoNow();
+        const evId = newId('ope');
+        const prev = get().operator.autonomy.deliveryNudges[p.projectId] ?? { count: 0, lastAutoAt: null };
+        const nextCount = prev.count + 1;
+        set((s) => ({
+          projects: { ...s.projects, [p.projectId]: { ...proj, updatedAt: now } },
+          operator: {
+            events: [
+              {
+                id: evId,
+                createdAt: now,
+                kind: 'auto_delivery_nudge',
+                title: `Stall nudge logged · ${proj.name}`,
+                detail: 'Operator recorded a client nudge on the stalled project — delivery clock reset.',
+                rationale: p.rationale,
+                confidence: p.confidence,
+                entityKind: 'project',
+                entityId: p.projectId,
+                priorityItemId: p.priorityItemId,
+                reversible: true,
+                undone: false,
+              },
+              ...s.operator.events,
+            ],
+            autonomy: {
+              ...s.operator.autonomy,
+              deliveryNudges: {
+                ...s.operator.autonomy.deliveryNudges,
+                [p.projectId]: { count: nextCount, lastAutoAt: now },
+              },
+            },
+          },
+        }));
+        get().pushNotification({
+          kind: 'task',
+          title: 'Operator · delivery nudge',
+          body: proj.name,
+          href: `/projects/${p.projectId}`,
+          entityId: p.projectId,
+        });
+        get().logActivity({
+          type: 'other',
+          entityKind: 'project',
+          entityId: p.projectId,
+          title: `Autonomous operator · stall nudge · ${proj.name}`,
+          metadata: { operatorEventId: evId, projectId: p.projectId },
+        });
+      }
+    }
+    if (planned.length > 0) {
+      get().toast(`Autonomous operator · ${planned.length} default action(s) executed`, 'info');
+    }
+  },
+
+  undoOperatorEvent: (eventId) => {
+    const st = get();
+    const ev = st.operator.events.find((e) => e.id === eventId);
+    if (!ev || ev.undone || !ev.reversible) return;
+
+    set((s) => {
+      const autonomy = { ...s.operator.autonomy };
+      if (ev.kind === 'auto_invoice_reminder') {
+        const cur = autonomy.invoiceReminders[ev.entityId];
+        if (cur && cur.count > 0) {
+          autonomy.invoiceReminders = {
+            ...autonomy.invoiceReminders,
+            [ev.entityId]: { count: cur.count - 1, lastAutoAt: cur.lastAutoAt },
+          };
+        }
+      } else if (ev.kind === 'auto_holding_reply') {
+        autonomy.threadHoldingReplies = {
+          ...autonomy.threadHoldingReplies,
+          [ev.entityId]: { count: 0, lastAutoAt: null },
+        };
+      } else if (ev.kind === 'auto_delivery_nudge') {
+        const cur = autonomy.deliveryNudges[ev.entityId];
+        if (cur && cur.count > 0) {
+          autonomy.deliveryNudges = {
+            ...autonomy.deliveryNudges,
+            [ev.entityId]: { count: cur.count - 1, lastAutoAt: cur.lastAutoAt },
+          };
+        }
+      }
+
+      return {
+        operator: {
+          events: s.operator.events.map((e) => (e.id === eventId ? { ...e, undone: true } : e)),
+          autonomy,
+        },
+      };
+    });
+
+    get().logActivity({
+      type: 'other',
+      entityKind: 'workspace',
+      entityId: st.workspace.id,
+      title: `Operator action undone · ${ev.title}`,
+      metadata: { operatorEventId: eventId },
+    });
+    get().toast('Undone — counters adjusted. Clients may already have seen the touch.', 'info');
   },
 
   advanceProjectPhase: (projectId) => {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Bell, ChevronDown, Command, Globe, MoreHorizontal, Plus, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Bell, ChevronDown, Command, Globe, LayoutDashboard, MoreHorizontal, Plus, Search } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { MobileNavTrigger } from '@/components/layout/sidebar';
 import { Avatar } from '@/components/ui/avatar';
@@ -18,6 +18,8 @@ interface HeaderProps {
 
 export function Header({ breadcrumbs }: HeaderProps) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const onStudioPulse = pathname === '/dashboard' || pathname === '/' || pathname === '';
   const setCommandOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const openModal = useAppStore((s) => s.openModal);
   const markRead = useAppStore((s) => s.markNotificationRead);
@@ -92,7 +94,16 @@ export function Header({ breadcrumbs }: HeaderProps) {
           </div>
         </div>
 
-        <div className="hidden min-w-0 flex-1 px-2 md:block md:px-4">
+        <div className="hidden min-w-0 flex-1 items-center gap-2 px-2 md:flex md:px-4">
+          {!onStudioPulse && (
+            <Link
+              to="/dashboard"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border-2 border-indigo-200 bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm shadow-indigo-900/15 transition hover:bg-indigo-700 lg:px-3.5 lg:text-sm"
+            >
+              <LayoutDashboard className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
+              <span className="hidden sm:inline">Studio Pulse</span>
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setCommandOpen(true)}

@@ -1,5 +1,6 @@
 import { ChevronDown, LogOut, Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { navGroups, type NavItem } from '@/lib/nav-config';
 import * as sel from '@/store/selectors';
@@ -47,16 +48,22 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-200/90 bg-white px-5">
-        <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-md shadow-indigo-900/15"
-          aria-hidden
+        <Link
+          to="/dashboard"
+          onClick={() => onNavigate?.()}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none ring-indigo-500/0 transition hover:bg-slate-50 focus-visible:ring-2"
         >
-          CS
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold tracking-tight text-slate-900">CustomSite</p>
-          <p className="text-[11px] font-medium text-slate-500">Agency workspace</p>
-        </div>
+          <div
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-md shadow-indigo-900/15"
+            aria-hidden
+          >
+            CS
+          </div>
+          <div className="min-w-0 flex-1 text-left">
+            <p className="truncate text-sm font-bold tracking-tight text-slate-900">CustomSite</p>
+            <p className="text-[11px] font-medium text-slate-500">Studio Pulse = home</p>
+          </div>
+        </Link>
         <IconButton type="button" className="lg:hidden" onClick={() => onNavigate?.()} aria-label="Close menu">
           <X className="h-5 w-5" />
         </IconButton>

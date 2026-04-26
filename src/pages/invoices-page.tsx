@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { INVOICE_GROUP_LABEL, INVOICE_GROUP_ORDER, invoiceLedgerGroup } from '@/lib/operating-layer';
 import { useInvoices, useClients, useProjects } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
+import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 
 export function InvoicesPage() {
   const invoices = useInvoices();
@@ -54,16 +55,27 @@ export function InvoicesPage() {
   return (
     <TablePageLayout
       header={
-        <PageHeader
-          title="Invoices"
-          description="Track invoices, payment status, and outstanding balances in one ledger."
-          actions={
-            <Button type="button" className="gap-2" onClick={() => openModal('create-invoice')}>
-              <Plus className="h-4 w-4" />
-              New invoice
-            </Button>
-          }
-        />
+        <div className="space-y-4">
+          <PageHeader
+            title="Invoices"
+            description="Track invoices, payment status, and outstanding balances in one ledger."
+            actions={
+              <Button type="button" className="gap-2" onClick={() => openModal('create-invoice')}>
+                <Plus className="h-4 w-4" />
+                New invoice
+              </Button>
+            }
+          />
+          <PageMomentumStrip>
+            <MomentumChip to="/dashboard">Studio pulse</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/payments">Payments</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/projects">Projects</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/messages">Messages</MomentumChip>
+          </PageMomentumStrip>
+        </div>
       }
       toolbar={
         <TableToolbar>
@@ -84,9 +96,19 @@ export function InvoicesPage() {
     >
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Paid (period)" value={`$${paidMonth.toLocaleString()}`} hint="Cash received" icon={CheckCircle} />
-        <MetricCard label="Outstanding" value={`$${outstanding.toLocaleString()}`} hint="Excludes void" icon={DollarSign} />
-        <MetricCard label="Overdue" value={String(overdueCount)} hint="Needs follow-up" icon={FileWarning} />
-        <MetricCard label="Drafts" value={String(draftCount)} hint="Ready to send" icon={Send} />
+        <MetricCard label="Outstanding" value={`$${outstanding.toLocaleString()}`} hint="Collect or reconcile open balances" icon={DollarSign} />
+        <MetricCard
+          label="Overdue"
+          value={String(overdueCount)}
+          hint={overdueCount > 0 ? `Follow up on ${overdueCount} overdue invoice${overdueCount === 1 ? '' : 's'}` : 'Nothing overdue right now'}
+          icon={FileWarning}
+        />
+        <MetricCard
+          label="Drafts"
+          value={String(draftCount)}
+          hint={draftCount > 0 ? `Send ${draftCount} draft invoice${draftCount === 1 ? '' : 's'}` : 'No drafts waiting'}
+          icon={Send}
+        />
       </section>
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50/80 p-1">

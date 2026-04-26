@@ -32,8 +32,8 @@ export interface NavItem {
 
 export const navGroups: { label: string; items: NavItem[] }[] = [
   {
-    label: 'Command center',
-    items: [{ label: 'Command center', to: '/dashboard', icon: LayoutDashboard }],
+    label: 'Start here',
+    items: [{ label: 'Studio Pulse', to: '/dashboard', icon: LayoutDashboard }],
   },
   {
     label: 'Sales',

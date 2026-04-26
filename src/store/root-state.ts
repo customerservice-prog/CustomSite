@@ -17,6 +17,7 @@ import type {
   Workspace,
 } from '@/lib/types/entities';
 import type { DeadlineSeed } from '@/lib/data/deadlines';
+import type { OperatorState } from '@/store/operator-state';
 
 export type ToastItem = { id: string; message: string; variant: 'success' | 'error' | 'info' };
 
@@ -54,4 +55,6 @@ export interface RootState {
     error?: string;
   };
   toasts: ToastItem[];
+  /** Autonomous operator — timeline, autonomy counters, undo */
+  operator: OperatorState;
 }

@@ -29,6 +29,7 @@ import { paymentsSeed } from '@/lib/data/payments';
 import { projectsSeed } from '@/lib/data/projects';
 import { tasksSeed } from '@/lib/data/tasks';
 import { usersSeed, workspaceSeed } from '@/lib/data/workspace';
+import { emptyOperatorState } from '@/store/operator-state';
 
 export function toMap<T extends { id: string }>(list: T[]): EntityMap<T> {
   return Object.fromEntries(list.map((item) => [item.id, item]));
@@ -108,6 +109,7 @@ export type BootstrapEntities = {
   notifications: EntityMap<AppNotification>;
   notificationIds: string[];
   deadlines: typeof deadlinesSeed;
+  operator: ReturnType<typeof emptyOperatorState>;
 };
 
 function reconcileClientsWithInvoices(clients: EntityMap<Client>, invoices: EntityMap<Invoice>): EntityMap<Client> {
@@ -149,5 +151,6 @@ export function createBootstrapEntities(): BootstrapEntities {
     notifications,
     notificationIds: notificationList.map((n) => n.id),
     deadlines: deadlinesSeed,
+    operator: emptyOperatorState(),
   };
 }

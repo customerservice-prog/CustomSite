@@ -9,6 +9,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useActivitiesFeed } from '@/store/hooks';
 import * as sel from '@/store/selectors';
 import type { Activity } from '@/lib/types/entities';
+import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 
 function ActivityRow({ activity: a }: { activity: Activity }) {
   const href = useAppStore((s) => sel.getActivityHref(s, a));
@@ -40,15 +41,26 @@ export function ActivityPage() {
   return (
     <TablePageLayout
       header={
-        <PageHeader
-          title="Activity"
-          description="A clear audit trail of invoices, tasks, messages, and client updates."
-          actions={
-            <Link to="/dashboard" className={buttonClassName('secondary')}>
-              Command center
-            </Link>
-          }
-        />
+        <div className="space-y-4">
+          <PageHeader
+            title="Activity"
+            description="Read-only trail — use it to verify what happened, then go back to Pulse to decide what happens next."
+            actions={
+              <Link to="/dashboard" className={buttonClassName('secondary')}>
+                Studio Pulse
+              </Link>
+            }
+          />
+          <PageMomentumStrip title="What to do next">
+            <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/tasks">Tasks</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/messages">Messages</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/invoices">Invoices</MomentumChip>
+          </PageMomentumStrip>
+        </div>
       }
     >
       {activities.length === 0 ? (
@@ -58,7 +70,7 @@ export function ActivityPage() {
           description="As your team works in CustomSite, key events will appear here so nothing slips through the cracks."
           action={
             <Link to="/dashboard" className={buttonClassName('secondary')}>
-              Back to dashboard
+              Open Studio Pulse
             </Link>
           }
         />

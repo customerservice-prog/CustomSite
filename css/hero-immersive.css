@@ -137,13 +137,91 @@
   animation: heroFadeUp 0.6s ease 0.1s both;
 }
 .hero-pain-h1__fix {
-  display: block;
-  margin-top: 0.2em;
+  display: inline;
   background: linear-gradient(135deg, #a5b4fc, #22d3ee);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-size: 1.05em;
+}
+
+.hero-pain-h1--sub {
+  font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.35;
+  color: #cbd5e1;
+  margin: 0 0 1rem;
+  max-width: 36rem;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.18s both;
+}
+
+.hero-tm {
+  font-size: 0.45em;
+  font-weight: 700;
+  vertical-align: super;
+  opacity: 0.85;
+}
+
+.hero-subtext--lead {
+  font-size: clamp(1rem, 2.2vw, 1.2rem);
+  line-height: 1.55;
+  color: #e2e8f0;
+  max-width: 36rem;
+  margin: 0 0 1rem;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.2s both;
+}
+.hero-subtext--lead strong {
+  color: #fff;
+}
+
+.hero-proof-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+  margin: 0 0 0.5rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(165, 180, 252, 0.25);
+  border-radius: 10px;
+  max-width: 38rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: #cbd5e1;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.35s both;
+}
+.hero-proof-rail__item strong {
+  color: #fff;
+  font-weight: 800;
+}
+.hero-proof-rail__sep {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #64748b;
+  flex-shrink: 0;
+}
+.hero-proof-rail__note {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0 0 1rem;
+  max-width: 36rem;
+  line-height: 1.45;
+  opacity: 0;
+  animation: heroFadeUp 0.6s ease 0.45s both;
+}
+.hero-proof-rail__note a {
+  color: #a5b4fc;
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .hero-proof-rail,
+  .hero-proof-rail__note {
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .hero-pain-kicker {
@@ -289,12 +367,26 @@
 .macbook-wrap {
   position: relative;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
   opacity: 0;
   animation: heroFadeUp 0.8s ease 0.8s both;
   margin-bottom: 0;
+}
+
+.conversion-demo-caption {
+  margin: 0.85rem 0 0;
+  width: 100%;
+  max-width: min(100%, 36rem);
+  padding: 0 0.75rem;
+  text-align: center;
+  font-size: clamp(0.8rem, 1.65vw, 0.95rem);
+  line-height: 1.45;
+  color: rgba(226, 232, 240, 0.9);
+  font-weight: 500;
+  letter-spacing: 0.015em;
 }
 
 /* ── MACBOOK CSS ──────────────────────────────────── */
@@ -339,6 +431,12 @@
     radial-gradient(ellipse 80% 60% at 50% 20%, rgba(99, 102, 241, 0.12), transparent 55%),
     linear-gradient(180deg, #111827 0%, #0f172a 100%);
   min-height: 100%;
+}
+
+.conversion-demo-root {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 /* Live “site building” mini-preview: phase 1 = code, phase 2 = page builds */
@@ -1238,6 +1336,34 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.hero-trust-bar--proof .trust-num {
+  font-size: clamp(15px, 2.8vw, 18px);
+}
+.hero-trust-bar--proof .trust-label {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  line-height: 1.35;
+  max-width: 12.5rem;
+  color: #94a3b8;
+}
+.hero-trust-bar--proof .trust-cite {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+  letter-spacing: 0;
+}
+.hero-trust-bar--proof .trust-cite a {
+  color: #a5b4fc;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.hero-trust-bar--proof .trust-cite a:hover {
+  color: #c7d2fe;
+}
+
 @keyframes heroFadeUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -1260,22 +1386,29 @@
   .hero-bg-gradient,
   .hero-dot-grid,
   .hero-pain-h1,
+  .hero-pain-h1--sub,
   .hero-founder,
   .hero-subtext,
   .hero-immersive .hero-ctas,
   .macbook-wrap,
   .hero-trust-bar,
+  .hero-proof-rail,
+  .hero-proof-rail__note,
   .floating-card,
   .screen-label-dot,
   .screen-label {
     animation: none !important;
   }
   .hero-pain-h1,
+  .hero-pain-h1--sub,
   .hero-founder,
   .hero-subtext,
+  .hero-subtext--lead,
   .hero-immersive .hero-ctas,
   .macbook-wrap,
-  .hero-trust-bar {
+  .hero-trust-bar,
+  .hero-proof-rail,
+  .hero-proof-rail__note {
     opacity: 1 !important;
     transform: none !important;
   }

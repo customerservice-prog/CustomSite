@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useShell } from '@/context/shell-context';
 import { useClients, useContracts, useProjects } from '@/store/hooks';
 import { DataRowMenu } from '@/components/workspace/data-row-menu';
+import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 
 export function ContractsPage() {
   const contracts = useContracts();
@@ -35,16 +36,27 @@ export function ContractsPage() {
   return (
     <TablePageLayout
       header={
-        <PageHeader
-          title="Contracts"
-          description="Track agreements from draft to signature, with value and key dates in one place."
-          actions={
-            <Button type="button" className="gap-2" onClick={() => toast('Contract composer opens here.', 'info')}>
-              <Plus className="h-4 w-4" />
-              New contract
-            </Button>
-          }
-        />
+        <div className="space-y-4">
+          <PageHeader
+            title="Contracts"
+            description="Signatures unlock billing — every agreement here should move a deal from proposal into billable delivery."
+            actions={
+              <Button type="button" className="gap-2" onClick={() => toast('Contract composer opens here.', 'info')}>
+                <Plus className="h-4 w-4" />
+                New contract
+              </Button>
+            }
+          />
+          <PageMomentumStrip title="What to do next">
+            <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/pipeline">Pipeline</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/projects">Projects</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/invoices">Invoices</MomentumChip>
+          </PageMomentumStrip>
+        </div>
       }
     >
       <TableToolbar>

@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/modal';
 import { PIPELINE_STAGES } from '@/lib/statuses';
 import { useAppStore } from '@/store/useAppStore';
 import { useLeads } from '@/store/hooks';
+import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 import { useShallow } from 'zustand/shallow';
 
 export function PipelinePage() {
@@ -62,16 +63,27 @@ export function PipelinePage() {
     <>
       <KanbanPageLayout
         header={
-          <PageHeader
-            title="Pipeline"
-            description="Qualify opportunities, move stages with confidence, and convert wins without losing context."
-            actions={
-              <Button type="button" className="gap-2" onClick={() => setModalOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Add lead
-              </Button>
-            }
-          />
+          <div className="space-y-4">
+            <PageHeader
+              title="Pipeline"
+              description="Qualify opportunities, move stages with confidence, and convert wins without losing context."
+              actions={
+                <Button type="button" className="gap-2" onClick={() => setModalOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Add lead
+                </Button>
+              }
+            />
+            <PageMomentumStrip>
+              <MomentumChip to="/dashboard">Studio pulse</MomentumChip>
+              <MomentumSep />
+              <MomentumChip to="/clients">Clients</MomentumChip>
+              <MomentumSep />
+              <MomentumChip to="/projects">Projects</MomentumChip>
+              <MomentumSep />
+              <MomentumChip to="/messages">Messages</MomentumChip>
+            </PageMomentumStrip>
+          </div>
         }
         toolbar={
           <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">

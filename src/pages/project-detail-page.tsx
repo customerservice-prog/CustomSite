@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { DetailPageLayout } from '@/components/layout/templates/detail-page-layout';
@@ -6,7 +6,6 @@ import { Tabs } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonClassName } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dropdown, DropdownChevronTrigger, DropdownItem } from '@/components/ui/dropdown';
 import { Table, TableBody, TableCell, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import {
@@ -34,15 +33,11 @@ function milestoneRowsForProject(project: Project) {
 
 export function ProjectDetailPage() {
   const { projectId } = useParams();
-  const navigate = useNavigate();
   const { toast } = useShell();
   const project = useProject(projectId);
   const projectActivities = useProjectActivities(projectId);
   const completeTask = useAppStore((s) => s.completeTask);
   const advanceProjectPhase = useAppStore((s) => s.advanceProjectPhase);
-  const openModal = useAppStore((s) => s.openModal);
-  const setSelectedClientId = useAppStore((s) => s.setSelectedClientId);
-  const setSelectedProjectId = useAppStore((s) => s.setSelectedProjectId);
   const users = useAppStore(useShallow((s) => s.users));
   const store = useAppStore((s) => s);
 

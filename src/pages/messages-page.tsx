@@ -12,12 +12,6 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { messageStatusBadgeVariant } from '@/lib/statuses';
 import { useShell } from '@/context/shell-context';
-import {
-  MESSAGE_GROUP_LABEL,
-  MESSAGE_GROUP_ORDER,
-  messageInboxGroup,
-  type MessageInboxGroup,
-} from '@/lib/operating-layer';
 import { useMessageThreads } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
@@ -45,18 +39,6 @@ export function MessagesPage() {
       return match && unread;
     });
   }, [allThreads, q, unreadOnly]);
-
-  const groupedThreads = useMemo(() => {
-    const g: Record<MessageInboxGroup, typeof threads> = {
-      awaiting_you: [],
-      waiting_on_client: [],
-      recent: [],
-    };
-    for (const t of threads) {
-      g[messageInboxGroup(t)].push(t);
-    }
-    return g;
-  }, [threads]);
 
   useEffect(() => {
     if (threads.length && !threads.some((t) => t.id === selectedId)) {
@@ -198,7 +180,7 @@ export function MessagesPage() {
                   <IconButton
                     aria-label="Attach file"
                     type="button"
-                    onClick={() => toast('Attachments — connect storage.', 'info')}
+                    onClick={() => toast('Upload files from the Files page and link them here.', 'info')}
                   >
                     <Paperclip className="h-4 w-4" />
                   </IconButton>

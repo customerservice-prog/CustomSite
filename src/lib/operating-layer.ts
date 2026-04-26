@@ -123,9 +123,15 @@ export function buildDailyScoreboard(
   }
 
   if (pStats.critical > 0) {
+    const overdueInv = sel.getOverdueInvoices(state);
+    const atRisk = overdueInv.reduce((s, i) => s + i.amount, 0);
+    const moneyBit =
+      overdueInv.length > 0
+        ? ` About $${atRisk.toLocaleString()} is already past terms — each idle day trades leverage for awkward recovery.`
+        : '';
     return {
       headline: "Today's status: Urgent — handle these first",
-      subline: `${pStats.critical} decision${pStats.critical === 1 ? '' : 's'} could cost cash or trust if they wait overnight.`,
+      subline: `${pStats.critical} decision${pStats.critical === 1 ? '' : 's'} could cost cash or trust if they wait overnight.${moneyBit}`,
       tone: 'rose',
       badge: 'Needs you now',
     };
@@ -177,6 +183,177 @@ export function pickSoftGuidance(state: RootState): string {
   return hints[2]!;
 }
 
+/** Tasks marked Done since local midnight — micro-reward / habit signal. */
+export function tasksCompletedTodayCount(state: RootState): number {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const t0 = start.getTime();
+  return Object.values(state.tasks).filter(
+    (t) => t.status === 'Done' && new Date(t.updatedAt).getTime() >= t0
+  ).length;
+}
+
+/** One continuous chain: lead → proposal → contract → delivery → invoice → paid */
+export const LIFECYCLE_STAGES = [
+  { id: 'lead', label: 'Lead' },
+  { id: 'proposal', label: 'Proposal' },
+  { id: 'contract', label: 'Contract' },
+  { id: 'project', label: 'Project' },
+  { id: 'invoice', label: 'Invoice' },
+  { id: 'paid', label: 'Paid' },
+] as const;
+
+/** Why order matters — consequence framing, not a dark pattern */
+export const LIFECYCLE_PROGRESSION_NOTE =
+  'Skipping contract → delivery → invoice → payment is how scope fights and bad debt show up. The chain is the minimum safe sequence.';
+
+export type LifecyclePulse = {
+  summary: string;
+  cta: { label: string; href: string };
+  /** Index into LIFECYCLE_STAGES — where the business is stuck right now */
+  activeStageIndex: number;
+};
+
+export function buildLifecyclePulse(state: RootState): LifecyclePulse {
+  if (sel.getOverdueInvoices(state).length > 0) {
+    return {
+      summary: 'Cash is stuck in the invoice leg — overdue AR breaks the whole chain.',
+      cta: { label: 'Collect overdue invoices', href: '/invoices' },
+      activeStageIndex: 4,
+    };
+  }
+  if (sel.getUnreadThreads(state).length > 0) {
+    return {
+      summary: 'Open replies stall the lifecycle — clients assume silence means deprioritized.',
+      cta: { label: 'Clear Messages', href: '/messages' },
+      activeStageIndex: 3,
+    };
+  }
+  if (sel.getBlockedTasks(state).length > 0) {
+    return {
+      summary: 'Delivery can’t advance until blockers clear — the project leg owns the bottleneck.',
+      cta: { label: 'Unblock work', href: '/tasks' },
+      activeStageIndex: 3,
+    };
+  }
+  if (sel.getPendingContracts(state).length > 0) {
+    return {
+      summary: 'Signatures gate everything after — paper has to move before work bills cleanly.',
+      cta: { label: 'Close pending contracts', href: '/contracts' },
+      activeStageIndex: 2,
+    };
+  }
+  const proposalLeads = sel.leadsList(state).filter((l) => l.stage === 'Proposal Sent');
+  if (proposalLeads.length > 0) {
+    return {
+      summary: 'A proposal is in the wild — without a decision, revenue stays hypothetical.',
+      cta: { label: 'Drive proposal decisions', href: '/pipeline' },
+      activeStageIndex: 1,
+    };
+  }
+  const openLeads = sel.leadsList(state).filter((l) => l.stage !== 'Won' && l.stage !== 'Lost');
+  if (openLeads.length > 0) {
+    return {
+      summary: 'New work still lives in the pipeline — qualify and advance before it goes cold.',
+      cta: { label: 'Advance a lead', href: '/pipeline' },
+      activeStageIndex: 0,
+    };
+  }
+  if (sel.getDraftInvoiceCount(state) > 0) {
+    return {
+      summary: 'Draft invoices are uncaptured revenue — billing is the handoff from delivery to cash.',
+      cta: { label: 'Send draft invoices', href: '/invoices' },
+      activeStageIndex: 4,
+    };
+  }
+  const inReview = sel.projectsList(state).filter((p) => p.status === 'Review');
+  if (inReview.length > 0) {
+    return {
+      summary: 'Review is the last gate before you bill with confidence — don’t let it idle.',
+      cta: { label: 'Finish review', href: `/projects/${inReview[0]!.id}` },
+      activeStageIndex: 3,
+    };
+  }
+  const awaitingPayment = sel.invoicesList(state).filter((i) => i.status === 'Sent').length;
+  if (awaitingPayment > 0) {
+    return {
+      summary: 'Invoices are out — the chain completes when money hits the bank.',
+      cta: { label: 'Record payments & follow up', href: '/payments' },
+      activeStageIndex: 5,
+    };
+  }
+  return {
+    summary: 'No obvious bottleneck — either deepen an account or feed the top of the funnel.',
+    cta: { label: 'Open Studio Pulse', href: '/dashboard' },
+    activeStageIndex: 0,
+  };
+}
+
+export type ChainedStep = { id: string; label: string; href: string };
+
+/** Default paths after common wins — reduces dead ends and browsing. */
+export function buildChainedNextSteps(state: RootState, limit = 5): ChainedStep[] {
+  const out: ChainedStep[] = [];
+  const push = (c: ChainedStep) => {
+    if (out.length >= limit) return;
+    if (out.some((x) => x.id === c.id)) return;
+    out.push(c);
+  };
+
+  const overdue = sel.getOverdueInvoices(state);
+  if (overdue.length) {
+    push({
+      id: 'chain-ar',
+      label: `Follow up on ${overdue.length} overdue invoice${overdue.length === 1 ? '' : 's'}`,
+      href: `/invoices/${overdue[0]!.id}`,
+    });
+  }
+
+  const unread = sel.getUnreadThreads(state);
+  if (unread.length) {
+    push({
+      id: 'chain-msg',
+      label: `Reply in Messages (${unread.length} open loop${unread.length === 1 ? '' : 's'})`,
+      href: '/messages',
+    });
+  }
+
+  const blocked = sel.getBlockedTasks(state);
+  if (blocked.length) {
+    const t = blocked[0]!;
+    push({ id: 'chain-bl', label: 'Unblock a stuck task on delivery', href: `/projects/${t.projectId}` });
+  }
+
+  const drafts = sel.getDraftInvoiceCount(state);
+  if (drafts > 0) {
+    push({
+      id: 'chain-inv',
+      label: `Send ${drafts} draft invoice${drafts === 1 ? '' : 's'}`,
+      href: '/invoices',
+    });
+  }
+
+  const inReview = sel.projectsList(state).filter((p) => p.status === 'Review');
+  if (inReview.length) {
+    push({
+      id: 'chain-rev',
+      label: 'Advance a project out of review',
+      href: `/projects/${inReview[0]!.id}`,
+    });
+  }
+
+  const proposals = sel.leadsList(state).filter((l) => l.stage === 'Proposal Sent');
+  if (proposals.length) {
+    push({ id: 'chain-prop', label: 'Chase a decision on an open proposal', href: '/pipeline' });
+  }
+
+  if (out.length === 0) {
+    push({ id: 'chain-pipe', label: 'Work the pipeline for your next win', href: '/pipeline' });
+  }
+
+  return out.slice(0, limit);
+}
+
 /** One-line “business impact” rollups for the pulse strip. */
 export function buildSmartPulseRollups(state: RootState): string[] {
   const staleClients = sel.clientsList(state).filter((c) => daysSinceIso(c.updatedAt) >= 10 && c.status === 'Active');
@@ -224,7 +401,7 @@ export function buildProactivePrompts(state: RootState, limit = 5): ProactivePro
     const c = state.clients[inv.clientId];
     out.push({
       id: `prompt-inv-${inv.id}`,
-      prompt: `Send a payment reminder for ${inv.number}${c ? ` to ${c.company}` : ''}?`,
+      prompt: `Send a payment reminder for ${inv.number}${c ? ` to ${c.company}` : ''}`,
       href: `/invoices/${inv.id}`,
       tier: 'critical',
     });
@@ -233,7 +410,7 @@ export function buildProactivePrompts(state: RootState, limit = 5): ProactivePro
   for (const th of sel.getUnreadThreads(state).slice(0, 2)) {
     out.push({
       id: `prompt-th-${th.id}`,
-      prompt: `Reply to ${th.participant} before the thread goes stale?`,
+      prompt: `Reply to ${th.participant} now — close the loop`,
       href: '/messages',
       tier: 'critical',
     });
@@ -243,7 +420,7 @@ export function buildProactivePrompts(state: RootState, limit = 5): ProactivePro
   for (const l of proposalLeads) {
     out.push({
       id: `prompt-lead-${l.id}`,
-      prompt: `Schedule a decision call on ${l.company}’s proposal?`,
+      prompt: `Schedule a decision call on ${l.company}’s proposal`,
       href: '/pipeline',
       tier: 'important',
     });
@@ -253,7 +430,7 @@ export function buildProactivePrompts(state: RootState, limit = 5): ProactivePro
   for (const c of stale) {
     out.push({
       id: `prompt-stale-${c.id}`,
-      prompt: `${c.company} hasn’t heard from you in ${daysSinceIso(c.updatedAt)} days — want to check in?`,
+      prompt: `Check in with ${c.company} — ${daysSinceIso(c.updatedAt)} days quiet`,
       href: `/clients/${c.id}`,
       tier: 'important',
     });

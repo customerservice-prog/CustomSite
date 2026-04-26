@@ -1,5 +1,6 @@
 import type { RootState } from '@/store/root-state';
 import * as sel from '@/store/selectors';
+import { applyExecutionLoopLayer } from '@/lib/execution-engine';
 
 export type PriorityTier = 'critical' | 'important' | 'normal';
 
@@ -8,6 +9,23 @@ export type PriorityQueueItem = {
   tier: PriorityTier;
   title: string;
   subtitle?: string;
+  /** Who owes the next move — “you”, client, or both */
+  ownership?: string;
+  /** Cost of inaction — loss framing */
+  impactLine?: string;
+  /** Time as force — overdue by N days, due today, etc. */
+  temporalLine?: string;
+  /** One-tap execution on Pulse without hunting */
+  quickAction?: PriorityQuickAction;
+  /** Closed-loop execution — waiting vs escalating (Handled = item not in queue) */
+  loopKind?: 'revenue' | 'communication' | 'delivery';
+  executionPhase?: 'waiting' | 'escalating';
+  loopTier?: 1 | 2 | 3;
+  loopTimerLabel?: string;
+  /** System-recognized advance step (resets tier clock in demo) */
+  loopSystemActionLabel?: string;
+  /** What happens if nobody touches the loop */
+  autoNextLabel?: string;
   /** Imperative next step — “assistant” copy */
   suggestedAction: string;
   href: string;
@@ -27,6 +45,31 @@ export function hoursSinceIso(iso: string): number {
   if (Number.isNaN(t)) return 0;
   return Math.floor((Date.now() - t) / 3600000);
 }
+
+/** Display due dates in seeds are often "Apr 12" — anchor to current calendar year. */
+function parseLooseDueDate(display: string): Date | null {
+  const d = display.trim();
+  if (!d || d === '—') return null;
+  const y = new Date().getFullYear();
+  const t = Date.parse(`${d}, ${y}`);
+  if (!Number.isNaN(t)) return new Date(t);
+  const t2 = Date.parse(d);
+  if (!Number.isNaN(t2)) return new Date(t2);
+  return null;
+}
+
+/** Days past due for display strings; null if unparseable or not yet due. */
+export function daysPastDueDisplay(dueDateDisplay: string): number | null {
+  const due = parseLooseDueDate(dueDateDisplay);
+  if (!due) return null;
+  due.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diff = Math.floor((now.getTime() - due.getTime()) / 86400000);
+  return diff > 0 ? diff : null;
+}
+
+export type PriorityQuickAction = { kind: 'complete_task'; taskId: string; label: string };
 
 export function projectHealthLevel(state: RootState, projectId: string): ProjectHealthLevel {
   const p = state.projects[projectId];
@@ -85,11 +128,19 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
 
   for (const inv of sel.getOverdueInvoices(state)) {
     const client = state.clients[inv.clientId];
+    const daysLate = daysPastDueDisplay(inv.dueDate);
+    const latePhrase =
+      daysLate != null && daysLate > 0
+        ? `Overdue by ${daysLate} day${daysLate === 1 ? '' : 's'}`
+        : 'Past terms — clock is running';
     items.push({
       id: `crit-inv-${inv.id}`,
       tier: 'critical',
       title: `Let’s follow up on ${inv.number} — $${inv.amount.toLocaleString()} is waiting`,
       subtitle: client ? `${client.name} · ${client.company}` : undefined,
+      ownership: 'You → client: collect payment',
+      temporalLine: `${latePhrase} · due ${inv.dueDate}`,
+      impactLine: `About $${inv.amount.toLocaleString()} loses leverage every idle day — write-offs and awkward calls start here.`,
       suggestedAction: 'Send a friendly payment reminder',
       href: `/invoices/${inv.id}`,
     });
@@ -111,6 +162,9 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
         tier: 'critical',
         title: `${tasks.length} tasks are stuck on “${proj.name}”`,
         subtitle: 'Delivery is probably waiting on the client',
+        ownership: 'You + client: unblock inputs',
+        temporalLine: `Blocked work — timeline slips while this waits`,
+        impactLine: `Milestones on “${proj.name}” don’t pause politely; idle blockers become refund conversations.`,
         suggestedAction: 'Unblock together — message the client',
         href: `/projects/${pid}`,
       });
@@ -121,6 +175,9 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
         tier: 'critical',
         title: `“${t.title}” is blocked — ${proj.name} can’t move`,
         subtitle: proj.name,
+        ownership: 'You + client: remove blocker',
+        temporalLine: `Blocked — delivery is frozen until this clears`,
+        impactLine: `Every day this stays blocked, downstream dates quietly lie to the client.`,
         suggestedAction: 'Escalate or get what you need from the client',
         href: `/projects/${pid}`,
       });
@@ -129,24 +186,35 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
 
   for (const ct of sel.getPendingContracts(state)) {
     const client = state.clients[ct.clientId];
-    const sent = ct.sentDate ? ` (sent ${ct.sentDate})` : '';
+    const quiet = daysSinceIso(ct.updatedAt);
     items.push({
       id: `crit-ct-${ct.id}`,
       tier: 'critical',
       title: `Let’s get ${ct.title} signed`,
-      subtitle: client?.company,
-      suggestedAction: 'Nudge the signer or resend the packet' + sent,
+      subtitle: client?.company ? `${client.company}${ct.sentDate ? ` · sent ${ct.sentDate}` : ''}` : ct.sentDate ? `Sent ${ct.sentDate}` : undefined,
+      ownership: 'Client → you: signature in flight',
+      temporalLine: quiet >= 3 ? `No signature movement in ${quiet} days` : 'Awaiting signature — stall kills momentum',
+      impactLine: `Without ink, scope and billing stay fuzzy — you absorb downside if work runs ahead of paper.`,
+      suggestedAction: 'Nudge the signer or resend the packet',
       href: '/contracts',
     });
   }
 
   for (const th of sel.getUnreadThreads(state).slice(0, 6)) {
     const proj = state.projects[th.projectId];
+    const h = hoursSinceIso(th.updatedAt);
+    const timePush =
+      h < 36
+        ? `Waiting on you ~${Math.max(1, h)}h`
+        : `No outbound reply in ${Math.max(1, Math.floor(h / 24))} day${Math.floor(h / 24) === 1 ? '' : 's'}`;
     items.push({
       id: `crit-msg-${th.id}`,
       tier: 'critical',
       title: `Client awaiting reply — ${th.participant}`,
       subtitle: proj ? proj.name : undefined,
+      ownership: 'You owe: reply',
+      temporalLine: timePush,
+      impactLine: 'Slow replies read as deprioritized — trust erodes before you notice.',
       suggestedAction: 'Reply in inbox',
       href: '/messages',
     });
@@ -160,6 +228,10 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
       tier: 'important',
       title: `Needs attention today — “${t.title}”`,
       subtitle: proj?.name,
+      ownership: 'You owe: ship or reset expectations',
+      temporalLine: 'Due today — becomes tomorrow’s emergency if you defer',
+      impactLine: 'Missed “today” promises compound — one slip reshapes how reliable you feel.',
+      quickAction: { kind: 'complete_task', taskId: t.id, label: 'Mark done (if shipped)' },
       suggestedAction: 'Ship it or reset the deadline with the client',
       href: proj ? `/projects/${proj.id}` : '/tasks',
     });
@@ -175,6 +247,9 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
         tier: 'important',
         title: `Scope may be tight — “${p.name}” at ${Math.round(pct)}% burn`,
         subtitle: client?.company,
+        ownership: 'You owe: scope conversation',
+        temporalLine: `${Math.round(pct)}% budget consumed — little buffer left`,
+        impactLine: 'Silent burn turns into free work — margin dies before anyone says “change order.”',
         suggestedAction: 'Align on scope or a change order before it’s awkward',
         href: `/projects/${p.id}`,
       });
@@ -189,6 +264,9 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
         tier: 'important',
         title: `${c.company} hasn’t heard from you in ${quiet} days`,
         subtitle: 'Quiet accounts drift to competitors',
+        ownership: 'You owe: touchpoint',
+        temporalLine: `${quiet} days since meaningful touch — relationship cooling`,
+        impactLine: 'Accounts go quiet before they churn — re‑engagement is cheaper now than after a surprise.',
         suggestedAction: 'Schedule a light check-in',
         href: `/clients/${c.id}`,
       });
@@ -197,11 +275,20 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
 
   const proposalsWaiting = sel.leadsList(state).filter((l) => l.stage === 'Proposal Sent');
   for (const l of proposalsWaiting.slice(0, 2)) {
+    const idle = daysSinceIso(l.updatedAt);
     items.push({
       id: `imp-prop-${l.id}`,
       tier: 'important',
       title: `Proposal out — ${l.company}`,
       subtitle: `$${l.value.toLocaleString()} · ${l.nextAction}`,
+      ownership: 'You owe: decision call or nudge',
+      temporalLine:
+        idle >= 5
+          ? `Deal untouched ${idle} days — proposals die in inbox`
+          : idle >= 2
+            ? `${idle} days since last move on this deal`
+            : 'Decision pending — momentum is perishable',
+      impactLine: `~$${l.value.toLocaleString()} in play — every silent week trains the client to say “not a priority.”`,
       suggestedAction: 'Follow up for decision',
       href: '/pipeline',
     });
@@ -214,6 +301,9 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
       tier: 'normal',
       title: `${draftN} invoice${draftN === 1 ? '' : 's'} ready to send`,
       subtitle: 'Cash lands faster when bills go out the same day',
+      ownership: 'You owe: bill for work done',
+      temporalLine: 'Drafts age — clients pay slower when billing lags delivery',
+      impactLine: 'Unsent invoices are interest‑free loans to your clients.',
       suggestedAction: 'Review and send while work is fresh',
       href: '/invoices',
     });
@@ -225,6 +315,9 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
       tier: 'normal',
       title: `“${p.name}” is on hold`,
       subtitle: 'Stalls quietly turn into awkward client conversations',
+      ownership: 'You owe: status update',
+      temporalLine: 'On hold — schedules drift unless you reset expectations',
+      impactLine: 'Holds without narrative become “they ghosted us” stories on their side.',
       suggestedAction: 'Update the client or timeline',
       href: `/projects/${p.id}`,
     });
@@ -236,6 +329,9 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
       tier: 'normal',
       title: 'Nothing urgent in the queue',
       subtitle: 'Great moment to push pipeline or deepen a client',
+      ownership: 'You: pick next growth move',
+      temporalLine: 'No critical clock running right now',
+      impactLine: 'Calm is temporary — feed the pipeline before urgency picks for you.',
       suggestedAction: 'Open pipeline and pick your next win',
       href: '/pipeline',
     });
@@ -252,7 +348,7 @@ export function buildPriorityQueue(state: RootState, limit = 14): PriorityQueueI
     out.push(it);
     if (out.length >= limit) break;
   }
-  return out;
+  return out.map((it) => applyExecutionLoopLayer(state, it));
 }
 
 /** Tier counts for the dashboard “instant clarity” strip (uses same ranking as the queue). */

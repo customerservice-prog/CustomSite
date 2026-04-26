@@ -1,0 +1,154 @@
+@tailwind components;
+@tailwind utilities;
+
+@keyframes leak-repair-segment {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.leak-repair-seg {
+  transform-origin: left center;
+  animation: leak-repair-segment var(--seg-ms, 5000ms) linear forwards;
+}
+
+@keyframes diag-scan {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateY(min(220px, 42vh));
+  }
+}
+
+.diag-scan-motion {
+  animation: diag-scan 2.6s ease-in-out infinite;
+}
+
+/* Visitors: L → R through mock; most fade (hook + chaos) */
+@keyframes visitor-flow-hook {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  7% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.55;
+    transform: translate(34%, var(--dy, 4px)) scale(0.96);
+  }
+  55% {
+    opacity: 0.06;
+    transform: translate(46%, var(--dy2, 16px)) scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(52%, var(--dy3, 26px)) scale(0.85);
+  }
+}
+
+@keyframes visitor-flow-chaos {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  9% {
+    opacity: 0.95;
+  }
+  32% {
+    transform: translate(28%, var(--dy, 0px)) rotate(var(--rot, 1.5deg));
+    opacity: 0.55;
+  }
+  52% {
+    opacity: 0.04;
+    transform: translate(44%, var(--dy2, 20px)) rotate(var(--rot2, -2deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(50%, var(--dy3, 34px));
+  }
+}
+
+/* Guided: converge toward CTA zone */
+@keyframes visitor-flow-guided {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx, 0%), var(--ty, 5.5rem));
+    opacity: 1;
+  }
+}
+
+.visitor-hook {
+  animation: visitor-flow-hook 2.4s ease-in-out infinite;
+}
+
+.visitor-chaos {
+  animation: visitor-flow-chaos 2.9s ease-in-out infinite;
+}
+
+.visitor-guided {
+  animation: visitor-flow-guided 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes cta-magnetic-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 0 rgba(99, 102, 241, 0.35),
+      0 4px 14px -4px rgba(79, 70, 229, 0.45);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow:
+      0 0 0 6px rgba(99, 102, 241, 0.12),
+      0 8px 22px -6px rgba(79, 70, 229, 0.55);
+  }
+}
+
+.cta-magnetic {
+  animation: cta-magnetic-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes micro-callout-flick {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  15%,
+  35% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.micro-callout-word {
+  animation: micro-callout-flick 4.5s ease-in-out infinite;
+}
+
+@keyframes path-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.path-dash-animate {
+  animation: path-dash 1.2s linear infinite;
+}

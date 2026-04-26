@@ -45,6 +45,8 @@ export function ReportsPage() {
   const invoices = useInvoices();
   const leads = useLeads();
   const projects = useProjects();
+  const revenueHealth = useRevenueHealth();
+  const narrativeInsights = useAutomatedInsights();
   const { toast } = useShell();
 
   const revenueByMonth = useMemo(() => {

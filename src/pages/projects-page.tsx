@@ -22,6 +22,7 @@ import { projectHealthLabel, projectHealthLevel } from '@/lib/system-intelligenc
 import { cn } from '@/lib/utils';
 import { useProjects, useClients } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
+import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 
 export function ProjectsPage() {
   const projects = useProjects();
@@ -64,16 +65,29 @@ export function ProjectsPage() {
   return (
     <TablePageLayout
       header={
-        <PageHeader
-          title="Projects"
-          description="Plan phases, burn down budgets, and keep every engagement tied to the right client."
-          actions={
-            <Button type="button" className="gap-2" onClick={() => openModal('create-project')}>
-              <Plus className="h-4 w-4" />
-              New project
-            </Button>
-          }
-        />
+        <div className="space-y-4">
+          <PageHeader
+            title="Projects"
+            description="Plan phases, burn down budgets, and keep every engagement tied to the right client."
+            actions={
+              <Button type="button" className="gap-2" onClick={() => openModal('create-project')}>
+                <Plus className="h-4 w-4" />
+                New project
+              </Button>
+            }
+          />
+          <PageMomentumStrip>
+            <MomentumChip to="/dashboard">Studio pulse</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/tasks">Tasks</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/invoices">Invoices</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/clients">Clients</MomentumChip>
+            <MomentumSep />
+            <MomentumChip to="/messages">Messages</MomentumChip>
+          </PageMomentumStrip>
+        </div>
       }
       toolbar={
         <TableToolbar>
