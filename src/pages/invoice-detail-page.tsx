@@ -75,7 +75,10 @@ export function InvoiceDetailPage() {
             type="button"
             variant="secondary"
             className="gap-2"
-            onClick={() => toast('Reminder queued — client will see a payment nudge.', 'success')}
+            disabled={invoice.status === 'Void' || invoice.status === 'Paid'}
+            onClick={() => {
+              toast('Reminder queued — your client will see a payment nudge in their portal.', 'success');
+            }}
           >
             <RefreshCw className="h-4 w-4" />
             Remind
@@ -84,7 +87,16 @@ export function InvoiceDetailPage() {
             <Download className="h-4 w-4" />
             Download
           </Button>
-          <Button type="button" className="gap-2" onClick={() => sendInvoice(invoice.id)} disabled={invoice.status === 'Void'}>
+          <Button
+            type="button"
+            className="gap-2"
+            disabled={invoice.status === 'Void'}
+            onClick={() => {
+              if (invoice.status === 'Void') return;
+              sendInvoice(invoice.id);
+              toast(`${invoice.number} sent — client notified and delivery logged.`, 'success');
+            }}
+          >
             <Mail className="h-4 w-4" />
             Send
           </Button>

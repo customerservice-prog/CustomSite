@@ -2,6 +2,18 @@ import type { Invoice } from '@/lib/types/entities';
 
 export const invoicesSeed: Invoice[] = [
   {
+    id: 'i6',
+    number: 'INV-1028',
+    clientId: 'c5',
+    projectId: 'p5',
+    status: 'Paid',
+    amount: 22400,
+    dueDate: 'Feb 10',
+    sentDate: 'Jan 22',
+    createdAt: '2026-01-15T12:00:00.000Z',
+    updatedAt: '2026-02-10T12:00:00.000Z',
+  },
+  {
     id: 'i1',
     number: 'INV-1042',
     clientId: 'c5',

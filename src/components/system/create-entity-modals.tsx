@@ -15,6 +15,7 @@ export function CreateEntityModals() {
   const addProject = useAppStore((s) => s.addProject);
   const addInvoice = useAppStore((s) => s.addInvoice);
   const addTask = useAppStore((s) => s.addTask);
+  const toast = useAppStore((s) => s.toast);
   const clients = useClients();
   const projects = useProjects();
   const invoices = useInvoices();
@@ -249,7 +250,10 @@ export function CreateEntityModals() {
             <Button
               type="button"
               onClick={() => {
-                if (!invoiceForm.clientId) return;
+                if (!invoiceForm.clientId) {
+                  toast('Client is required.', 'error');
+                  return;
+                }
                 addInvoice({
                   clientId: invoiceForm.clientId,
                   projectId: invoiceForm.projectId || null,

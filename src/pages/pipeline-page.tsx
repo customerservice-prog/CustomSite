@@ -134,11 +134,7 @@ export function PipelinePage() {
                         return (
                           <Card
                             key={l.id}
-                            className="cursor-pointer border-slate-200/80 p-3.5 shadow-sm transition duration-150 hover:border-indigo-200 hover:shadow-md active:scale-[0.99]"
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => e.key === 'Enter' && toast(`Lead: ${l.name}`, 'info')}
-                            onClick={() => toast(`Open lead detail — ${l.name} (wire route)`, 'info')}
+                            className="border-slate-200/80 p-3.5 shadow-sm transition duration-150 hover:border-indigo-200 hover:shadow-md"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <p className="font-semibold text-slate-900">{l.name}</p>

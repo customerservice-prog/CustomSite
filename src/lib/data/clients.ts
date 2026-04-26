@@ -67,7 +67,7 @@ export const clientsSeed: Client[] = [
     phone: '+1 802 555 0134',
     status: 'Active',
     ownerId: 'u2',
-    lifetimeValue: 240000,
+    lifetimeValue: 22400,
     balance: 4200,
     createdAt: t,
     updatedAt: '2026-04-25T08:30:00.000Z',

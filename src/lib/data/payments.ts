@@ -26,8 +26,8 @@ export const paymentsSeed: Payment[] = [
   {
     id: 'pay3',
     invoiceId: 'i1',
-    clientId: 'c1',
-    amount: 8500,
+    clientId: 'c5',
+    amount: 4200,
     status: 'pending',
     method: 'Card',
     createdAt: '2026-04-24T11:00:00.000Z',

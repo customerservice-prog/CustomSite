@@ -532,7 +532,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
       href: `/invoices/${invoiceId}`,
       entityId: invoiceId,
     });
-    get().toast(`${inv.number} is on its way — client notified and AR updated.`, 'success');
   },
 
   markInvoicePaid: (invoiceId) => {

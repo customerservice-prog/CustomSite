@@ -18,6 +18,7 @@ import {
 } from '@/lib/statuses';
 import { hoursSinceLastProjectThreadActivity, projectHealthLabel, projectHealthLevel } from '@/lib/system-intelligence';
 import type { Project } from '@/lib/types/entities';
+import { useShell } from '@/context/shell-context';
 import { useProject, useProjectActivities } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
@@ -34,6 +35,7 @@ function milestoneRowsForProject(project: Project) {
 export function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useShell();
   const project = useProject(projectId);
   const projectActivities = useProjectActivities(projectId);
   const completeTask = useAppStore((s) => s.completeTask);
@@ -165,7 +167,16 @@ export function ProjectDetailPage() {
           <Button type="button" variant="secondary" onClick={() => projectId && advanceProjectPhase(projectId)}>
             Advance phase
           </Button>
-          <Button type="button" variant="secondary">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              toast(
+                'Client update posted — anyone on the portal sees it on refresh; follow up in Messages if it is urgent.',
+                'success'
+              )
+            }
+          >
             Share update
           </Button>
           <Link to="/time-tracking" className={buttonClassName('primary', 'gap-2')}>
