@@ -69,11 +69,14 @@ export function usePipelineColumnStats() {
 }
 
 export function useTodayActions(limit = 8) {
-  return useAppStore(useShallow((s) => buildTodayActions(s, limit)));
+  const state = useAppStore((s) => s);
+  return useMemo(() => buildTodayActions(state, limit), [state, limit]);
 }
 
+/** Derived queue must be memoized: a plain selector that allocates a new array breaks useSyncExternalStore (React #185). */
 export function usePriorityQueue(limit = 14) {
-  return useAppStore(useShallow((s) => buildPriorityQueue(s, limit)));
+  const state = useAppStore((s) => s);
+  return useMemo(() => buildPriorityQueue(state, limit), [state, limit]);
 }
 
 export function useAutomatedInsights() {

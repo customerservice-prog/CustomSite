@@ -109,11 +109,12 @@ export function DashboardPage() {
   const [expandInsights, setExpandInsights] = useState(false);
   const [expandActivity, setExpandActivity] = useState(false);
   const [expandTasks, setExpandTasks] = useState(false);
-  const [continuityLines, setContinuityLines] = useState<string[]>([]);
+  const [continuityLines, setContinuityLines] = useState<string[]>(() => {
+    const prev = loadStudioSnapshot();
+    return buildSinceLastVisitLines(useAppStore.getState(), prev);
+  });
 
   useEffect(() => {
-    const prev = loadStudioSnapshot();
-    setContinuityLines(buildSinceLastVisitLines(useAppStore.getState(), prev));
     return () => saveStudioSnapshot(useAppStore.getState());
   }, []);
 
