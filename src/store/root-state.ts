@@ -21,7 +21,17 @@ import type { OperatorState } from '@/store/operator-state';
 
 export type ToastItem = { id: string; message: string; variant: 'success' | 'error' | 'info' };
 
-export type ActiveModal = 'create-client' | 'create-project' | 'create-invoice' | 'create-task' | null;
+export type ActiveModal =
+  | 'create-client'
+  | 'create-project'
+  | 'create-invoice'
+  | 'create-task'
+  | 'record-payment'
+  | 'upload-file'
+  | 'create-contract'
+  | 'calendar-event'
+  | 'invite-client'
+  | null;
 
 export interface RootState {
   workspace: Workspace;

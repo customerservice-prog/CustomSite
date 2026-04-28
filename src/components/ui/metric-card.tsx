@@ -39,6 +39,7 @@ export function MetricCard({
   icon: Icon,
   className,
   tone = 'default',
+  onClick,
 }: {
   label: string;
   value: string;
@@ -46,12 +47,27 @@ export function MetricCard({
   icon?: LucideIcon;
   className?: string;
   tone?: MetricTone;
+  onClick?: () => void;
 }) {
   const t = tones[tone];
   return (
     <Card
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       className={cn(
         'p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg',
+        onClick && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
         t.card,
         className
       )}

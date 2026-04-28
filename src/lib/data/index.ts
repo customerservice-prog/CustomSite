@@ -71,7 +71,7 @@ function initialNotifications(): AppNotification[] {
       id: 'n3',
       kind: 'contract',
       title: 'Contract needs signature — follow up',
-      body: 'SOW — Storefront',
+      body: 'SOW — Northwind Retail storefront',
       read: false,
       createdAt: '2026-04-24T14:00:00.000Z',
       href: '/clients/c5',

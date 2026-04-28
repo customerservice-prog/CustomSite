@@ -13,9 +13,9 @@ const modules = [
 ];
 
 const seats = [
-  { name: 'Michael Lee', company: 'SJ Studio', role: 'Billing', last: '2h ago' },
-  { name: 'Priya Shah', company: 'Lumière Bistro', role: 'Primary', last: '1d ago' },
-  { name: 'Sam Rivera', company: 'Hudson Realty', role: 'Viewer', last: '3d ago' },
+  { name: 'Michael Lee', company: 'Northstar Digital', role: 'Billing', last: '2h ago' },
+  { name: 'Sarah Johnson', company: 'SJ Studio', role: 'Primary', last: '1d ago' },
+  { name: 'Taylor Brooks', company: 'Acme Co.', role: 'Viewer', last: '3d ago' },
 ];
 
 const portalActivity = [
@@ -29,7 +29,7 @@ export function ClientPortalPage() {
     <div className="space-y-8">
       <PageHeader
         title="Client portal"
-        description="Control what clients see, who can sign in, and how your brand shows up."
+        description="Preview the client URL, enabled modules, roles, and what clients see last."
         actions={
           <a href="/client-portal.html" target="_blank" rel="noreferrer">
             <Button type="button" className="gap-2">
@@ -62,7 +62,7 @@ export function ClientPortalPage() {
                 </li>
                 <li className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2">
                   <span className="text-slate-700">Custom domain</span>
-                  <Badge variant="info">portal.acme.agency</Badge>
+                  <Badge variant="info">clients.customsite.online</Badge>
                 </li>
               </ul>
             </div>

@@ -33,9 +33,9 @@ export const clientsSeed: Client[] = [
   },
   {
     id: 'c3',
-    name: 'Acme Co.',
-    company: 'Acme Inc',
-    email: 'ops@acme.example',
+    name: 'Taylor Brooks',
+    company: 'Acme Co.',
+    email: 'taylor@acmeco.example',
     phone: '+1 415 555 0100',
     status: 'Active',
     ownerId: 'u1',
@@ -47,7 +47,7 @@ export const clientsSeed: Client[] = [
   },
   {
     id: 'c4',
-    name: 'BrightPath',
+    name: 'Riley Chen',
     company: 'BrightPath Labs',
     email: 'hello@brightpath.test',
     phone: '+1 617 555 0177',

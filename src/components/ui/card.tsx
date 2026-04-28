@@ -1,13 +1,22 @@
 import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+type CardVariant = 'default' | 'compact' | 'large';
+
+const padding: Record<CardVariant, string> = {
+  default: 'p-6',
+  compact: 'p-4',
+  large: 'p-8',
+};
+
+export function Card({
+  className,
+  variant = 'default',
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { variant?: CardVariant }) {
   return (
     <div
-      className={cn(
-        'rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-150',
-        className
-      )}
+      className={cn('rounded-2xl border border-gray-200 bg-white shadow-sm', padding[variant], className)}
       {...props}
     />
   );

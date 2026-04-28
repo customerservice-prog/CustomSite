@@ -30,21 +30,11 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-[2px] transition duration-150"
-        aria-label="Close"
-        onClick={onClose}
-      />
-      <div
-        className={cn(
-          'relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl transition duration-150',
-          className
-        )}
-      >
+      <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close" onClick={onClose} />
+      <div className={cn('modal-panel-animate relative z-10 w-full max-w-lg rounded-xl bg-white p-6 shadow-xl', className)}>
         <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-lg font-bold tracking-tight text-slate-900">{title}</h2>
-          <Button type="button" variant="ghost" className="h-9 w-9 shrink-0 p-0" onClick={onClose} aria-label="Close">
+          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <Button type="button" variant="ghost" className="h-10 w-10 shrink-0 p-0" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
           </Button>
         </div>

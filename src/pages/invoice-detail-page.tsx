@@ -112,7 +112,7 @@ export function InvoiceDetailPage() {
         <Card className="p-6 lg:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Acme Agency LLC</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">CustomSite Studio LLC</p>
               <p className="mt-1 text-sm text-slate-500">123 Market St · Syracuse, NY</p>
             </div>
             <div className="text-right">

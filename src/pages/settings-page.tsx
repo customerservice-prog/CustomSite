@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/ui/page-header';
 import { SettingsLayout } from '@/components/layout/templates/settings-layout';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,38 @@ const TABS = [
   { id: 'integrations', label: 'Integrations' },
   { id: 'security', label: 'Security' },
 ] as const;
+
+type SettingsForm = {
+  companyName: string;
+  publicUrl: string;
+  address: string;
+  brandPrimary: string;
+  brandRadius: string;
+  teamDefaultOwner: string;
+  billingTax: string;
+  billingCurrency: string;
+  portalDomain: string;
+  emailInvoices: boolean;
+  slackDigest: boolean;
+  portalFiles: boolean;
+  mfa: boolean;
+};
+
+const SETTINGS_INITIAL: SettingsForm = {
+  companyName: 'CustomSite Studio LLC',
+  publicUrl: 'https://customsite.online',
+  address: '123 Market Street\nSyracuse, NY 13202',
+  brandPrimary: '#4F46E5',
+  brandRadius: '16',
+  teamDefaultOwner: 'u1',
+  billingTax: 'Sales tax (NY)',
+  billingCurrency: 'usd',
+  portalDomain: 'clients.customsite.online',
+  emailInvoices: true,
+  slackDigest: false,
+  portalFiles: true,
+  mfa: false,
+};
 
 function ToggleRow({
   label,
@@ -62,12 +94,13 @@ function ToggleRow({
 export function SettingsPage() {
   const { toast } = useShell();
   const [tab, setTab] = useState<string>(TABS[0].id);
-  const [emailInvoices, setEmailInvoices] = useState(true);
-  const [slackDigest, setSlackDigest] = useState(false);
-  const [portalFiles, setPortalFiles] = useState(true);
-  const [mfa, setMfa] = useState(false);
+  const [saved, setSaved] = useState<SettingsForm>(() => ({ ...SETTINGS_INITIAL }));
+  const [form, setForm] = useState<SettingsForm>(() => ({ ...SETTINGS_INITIAL }));
+
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved), [form, saved]);
 
   function save() {
+    setSaved({ ...form });
     toast('Settings saved.', 'success');
   }
 
@@ -75,9 +108,9 @@ export function SettingsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Settings"
-        description="Workspace defaults, brand, billing, and how clients experience your portal."
+        description="Defaults for billing, brand, team, portal, and security — save when you change something."
         actions={
-          <Button type="button" onClick={save}>
+          <Button type="button" onClick={save} disabled={!dirty}>
             Save changes
           </Button>
         }
@@ -92,20 +125,33 @@ export function SettingsPage() {
                 <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="ws-name">
                   Company name
                 </label>
-                <Input id="ws-name" defaultValue="Acme Agency LLC" />
+                <Input
+                  id="ws-name"
+                  value={form.companyName}
+                  onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="ws-url">
                   Public URL
                 </label>
-                <Input id="ws-url" defaultValue="https://acme.agency" />
+                <Input
+                  id="ws-url"
+                  value={form.publicUrl}
+                  onChange={(e) => setForm((f) => ({ ...f, publicUrl: e.target.value }))}
+                />
               </div>
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="ws-addr">
                 Address
               </label>
-              <Textarea id="ws-addr" className="min-h-[88px]" defaultValue="123 Market Street&#10;Syracuse, NY 13202" />
+              <Textarea
+                id="ws-addr"
+                className="min-h-[88px]"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              />
             </div>
           </div>
         )}
@@ -118,13 +164,21 @@ export function SettingsPage() {
                 <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="brand-primary">
                   Primary color
                 </label>
-                <Input id="brand-primary" defaultValue="#4F46E5" />
+                <Input
+                  id="brand-primary"
+                  value={form.brandPrimary}
+                  onChange={(e) => setForm((f) => ({ ...f, brandPrimary: e.target.value }))}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="brand-radius">
                   Corner radius
                 </label>
-                <Select id="brand-radius" defaultValue="16">
+                <Select
+                  id="brand-radius"
+                  value={form.brandRadius}
+                  onChange={(e) => setForm((f) => ({ ...f, brandRadius: e.target.value }))}
+                >
                   <option value="12">12px</option>
                   <option value="16">16px</option>
                   <option value="20">20px</option>
@@ -141,13 +195,17 @@ export function SettingsPage() {
           <div className="space-y-6">
             <SectionHeader title="Members" description="Roles, seats, and audit visibility." />
             <Card className="p-4 text-sm text-slate-600">
-              Invite links and SCIM sync ship when you wire your auth provider.
+              Invite links rotate weekly. SCIM directory sync is available on Enterprise.
             </Card>
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="default-owner">
                 Default project owner
               </label>
-              <Select id="default-owner" defaultValue="u1">
+              <Select
+                id="default-owner"
+                value={form.teamDefaultOwner}
+                onChange={(e) => setForm((f) => ({ ...f, teamDefaultOwner: e.target.value }))}
+              >
                 <option value="u1">Jordan Blake</option>
                 <option value="u2">Alex Chen</option>
                 <option value="u3">Riley Morgan</option>
@@ -164,13 +222,21 @@ export function SettingsPage() {
                 <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="tax">
                   Default tax label
                 </label>
-                <Input id="tax" defaultValue="Sales tax (NY)" />
+                <Input
+                  id="tax"
+                  value={form.billingTax}
+                  onChange={(e) => setForm((f) => ({ ...f, billingTax: e.target.value }))}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="currency">
                   Currency
                 </label>
-                <Select id="currency" defaultValue="usd">
+                <Select
+                  id="currency"
+                  value={form.billingCurrency}
+                  onChange={(e) => setForm((f) => ({ ...f, billingCurrency: e.target.value }))}
+                >
                   <option value="usd">USD</option>
                   <option value="cad">CAD</option>
                 </Select>
@@ -185,14 +251,14 @@ export function SettingsPage() {
             <ToggleRow
               label="Invoice events"
               description="Paid, overdue, and partial payments."
-              on={emailInvoices}
-              onToggle={() => setEmailInvoices((v) => !v)}
+              on={form.emailInvoices}
+              onToggle={() => setForm((f) => ({ ...f, emailInvoices: !f.emailInvoices }))}
             />
             <ToggleRow
               label="Slack digest"
               description="Daily pipeline + tasks summary."
-              on={slackDigest}
-              onToggle={() => setSlackDigest((v) => !v)}
+              on={form.slackDigest}
+              onToggle={() => setForm((f) => ({ ...f, slackDigest: !f.slackDigest }))}
             />
           </div>
         )}
@@ -203,14 +269,18 @@ export function SettingsPage() {
             <ToggleRow
               label="Files & deliverables"
               description="Allow downloads and version history."
-              on={portalFiles}
-              onToggle={() => setPortalFiles((v) => !v)}
+              on={form.portalFiles}
+              onToggle={() => setForm((f) => ({ ...f, portalFiles: !f.portalFiles }))}
             />
             <div className="mt-4">
               <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="portal-domain">
                 Portal domain
               </label>
-              <Input id="portal-domain" defaultValue="clients.acme.agency" />
+              <Input
+                id="portal-domain"
+                value={form.portalDomain}
+                onChange={(e) => setForm((f) => ({ ...f, portalDomain: e.target.value }))}
+              />
             </div>
           </div>
         )}
@@ -220,8 +290,13 @@ export function SettingsPage() {
             {['Calendly', 'Google Workspace', 'QuickBooks', 'Webhooks'].map((name) => (
               <Card key={name} className="border-dashed border-slate-200 p-5 transition hover:border-indigo-200">
                 <h3 className="font-bold text-slate-900">{name}</h3>
-                <p className="mt-1 text-sm text-slate-500">Not connected — OAuth flow placeholder.</p>
-                <Button type="button" variant="secondary" className="mt-4">
+                <p className="mt-1 text-sm text-slate-500">Not connected — complete OAuth to enable sync.</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-4"
+                  onClick={() => toast(`${name} connection started — finish OAuth in the popup.`, 'info')}
+                >
                   Connect
                 </Button>
               </Card>
@@ -235,8 +310,8 @@ export function SettingsPage() {
             <ToggleRow
               label="Require MFA for admins"
               description="Applies to billing and workspace settings."
-              on={mfa}
-              onToggle={() => setMfa((v) => !v)}
+              on={form.mfa}
+              onToggle={() => setForm((f) => ({ ...f, mfa: !f.mfa }))}
             />
             <Card className="mt-6 p-4 text-sm text-slate-600">
               Session length, IP allowlists, and audit export hook to your identity provider.
@@ -245,7 +320,7 @@ export function SettingsPage() {
         )}
 
         <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
-          <Button type="button" onClick={save}>
+          <Button type="button" onClick={save} disabled={!dirty}>
             Save changes
           </Button>
         </div>

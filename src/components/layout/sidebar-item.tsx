@@ -1,13 +1,11 @@
 import type { ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function SidebarGroupLabel({ children }: { children: ReactNode }) {
-  return (
-    <p className="mb-2 mt-5 px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 first:mt-2">{children}</p>
-  );
+  return <p className="mb-2 mt-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-400">{children}</p>;
 }
 
 function pathActive(pathname: string, to: string) {
@@ -32,12 +30,6 @@ export function SidebarNavLink({
   const ref = useRef<HTMLAnchorElement>(null);
   const active = pathActive(location.pathname, to);
 
-  useEffect(() => {
-    if (active) {
-      ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-  }, [active, location.pathname, to]);
-
   return (
     <NavLink
       ref={ref}
@@ -46,17 +38,17 @@ export function SidebarNavLink({
       onClick={() => onNavigate?.()}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition duration-150',
+          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
           isActive || active
-            ? 'bg-indigo-50 text-indigo-800 shadow-sm ring-1 ring-indigo-100'
-            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+            ? 'bg-purple-50 text-purple-600'
+            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
         )
       }
     >
-      <Icon className="h-[18px] w-[18px] shrink-0 opacity-90" aria-hidden />
+      <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {badge != null && badge > 0 && (
-        <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-md bg-indigo-100 px-1.5 text-[11px] font-bold text-indigo-800">
+        <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-md bg-purple-100 px-1.5 text-[11px] font-semibold text-purple-800">
           {badge}
         </span>
       )}
@@ -76,7 +68,7 @@ export function SidebarExternalLink({
   return (
     <a
       href={href}
-      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition duration-150 hover:bg-slate-100 hover:text-slate-950"
+      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
     >
       <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
       <span className="truncate">{label}</span>

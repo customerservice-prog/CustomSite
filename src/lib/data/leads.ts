@@ -4,7 +4,7 @@ export const leadsSeed: Lead[] = [
   {
     id: 'l1',
     name: 'Priya Shah',
-    company: 'Lumière Bistro',
+    company: 'BrightPath Labs',
     stage: 'New Lead',
     value: 12400,
     nextAction: 'Schedule discovery call',
@@ -16,7 +16,7 @@ export const leadsSeed: Lead[] = [
   {
     id: 'l2',
     name: 'Marcus Webb',
-    company: 'Atlas Field Services',
+    company: 'Northstar Digital',
     stage: 'Discovery',
     value: 18900,
     nextAction: 'Send scope recap',
@@ -28,7 +28,7 @@ export const leadsSeed: Lead[] = [
   {
     id: 'l3',
     name: 'Elena Vogt',
-    company: 'Ridgeline HVAC',
+    company: 'SJ Studio',
     stage: 'Proposal Sent',
     value: 6400,
     nextAction: 'Follow up on proposal',
@@ -40,7 +40,7 @@ export const leadsSeed: Lead[] = [
   {
     id: 'l4',
     name: 'Sam Rivera',
-    company: 'Hudson Realty',
+    company: 'Acme Co.',
     stage: 'Contract Sent',
     value: 9200,
     nextAction: 'Remind to sign MSA',

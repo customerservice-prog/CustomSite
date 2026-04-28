@@ -133,6 +133,7 @@ function getTemplateWireframeHtml(id) {
       b(2, 52, 76, 6, '#431407', '0.45'),
   };
   const inner = (bodies[id] || bodies.basic)();
+  const bg = TEMPLATE_THUMB[id] || TEMPLATE_THUMB.basic;
   return `<span class="sb-tpl-wf" style="--tpl-bg:${bg}"><svg viewBox="0 0 80 60" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" focusable="false" aria-hidden="true"><rect width="80" height="60" fill="rgba(15, 23, 42, 0.25)"/>${inner}</svg></span>`;
 }
 
@@ -327,9 +328,37 @@ function hideEmpty() {
   else e.classList.add('is-on');
 }
 
+let lastSavedAt = null;
+
+function updateBuilderStatusBar() {
+  const projEl = document.getElementById('sbStatusProject');
+  const fileEl = document.getElementById('sbStatusFile');
+  const envEl = document.getElementById('sbStatusEnv');
+  const savedEl = document.getElementById('sbStatusSaved');
+  const prevEl = document.getElementById('sbStatusPreview');
+  if (!projEl) return;
+  const proj = projects.find((x) => x.id === projectId);
+  projEl.textContent = proj ? proj.name : '—';
+  if (fileEl) fileEl.textContent = activePath || '—';
+  if (envEl) {
+    const v = document.querySelector('input[name="sbenv"]:checked');
+    envEl.textContent = v && v.value === 'production' ? 'Production' : 'Staging / draft';
+  }
+  if (savedEl) {
+    savedEl.textContent = lastSavedAt
+      ? new Date(lastSavedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+      : 'Not saved this session';
+  }
+  if (prevEl) {
+    const u = stagingPreviewUrl();
+    prevEl.textContent = u ? u.replace(/^https?:\/\//, '') : 'Select a project';
+  }
+}
+
 function setBreadcrumb() {
   document.getElementById('sbFileLabel').textContent = activePath || '—';
   updateDirtyMark();
+  updateBuilderStatusBar();
 }
 
 function updateDirtyMark() {
@@ -996,6 +1025,8 @@ async function saveCurrent() {
     dirty.delete(activePath);
     renderTabs();
     updateDirtyMark();
+    lastSavedAt = Date.now();
+    updateBuilderStatusBar();
     toast('Saved', 'success');
     refreshPreview();
   } catch (e) {
@@ -1140,7 +1171,12 @@ async function loadProjects() {
   if (q) {
     s.value = q;
     await onProjectPicked(q);
+  } else if (projects.length > 0) {
+    const firstId = projects[0].id;
+    s.value = firstId;
+    await onProjectPicked(firstId);
   }
+  updateBuilderStatusBar();
 }
 
 async function onProjectPicked(id) {
@@ -1163,6 +1199,7 @@ async function onProjectPicked(id) {
   if (!id) {
     document.getElementById('sbPhaseBadge').setAttribute('hidden', '');
     setPreviewUrlText();
+    updateBuilderStatusBar();
     return;
   }
   try {
@@ -1194,6 +1231,7 @@ async function onProjectPicked(id) {
     void activatePath(null, false);
   }
   refreshPreview();
+  updateBuilderStatusBar();
 }
 
 function fillSeo() {

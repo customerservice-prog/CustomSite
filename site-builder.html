@@ -1,326 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="robots" content="noindex" />
-  <title>Site builder — CustomSite</title>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/site-builder.css" />
-  <style>
-    .sb-brand-bar {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .sb-brand-bar .sb-a.sb-mkt { line-height: 0; }
-    .sb-brand-bar .sb-mkt img {
-      display: block;
-      height: 1.7rem;
-      width: auto;
-      max-width: 10.5rem;
-      object-fit: contain;
-    }
-  </style>
-</head>
-<body>
-  <div id="sbErrorBanner" role="status"></div>
-  <div id="sbApp">
-    <header class="sb-header" id="sbToolbar">
-      <div class="sb-tool sb-row-1">
-        <div class="sb-zone sb-z-left sb-brand-bar">
-          <a class="sb-a" href="/admin.html">← Admin</a>
-          <a class="sb-a sb-mkt" href="/index.html" target="_blank" rel="noopener" title="CustomSite" aria-label="CustomSite home">
-            <img src="/images/customsite-wordmark-on-light.svg" width="200" height="32" alt="CustomSite" />
-          </a>
-          <div>
-            <div class="sb-lbl">Project</div>
-            <select id="sbProject" class="sb-sel" aria-label="Select project"></select>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Publishing — CustomSite</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/publish-dashboard.css" />
+  </head>
+  <body>
+    <div id="pdErrorBanner" role="status"></div>
+    <div id="pdApp">
+      <header class="pd-top">
+        <a href="/admin.html">← Admin</a>
+        <a class="pd-brand" href="/index.html" target="_blank" rel="noopener" title="Marketing site">
+          <img src="/images/customsite-wordmark-on-light.svg" width="180" height="28" alt="CustomSite" />
+        </a>
+        <div class="pd-grow">
+          <label class="sr-only" for="pdProject">Project</label>
+          <select id="pdProject" class="pd-sel" aria-label="Project"></select>
+        </div>
+        <div class="pd-actions">
+          <button type="button" class="pd-btn" id="pdEditPage">Page settings</button>
+          <button type="button" class="pd-btn" id="pdPreviewUrl">Copy preview URL</button>
+          <button type="button" class="pd-btn" id="pdRefresh">Refresh pages</button>
+          <button type="button" class="pd-btn" id="pdOpenMarketing">View live site</button>
+          <button type="button" class="pd-btn pd-btn-primary" id="pdDeployStaging">Deploy preview</button>
+          <button type="button" class="pd-btn pd-btn-primary" id="pdDeployProd">Deploy production</button>
+        </div>
+      </header>
+      <div class="pd-main">
+        <aside class="pd-pages">
+          <div class="pd-pages-h">Pages</div>
+          <div id="pdFileList" class="pd-list"></div>
+        </aside>
+        <section class="pd-preview" aria-label="Preview">
+          <div class="pd-preview-bar" id="pdPreviewBar">
+            <span id="pdPreviewHint">Preview</span>
+            <div class="pd-dv" role="group" aria-label="Preview width">
+              <button type="button" data-pd="100%" class="is-on" title="Desktop width">Desktop</button>
+              <button type="button" data-pd="768px" title="Tablet">Tablet</button>
+              <button type="button" data-pd="390px" title="Phone">Mobile</button>
+            </div>
           </div>
-          <span class="sb-badge" id="sbPhaseBadge" hidden>—</span>
-        </div>
-        <div class="sb-zone" style="flex: 1; min-width: 0; justify-content: flex-end">
-          <span class="sb-breadcrumb" id="sbBreadcrumb" aria-live="polite"
-            >File: <code id="sbFileLabel">—</code> <span id="sbDirtyMark" class="sb-dirty" hidden title="Unsaved">●</span></span
-          >
-        </div>
-      </div>
-      <div class="sb-tool sb-row-2">
-        <div class="sb-row2-left">
-          <div class="sb-env" id="sbBuildMode" role="radiogroup" aria-label="Builder mode">
-            <span class="sb-env-hint" title="How you want to work">Mode</span>
-            <label class="sb-env-lbl"
-              ><input type="radio" name="sbmode" value="templates" /> Templates</label
-            >
-            <label class="sb-env-lbl"
-              ><input type="radio" name="sbmode" value="vibe" /> Vibe</label
-            >
-            <label class="sb-env-lbl"
-              ><input type="radio" name="sbmode" value="pro" checked /> Pro</label
-            >
+          <div class="pd-frame-wrap">
+            <div id="pdFrameSizer">
+              <iframe id="pdFrame" title="Site preview" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+            </div>
           </div>
-          <div class="sb-env" id="sbEnvToggle" role="radiogroup" aria-label="Deployment environment">
-            <label class="sb-env-lbl"
-              ><input type="radio" name="sbenv" value="staging" checked /> Staging</label
-            >
-            <label class="sb-env-lbl"
-              ><input type="radio" name="sbenv" value="production" /> Production</label
-            >
-          </div>
-          <div class="sb-env" id="sbHtmlMode" role="radiogroup" aria-label="HTML editor" hidden>
-            <label class="sb-env-lbl"
-              ><input type="radio" name="sbhtmled" value="code" checked /> Code</label
-            >
-            <label class="sb-env-lbl"
-              ><input type="radio" name="sbhtmled" value="visual" /> Visual</label
-            >
-          </div>
-          <button type="button" class="sb-btn sb-btn-primary" id="sbSave" title="Save file (Ctrl+S)">Save</button>
-          <button type="button" class="sb-btn" id="sbUndo" title="Undo (in editor)">Undo</button>
-          <button type="button" class="sb-btn" id="sbRedo" title="Redo">Redo</button>
-          <button type="button" class="sb-btn" id="sbFormat" title="Format document">Format</button>
-          <label class="sb-btn ghost" style="display: inline-flex; align-items: center; gap: 0.25rem"
-            ><input type="checkbox" id="sbAutoPreview" checked /> <span>Auto preview</span></label
-          >
-          <span class="sb-breadcrumb" id="sbStageLinkWrap" style="max-width: 14rem; display: none"
-            >URL: <a id="sbStageLink" href="#" target="_blank" rel="noopener" title="Local staging preview">—</a></span
-          >
-        </div>
-        <div class="sb-row2-right">
-          <button type="button" class="sb-btn" id="sbToggleSide" title="Toggle files sidebar (Ctrl+B)">Files</button>
-          <button type="button" class="sb-btn" id="sbTogglePreview" title="Toggle live preview panel">Preview</button>
-          <button type="button" class="sb-btn sb-btn-deploy-s" id="sbDeployS" title="Deploy to Railway (staging)">🚀 Staging</button>
-          <button type="button" class="sb-btn sb-btn-deploy-p" id="sbDeployP" title="Deploy to Railway (production)">🚀 Production</button>
-          <button type="button" class="sb-btn" id="sbExport" title="Download project as ZIP">⬇ ZIP</button>
-          <button type="button" class="sb-btn" id="sbSettings" title="Settings (Railway, SEO, domain)" aria-label="Settings">⚙</button>
-        </div>
-      </div>
-    </header>
-
-    <div id="sbTabBar" class="sb-tabbar-pro" role="tablist" aria-label="Open files"></div>
-
-    <div id="sbWorkspace">
-      <aside id="sbSidebar">
-        <div id="sbFileHead">
-          <span class="sb-lbl">Files</span>
-          <div>
-            <button type="button" class="sb-btn" id="sbFilePlus" title="New file" aria-label="Add file">+</button>
-            <label class="sb-btn" for="sbFileInputHidden" style="margin-left: 0.2rem" title="Upload image"
-              >⬆</label
-            >
-            <input type="file" id="sbFileInputHidden" accept="image/*" style="position: absolute; opacity: 0; width: 0; height: 0" />
-            <button type="button" class="sb-btn" id="sbInitBtn" title="Init starter">Starter</button>
-          </div>
-        </div>
-        <div class="sb-dz" id="sbDropZone" tabindex="0">Drag image here or use ⬆</div>
-        <input type="text" id="sbNewFileInput" placeholder="path (e.g. about.html) — Enter" autocomplete="off" />
-        <div id="sbFileTree"></div>
-        <div id="sbSubPanels">
-          <h4>Resources</h4>
-          <div class="row" id="sbResLinks">
-            <a data-font href="#">+ Inter (Google)</a>
-            <a data-cdn="lucide" href="#">+ Lucide icons</a>
-            <a data-cdn="fa" href="#">+ Font Awesome</a>
-          </div>
-          <h4>Snippets</h4>
-          <ul class="sb-snippets" id="sbSnippets"></ul>
-        </div>
-      </aside>
-
-      <div id="sbEditCol" style="position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column">
-        <div id="sbEmptyState" style="position: absolute; inset: 0; z-index: 3; pointer-events: none">
-          <p><strong>No files yet</strong></p>
-          <p>Click <b>Starter</b> to pick a template, or <b>+</b> to add a file.</p>
-        </div>
-        <div id="sbModeTemplates" class="sb-mode-panel is-off" aria-label="Templates mode">
-          <p class="sb-mode-lead">Pick a starter, then add sections. Switch to <strong>Pro</strong> for code editing.</p>
-          <h4 class="sb-lbl" style="margin: 0 0 0.5rem">Starter templates</h4>
-          <div id="sbTplModeGrid" class="sb-tpl-mode-grid"></div>
-          <div id="sbTplSections" class="sb-tpl-sections" hidden>
-            <h4 class="sb-lbl" style="margin: 0.75rem 0 0.35rem">Sections in this page</h4>
-            <p class="sb-muted" style="margin: 0 0 0.4rem; font-size: 0.78rem">
-              After you apply a starter, click a row to scroll the preview to that part (when the template includes it).
-            </p>
-            <ul id="sbTplSectionList" class="sb-tpl-sec-list"></ul>
-          </div>
-          <h4 class="sb-lbl" style="margin: 1rem 0 0.5rem">Quick sections (append to <code>index.html</code>)</h4>
-          <ul class="sb-tpl-snip" id="sbTplSnippets">
-            <li class="sb-muted" style="list-style: none; padding: 0">Load a project to enable sections.</li>
-          </ul>
-        </div>
-        <div id="sbModeVibe" class="sb-mode-panel is-off" aria-label="Vibe mode">
-          <h4 class="sb-lbl" style="margin: 0 0 0.35rem">Describe the look</h4>
-          <p class="sb-muted" style="margin: 0 0 0.5rem; font-size: 0.8rem">
-            Try: <em>dark</em>, <em>light</em>, <em>blue</em>, <em>rounded</em>, <em>sans</em> — or paste your own CSS (with <code>{}</code>).
-            Applies to the live preview only until you add styles in Pro.
-          </p>
-          <textarea id="sbVibeInput" class="sb-inp" rows="5" placeholder="e.g. dark blue rounded"></textarea>
-          <div class="sb-vibe-chips" role="group" aria-label="Quick style presets">
-            <button type="button" class="sb-vibe-chip" data-vibe-text="dark mode blue rounded sans" title="Pre-fill: dark, blue, rounded">Dark mode</button>
-            <button type="button" class="sb-vibe-chip" data-vibe-text="light rounded section">Rounded corners</button>
-            <button type="button" class="sb-vibe-chip" data-vibe-text="bold modern sans">Bold type</button>
-            <button type="button" class="sb-vibe-chip" data-vibe-text="gold light rounded">Gold accents</button>
-            <button type="button" class="sb-vibe-chip" data-vibe-text="light large button rounded">Large buttons</button>
-          </div>
-          <div class="sb-vibe-actions" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap">
-            <button type="button" class="sb-btn sb-btn-primary" id="sbVibeApply">Apply to preview</button>
-            <button type="button" class="sb-btn" id="sbVibeClear" title="Remove vibe overlay from preview">Clear</button>
-          </div>
-          <p id="sbVibeOk" class="sb-vibe-ok" hidden role="status"></p>
-          <div class="sb-vibe-histwrap">
-            <h4 class="sb-lbl" style="margin: 0.75rem 0 0.35rem; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em">Last applied (up to 5)</h4>
-            <ul id="sbVibeHistory" class="sb-vibe-history" aria-label="Vibe change history"></ul>
-          </div>
-        </div>
-        <div id="sbImagePreview" aria-hidden="true" style="position: absolute; inset: 0; z-index: 2; pointer-events: none">
-          <img id="sbImgTag" alt="Asset preview" />
-        </div>
-        <div id="sbMonacoHost" style="flex: 1; min-height: 0; position: relative; z-index: 1"></div>
-        <div
-          id="sbGrapesHost"
-          style="display: none; flex: 1; min-height: 0; position: relative; z-index: 1; overflow: hidden"
-        ></div>
-      </div>
-
-      <aside id="sbPreview" class="sb-m-preview-on">
-        <div id="sbPreviewHead">
-          <span id="sbPreviewUrl" class="url">—</span>
-          <div class="sb-dv" role="group" aria-label="Preview width">
-            <button type="button" class="sb-btn" data-dv="100" title="Desktop">🖥</button>
-            <button type="button" class="sb-btn" data-dv="768" title="Tablet">📱</button>
-            <button type="button" class="sb-btn" data-dv="375" title="Phone">📲</button>
-            <button type="button" class="sb-btn" id="sbOpenTab" title="Open in new tab">↗</button>
-            <button type="button" class="sb-btn" id="sbViewSource" title="View rendered source"> &lt;/&gt; </button>
-            <a class="sb-btn" id="sbPageSpeed" href="#" target="_blank" rel="noopener" title="PageSpeed" style="text-decoration: none; display: inline-flex; align-items: center">⏱</a>
-          </div>
-        </div>
-        <div id="sbPreviewFrameWrap">
-          <div id="sbFrameSizer">
-            <iframe id="sbPreviewFrame" title="Site preview" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe>
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <div id="sbLogPanel" aria-label="Deploy log" role="log" hidden>
-      <div id="sbLogBody">Deploy log will appear here after you run a deploy.</div>
-    </div>
-  </div>
-
-  <div id="sbBottomBar" class="sb-bottombar" role="contentinfo">
-    <button type="button" class="sb-bottombar-btn" id="sbLogToggle" aria-expanded="false" title="Show or hide deploy log (Ctrl+`)">
-      Deploy log
-    </button>
-  </div>
-
-  <div id="sbContextMenu" class="sb-ctx" role="menu"></div>
-
-  <div id="sbModalBg" class="is-off" data-close="1" aria-hidden="true">
-    <div class="sb-modal" data-stop="1">
-      <h3 id="sbModalTitle">Confirm</h3>
-      <div class="body" id="sbModalBody"></div>
-    </div>
-  </div>
-
-  <div id="sbSourceModal" aria-hidden="true">
-    <div class="box" data-stop="1" style="position: relative">
-      <h3 style="padding: 0.6rem 1rem; margin: 0; border-bottom: 1px solid #1e293b; font-size: 0.9rem">
-        View source
-      </h3>
-      <pre id="sbSourceBody"></pre>
-      <button
-        type="button"
-        class="sb-btn"
-        data-close
-        style="position: absolute; top: 0.4rem; right: 0.4rem; background: #1e293b"
-      >
-        ✕
-      </button>
-    </div>
-  </div>
-
-  <div id="sbInitModal" class="is-off" aria-hidden="true">
-    <div class="sb-modal" data-stop="1" style="max-width: 32rem">
-      <h3>Choose a starter template</h3>
-      <div class="body">
-        <p style="color: #94a3b8; font-size: 0.8rem; margin: 0 0 0.5rem">Overwrites or creates the template files for this project.</p>
-        <div id="sbInitGrid"></div>
-        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem">
-          <button type="button" class="sb-btn" id="sbInitCancel">Cancel</button>
-          <button type="button" class="sb-btn sb-btn-primary" id="sbInitConfirm" disabled>Init project</button>
-        </div>
+        </section>
       </div>
     </div>
-  </div>
-
-  <div id="sbCommandPal" class="is-off" aria-hidden="true">
-    <div class="sb-modal" data-stop="1" style="max-width: 26rem; padding: 0">
-      <h3>Command palette (Ctrl+Shift+P)</h3>
-      <div class="body" style="padding: 0 0.5rem 0.5rem">
-        <input type="text" id="sbCommandInput" placeholder="Type a command or search files…" autocomplete="off" />
-        <div id="sbCommandList"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="sbSettingsPanel" class="is-off" aria-hidden="true">
-    <div class="sb-modal sb-modal-settings" data-stop="1">
-      <h3>Settings &amp; project</h3>
-      <div class="body sb-settings-body">
-        <h4 class="sb-lbl" style="margin: 0 0 0.4rem">Railway (optional)</h4>
-        <label>API token</label
-        ><input class="sb-inp" type="password" id="sbRailToken" />
-        <label>Team / workspace ID</label
-        ><input class="sb-inp" type="text" id="sbRailTeam" />
-        <div class="sb-settings-actions">
-          <button type="button" class="sb-btn sb-btn-primary" id="sbTestRail">Test connection</button>
-        </div>
-        <h4>Custom domain (DNS)</h4>
-        <p class="sb-muted" id="sbDomainHint">Point CNAME to your Railway service URL, then check DNS.</p>
-        <input class="sb-inp" type="text" id="sbCustomDomain" placeholder="www.client.com" />
-        <div class="sb-settings-actions">
-          <button type="button" class="sb-btn" id="sbCopyCname">Copy CNAME target</button>
-          <button type="button" class="sb-btn" id="sbDnsCheck">Check DNS</button>
-        </div>
-        <h4>SEO (saved to project)</h4>
-        <div id="sbSeoForm">
-          <label>Page title</label
-          ><input class="sb-inp" type="text" id="seoTitle" data-k="title" />
-          <label>Meta description</label
-          ><textarea class="sb-inp" id="seoDesc" data-k="description" rows="2"></textarea>
-          <label>OG image URL</label
-          ><input class="sb-inp" type="url" id="seoOg" data-k="ogImage" />
-          <label>Canonical URL</label
-          ><input class="sb-inp" type="url" id="seoCanon" data-k="canonical" />
-        </div>
-        <div class="sb-settings-actions">
-          <button type="button" class="sb-btn sb-btn-primary" id="sbSaveSettings">Save project settings</button>
-          <button type="button" class="sb-btn" id="sbApplySeo" title="Inject meta tags into index.html">Apply SEO to index.html</button>
-        </div>
-        <p class="sb-muted" style="margin-top: 0.75rem">Use <strong>Ctrl+Shift+F</strong> to search across all project files.</p>
-      </div>
-    </div>
-  </div>
-
-  <div id="sbFindOverlay" class="is-off" aria-hidden="true" aria-label="Find in files">
-    <div class="sb-modal sb-modal-find" data-stop="1">
-      <h3>Find in files (Ctrl+Shift+F)</h3>
-      <div class="body">
-        <div class="sb-find-row">
-          <input class="sb-inp" type="search" id="sbFindQ" placeholder="Search in all text files…" autocomplete="off" />
-          <button type="button" class="sb-btn sb-btn-primary" id="sbFindRun">Search</button>
-        </div>
-        <div id="sbSearchResults" class="sb-search-results"></div>
-        <button type="button" class="sb-btn" id="sbFindClose" style="margin-top: 0.5rem">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <script type="module" src="/js/auth-bootstrap.js"></script>
-  <script src="/js/main.js" defer></script>
-  <script type="module" src="/js/site-builder/app.js"></script>
-</body>
+    <style>
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
+    <script type="module" src="/js/auth-bootstrap.js"></script>
+    <script type="module" src="/js/site-builder/publish-app.js"></script>
+  </body>
 </html>

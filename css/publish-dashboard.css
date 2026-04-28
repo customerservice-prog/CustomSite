@@ -1,0 +1,211 @@
+/* Site publishing dashboard — replaces legacy code editor shell */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+#pdErrorBanner {
+  display: none;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  background: #7f1d1d;
+  color: #fef2f2;
+}
+#pdErrorBanner.is-on {
+  display: block;
+}
+#pdApp {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.pd-top {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111a2a;
+}
+.pd-top a {
+  color: #a5b4fc;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.pd-top a:hover {
+  color: #e0e7ff;
+}
+.pd-brand img {
+  height: 1.5rem;
+  width: auto;
+}
+.pd-grow {
+  flex: 1;
+  min-width: 140px;
+}
+.pd-sel {
+  width: 100%;
+  max-width: 22rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  color: #f1f5f9;
+  font-size: 0.85rem;
+}
+.pd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.pd-btn {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pd-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.pd-btn-primary {
+  background: #4f46e5;
+  border-color: #6366f1;
+  color: #fff;
+}
+.pd-btn-primary:hover {
+  background: #4338ca;
+}
+.pd-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.pd-pages {
+  width: 18rem;
+  min-width: 14rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0b1220;
+  display: flex;
+  flex-direction: column;
+}
+.pd-pages-h {
+  padding: 0.75rem 1rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.pd-list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.pd-list::-webkit-scrollbar {
+  display: none;
+}
+.pd-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.85rem;
+}
+.pd-row:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+.pd-row.is-on {
+  background: rgba(99, 102, 241, 0.22);
+  border-left: 3px solid #818cf8;
+}
+.pd-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.pd-badge.pub {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+.pd-badge.draft {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fcd34d;
+}
+.pd-preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #020617;
+}
+.pd-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+.pd-dv {
+  display: flex;
+  gap: 0.25rem;
+}
+.pd-dv button {
+  padding: 0.25rem 0.45rem;
+  font-size: 0.7rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.pd-dv button.is-on {
+  border-color: #818cf8;
+  background: rgba(99, 102, 241, 0.25);
+}
+.pd-frame-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0.75rem;
+}
+#pdFrameSizer {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  transition: max-width 0.2s;
+}
+#pdFrame {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+}

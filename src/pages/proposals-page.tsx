@@ -7,11 +7,13 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableFooterBar, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
 import { TableToolbar, TableToolbarSection } from '@/components/ui/table-toolbar';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useClients, useProjects } from '@/store/hooks';
 import { DataRowMenu } from '@/components/workspace/data-row-menu';
+import { useShell } from '@/context/shell-context';
 
 function proposalVariant(s: ProposalRow['status']): 'neutral' | 'success' | 'danger' | 'info' | 'warning' {
   if (s === 'Accepted') return 'success';
@@ -22,10 +24,12 @@ function proposalVariant(s: ProposalRow['status']): 'neutral' | 'success' | 'dan
 }
 
 export function ProposalsPage() {
+  const { toast } = useShell();
   const [rows, setRows] = useState<ProposalRow[]>(() => [...proposalsSeed]);
   const clients = useClients();
   const projects = useProjects();
   const [q, setQ] = useState('');
+  const [status, setStatus] = useState<'all' | ProposalRow['status']>('all');
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -34,9 +38,10 @@ export function ProposalsPage() {
         !q.trim() ||
         r.title.toLowerCase().includes(q.toLowerCase()) ||
         (cl?.company.toLowerCase().includes(q.toLowerCase()) ?? false);
-      return match;
+      const st = status === 'all' || r.status === status;
+      return match && st;
     });
-  }, [rows, clients, q]);
+  }, [rows, clients, q, status]);
 
   function addProposal() {
     const id = `pr-${Date.now()}`;
@@ -72,8 +77,16 @@ export function ProposalsPage() {
       }
     >
       <TableToolbar>
-        <TableToolbarSection>
+        <TableToolbarSection grow>
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search proposals…" className="max-w-md flex-1" />
+          <Select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} className="w-44 shrink-0" aria-label="Status">
+            <option value="all">All statuses</option>
+            <option value="Draft">Draft</option>
+            <option value="Sent">Sent</option>
+            <option value="Viewed">Viewed</option>
+            <option value="Accepted">Accepted</option>
+            <option value="Declined">Declined</option>
+          </Select>
         </TableToolbarSection>
       </TableToolbar>
 
@@ -125,7 +138,15 @@ export function ProposalsPage() {
                   <TableCell className="text-slate-600">{r.respondedDate ?? '—'}</TableCell>
                   <TableCell className="text-slate-500">{r.updatedLabel}</TableCell>
                   <TableCell className="text-right">
-                    <DataRowMenu label={`Actions for ${r.title}`} />
+                    <DataRowMenu
+                      label={`Actions for ${r.title}`}
+                      items={[
+                        { label: 'Open', onClick: () => toast(`Opened ${r.title}.`, 'success') },
+                        { label: 'Send to client', onClick: () => toast('Proposal sent for review.', 'success') },
+                        { label: 'Duplicate', onClick: () => toast('Duplicate saved as a new draft.', 'success') },
+                        { label: 'Convert to contract', onClick: () => toast('Contract draft created from this proposal.', 'success') },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               );

@@ -25,7 +25,7 @@ export const messageThreadsSeed: MessageThread[] = [
     id: 'm3',
     clientId: 'c3',
     projectId: 'p4',
-    participant: 'Acme Co.',
+    participant: 'Taylor Brooks',
     preview: 'Uploading final assets now.',
     status: 'Unread',
     updatedAt: '2026-04-25T05:00:00.000Z',

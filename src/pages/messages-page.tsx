@@ -11,34 +11,58 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { messageStatusBadgeVariant } from '@/lib/statuses';
+import { titleCaseStatus } from '@/lib/format-display';
 import { useShell } from '@/context/shell-context';
-import { useMessageThreads } from '@/store/hooks';
+import { useClients, useMessageThreads } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
+import { RecommendedNextAction, type NextActionItem } from '@/components/workspace/recommended-next-action';
+
+function threadSortRank(status: string): number {
+  if (status === 'Unread') return 0;
+  if (status === 'Waiting') return 1;
+  if (status === 'Replied') return 2;
+  return 3;
+}
 
 export function MessagesPage() {
   const { toast } = useShell();
   const allThreads = useMessageThreads();
-  const [selectedId, setSelectedId] = useState(allThreads[0]?.id ?? '');
+  const sortedThreads = useMemo(() => {
+    return [...allThreads].sort((a, b) => threadSortRank(a.status) - threadSortRank(b.status));
+  }, [allThreads]);
+  const [selectedId, setSelectedId] = useState(sortedThreads[0]?.id ?? '');
   const [q, setQ] = useState('');
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'unread' | 'waiting'>('all');
   const [draft, setDraft] = useState('');
+  const [attachSimulated, setAttachSimulated] = useState(false);
   const appendTeamMessage = useAppStore((s) => s.appendTeamMessage);
+  const clients = useClients();
+  const clientById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c])), [clients]);
 
   useEffect(() => {
-    if (!selectedId && allThreads[0]) setSelectedId(allThreads[0].id);
-  }, [allThreads, selectedId]);
+    if (!selectedId && sortedThreads[0]) setSelectedId(sortedThreads[0].id);
+  }, [sortedThreads, selectedId]);
+
+  useEffect(() => {
+    setAttachSimulated(false);
+  }, [selectedId]);
 
   const threads = useMemo(() => {
-    return allThreads.filter((t) => {
+    return sortedThreads.filter((t) => {
       const match =
         !q.trim() ||
         t.participant.toLowerCase().includes(q.toLowerCase()) ||
         t.preview.toLowerCase().includes(q.toLowerCase());
-      const unread = !unreadOnly || t.status === 'Unread';
-      return match && unread;
+      const inboxOk =
+        inboxFilter === 'all'
+          ? true
+          : inboxFilter === 'unread'
+            ? t.status === 'Unread'
+            : t.status === 'Waiting';
+      return match && inboxOk;
     });
-  }, [allThreads, q, unreadOnly]);
+  }, [sortedThreads, q, inboxFilter]);
 
   useEffect(() => {
     if (threads.length && !threads.some((t) => t.id === selectedId)) {
@@ -46,7 +70,38 @@ export function MessagesPage() {
     }
   }, [threads, selectedId]);
 
-  const selected = allThreads.find((t) => t.id === selectedId) ?? threads[0];
+  const selected = sortedThreads.find((t) => t.id === selectedId) ?? threads[0];
+
+  const messageNextActions: NextActionItem[] = useMemo(() => {
+    const items: NextActionItem[] = [];
+    const unread = sortedThreads.filter((t) => t.status === 'Unread');
+    if (unread[0]) {
+      items.push({
+        label: `Reply to ${unread[0].participant}`,
+        hint: unread[0].preview,
+        href: '/messages',
+        tone: 'danger',
+      });
+    }
+    const waiting = sortedThreads.filter((t) => t.status === 'Waiting');
+    if (waiting[0]) {
+      const c = clientById[waiting[0].clientId];
+      items.push({
+        label: `Follow up with ${c?.company ?? waiting[0].participant}`,
+        hint: 'Client owes you a decision — send a clear nudge.',
+        href: '/messages',
+        tone: 'warning',
+      });
+    }
+    const replied = sortedThreads.find((t) => t.status === 'Replied');
+    if (replied && items.length < 3) {
+      items.push({
+        label: `Archive or close thread with ${replied.participant}`,
+        href: '/messages',
+      });
+    }
+    return items.slice(0, 3);
+  }, [sortedThreads, clientById]);
 
   const client = useAppStore(useShallow((s) => (selected ? s.clients[selected.clientId] : undefined)));
   const project = useAppStore(useShallow((s) => (selected ? s.projects[selected.projectId] : undefined)));
@@ -59,15 +114,19 @@ export function MessagesPage() {
     if (!draft.trim() || !selected) return;
     appendTeamMessage(selected.id, draft.trim());
     setDraft('');
+    setAttachSimulated(false);
     toast('Delivered — your client sees this in their thread.', 'success');
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Messages"
-        description="Grouped by who owes the next move — you first, then the client, then everything that’s cooling off."
-      />
+      <div className="space-y-3">
+        <PageHeader
+          title="Messages"
+          description="See who is waiting on you, who owes you a reply, and what to close next."
+        />
+        <RecommendedNextAction items={messageNextActions} />
+      </div>
 
       <SplitInboxLayout
         sidebar={
@@ -83,18 +142,29 @@ export function MessagesPage() {
                   aria-label="Search conversations"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setUnreadOnly((v) => !v)}
-                className={cn(
-                  'mt-2 w-full rounded-xl border px-3 py-2 text-left text-xs font-bold uppercase tracking-wide transition duration-150',
-                  unreadOnly
-                    ? 'border-indigo-200 bg-indigo-50 text-indigo-900'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
-                )}
-              >
-                {unreadOnly ? 'Showing unread only' : 'All conversations'}
-              </button>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {(
+                  [
+                    { id: 'all' as const, label: 'All' },
+                    { id: 'unread' as const, label: 'Unread' },
+                    { id: 'waiting' as const, label: 'Waiting on client' },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setInboxFilter(id)}
+                    className={cn(
+                      'w-full rounded-xl border px-3 py-2 text-left text-xs font-bold uppercase tracking-wide transition duration-150',
+                      inboxFilter === id
+                        ? 'border-indigo-200 bg-indigo-50 text-indigo-900'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             <ul className="min-h-0 flex-1 overflow-y-auto">
               {threads.length === 0 ? (
@@ -118,7 +188,7 @@ export function MessagesPage() {
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate font-semibold text-slate-900">{t.participant}</span>
                         <Badge variant={messageStatusBadgeVariant(t.status)} className="shrink-0 text-[10px]">
-                          {t.status}
+                          {titleCaseStatus(t.status)}
                         </Badge>
                       </div>
                       <p className="line-clamp-2 text-xs text-slate-500">{t.preview}</p>
@@ -176,11 +246,19 @@ export function MessagesPage() {
                 ))}
               </div>
               <footer className="border-t border-slate-200 bg-white p-3 lg:p-4">
+                {attachSimulated && (
+                  <p className="mb-2 rounded-lg border border-indigo-100 bg-indigo-50/90 px-3 py-2 text-xs font-medium text-indigo-900">
+                    Brand guidelines.pdf staged — sends with your next message.
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <IconButton
                     aria-label="Attach file"
                     type="button"
-                    onClick={() => toast('Upload files from the Files page and link them here.', 'info')}
+                    onClick={() => {
+                      setAttachSimulated(true);
+                      toast('File staged for this reply.', 'success');
+                    }}
                   >
                     <Paperclip className="h-4 w-4" />
                   </IconButton>

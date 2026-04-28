@@ -4,14 +4,11 @@ import {
   BarChart3,
   CalendarDays,
   CheckSquare,
-  ClipboardList,
   Clock,
   CreditCard,
   FileSignature,
-  FileText,
   Files,
   FolderKanban,
-  Kanban,
   LayoutDashboard,
   MessageSquare,
   Receipt,
@@ -26,23 +23,17 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   to: string;
-  /** When true, sidebar replaces this with a live count from workspace data. */
   badgeFromStore?: 'unread-messages' | 'pending-contracts';
 }
 
+/** Single home item — rendered above grouped nav (always visible). */
+export const studioPulseNavItem: NavItem = {
+  label: 'Studio Pulse',
+  to: '/dashboard',
+  icon: LayoutDashboard,
+};
+
 export const navGroups: { label: string; items: NavItem[] }[] = [
-  {
-    label: 'Start here',
-    items: [{ label: 'Studio Pulse', to: '/dashboard', icon: LayoutDashboard }],
-  },
-  {
-    label: 'Sales',
-    items: [
-      { label: 'Pipeline', to: '/pipeline', icon: Kanban },
-      { label: 'Proposals', to: '/proposals', icon: FileText },
-      { label: 'Forms', to: '/forms', icon: ClipboardList },
-    ],
-  },
   {
     label: 'Delivery',
     items: [
@@ -71,7 +62,7 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'Growth & admin',
+    label: 'Growth & Admin',
     items: [
       { label: 'Reports', to: '/reports', icon: BarChart3 },
       { label: 'Client portal', to: '/client-portal', icon: ShieldCheck },

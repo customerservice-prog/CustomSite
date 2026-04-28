@@ -242,21 +242,41 @@ app.use(async (req, res, next) => {
 });
 
 /** React admin SPA (Vite build → dist-admin/). Dev: `npm run admin:dev` → open /admin-spa.html on Vite port. */
-const adminSpaHtml = path.join(__dirname, 'dist-admin', 'admin-spa.html');
-app.get('/admin.html', async (req, res, next) => {
+const ADMIN_SPA_HTML = path.resolve(__dirname, 'dist-admin', 'admin-spa.html');
+
+function adminMissingBundleHelpHtml() {
+  const port = Number.parseInt(String(process.env.PORT || '3000'), 10) || 3000;
+  const base = `http://127.0.0.1:${port}`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin — setup</title></head><body style="font-family:system-ui,Segoe UI,sans-serif;padding:2rem;max-width:44rem;line-height:1.6;color:#0f172a">
+<h1 style="font-size:1.35rem">Admin UI is not available from this server</h1>
+<p><code>dist-admin/admin-spa.html</code> is missing or could not be read. Common causes: the admin bundle was never built on this machine, the server was started from a different directory, or (on OneDrive) files are still &quot;online only&quot;.</p>
+<h2 style="font-size:1.05rem;margin-top:1.5rem">Fix</h2>
+<ol>
+<li>In the project root run: <code style="background:#f1f5f9;padding:0.15rem 0.45rem;border-radius:4px">npm run build:admin</code></li>
+<li>Restart: <code style="background:#f1f5f9;padding:0.15rem 0.45rem;border-radius:4px">npm run dev</code></li>
+<li>Open: <a href="${base}/admin.html">${base}/admin.html</a> — include port <strong>${port}</strong>. <strong>http://localhost</strong> with no port is often a different service on Windows and can show HTTP 503 in the browser.</li>
+</ol>
+<h2 style="font-size:1.05rem;margin-top:1.5rem">Hot reload (optional)</h2>
+<p><code>npm run admin:dev</code>, then open <code>/admin-spa.html</code> on the URL Vite prints (often port 5173).</p>
+</body></html>`;
+}
+
+app.get('/admin', (_req, res) => {
+  res.redirect(302, '/admin.html');
+});
+
+app.get('/admin.html', (req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-  try {
-    await fs.access(adminSpaHtml);
-    res.sendFile(adminSpaHtml);
-  } catch {
-    res
-      .status(503)
-      .type('html')
-      .send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin — build required</title></head><body style="font-family:system-ui,Segoe UI,sans-serif;padding:2rem;max-width:40rem;line-height:1.5">
-<h1 style="font-size:1.25rem">Admin UI not built</h1>
-<p>Run <code style="background:#f1f5f9;padding:0.15rem 0.4rem;border-radius:4px">npm run build:admin</code> then reload. For local development run <code style="background:#f1f5f9;padding:0.15rem 0.4rem;border-radius:4px">npm run admin:dev</code> and open <strong>/admin-spa.html</strong> on the Vite URL.</p>
-</body></html>`);
-  }
+  res.sendFile(ADMIN_SPA_HTML, (err) => {
+    if (!err) return;
+    if (res.headersSent) return;
+    console.warn('[admin.html] bundle unavailable:', err.code || err.message, ADMIN_SPA_HTML);
+    if (req.method === 'HEAD') {
+      res.status(404).end();
+      return;
+    }
+    res.status(200).type('html').send(adminMissingBundleHelpHtml());
+  });
 });
 
 app.use(
@@ -299,6 +319,7 @@ if (require.main === module) {
     const url = `http://127.0.0.1:${PORT}`;
     console.log(`CustomSite server listening on ${BIND_HOST}:${PORT}`);
     console.log(`  Open: ${url}/  or  http://localhost:${PORT}/index.html`);
+    console.log(`  Admin: ${url}/admin.html  (needs dist-admin — run npm run build:admin if you see the setup page)`);
     if (isDevAuthEnabled() && !isSupabaseConfigured()) {
       console.log(
         `  Local dev login: email=${process.env.DEV_ADMIN_EMAIL} (set in .env; no Supabase on this run)`

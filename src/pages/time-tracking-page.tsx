@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Plus } from 'lucide-react';
+import { Clock, Plus, Search } from 'lucide-react';
 import { timeEntriesSeed, type TimeEntryRow } from '@/lib/data/module-seeds';
 import { TablePageLayout } from '@/components/layout/templates/table-page-layout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableFooterBar, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
+import { TableToolbar, TableToolbarSection } from '@/components/ui/table-toolbar';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useShell } from '@/context/shell-context';
 import { useProjects } from '@/store/hooks';
@@ -19,6 +22,23 @@ export function TimeTrackingPage() {
   const projects = useProjects();
   const users = useAppStore(useShallow((s) => s.users));
   const { toast } = useShell();
+  const [q, setQ] = useState('');
+  const [billFilter, setBillFilter] = useState<'all' | 'billable' | 'non'>('all');
+
+  const filtered = useMemo(() => {
+    return rows.filter((r) => {
+      const pr = projects.find((p) => p.id === r.projectId);
+      const u = users[r.userId];
+      const match =
+        !q.trim() ||
+        r.note.toLowerCase().includes(q.toLowerCase()) ||
+        (pr?.name.toLowerCase().includes(q.toLowerCase()) ?? false) ||
+        (u?.name.toLowerCase().includes(q.toLowerCase()) ?? false);
+      const b =
+        billFilter === 'all' || (billFilter === 'billable' && r.billable) || (billFilter === 'non' && !r.billable);
+      return match && b;
+    });
+  }, [rows, q, billFilter, projects, users]);
 
   const weekTotal = useMemo(() => rows.reduce((s, r) => s + r.hours, 0), [rows]);
   const billable = useMemo(() => rows.filter((r) => r.billable).reduce((s, r) => s + r.hours, 0), [rows]);
@@ -76,7 +96,27 @@ export function TimeTrackingPage() {
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      <TableToolbar>
+        <TableToolbarSection grow>
+          <div className="relative min-w-[200px] max-w-md flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search note, project, or teammate…"
+              className="pl-10"
+              aria-label="Search time entries"
+            />
+          </div>
+          <Select value={billFilter} onChange={(e) => setBillFilter(e.target.value as typeof billFilter)} className="w-44 shrink-0" aria-label="Billable">
+            <option value="all">All entries</option>
+            <option value="billable">Billable only</option>
+            <option value="non">Non-billable only</option>
+          </Select>
+        </TableToolbarSection>
+      </TableToolbar>
+
+      {filtered.length === 0 ? (
         <EmptyState
           icon={Clock}
           title="No time logged"
@@ -89,7 +129,7 @@ export function TimeTrackingPage() {
           }
         />
       ) : (
-        <Table dense footer={<TableFooterBar from={1} to={rows.length} total={rows.length} />}>
+        <Table dense footer={<TableFooterBar from={1} to={filtered.length} total={filtered.length} />}>
           <TableHeader className="sticky top-0 z-20">
             <TableRow className="hover:bg-transparent">
               <TableHeadCell>Date</TableHeadCell>
@@ -102,7 +142,7 @@ export function TimeTrackingPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((r) => {
+            {filtered.map((r) => {
               const pr = projects.find((p) => p.id === r.projectId);
               const u = users[r.userId];
               return (
@@ -118,7 +158,15 @@ export function TimeTrackingPage() {
                   </TableCell>
                   <TableCell className="max-w-xs truncate text-slate-600">{r.note}</TableCell>
                   <TableCell className="text-right">
-                    <DataRowMenu label="Time entry actions" />
+                    <DataRowMenu
+                      label="Time entry actions"
+                      items={[
+                        { label: 'Edit', onClick: () => toast('Entry saved.', 'success') },
+                        { label: 'Split', onClick: () => toast('Split across two projects.', 'success') },
+                        { label: 'Move to invoice', onClick: () => toast('Hours staged on the next invoice.', 'success') },
+                        { label: 'Delete', onClick: () => toast('Entry removed.', 'success'), destructive: true },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               );

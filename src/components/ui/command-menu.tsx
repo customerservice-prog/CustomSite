@@ -3,12 +3,16 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
 import {
+  Calendar,
+  CreditCard,
   FileText,
   FolderKanban,
   LayoutDashboard,
   Plus,
   Search,
   Settings,
+  Upload,
+  UserPlus,
   Users,
   Workflow,
 } from 'lucide-react';
@@ -39,6 +43,11 @@ export function CommandMenu() {
       { id: 'np', label: 'Create project', hint: 'Action', icon: FolderKanban, run: () => openModal('create-project') },
       { id: 'ni', label: 'Create invoice', hint: 'Action', icon: FileText, run: () => openModal('create-invoice') },
       { id: 'nt', label: 'Create task', hint: 'Action', icon: Plus, run: () => openModal('create-task') },
+      { id: 'npay', label: 'Record payment', hint: 'Action', icon: CreditCard, run: () => openModal('record-payment') },
+      { id: 'nup', label: 'Upload file', hint: 'Action', icon: Upload, run: () => openModal('upload-file') },
+      { id: 'ncon', label: 'New contract', hint: 'Action', icon: FileText, run: () => openModal('create-contract') },
+      { id: 'nev', label: 'New calendar event', hint: 'Action', icon: Calendar, run: () => openModal('calendar-event') },
+      { id: 'ninvcli', label: 'Invite client', hint: 'Action', icon: UserPlus, run: () => openModal('invite-client') },
     ],
     [navigate, openModal]
   );

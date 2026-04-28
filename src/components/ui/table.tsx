@@ -8,61 +8,49 @@ export function Table({
   ...props
 }: HTMLAttributes<HTMLTableElement> & { footer?: ReactNode; dense?: boolean }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/[0.04]">
-      <div className="scroll-table overflow-x-auto">
+    <>
+      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
         <table
-          className={cn(
-            'w-full min-w-0 border-collapse text-left text-sm text-slate-600 md:min-w-[560px]',
-            dense && 'text-[13px]',
-            className
-          )}
+          className={cn('min-w-full border-collapse text-left text-sm text-gray-700', dense && 'text-[13px]', className)}
           {...props}
         />
       </div>
       {footer}
-    </div>
+    </>
   );
 }
 
 export function TableFooterBar({ from, to, total }: { from: number; to: number; total: number }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50/90 px-4 py-2.5 text-xs font-medium text-slate-600">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-medium text-gray-600">
       <span>
-        Showing <span className="font-bold text-slate-900">{from}</span>–<span className="font-bold text-slate-900">{to}</span> of{' '}
-        <span className="font-bold text-slate-900">{total}</span>
+        Showing <span className="font-semibold text-gray-900">{from}</span>–<span className="font-semibold text-gray-900">{to}</span> of{' '}
+        <span className="font-semibold text-gray-900">{total}</span>
       </span>
     </div>
   );
 }
 
 export function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return (
-    <thead
-      className={cn(
-        'border-b border-slate-200 bg-slate-50/95 text-left shadow-[0_1px_0_rgba(15,23,42,0.06)] backdrop-blur-sm',
-        className
-      )}
-      {...props}
-    />
-  );
+  return <thead className={cn('border-b border-gray-200 bg-white', className)} {...props} />;
 }
 
 export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className={cn('divide-y divide-slate-100', className)} {...props} />;
+  return <tbody className={cn(className)} {...props} />;
 }
 
 export function TableRow({
   className,
-  clickable,
+  clickable = true,
   selected,
   ...props
 }: HTMLAttributes<HTMLTableRowElement> & { clickable?: boolean; selected?: boolean }) {
   return (
     <tr
       className={cn(
-        'transition duration-150 hover:bg-slate-50/95',
+        'h-[68px] border-b border-gray-100 transition-colors hover:bg-gray-50',
         clickable && 'cursor-pointer',
-        selected && 'bg-indigo-50/50',
+        selected && 'bg-purple-50',
         className
       )}
       {...props}
@@ -73,15 +61,12 @@ export function TableRow({
 export function TableHeadCell({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn(
-        'whitespace-nowrap px-3 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 first:pl-4 last:pr-4 sm:px-4 sm:py-3.5',
-        className
-      )}
+      className={cn('h-12 px-4 text-left text-xs font-medium uppercase tracking-wide text-gray-500', className)}
       {...props}
     />
   );
 }
 
 export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('px-3 py-3 text-slate-700 first:pl-4 last:pr-4 sm:px-4 sm:py-3.5', className)} {...props} />;
+  return <td className={cn('px-4 align-middle text-gray-800', className)} {...props} />;
 }

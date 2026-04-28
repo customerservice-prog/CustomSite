@@ -1,137 +1,183 @@
-import { ExternalLink, Globe, LayoutTemplate, Rocket, FileStack, MonitorPlay } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ExternalLink, Globe, RefreshCw, Rocket, Search } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ProgressBar } from '@/components/ui/progress-bar';
-import { Table, TableBody, TableCell, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { ActionMenu } from '@/components/ui/action-menu';
+import { useShell } from '@/context/shell-context';
+import { cn } from '@/lib/utils';
 
 const pages = [
-  { name: 'Home', status: 'Published' as const, path: '/', updated: 'Apr 22' },
-  { name: 'Services', status: 'Draft' as const, path: '/services', updated: 'Apr 21' },
-  { name: 'Contact', status: 'Published' as const, path: '/contact', updated: 'Apr 18' },
+  { name: 'Home', status: 'Published' as const, path: '/', updated: 'Apr 26' },
+  { name: 'Services', status: 'Published' as const, path: '/pricing.html', updated: 'Apr 24' },
+  { name: 'Portfolio', status: 'Published' as const, path: '/portfolio.html', updated: 'Apr 22' },
+  { name: 'Case studies', status: 'Draft' as const, path: '/case-studies.html', updated: 'Apr 21' },
+  { name: 'Agency', status: 'Published' as const, path: '/agency.html', updated: 'Apr 20' },
+  { name: 'Contact', status: 'Published' as const, path: '/contact.html', updated: 'Apr 18' },
 ];
 
-const deploys = [
-  { id: 'd1', label: 'Production', when: '14 min ago', who: 'Jordan Blake' },
-  { id: 'd2', label: 'Preview', when: '2 hr ago', who: 'Alex Chen' },
+const deployLog = [
+  { id: '1', line: 'Build #482 succeeded · static export', when: '14m ago' },
+  { id: '2', line: 'Uploaded 12 assets to CDN', when: '14m ago' },
+  { id: '3', line: 'Invalidation complete · edge cache', when: '13m ago' },
 ];
+
+function previewSrc(path: string) {
+  if (path === '/') return '/index.html';
+  return path;
+}
 
 export function SiteBuilderPage() {
+  const { toast } = useShell();
+  const [selected, setSelected] = useState(pages[0]);
+  const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Draft' | 'Published'>('all');
+  const [iframeKey, setIframeKey] = useState(0);
+
+  const filteredPages = useMemo(() => {
+    return pages.filter((p) => {
+      const match =
+        !q.trim() || p.name.toLowerCase().includes(q.toLowerCase()) || p.path.toLowerCase().includes(q.toLowerCase());
+      const st = statusFilter === 'all' || p.status === statusFilter;
+      return match && st;
+    });
+  }, [q, statusFilter]);
+
+  const src = previewSrc(selected.path);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Site builder"
-        description="Manage pages, drafts, and deployments — then open the visual editor when you are ready to ship."
+        description="Pages, preview, and deploy status."
         actions={
-          <Button
-            type="button"
-            className="gap-2"
-            onClick={() => window.open('/site-builder.html', '_blank', 'noopener')}
-          >
+          <Button type="button" variant="secondary" className="gap-2" onClick={() => window.open('/index.html', '_blank', 'noopener')}>
             <ExternalLink className="h-4 w-4" />
-            Open editor
+            Open live
           </Button>
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="p-5 shadow-md ring-1 ring-slate-900/[0.05] lg:col-span-2">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100">
-                <LayoutTemplate className="h-6 w-6" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Publishing workflow</h2>
-                <p className="mt-1 max-w-xl text-sm leading-relaxed text-slate-600">
-                  Draft in the builder, preview on a safe URL, then publish to production when stakeholders approve.
-                </p>
-                <div className="mt-4 max-w-md">
-                  <div className="mb-1 flex justify-between text-xs font-semibold text-slate-500">
-                    <span>Template coverage</span>
-                    <span>72%</span>
-                  </div>
-                  <ProgressBar value={72} max={100} />
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="success">Builder online</Badge>
-              <Badge variant="info">Preview active</Badge>
-            </div>
-          </div>
-        </Card>
+      <Card variant="compact" className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="secondary" className="gap-2" onClick={() => setIframeKey((k) => k + 1)}>
+          <RefreshCw className="h-4 w-4" />
+          Preview
+        </Button>
+        <Button
+          type="button"
+          className="gap-2"
+          onClick={() => toast('Deploy queued. You will get a notification when the build finishes.', 'success')}
+        >
+          <Rocket className="h-4 w-4" />
+          Deploy
+        </Button>
+        <Button type="button" variant="secondary" className="gap-2" onClick={() => window.open(src, '_blank', 'noopener')}>
+          <Globe className="h-4 w-4" />
+          Open preview URL
+        </Button>
+        <span className="text-xs text-gray-500">
+          Preview: <span className="font-mono text-gray-700">{src}</span>
+        </span>
+      </Card>
 
-        <Card className="space-y-4 p-5 shadow-md ring-1 ring-slate-900/[0.05]">
-          <div className="flex items-center gap-3">
-            <MonitorPlay className="h-5 w-5 text-indigo-600" />
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Preview</h3>
-              <p className="text-xs text-slate-500">Share a client-safe link before go-live.</p>
-            </div>
+      <div className="grid min-h-0 gap-6 lg:grid-cols-12">
+        <Card variant="compact" className="flex flex-col lg:col-span-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-gray-900">Pages</h2>
+            <Badge variant="neutral" className="text-xs">
+              {filteredPages.length}
+            </Badge>
           </div>
-          <Button type="button" variant="secondary" className="w-full gap-2" onClick={() => window.open('/index.html', '_blank', 'noopener')}>
-            <Globe className="h-4 w-4" />
-            Open live preview
-          </Button>
-          <Button type="button" className="w-full gap-2" onClick={() => window.open('/site-builder.html', '_blank', 'noopener')}>
-            <Rocket className="h-4 w-4" />
-            Launch editor
-          </Button>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-5 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Site pages</h3>
-            <Badge variant="neutral">3 pages</Badge>
+          <div className="relative mb-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search pages…"
+              className="pl-9"
+              aria-label="Search pages"
+            />
           </div>
-          <Table dense>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHeadCell>Page</TableHeadCell>
-                <TableHeadCell>Status</TableHeadCell>
-                <TableHeadCell>Path</TableHeadCell>
-                <TableHeadCell>Updated</TableHeadCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pages.map((p) => (
-                <TableRow key={p.path}>
-                  <TableCell className="font-medium text-slate-900">{p.name}</TableCell>
-                  <TableCell>
-                    <Badge variant={p.status === 'Published' ? 'success' : 'warning'}>{p.status}</Badge>
-                  </TableCell>
-                  <TableCell className="text-slate-600">{p.path}</TableCell>
-                  <TableCell className="text-slate-500">{p.updated}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-
-        <Card className="p-5 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <div className="mb-4 flex items-center gap-2">
-            <FileStack className="h-5 w-5 text-slate-600" />
-            <h3 className="text-sm font-bold text-slate-900">Recent deploys</h3>
-          </div>
-          <ul className="space-y-3">
-            {deploys.map((d) => (
-              <li key={d.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 text-sm">
-                <div>
-                  <p className="font-semibold text-slate-900">{d.label}</p>
-                  <p className="text-xs text-slate-500">{d.who}</p>
-                </div>
-                <span className="text-xs font-medium text-slate-500">{d.when}</span>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            className="mb-3 w-full"
+            aria-label="Filter by status"
+          >
+            <option value="all">All statuses</option>
+            <option value="Published">Published</option>
+            <option value="Draft">Draft</option>
+          </Select>
+          <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+            {filteredPages.map((p) => (
+              <li key={p.path} className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setSelected(p)}
+                  className={cn(
+                    'min-w-0 flex-1 rounded-lg border px-3 py-2 text-left text-sm transition',
+                    selected.path === p.path
+                      ? 'border-purple-200 bg-purple-50 text-purple-900'
+                      : 'border-transparent text-gray-800 hover:bg-gray-50'
+                  )}
+                >
+                  <span className="block font-medium">{p.name}</span>
+                  <span className="block text-xs text-gray-500">
+                    {p.status} · {p.updated}
+                  </span>
+                </button>
+                <ActionMenu
+                  label={`Actions for ${p.name}`}
+                  items={[
+                    {
+                      label: 'Open preview',
+                      onClick: () => {
+                        setSelected(p);
+                        setIframeKey((k) => k + 1);
+                      },
+                    },
+                    {
+                      label: 'Open in new tab',
+                      onClick: () => window.open(previewSrc(p.path), '_blank', 'noopener'),
+                    },
+                    {
+                      label: 'Mark published',
+                      onClick: () => toast(`${p.name} marked published.`, 'success'),
+                    },
+                  ]}
+                />
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-xs text-slate-500">
-            Templates: <span className="font-semibold text-slate-700">Agency starter</span>,{' '}
-            <span className="font-semibold text-slate-700">Services focus</span>
-          </p>
+        </Card>
+
+        <Card variant="compact" className="flex min-h-[520px] flex-col overflow-hidden lg:col-span-8">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2">
+            <h2 className="text-sm font-semibold text-gray-900">Live preview</h2>
+            <span className="text-xs text-gray-500">{selected.name}</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+            <iframe
+              key={`${src}-${iframeKey}`}
+              title="Site preview"
+              src={src}
+              className="h-full min-h-[480px] w-full bg-white"
+            />
+          </div>
+          <div className="mt-4">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-400">Deploy log</h3>
+            <ul className="mt-2 space-y-2 text-sm text-gray-700">
+              {deployLog.map((row) => (
+                <li key={row.id} className="flex justify-between gap-2 border-b border-gray-50 py-1 last:border-0">
+                  <span>{row.line}</span>
+                  <span className="shrink-0 text-xs text-gray-400">{row.when}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </Card>
       </div>
     </div>

@@ -7,9 +7,11 @@ interface DropdownProps {
   children: ReactNode;
   align?: 'left' | 'right';
   className?: string;
+  /** Panel under trigger (e.g. row action menu width). */
+  menuClassName?: string;
 }
 
-export function Dropdown({ trigger, children, align = 'right', className }: DropdownProps) {
+export function Dropdown({ trigger, children, align = 'right', className, menuClassName }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -33,7 +35,7 @@ export function Dropdown({ trigger, children, align = 'right', className }: Drop
             setOpen((o) => !o);
           }
         }}
-        className="inline-flex cursor-pointer items-center rounded-xl transition duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+        className="inline-flex cursor-pointer items-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
         aria-expanded={open}
         aria-haspopup="menu"
       >
@@ -42,8 +44,9 @@ export function Dropdown({ trigger, children, align = 'right', className }: Drop
       {open && (
         <div
           className={cn(
-            'absolute z-50 mt-2 min-w-[13rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-slate-900/5 transition duration-150',
-            align === 'right' ? 'right-0' : 'left-0'
+            'absolute z-50 mt-2 min-w-[13rem] rounded-xl border border-gray-200 bg-white py-1 shadow-md transition duration-150',
+            align === 'right' ? 'right-0' : 'left-0',
+            menuClassName
           )}
           role="menu"
         >
@@ -71,8 +74,8 @@ export function DropdownItem({
       role="menuitem"
       onClick={onClick}
       className={cn(
-        'flex w-full cursor-pointer items-center px-3 py-2.5 text-left text-sm font-medium transition duration-150',
-        destructive ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50',
+        'flex h-9 w-full cursor-pointer items-center px-3 text-left text-sm font-medium text-gray-700 transition duration-150 hover:bg-gray-50',
+        destructive ? 'text-red-600 hover:bg-red-50' : '',
         className
       )}
     >
@@ -83,9 +86,9 @@ export function DropdownItem({
 
 export function DropdownChevronTrigger({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-sm transition duration-150 hover:bg-slate-50">
+    <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50">
       {label}
-      <ChevronDown className="h-4 w-4 text-slate-500" aria-hidden />
+      <ChevronDown className="h-4 w-4 text-gray-500" aria-hidden />
     </span>
   );
 }

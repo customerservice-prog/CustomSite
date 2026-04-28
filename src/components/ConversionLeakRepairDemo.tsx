@@ -4,15 +4,8 @@ import { cn } from '@/lib/utils';
 
 const LOOP_FADE_MS = 600;
 
-/** Belief-first sequence: hook → friction → expertise → snap fix → trust → proof. */
+/** Public story: Confusion → Leak → Diagnose → Rebuild → Trust → Convert */
 export const scenes = [
-  {
-    id: 'hook',
-    label: 'Leak',
-    timeline: 'Leak',
-    description: 'Visitors arrive — most vanish before they ever reach your CTA.',
-    ms: 3000,
-  },
   {
     id: 'chaos',
     label: 'Confusion',
@@ -21,32 +14,39 @@ export const scenes = [
     ms: 5000,
   },
   {
+    id: 'hook',
+    label: 'Leak',
+    timeline: 'Leak',
+    description: 'Visitors arrive — most leave before they act.',
+    ms: 3500,
+  },
+  {
     id: 'diagnosis',
-    label: 'Diagnosis',
-    timeline: 'Diagnosis',
-    description: 'We map what blocks the decision path — message, CTA, proof, flow.',
-    ms: 7000,
+    label: 'Diagnose',
+    timeline: 'Diagnose',
+    description: 'We map what blocks the path — message, proof, flow, and the ask.',
+    ms: 6500,
   },
   {
     id: 'rebuild',
-    label: 'Rebuild path',
+    label: 'Rebuild',
     timeline: 'Rebuild',
-    description: 'We snap the page into one obvious path — then make the CTA impossible to miss.',
-    ms: 7000,
+    description: 'One obvious path and a CTA that is impossible to miss.',
+    ms: 6500,
   },
   {
     id: 'trust',
-    label: 'Strengthen trust',
+    label: 'Trust',
     timeline: 'Trust',
-    description: 'Proof sits before the ask — so the CTA feels safe, not desperate.',
+    description: 'Proof before the ask so the CTA feels safe, not desperate.',
     ms: 5000,
   },
   {
     id: 'result',
-    label: 'Result',
-    timeline: 'Result',
+    label: 'Convert',
+    timeline: 'Convert',
     description: 'Same traffic — more leads, calls, and customers.',
-    ms: 3000,
+    ms: 3500,
   },
 ] as const;
 

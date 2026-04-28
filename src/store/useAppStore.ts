@@ -5,10 +5,12 @@ import type {
   AgencyFile,
   AppNotificationKind,
   Client,
+  Contract,
   Expense,
   Invoice,
   Lead,
   Message,
+  Payment,
   Project,
   Task,
 } from '@/lib/types/entities';
@@ -22,6 +24,7 @@ import type { ActiveModal, RootState, ToastItem } from '@/store/root-state';
 import { newId, isoNow } from '@/store/ids';
 import { planAutonomousActions } from '@/lib/autonomous-operator-cycle';
 import type { OperatorEvent } from '@/store/operator-state';
+import type { DeadlineSeed } from '@/lib/data/deadlines';
 
 const DELIVERY_PHASE_FLOW: ProjectStatus[] = ['Planning', 'Design', 'Development', 'Review', 'Live'];
 
@@ -127,7 +130,7 @@ export interface AppStore extends RootState {
   markInvoicePaid: (invoiceId: string) => void;
   completeTask: (taskId: string) => void;
   appendTeamMessage: (threadId: string, body: string) => void;
-  /** Advance a closed execution loop (resets tier clocks in demo — mirrors scheduled jobs server-side). */
+  /** Advance a closed execution loop (mirrors scheduled jobs server-side). */
   advanceExecutionLoop: (priorityItemId: string) => void;
   /** Run confidence-gated autonomous touches (default-on; user can undo). */
   processAutonomousOperatorCycle: () => void;
@@ -144,6 +147,19 @@ export interface AppStore extends RootState {
     reimbursable?: boolean;
     date: string;
   }) => string;
+  addPayment: (input: {
+    invoiceId: string;
+    amount: number;
+    method: string;
+    status?: Payment['status'];
+  }) => string;
+  addContract: (input: {
+    clientId: string;
+    projectId?: string | null;
+    title: string;
+    value: number;
+  }) => string;
+  addDeadline: (input: { title: string; when: string; type: DeadlineSeed['type'] }) => void;
 }
 
 const boot = createBootstrapEntities();
@@ -816,7 +832,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           type: 'other',
           entityKind: 'invoice',
           entityId: p.invoiceId,
-          title: `Autonomous operator · ${inv.number} · nudge ${nextCount}`,
+          title: `Payment reminder · ${inv.number} · nudge ${nextCount}`,
           metadata: { operatorEventId: evId },
         });
         continue;
@@ -871,7 +887,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           type: 'other',
           entityKind: 'message',
           entityId: threadId,
-          title: `Autonomous operator · holding reply · ${th0.participant}`,
+          title: `Inbox hold · draft reply for ${th0.participant}`,
           metadata: { threadId, operatorEventId: evId },
         });
         continue;
@@ -923,13 +939,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
           type: 'other',
           entityKind: 'project',
           entityId: p.projectId,
-          title: `Autonomous operator · stall nudge · ${proj.name}`,
+          title: `Delivery check-in · ${proj.name}`,
           metadata: { operatorEventId: evId, projectId: p.projectId },
         });
       }
     }
     if (planned.length > 0) {
-      get().toast(`Autonomous operator · ${planned.length} default action(s) executed`, 'info');
+      get().toast(`${planned.length} workflow action${planned.length === 1 ? '' : 's'} completed`, 'info');
     }
   },
 
@@ -1131,5 +1147,75 @@ export const useAppStore = create<AppStore>((set, get) => ({
     });
     get().toast('Expense recorded on project', 'success');
     return id;
+  },
+
+  addPayment: (input) => {
+    const inv = get().invoices[input.invoiceId];
+    if (!inv) {
+      get().toast('Invoice not found.', 'error');
+      return '';
+    }
+    const id = newId('pay');
+    const now = isoNow();
+    const status = input.status ?? 'completed';
+    const row: Payment = {
+      id,
+      invoiceId: input.invoiceId,
+      clientId: inv.clientId,
+      amount: Math.max(0, input.amount),
+      status,
+      method: input.method.trim() || 'ACH',
+      createdAt: now,
+      processorStatus: status === 'completed' ? 'settled' : 'processing',
+      payoutStatus: status === 'completed' ? 'paid_out' : 'scheduled',
+    };
+    set((s) => ({ payments: { ...s.payments, [id]: row } }));
+    get().logActivity({
+      type: 'other',
+      entityKind: 'invoice',
+      entityId: input.invoiceId,
+      title: `Payment · $${row.amount.toLocaleString()} · ${inv.number}`,
+      metadata: { invoiceId: input.invoiceId, clientId: inv.clientId, paymentId: id },
+    });
+    get().toast('Payment recorded on the ledger.', 'success');
+    return id;
+  },
+
+  addContract: (input) => {
+    const id = newId('ct');
+    const now = isoNow();
+    const short = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const row: Contract = {
+      id,
+      clientId: input.clientId,
+      projectId: input.projectId ?? null,
+      title: input.title.trim(),
+      status: 'Draft',
+      value: Math.max(0, input.value),
+      createdAt: now,
+      updatedAt: now,
+      updatedLabel: short,
+      sentDate: null,
+      viewedDate: null,
+      signedDate: null,
+    };
+    set((s) => ({ contracts: { ...s.contracts, [id]: row } }));
+    get().logActivity({
+      type: 'other',
+      entityKind: 'contract',
+      entityId: id,
+      title: `Contract drafted · ${row.title}`,
+      metadata: { clientId: input.clientId, projectId: input.projectId ?? undefined },
+    });
+    get().toast('Contract draft saved.', 'success');
+    return id;
+  },
+
+  addDeadline: (input) => {
+    const id = newId('dl');
+    set((s) => ({
+      deadlines: [...s.deadlines, { id, title: input.title.trim(), when: input.when.trim(), type: input.type }],
+    }));
+    get().toast('Calendar event added.', 'success');
   },
 }));

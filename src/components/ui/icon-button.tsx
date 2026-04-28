@@ -7,10 +7,10 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTM
       ref={ref}
       type={type}
       className={cn(
-        'inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-transparent text-slate-600 transition duration-150',
-        'hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900',
+        'inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-transparent text-gray-600 transition-colors',
+        'hover:border-gray-200 hover:bg-gray-50 hover:text-gray-900',
         'active:scale-[0.98]',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
         'disabled:pointer-events-none disabled:opacity-40',
         className
       )}

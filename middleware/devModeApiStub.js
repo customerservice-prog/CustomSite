@@ -30,9 +30,9 @@ function pathName(req) {
 
 const demoClient = {
   id: DEV_CLIENT_ID,
-  email: 'client@local.dev',
-  full_name: 'Demo Client',
-  company: 'Demo Co',
+  email: 'm.lee@northstar.io',
+  full_name: 'Michael Lee',
+  company: 'Northstar Digital',
   role: 'client',
   created_at: new Date(0).toISOString(),
 };
@@ -40,10 +40,10 @@ const demoClient = {
 const demoProjectRow = {
   id: DEV_PROJECT_ID,
   client_id: DEV_CLIENT_ID,
-  name: 'Demo website (local in-memory)',
+  name: 'Northstar marketing site',
   status: 'development',
   website_type: 'business',
-  internal_notes: 'Created automatically for local dev without a database.',
+  internal_notes: 'Local workspace — matches seeded admin demo data.',
   created_at: new Date().toISOString(),
   launched_at: null,
 };
@@ -272,7 +272,12 @@ function devModeApiStub(req, res, next) {
 
   if (m === 'GET' && siteList.test(p)) {
     const projectId = p.match(siteList)[1];
-    return res.json({ files: devStore.listPaths(projectId) });
+    let listed = devStore.listPaths(projectId);
+    if (!listed.length) {
+      devStore.initStarter(projectId, 'business');
+      listed = devStore.listPaths(projectId);
+    }
+    return res.json({ files: listed });
   }
   if (m === 'GET' && siteFileGet.test(p)) {
     const projectId = p.match(siteFileGet)[1];
@@ -389,7 +394,7 @@ function devModeApiStub(req, res, next) {
         { id: 'dev', label: 'Local dev (no Supabase)', status: 'done', detail: 'Deploy API is a stub' },
       ],
       publicUrl: 'https://dev-preview.example.com',
-      message: 'Connect Supabase and set RAILWAY_API_TOKEN for full deploy pipeline.',
+      message: 'Local preview bundle ready. Add Railway credentials in production for live deploys.',
     });
   }
 

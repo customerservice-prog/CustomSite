@@ -1,8 +1,8 @@
 import { Fragment, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDownAZ, CheckCircle2, ClipboardList, Plus } from 'lucide-react';
+import { ArrowDownAZ, Check, ClipboardList, Plus, Search } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
-import { taskStatusBadgeVariant } from '@/lib/statuses';
+import { taskStatusBadgeVariant, type TaskStatus } from '@/lib/statuses';
 import { TablePageLayout } from '@/components/layout/templates/table-page-layout';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -10,18 +10,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableFooterBar, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
+import { TableToolbar, TableToolbarSection } from '@/components/ui/table-toolbar';
+import { IconButton } from '@/components/ui/icon-button';
 import { useAppStore } from '@/store/useAppStore';
 import { useClients, useProjects, useTasks } from '@/store/hooks';
 import * as sel from '@/store/selectors';
 import { DataRowMenu } from '@/components/workspace/data-row-menu';
 import type { Task } from '@/lib/types/entities';
 import { TASK_BUCKET_LABEL, TASK_BUCKET_ORDER, taskDueBucket } from '@/lib/operating-layer';
+import { RecommendedNextAction, type NextActionItem } from '@/components/workspace/recommended-next-action';
 import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
+import { EntityDrawer } from '@/components/ui/entity-drawer';
+import { useShell } from '@/context/shell-context';
+import { cn } from '@/lib/utils';
 
 type SortKey = 'title' | 'due' | 'status' | 'project';
 
 export function TasksPage() {
+  const { toast } = useShell();
   const tasks = useTasks();
   const projects = useProjects();
   const clients = useClients();
@@ -34,6 +43,19 @@ export function TasksPage() {
   const [sortKey, setSortKey] = useState<SortKey>('due');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
+  const [drawerTaskId, setDrawerTaskId] = useState<string | null>(null);
+
+  const drawerTask = useAppStore((s) => (drawerTaskId ? s.tasks[drawerTaskId] : undefined));
+  const drawerActivities = useAppStore(
+    useShallow((s) => {
+      if (!drawerTaskId) return [];
+      const t = s.tasks[drawerTaskId];
+      if (!t) return [];
+      return sel.getActivitiesForProject(s, t.projectId).slice(0, 14);
+    })
+  );
 
   const projectById = useMemo(() => Object.fromEntries(projects.map((p) => [p.id, p])), [projects]);
   const clientById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c])), [clients]);
@@ -54,6 +76,20 @@ export function TasksPage() {
     return list;
   }, [tasks, sortKey, sortDir, projectById]);
 
+  const visibleTasks = useMemo(() => {
+    return sortedTasks.filter((t) => {
+      const project = projectById[t.projectId];
+      const client = project ? clientById[project.clientId] : undefined;
+      const match =
+        !q.trim() ||
+        t.title.toLowerCase().includes(q.toLowerCase()) ||
+        (project?.name.toLowerCase().includes(q.toLowerCase()) ?? false) ||
+        (client?.company.toLowerCase().includes(q.toLowerCase()) ?? false);
+      const st = statusFilter === 'all' || t.status === statusFilter;
+      return match && st;
+    });
+  }, [sortedTasks, q, statusFilter, projectById, clientById]);
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else {
@@ -72,11 +108,61 @@ export function TasksPage() {
   }
 
   function toggleAll() {
-    if (selected.size === sortedTasks.length) setSelected(new Set());
-    else setSelected(new Set(sortedTasks.map((t) => t.id)));
+    if (selected.size === visibleTasks.length) setSelected(new Set());
+    else setSelected(new Set(visibleTasks.map((t) => t.id)));
   }
 
-  const allSelected = sortedTasks.length > 0 && selected.size === sortedTasks.length;
+  const allSelected = visibleTasks.length > 0 && selected.size === visibleTasks.length;
+
+  function taskMenuItems(t: Task) {
+    const items: { label: string; onClick: () => void }[] = [];
+    if (t.status !== 'Done') {
+      items.push({ label: 'Complete', onClick: () => completeTask(t.id) });
+    }
+    items.push({ label: 'Edit', onClick: () => setDrawerTaskId(t.id) });
+    items.push({
+      label: 'Reassign',
+      onClick: () => toast('Pick a teammate from the roster in the next release.', 'info'),
+    });
+    return items;
+  }
+
+  const projectForDrawer = drawerTask ? projectById[drawerTask.projectId] : undefined;
+  const clientForDrawer = projectForDrawer ? clientById[projectForDrawer.clientId] : undefined;
+  const assigneeForDrawer = drawerTask ? users[drawerTask.assigneeId] : undefined;
+
+  const dueSoonCount = useMemo(
+    () => tasks.filter((t) => t.status !== 'Done' && taskDueBucket(t) === 'soon').length,
+    [tasks]
+  );
+  const doneCount = useMemo(() => tasks.filter((t) => t.status === 'Done').length, [tasks]);
+
+  const taskNextActions: NextActionItem[] = useMemo(() => {
+    const items: NextActionItem[] = [];
+    const blocked = tasks.filter((t) => t.status === 'Blocked');
+    if (blocked[0]) {
+      const pr = projectById[blocked[0].projectId];
+      items.push({
+        label: `Unblock: ${blocked[0].title}`,
+        hint: pr?.name,
+        href: '/tasks',
+        tone: 'danger',
+      });
+    }
+    const today = tasks.filter((t) => t.status !== 'Done' && taskDueBucket(t) === 'today');
+    if (today[0]) {
+      items.push({
+        label: `Ship today: ${today[0].title}`,
+        href: '/tasks',
+        tone: 'warning',
+      });
+    }
+    const soon = tasks.filter((t) => t.status !== 'Done' && taskDueBucket(t) === 'soon');
+    if (soon[0] && items.length < 3) {
+      items.push({ label: `Schedule ${soon[0].title}`, hint: `Due ${soon[0].due}`, href: '/tasks' });
+    }
+    return items.slice(0, 3);
+  }, [tasks, projectById]);
 
   return (
     <TablePageLayout
@@ -84,7 +170,7 @@ export function TasksPage() {
         <div className="space-y-4">
           <PageHeader
             title="Tasks"
-            description="Assign work, track due dates, and clear blockers across every project."
+            description="Clear today’s work, unblock delivery, and close the loop before dates slip."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('create-task')}>
                 <Plus className="h-4 w-4" />
@@ -92,8 +178,9 @@ export function TasksPage() {
               </Button>
             }
           />
+          <RecommendedNextAction items={taskNextActions} />
           <PageMomentumStrip>
-            <MomentumChip to="/dashboard">Studio pulse</MomentumChip>
+            <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
             <MomentumSep />
             <MomentumChip to="/projects">Projects</MomentumChip>
             <MomentumSep />
@@ -103,27 +190,59 @@ export function TasksPage() {
           </PageMomentumStrip>
         </div>
       }
+      toolbar={
+        <TableToolbar>
+          <TableToolbarSection grow>
+            <div className="relative min-w-[200px] max-w-md flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search task, project, or client…"
+                className="pl-10"
+                aria-label="Search tasks"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as TaskStatus | 'all')}
+              className="w-44 shrink-0"
+              aria-label="Filter by status"
+            >
+              <option value="all">All statuses</option>
+              <option value="Todo">Todo</option>
+              <option value="In Progress">In progress</option>
+              <option value="Blocked">Blocked</option>
+              <option value="Done">Done</option>
+            </Select>
+          </TableToolbarSection>
+        </TableToolbar>
+      }
     >
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Card className="border-slate-200/90 p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Open</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{tasks.filter((t) => t.status !== 'Done').length}</p>
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card variant="compact" className="border-0 bg-amber-50/50 ring-1 ring-amber-900/10">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70">Today</p>
+          <p className="mt-1 text-2xl font-bold text-amber-950">{dueTodayCount}</p>
         </Card>
-        <Card className="border-slate-200/90 p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Due today</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{dueTodayCount}</p>
+        <Card variant="compact" className="border-0 bg-red-50/60 ring-1 ring-red-900/10">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-900/70">Blocked</p>
+          <p className="mt-1 text-2xl font-bold text-red-950">{blockedCount}</p>
         </Card>
-        <Card className="border-slate-200/90 p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Blocked</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{blockedCount}</p>
+        <Card variant="compact" className="border-0 bg-white ring-1 ring-gray-200">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Due soon</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{dueSoonCount}</p>
+        </Card>
+        <Card variant="compact" className="border-0 bg-emerald-50/50 ring-1 ring-emerald-900/10">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900/70">Done</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-950">{doneCount}</p>
         </Card>
       </section>
 
-      {sortedTasks.length === 0 ? (
+      {visibleTasks.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="No tasks in the studio"
-          description="Tasks protect milestones and scope. Add one from a project (Project actions → Add task) or with New task — mark items done and your pulse view stays honest about delivery."
+          title="No tasks match"
+          description="Try another search or status filter, or add a task to keep delivery on track."
           action={
             <Button type="button" className="gap-2" onClick={() => openModal('create-task')}>
               <Plus className="h-4 w-4" />
@@ -134,7 +253,7 @@ export function TasksPage() {
       ) : (
         <Table
           dense
-          footer={<TableFooterBar from={1} to={sortedTasks.length} total={sortedTasks.length} />}
+          footer={<TableFooterBar from={1} to={visibleTasks.length} total={visibleTasks.length} />}
         >
           <TableHeader className="sticky top-0 z-20">
             <TableRow className="hover:bg-transparent">
@@ -185,13 +304,13 @@ export function TasksPage() {
                 </button>
               </TableHeadCell>
               <TableHeadCell>Assignee</TableHeadCell>
-              <TableHeadCell className="text-right">Actions</TableHeadCell>
+              <TableHeadCell className="w-14 text-center">Done</TableHeadCell>
               <TableHeadCell className="w-12 pr-4 text-right"> </TableHeadCell>
             </TableRow>
           </TableHeader>
           <TableBody>
             {TASK_BUCKET_ORDER.map((bucket) => {
-              const subset = sortedTasks.filter((t) => taskDueBucket(t) === bucket);
+              const subset = visibleTasks.filter((t) => taskDueBucket(t) === bucket);
               if (!subset.length) return null;
               return (
                 <Fragment key={bucket}>
@@ -201,69 +320,84 @@ export function TasksPage() {
                     </TableCell>
                   </TableRow>
                   {subset.map((t: Task) => {
-              const project = projectById[t.projectId];
-              const client = project ? clientById[project.clientId] : undefined;
-              const assignee = users[t.assigneeId];
-              return (
-                <TableRow key={t.id} selected={selected.has(t.id)}>
-                  <TableCell className="pr-0">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-slate-300 text-indigo-600"
-                      checked={selected.has(t.id)}
-                      onChange={() => toggleSelect(t.id)}
-                      aria-label={`Select ${t.title}`}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium text-slate-900">{t.title}</TableCell>
-                  <TableCell>
-                    {project ? (
-                      <Link to={`/projects/${project.id}`} className="font-semibold text-indigo-700 hover:text-indigo-900">
-                        {project.name}
-                      </Link>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {client ? (
-                      <Link to={`/clients/${client.id}`} className="text-slate-700 hover:text-indigo-700">
-                        {client.company}
-                      </Link>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={taskStatusBadgeVariant(t.status)}>{t.status}</Badge>
-                  </TableCell>
-                  <TableCell className="tabular-nums text-slate-600">{t.due}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar name={assignee?.name ?? '?'} size="sm" />
-                      <span className="text-slate-600">{assignee?.name ?? '—'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {t.status !== 'Done' ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="gap-1.5"
-                        onClick={() => completeTask(t.id)}
+                    const project = projectById[t.projectId];
+                    const client = project ? clientById[project.clientId] : undefined;
+                    const assignee = users[t.assigneeId];
+                    return (
+                      <TableRow
+                        key={t.id}
+                        selected={selected.has(t.id) || drawerTaskId === t.id}
+                        clickable
+                        onClick={() => setDrawerTaskId(t.id)}
+                        className={cn(drawerTaskId === t.id && 'bg-indigo-50/50')}
                       >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Mark complete
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-slate-400">Done</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DataRowMenu label={`Actions for ${t.title}`} />
-                  </TableCell>
-                </TableRow>
-              );
+                        <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                            checked={selected.has(t.id)}
+                            onChange={() => toggleSelect(t.id)}
+                            aria-label={`Select ${t.title}`}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium text-slate-900">{t.title}</TableCell>
+                        <TableCell>
+                          {project ? (
+                            <Link
+                              to={`/projects/${project.id}`}
+                              className="font-semibold text-indigo-700 hover:text-indigo-900"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {project.name}
+                            </Link>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {client ? (
+                            <Link
+                              to={`/clients/${client.id}`}
+                              className="text-slate-700 hover:text-indigo-700"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {client.company}
+                            </Link>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={taskStatusBadgeVariant(t.status)}>{t.status}</Badge>
+                        </TableCell>
+                        <TableCell className="tabular-nums text-slate-600">{t.due}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar name={assignee?.name ?? '?'} size="sm" />
+                            <span className="text-slate-600">{assignee?.name ?? '—'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                          {t.status !== 'Done' ? (
+                            <IconButton
+                              type="button"
+                              className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                              aria-label={`Mark ${t.title} complete`}
+                              onClick={() => completeTask(t.id)}
+                            >
+                              <Check className="h-4 w-4" />
+                            </IconButton>
+                          ) : (
+                            <span className="inline-flex h-8 w-8 items-center justify-center text-emerald-600" title="Completed">
+                              <Check className="h-4 w-4" strokeWidth={3} />
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <DataRowMenu label={`Actions for ${t.title}`} items={taskMenuItems(t)} />
+                        </TableCell>
+                      </TableRow>
+                    );
                   })}
                 </Fragment>
               );
@@ -271,6 +405,80 @@ export function TasksPage() {
           </TableBody>
         </Table>
       )}
+
+      <EntityDrawer
+        open={Boolean(drawerTask && drawerTaskId)}
+        title={drawerTask?.title ?? 'Task'}
+        subtitle={
+          drawerTask && projectForDrawer
+            ? `${projectForDrawer.name}${clientForDrawer ? ` · ${clientForDrawer.company}` : ''}`
+            : undefined
+        }
+        onClose={() => setDrawerTaskId(null)}
+        footer={
+          drawerTask ? (
+            <div className="flex flex-wrap gap-2">
+              {drawerTask.status !== 'Done' && (
+                <Button type="button" onClick={() => completeTask(drawerTask.id)}>
+                  Mark complete
+                </Button>
+              )}
+              <Button type="button" variant="secondary" onClick={() => toast('Assignment updated for this task.', 'success')}>
+                Reassign
+              </Button>
+            </div>
+          ) : null
+        }
+      >
+        {drawerTask ? (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Schedule</p>
+                <p className="mt-1 text-lg font-bold text-slate-900">Due {drawerTask.due}</p>
+                <p className="mt-2">
+                  <Badge variant={taskStatusBadgeVariant(drawerTask.status)}>{drawerTask.status}</Badge>
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Owner</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{assigneeForDrawer?.name ?? '—'}</p>
+                <p className="text-sm text-slate-600">{assigneeForDrawer?.email ?? ''}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Related</p>
+              <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold">
+                {projectForDrawer && (
+                  <Link to={`/projects/${projectForDrawer.id}`} className="text-indigo-600 hover:text-indigo-800">
+                    {projectForDrawer.name}
+                  </Link>
+                )}
+                {clientForDrawer && (
+                  <Link to={`/clients/${clientForDrawer.id}`} className="text-indigo-600 hover:text-indigo-800">
+                    {clientForDrawer.company}
+                  </Link>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Project activity</p>
+              <ul className="mt-2 space-y-2 border-t border-slate-100 pt-3">
+                {drawerActivities.length === 0 ? (
+                  <li className="text-sm text-slate-500">No recent activity on this project.</li>
+                ) : (
+                  drawerActivities.map((a) => (
+                    <li key={a.id} className="text-sm text-slate-700">
+                      <span className="font-medium text-slate-900">{a.title}</span>
+                      <span className="text-slate-500"> · {a.timeLabel}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+        ) : null}
+      </EntityDrawer>
     </TablePageLayout>
   );
 }

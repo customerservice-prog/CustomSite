@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { History } from 'lucide-react';
 import { TablePageLayout } from '@/components/layout/templates/table-page-layout';
@@ -10,6 +11,28 @@ import { useActivitiesFeed } from '@/store/hooks';
 import * as sel from '@/store/selectors';
 import type { Activity } from '@/lib/types/entities';
 import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
+import { cn } from '@/lib/utils';
+
+const ACTIVITY_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'messages', label: 'Messages' },
+  { id: 'invoices', label: 'Invoices' },
+  { id: 'contracts', label: 'Contracts' },
+  { id: 'files', label: 'Files' },
+  { id: 'projects', label: 'Projects' },
+  { id: 'system', label: 'System' },
+] as const;
+
+function matchesActivityFilter(a: Activity, filter: (typeof ACTIVITY_FILTERS)[number]['id']) {
+  if (filter === 'all') return true;
+  if (filter === 'messages') return a.type === 'message_received';
+  if (filter === 'invoices') return a.type.startsWith('invoice_');
+  if (filter === 'contracts') return a.type === 'contract_signed';
+  if (filter === 'files') return a.type === 'file_uploaded';
+  if (filter === 'projects') return a.type.startsWith('project');
+  if (filter === 'system') return a.type === 'lead_created' || a.type === 'lead_stage_changed' || a.type === 'lead_won' || a.type === 'other';
+  return true;
+}
 
 function ActivityRow({ activity: a }: { activity: Activity }) {
   const href = useAppStore((s) => sel.getActivityHref(s, a));
@@ -37,6 +60,12 @@ function ActivityRow({ activity: a }: { activity: Activity }) {
 
 export function ActivityPage() {
   const activities = useActivitiesFeed();
+  const [filter, setFilter] = useState<(typeof ACTIVITY_FILTERS)[number]['id']>('all');
+
+  const filtered = useMemo(
+    () => activities.filter((a) => matchesActivityFilter(a, filter)),
+    [activities, filter]
+  );
 
   return (
     <TablePageLayout
@@ -44,7 +73,7 @@ export function ActivityPage() {
         <div className="space-y-4">
           <PageHeader
             title="Activity"
-            description="Read-only trail — use it to verify what happened, then go back to Pulse to decide what happens next."
+            description="Operational trail across clients, billing, and delivery — filter to focus, then open related records."
             actions={
               <Link to="/dashboard" className={buttonClassName('secondary')}>
                 Studio Pulse
@@ -63,6 +92,24 @@ export function ActivityPage() {
         </div>
       }
     >
+      <div className="mb-4 flex flex-wrap gap-2">
+        {ACTIVITY_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setFilter(f.id)}
+            className={cn(
+              'rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+              filter === f.id
+                ? 'border-indigo-200 bg-indigo-600 text-white shadow-sm'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {activities.length === 0 ? (
         <EmptyState
           icon={History}
@@ -74,10 +121,21 @@ export function ActivityPage() {
             </Link>
           }
         />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={History}
+          title="Nothing in this filter"
+          description="Try another category or clear filters to see the full feed."
+          action={
+            <button type="button" className={buttonClassName('secondary')} onClick={() => setFilter('all')}>
+              Show all activity
+            </button>
+          }
+        />
       ) : (
         <Card className="divide-y divide-slate-100 p-0 shadow-sm ring-1 ring-slate-900/[0.04]">
           <ul className="divide-y divide-slate-100">
-            {activities.map((a) => (
+            {filtered.map((a) => (
               <ActivityRow key={a.id} activity={a} />
             ))}
           </ul>

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useAppStore } from '@/store/useAppStore';
 
-/** Legacy bridge: UI reads/writes the Zustand app store. Toast + layout chrome stay ergonomic for existing screens. */
+/** Shell chrome: toasts, mobile nav, and layout state alongside the workspace store. */
 export function ShellProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }

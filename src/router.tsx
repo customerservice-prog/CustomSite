@@ -1,6 +1,6 @@
 import { createHashRouter, Navigate } from 'react-router-dom';
 import { ShellProvider } from '@/context/shell-context';
-import { AppShellLayout } from '@/components/layout/app-shell';
+import { AppShell } from '@/components/layout/app-shell';
 import { DashboardPage } from '@/pages/dashboard-page';
 import { PipelinePage } from '@/pages/pipeline-page';
 import { ClientsPage } from '@/pages/clients-page';
@@ -30,7 +30,7 @@ export const router = createHashRouter([
     path: '/',
     element: (
       <ShellProvider>
-        <AppShellLayout />
+        <AppShell />
       </ShellProvider>
     ),
     children: [

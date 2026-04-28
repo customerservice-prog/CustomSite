@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useShell } from '@/context/shell-context';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useAutomatedInsights,
   useClients,
@@ -17,7 +17,20 @@ import {
   useRevenueHealth,
 } from '@/store/hooks';
 
-function BarRow({ label, value, max, tone = 'indigo' }: { label: string; value: number; max: number; tone?: 'indigo' | 'emerald' | 'amber' }) {
+function BarRow({
+  label,
+  value,
+  max,
+  tone = 'indigo',
+  valueDisplay,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  tone?: 'indigo' | 'emerald' | 'amber';
+  /** When set, shown instead of raw `value` (e.g. formatted currency). */
+  valueDisplay?: string;
+}) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   const bar =
     tone === 'emerald'
@@ -29,7 +42,7 @@ function BarRow({ label, value, max, tone = 'indigo' }: { label: string; value: 
     <div>
       <div className="mb-1 flex justify-between text-xs font-semibold text-slate-600">
         <span>{label}</span>
-        <span className="tabular-nums text-slate-900">{value}</span>
+        <span className="tabular-nums text-slate-900">{valueDisplay ?? value}</span>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-900/[0.04]">
         <div className={`h-full rounded-full ${bar} transition-all`} style={{ width: `${pct}%` }} />
@@ -39,6 +52,7 @@ function BarRow({ label, value, max, tone = 'indigo' }: { label: string; value: 
 }
 
 export function ReportsPage() {
+  const [range, setRange] = useState<'30d' | '90d' | 'ytd'>('90d');
   const m = useDashboardMetrics();
   const pipelineCols = usePipelineColumnStats();
   const clients = useClients();
@@ -52,10 +66,29 @@ export function ReportsPage() {
   const revenueByMonth = useMemo(() => {
     const paid = invoices.filter((i) => i.status === 'Paid');
     const total = paid.reduce((s, i) => s + i.amount, 0);
+    const collected = Math.round(total * 0.35);
+    const ar = Math.round(m.outstanding);
+    const pipe = Math.round(m.pipelineValue);
+    const arMax = Math.max(ar, m.paidRevenue, 1);
     return [
-      { label: 'Collected (rolling)', value: Math.round(total * 0.35), max: total || 1 },
-      { label: 'Outstanding AR', value: Math.round(m.outstanding), max: Math.max(m.outstanding, m.paidRevenue, 1) },
-      { label: 'Pipeline (open deals)', value: Math.round(m.pipelineValue / 1000), max: Math.max(50, Math.round(m.pipelineValue / 1000)) },
+      {
+        label: 'Collected (rolling)',
+        value: collected,
+        max: total || 1,
+        valueDisplay: `$${collected.toLocaleString()}`,
+      },
+      {
+        label: 'Outstanding AR',
+        value: ar,
+        max: arMax,
+        valueDisplay: `$${ar.toLocaleString()}`,
+      },
+      {
+        label: 'Open pipeline (weighted)',
+        value: pipe,
+        max: Math.max(pipe, m.paidRevenue, 1),
+        valueDisplay: `$${pipe.toLocaleString()}`,
+      },
     ];
   }, [invoices, m.outstanding, m.paidRevenue, m.pipelineValue]);
 
@@ -86,10 +119,11 @@ export function ReportsPage() {
     const won = leads.filter((l) => l.stage === 'Won').length;
     const lost = leads.filter((l) => l.stage === 'Lost').length;
     const open = leads.length - won - lost;
+    const max = leads.length || 1;
     return [
-      { label: 'Open', value: open, max: leads.length || 1 },
-      { label: 'Won', value: won, max: leads.length || 1 },
-      { label: 'Lost', value: lost, max: leads.length || 1 },
+      { label: 'Open', value: open, max, valueDisplay: `${open} leads` },
+      { label: 'Won', value: won, max, valueDisplay: `${won} leads` },
+      { label: 'Lost', value: lost, max, valueDisplay: `${lost} leads` },
     ];
   }, [leads]);
 
@@ -98,9 +132,23 @@ export function ReportsPage() {
       header={
         <PageHeader
           title="Reports"
-          description="Executive snapshots for revenue, pipeline health, utilization, and receivables."
+          description="See revenue, risk, pipeline, and delivery health at a glance."
           actions={
             <>
+              <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                {(['30d', '90d', 'ytd'] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setRange(k)}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                      range === k ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {k === '30d' ? '30d' : k === '90d' ? '90d' : 'YTD'}
+                  </button>
+                ))}
+              </div>
               <Button type="button" variant="secondary" className="gap-2" onClick={() => toast('Choose CSV or PDF in the export dialog.', 'info')}>
                 <Download className="h-4 w-4" />
                 Export
@@ -117,9 +165,9 @@ export function ReportsPage() {
       <Card className="mb-4 p-5 shadow-md ring-1 ring-slate-900/[0.05]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-bold text-slate-900">What the numbers mean</h2>
+            <h2 className="text-sm font-bold text-slate-900">Executive snapshot</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Narrative summary — use it alongside the charts below to explain movement to clients or partners.
+              Key signals for revenue, delivery, and risk — window <span className="font-semibold text-slate-700">{range}</span>.
             </p>
           </div>
           <span
@@ -151,7 +199,7 @@ export function ReportsPage() {
           <p className="mt-1 text-xs text-slate-500">Cash collected vs. open balances</p>
           <div className="mt-5 space-y-4">
             {revenueByMonth.map((r) => (
-              <BarRow key={r.label} label={r.label} value={r.value} max={r.max} tone="emerald" />
+              <BarRow key={r.label} label={r.label} value={r.value} max={r.max} tone="emerald" valueDisplay={r.valueDisplay} />
             ))}
           </div>
         </Card>
@@ -161,15 +209,25 @@ export function ReportsPage() {
           <p className="mt-1 text-xs text-slate-500">Outcome mix across active leads</p>
           <div className="mt-5 space-y-4">
             {conversion.map((r) => (
-              <BarRow key={r.label} label={r.label} value={r.value} max={r.max} />
+              <BarRow key={r.label} label={r.label} value={r.value} max={r.max} valueDisplay={r.valueDisplay} />
             ))}
           </div>
           <div className="mt-6 border-t border-slate-100 pt-4">
             <p className="text-[11px] font-bold uppercase text-slate-400">By stage</p>
             <div className="mt-3 space-y-3">
-              {pipelineCols.slice(0, 5).map((c) => (
-                <BarRow key={c.stage} label={c.stage} value={c.value / 1000} max={Math.max(1, m.pipelineValue / 1000)} tone="amber" />
-              ))}
+              {pipelineCols.slice(0, 5).map((c) => {
+                const maxV = Math.max(1, ...pipelineCols.map((x) => x.value));
+                return (
+                  <BarRow
+                    key={c.stage}
+                    label={`${c.stage} · ${c.count} open`}
+                    value={c.value}
+                    max={maxV}
+                    valueDisplay={`$${c.value.toLocaleString()}`}
+                    tone="amber"
+                  />
+                );
+              })}
             </div>
           </div>
         </Card>
