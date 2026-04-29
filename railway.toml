@@ -1,9 +1,13 @@
-# Railway config — overrides dashboard start command on deploy
-# https://docs.railway.app/guides/config-as-code
+# Railway — Config as Code (https://docs.railway.com/guides/config-as-code)
+#
+# Use the repo Dockerfile only. `dist-admin/` is gitignored and is produced in the
+# image builder stage (`npm run build:admin`); Nixpacks-only deploys can ship without it.
+#
+# Dashboard UI: open /admin.html on your Railway URL (not only /).
 
 [build]
-builder = "nixpacks"
-buildCommand = "npm run build:admin"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "node server.js"
