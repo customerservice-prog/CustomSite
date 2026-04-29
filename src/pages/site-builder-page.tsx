@@ -57,6 +57,7 @@ type SiteSeedOutcome = { ok: true } | { ok: false; error: string; code?: string 
 function isAuthSessionFailure(error: string, code?: string): boolean {
   if (code === 'INVALID_TOKEN' || code === 'NO_TOKEN') return true;
   if (/invalid or expired session/i.test(error)) return true;
+  if (/not signed in/i.test(error)) return true;
   if (/^unauthorized$/i.test(error.trim())) return true;
   return false;
 }
@@ -64,7 +65,7 @@ function isAuthSessionFailure(error: string, code?: string): boolean {
 /** User-facing copy for start-from-template / blank-code failures. */
 function formatSiteSeedModalMessage(kind: 'template' | 'blank', result: { error: string; code?: string }): string {
   if (isAuthSessionFailure(result.error, result.code)) {
-    return `${result.error} Sign in again from your agency login on the same host as this app (for example open client-portal with the agency query param your deployment uses), then return to Site builder. Your saved session token may have expired.`;
+    return `${result.error} Sign in again from your agency login on the same host as this app (for example your hosted client-portal URL with the agency flag your team uses), then return to Site builder. Your session token may have expired.`;
   }
   const prefix = kind === 'template' ? 'Template start failed.' : 'Blank start failed.';
   return `${prefix} ${result.error} Create the project in Admin (or add it in Supabase) if it only exists in the local demo.`;
@@ -1529,9 +1530,7 @@ export function SiteBuilderPage() {
               setNewSiteChoiceMessage(null);
               const result = await seedFromTemplates();
               if (!result.ok) {
-                setNewSiteChoiceMessage(
-                  `Template start failed. ${result.error} Create the project in Admin (or add it in Supabase) if it only exists in the local demo.`
-                );
+                setNewSiteChoiceMessage(formatSiteSeedModalMessage('template', result));
               }
             }}
           >
