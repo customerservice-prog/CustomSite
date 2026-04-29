@@ -1,4 +1,4 @@
-import { Outlet, useMatches } from 'react-router-dom';
+import { Outlet, useMatch, useMatches } from 'react-router-dom';
 import { TopHeader } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import { CommandMenu } from '@/components/ui/command-menu';
@@ -15,6 +15,21 @@ export { MobileNavTrigger } from '@/components/layout/sidebar';
 export function AppShell() {
   const matches = useMatches();
   const crumbs = crumbsFromMatches(matches);
+  const siteBuilderFull = useMatch({ path: '/projects/:projectId/site', end: true });
+
+  if (siteBuilderFull) {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden bg-[#f4f5f8] text-gray-900">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <Outlet />
+        </main>
+        <ToastStack />
+        <CommandMenu />
+        <CreateEntityModals />
+        <WorkspaceModals />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-gray-50 to-slate-100 text-gray-900">

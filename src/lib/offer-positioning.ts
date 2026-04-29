@@ -94,8 +94,8 @@ export const OFFER_PACKAGES: OfferPackageTier[] = [
   },
 ];
 
-/** Nav + buttons — avoid “builder” as the product. */
-export const CONVERSION_WORKSPACE_LABEL = 'Conversion workspace';
+/** Nav + buttons — primary label for the HTML / preview workspace. */
+export const CONVERSION_WORKSPACE_LABEL = 'Site builder';
 
 /** Breadcrumb / page title when route is site path. */
-export const CONVERSION_WORKSPACE_PAGE_TITLE = 'Conversion workspace';
+export const CONVERSION_WORKSPACE_PAGE_TITLE = 'Site builder';

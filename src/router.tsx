@@ -12,6 +12,7 @@ import { InvoiceDetailPage } from '@/pages/invoice-detail-page';
 import { MessagesPage } from '@/pages/messages-page';
 import { SettingsPage } from '@/pages/settings-page';
 import { SiteBuilderPage } from '@/pages/site-builder-page';
+import { SiteBuilderRedirectPage } from '@/pages/site-builder-redirect-page';
 import { ClientPortalPage } from '@/pages/client-portal-page';
 import { TasksPage } from '@/pages/tasks-page';
 import { ActivityPage } from '@/pages/activity-page';
@@ -56,7 +57,7 @@ export const router = createHashRouter([
       { path: 'files', element: <FilesPage /> },
       { path: 'activity', element: <ActivityPage /> },
       { path: 'reports', element: <ReportsPage /> },
-      { path: 'site-builder', element: <Navigate to="/projects" replace /> },
+      { path: 'site-builder', element: <SiteBuilderRedirectPage /> },
       { path: 'client-portal', element: <ClientPortalPage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],

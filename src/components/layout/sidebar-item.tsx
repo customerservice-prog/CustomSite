@@ -10,6 +10,9 @@ export function SidebarGroupLabel({ children }: { children: ReactNode }) {
 
 function pathActive(pathname: string, to: string) {
   if (to === '/dashboard') return pathname === '/dashboard' || pathname === '/' || pathname === '';
+  if (to === '/site-builder') {
+    return pathname === '/site-builder' || /^\/projects\/[^/]+\/site\/?$/.test(pathname);
+  }
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 

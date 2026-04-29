@@ -17,7 +17,7 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   files: { title: 'Files', segment: 'files' },
   activity: { title: 'Activity', segment: 'activity' },
   reports: { title: 'Reports', segment: 'reports' },
-  'site-builder': { title: 'Conversion workspace', segment: 'site-builder' },
+  'site-builder': { title: 'Site builder', segment: 'site-builder' },
   'client-portal': { title: 'Client Portal', segment: 'client-portal' },
   settings: { title: 'Settings', segment: 'settings' },
 };

@@ -160,7 +160,7 @@ export function DashboardPage() {
                       </Link>
                       {p.deliveryFocus === 'client_site' ? (
                         <Link to={`/projects/${p.id}/site`} className={buttonClassName('primary', 'h-8 px-3 text-xs')}>
-                          Conversion workspace
+                          Site builder
                         </Link>
                       ) : null}
                     </div>

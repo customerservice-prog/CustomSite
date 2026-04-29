@@ -30,7 +30,7 @@ export function DemoDatasetBanner() {
       <p className="min-w-0 flex-1 text-xs leading-relaxed md:text-[13px]">
         <span className="font-semibold">Demo mode.</span> Clients, projects, and tasks you create here live in this browser session only
         (in-memory). They disappear after a full refresh unless the server is connected to Supabase and you are signed in with a real account.
-        Conversion workspace saves HTML to the server only when the API is reachable (local RAM store when the database is not configured).
+        The site builder saves HTML to the server only when the API is reachable (local RAM store when the database is not configured).
       </p>
       <button
         type="button"

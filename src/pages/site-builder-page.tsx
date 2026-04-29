@@ -5,6 +5,8 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  Layers,
+  LayoutGrid,
   Loader2,
   Maximize2,
   Minimize2,
@@ -165,6 +167,45 @@ function formatDeployedAt(iso: string): string {
   }
 }
 
+type BuilderWorkflowStep = 'page' | 'sections' | 'preview' | 'publish';
+
+function builderGuidance(args: {
+  htmlPagesLen: number;
+  pageName: string;
+  sectionCount: number;
+  dirty: boolean;
+  deployPhase: 'idle' | 'deploying' | 'success' | 'error';
+}): { currentFocus: string; nextStep: string } {
+  if (args.htmlPagesLen === 0) {
+    return {
+      currentFocus: 'This project does not have site pages yet.',
+      nextStep: 'Create a homepage — we will drop in a conversion-ready structure you can reshape with sections.',
+    };
+  }
+  if (args.sectionCount === 0) {
+    return {
+      currentFocus: `You are on “${args.pageName}” with no structured blocks yet.`,
+      nextStep: 'Use Insert section to add hero, trust, bundles, and CTA templates — then watch the preview update.',
+    };
+  }
+  if (args.dirty) {
+    return {
+      currentFocus: 'Changes are only on your screen until you save.',
+      nextStep: 'Save the page so the live preview and publish step use the latest version.',
+    };
+  }
+  if (args.deployPhase === 'success') {
+    return {
+      currentFocus: 'Latest publish completed.',
+      nextStep: 'Share the live link with the client or keep iterating — saves are instant on the preview URL.',
+    };
+  }
+  return {
+    currentFocus: `“${args.pageName}” has ${args.sectionCount} conversion section${args.sectionCount === 1 ? '' : 's'} in the journey.`,
+    nextStep: 'Polish in preview, then publish when the site should go live to staging or production.',
+  };
+}
+
 export function SiteBuilderPage() {
   const { toast } = useShell();
   const navigate = useNavigate();
@@ -224,6 +265,11 @@ export function SiteBuilderPage() {
 
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
+  const [builderStep, setBuilderStep] = useState<BuilderWorkflowStep>('preview');
+
+  const pagesRailRef = useRef<HTMLAsideElement | null>(null);
+  const previewRailRef = useRef<HTMLElement | null>(null);
+  const publishAnchorRef = useRef<HTMLDivElement | null>(null);
 
   const [editorContent, setEditorContent] = useState('');
   const [savedEditorContent, setSavedEditorContent] = useState('');
@@ -255,6 +301,24 @@ export function SiteBuilderPage() {
         : '',
     [activeProject, selectedServerPath, siteArchetype]
   );
+
+  const scrollToBuilderTarget = useCallback((step: BuilderWorkflowStep) => {
+    const prefersReduced =
+      typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const opts: ScrollIntoViewOptions = { behavior: prefersReduced ? 'auto' : 'smooth', block: 'nearest' };
+    if (step === 'page' || step === 'sections') {
+      pagesRailRef.current?.scrollIntoView(opts);
+      if (step === 'sections') {
+        window.requestAnimationFrame(() => document.getElementById('site-builder-sections-anchor')?.scrollIntoView(opts));
+      }
+      return;
+    }
+    if (step === 'preview') {
+      previewRailRef.current?.scrollIntoView(opts);
+      return;
+    }
+    publishAnchorRef.current?.scrollIntoView(opts);
+  }, []);
 
   const loadSiteFiles = useCallback(async (): Promise<boolean> => {
     if (!activeProjectId) return false;
@@ -362,6 +426,18 @@ export function SiteBuilderPage() {
   }, [previewRefreshing, previewNonce]);
 
   const dirty = editorContent !== savedEditorContent;
+
+  const { currentFocus, nextStep } = useMemo(
+    () =>
+      builderGuidance({
+        htmlPagesLen: htmlPages.length,
+        pageName: friendlyPageName(selectedServerPath),
+        sectionCount: pageSections.length,
+        dirty,
+        deployPhase,
+      }),
+    [htmlPages.length, selectedServerPath, pageSections.length, dirty, deployPhase]
+  );
 
   const statusForServerPath = useCallback(
     (path: string): 'draft' | 'published' => pagePub[path] ?? defaultPubForPath(path),
@@ -654,7 +730,7 @@ export function SiteBuilderPage() {
       src={previewSrc ?? undefined}
       srcDoc={previewSrc ? undefined : FALLBACK_PREVIEW_HTML}
       onLoad={() => setPreviewRefreshing(false)}
-      className="h-full min-h-[min(70vh,680px)] w-full bg-white"
+      className="h-full min-h-[min(76vh,720px)] w-full bg-white"
       sandbox="allow-same-origin allow-popups allow-scripts"
     />
   );
@@ -697,7 +773,7 @@ export function SiteBuilderPage() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-[#f4f5f8] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f5f8]">
       <header className="flex shrink-0 flex-wrap items-start justify-between gap-4 bg-white/90 px-5 py-4 backdrop-blur-sm">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -736,12 +812,15 @@ export function SiteBuilderPage() {
             </div>
           ) : null}
           <p className="mt-1 truncate text-sm text-slate-600">{friendlyPageName(selectedServerPath)}</p>
+          <p className="mt-0.5 text-xs leading-snug text-slate-500">
+            We are rebuilding this site for {clientForProject?.company ?? 'your client'} — page → sections → preview → publish.
+          </p>
           <p className="mt-0.5 truncate text-xs text-slate-400">
             {ARCHETYPE_LABELS[siteArchetype]}
             {clientForProject?.company ? ` · ${clientForProject.company}` : ''}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div ref={publishAnchorRef} className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center rounded-full bg-slate-100/95 p-1 ring-1 ring-slate-200/40" title="Preview width">
             {deviceBtn('desktop', Monitor)}
             {deviceBtn('tablet', Tablet)}
@@ -756,7 +835,7 @@ export function SiteBuilderPage() {
               disabled={saving || !dirty || editorLoading || htmlPages.length === 0}
               onClick={() => void saveFile()}
             >
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? 'Saving…' : 'Save page for preview'}
             </Button>
             {savedAtMs != null && (
               <span className="text-xs text-slate-400 tabular-nums">Saved {savedAgoLabel || formatRelativeSaved(savedAtMs)}</span>
@@ -769,7 +848,7 @@ export function SiteBuilderPage() {
             onClick={() => void runPublish()}
           >
             {deployLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" strokeWidth={1.75} />}
-            {deployLoading ? 'Deploying…' : 'Publish'}
+            {deployLoading ? 'Publishing…' : 'Publish site'}
           </Button>
           {liveSiteHref ? (
             <a
@@ -786,6 +865,53 @@ export function SiteBuilderPage() {
           )}
         </div>
       </header>
+
+      <div className="shrink-0 border-b border-slate-200/70 bg-white px-4 py-3 sm:px-5">
+        <nav aria-label="Website build workflow" className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                ['page', 'Page', LayoutGrid],
+                ['sections', 'Sections', Layers],
+                ['preview', 'Preview', Monitor],
+                ['publish', 'Publish', Rocket],
+              ] as const
+            ).map(([id, label, Icon], i) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setBuilderStep(id);
+                  scrollToBuilderTarget(id);
+                }}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-all',
+                  builderStep === id
+                    ? 'bg-violet-700 text-white shadow-md shadow-violet-900/20'
+                    : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200/80 hover:bg-slate-200/80 hover:text-slate-900'
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums',
+                    builderStep === id ? 'bg-white/20 text-white' : 'bg-white text-slate-500'
+                  )}
+                >
+                  {i + 1}
+                </span>
+                <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={1.75} aria-hidden />
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="min-w-0 flex-1 rounded-xl border border-slate-100 bg-gradient-to-br from-slate-50 to-violet-50/30 px-3 py-2.5 lg:max-w-xl">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Current focus</p>
+            <p className="mt-0.5 text-xs font-medium leading-snug text-slate-900">{currentFocus}</p>
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-violet-700">Next step</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{nextStep}</p>
+          </div>
+        </nav>
+      </div>
 
       <div className="border-b border-violet-100/70 bg-gradient-to-r from-violet-50/95 via-white to-indigo-50/50 px-5 py-3">
         <p className="text-xs font-semibold leading-snug text-slate-900">{OFFER_STATEMENT}</p>
@@ -994,7 +1120,7 @@ export function SiteBuilderPage() {
                           });
                         }}
                       >
-                        Edit HTML
+                        Open HTML source
                       </DropdownItem>
                       <DropdownItem onClick={() => openRenameFor(f.path)}>Rename</DropdownItem>
                       <DropdownItem destructive onClick={() => setDeleteConfirmPath(f.path)}>
@@ -1009,11 +1135,12 @@ export function SiteBuilderPage() {
               );
             })}
             {htmlPages.length > 0 && (
-              <div className="mt-3 border-t border-slate-200/50 pt-3">
-                <h3 className="px-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">On this page</h3>
+              <div id="site-builder-sections-anchor" className="mt-3 border-t border-slate-200/50 pt-3 scroll-mt-24">
+                <h3 className="px-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Sections on this page</h3>
                 {pageSections.length === 0 ? (
                   <p className="mt-2 px-1 text-[11px] leading-relaxed text-slate-500">
-                    Use <span className="font-medium text-slate-700">Insert section</span> to add blocks. Outline appears here.
+                    Tap <span className="font-medium text-slate-800">Insert section</span> for hero, trust, bundles, and CTA templates — your
+                    outline builds here.
                   </p>
                 ) : (
                   <ul className="mt-1.5 space-y-0.5">
@@ -1055,9 +1182,15 @@ export function SiteBuilderPage() {
           </div>
         </aside>
 
-        <main className="order-3 flex min-h-[min(55vh,520px)] min-w-0 flex-[1.35] flex-col overflow-hidden rounded-xl bg-[#e8e9ef] max-lg:min-h-[45vh] lg:order-none lg:min-h-0 lg:min-w-0 lg:rounded-2xl">
+        <main
+          ref={previewRailRef}
+          className="order-2 flex min-h-[min(62vh,560px)] min-w-0 flex-[2.15] flex-col overflow-hidden rounded-xl bg-[#e8e9ef] max-lg:min-h-[min(52vh,480px)] lg:order-none lg:min-h-0 lg:min-w-0 lg:rounded-2xl"
+        >
           <div className="flex shrink-0 items-center justify-between px-4 py-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Preview</span>
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Live preview</span>
+              <p className="mt-0.5 text-[10px] text-slate-500">What your client experiences — make this the source of truth.</p>
+            </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -1076,7 +1209,7 @@ export function SiteBuilderPage() {
                 className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-white/60 hover:text-slate-800"
               >
                 {previewFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                Full screen
+                Focus preview
               </button>
             </div>
           </div>
@@ -1087,7 +1220,7 @@ export function SiteBuilderPage() {
             >
               <div
                 className={cn(
-                  'relative min-h-[min(72vh,640px)] transition-opacity duration-300 ease-out lg:min-h-[min(68vh,720px)]',
+                  'relative min-h-[min(78vh,680px)] transition-opacity duration-300 ease-out lg:min-h-[min(74vh,820px)]',
                   previewRefreshing ? 'opacity-60' : 'opacity-100'
                 )}
               >
@@ -1105,7 +1238,7 @@ export function SiteBuilderPage() {
 
         <section
           id="site-builder-editor-panel"
-          className="order-2 flex min-h-[min(52vh,28rem)] w-full shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/40 max-lg:min-h-[min(50vh,26rem)] lg:order-none lg:min-h-0 lg:w-[min(36vw,440px)] lg:max-w-[480px] lg:min-w-[280px] lg:rounded-2xl lg:shadow-none lg:ring-0"
+          className="order-3 flex min-h-[min(44vh,22rem)] w-full shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/40 max-lg:min-h-[min(42vh,20rem)] lg:order-none lg:min-h-0 lg:w-[min(30vw,360px)] lg:max-w-[400px] lg:min-w-[260px] lg:rounded-2xl lg:shadow-none lg:ring-0"
         >
           <SiteHtmlEditorPanel
             pageLabel={friendlyPageName(selectedServerPath)}

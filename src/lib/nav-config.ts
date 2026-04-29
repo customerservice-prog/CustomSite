@@ -10,6 +10,7 @@ import {
   Files,
   FolderKanban,
   LayoutDashboard,
+  LayoutGrid,
   MessageSquare,
   Receipt,
   Settings,
@@ -39,6 +40,7 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { label: 'Clients', to: '/clients', icon: Users },
       { label: 'Projects', to: '/projects', icon: FolderKanban },
+      { label: 'Site builder', to: '/site-builder', icon: Wand2 },
       { label: 'Tasks', to: '/tasks', icon: CheckSquare },
       { label: 'Calendar', to: '/calendar', icon: CalendarDays },
       { label: 'Files', to: '/files', icon: Files },
@@ -66,7 +68,7 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { label: 'Reports', to: '/reports', icon: BarChart3 },
       { label: 'Client portal', to: '/client-portal', icon: ShieldCheck },
-      { label: 'Conversion workspace', to: '/projects', icon: Wand2 },
+      { label: 'Conversion workspace', to: '/projects', icon: LayoutGrid },
       { label: 'Settings', to: '/settings', icon: Settings },
     ],
   },
