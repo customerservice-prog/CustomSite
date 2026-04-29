@@ -8,6 +8,7 @@ import { WorkspaceModals } from '@/components/system/workspace-modals';
 import { PageContainer } from '@/components/design-system/page-container';
 import { crumbsFromMatches } from '@/lib/breadcrumbs';
 import { DemoDatasetBanner } from '@/components/layout/demo-dataset-banner';
+import { WorkflowGlobalHotkeys } from '@/components/workflow/workflow-global-hotkeys';
 
 export { MobileNavTrigger } from '@/components/layout/sidebar';
 
@@ -17,15 +18,17 @@ export function AppShell() {
   const crumbs = crumbsFromMatches(matches);
   const { pathname } = useLocation();
   const siteBuilderFull = useMatch({ path: '/projects/:projectId/site', end: true });
+  const rbyanBrainFull = useMatch({ path: '/rbyan', end: true });
   const clientPortalExperience = pathname === '/client-portal' || pathname.startsWith('/client-portal/');
 
-  if (siteBuilderFull) {
+  if (siteBuilderFull || rbyanBrainFull) {
     return (
       <div className="flex h-screen flex-col overflow-hidden bg-[#f4f5f8] text-gray-900">
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
           <Outlet />
         </main>
         <ToastStack />
+        <WorkflowGlobalHotkeys />
         <CommandMenu />
         <CreateEntityModals />
         <WorkspaceModals />
@@ -40,6 +43,7 @@ export function AppShell() {
           <Outlet />
         </main>
         <ToastStack />
+        <WorkflowGlobalHotkeys />
         <CommandMenu />
         <CreateEntityModals />
         <WorkspaceModals />
@@ -60,6 +64,7 @@ export function AppShell() {
         </main>
       </div>
       <ToastStack />
+      <WorkflowGlobalHotkeys />
       <CommandMenu />
       <CreateEntityModals />
       <WorkspaceModals />

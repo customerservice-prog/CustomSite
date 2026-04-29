@@ -20,6 +20,28 @@ export function getRefreshToken(): string | null {
   }
 }
 
+/** Keep legacy admin fetch keys in sync with Supabase-js session (auto-refresh updates this session first). */
+export function syncTokensFromSupabaseSession(session: { access_token: string; refresh_token?: string } | null) {
+  if (!session?.access_token) return;
+  try {
+    localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, session.access_token);
+    if (session.refresh_token) {
+      localStorage.setItem(ADMIN_REFRESH_TOKEN_KEY, session.refresh_token);
+    }
+  } catch {
+    /* */
+  }
+}
+
+export function clearAdminTokens() {
+  try {
+    localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_REFRESH_TOKEN_KEY);
+  } catch {
+    /* */
+  }
+}
+
 export function getRailwayCredentials(): { token: string; teamId: string } {
   try {
     return {

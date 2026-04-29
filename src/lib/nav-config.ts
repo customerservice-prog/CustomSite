@@ -15,6 +15,7 @@ import {
   Receipt,
   Settings,
   ShieldCheck,
+  Sparkles,
   Users,
   Wallet,
   Wand2,
@@ -36,36 +37,37 @@ export const studioPulseNavItem: NavItem = {
 
 export const navGroups: { label: string; items: NavItem[] }[] = [
   {
-    label: 'Delivery',
+    label: 'Build & deliver',
     items: [
-      { label: 'Clients', to: '/clients', icon: Users },
       { label: 'Projects', to: '/projects', icon: FolderKanban },
+      { label: 'Rbyan the Brain', to: '/rbyan', icon: Sparkles },
       { label: 'Site builder', to: '/site-builder', icon: Wand2 },
+      { label: 'Clients', to: '/clients', icon: Users },
+      { label: 'Messages', to: '/messages', icon: MessageSquare, badgeFromStore: 'unread-messages' },
+      { label: 'Files', to: '/files', icon: Files },
+      { label: 'Invoices', to: '/invoices', icon: Receipt },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
       { label: 'Tasks', to: '/tasks', icon: CheckSquare },
       { label: 'Calendar', to: '/calendar', icon: CalendarDays },
-      { label: 'Files', to: '/files', icon: Files },
       { label: 'Activity', to: '/activity', icon: Activity },
     ],
   },
   {
     label: 'Money',
     items: [
-      { label: 'Invoices', to: '/invoices', icon: Receipt },
       { label: 'Payments', to: '/payments', icon: CreditCard },
       { label: 'Expenses', to: '/expenses', icon: Wallet },
       { label: 'Billable hours', to: '/time-tracking', icon: Clock },
     ],
   },
   {
-    label: 'Communication',
+    label: 'Contracts & admin',
     items: [
-      { label: 'Messages', to: '/messages', icon: MessageSquare, badgeFromStore: 'unread-messages' },
       { label: 'Contracts', to: '/contracts', icon: FileSignature, badgeFromStore: 'pending-contracts' },
-    ],
-  },
-  {
-    label: 'Growth & Admin',
-    items: [
       { label: 'Reports', to: '/reports', icon: BarChart3 },
       { label: 'Client preview', to: '/client-portal', icon: ShieldCheck },
       { label: 'Conversion workspace', to: '/projects', icon: LayoutGrid },

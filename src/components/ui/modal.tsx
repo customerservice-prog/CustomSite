@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, className }: ModalProps) {
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -29,16 +31,23 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <button
-        type="button"
-        className="modal-backdrop-animate absolute inset-0 bg-slate-950/45 backdrop-blur-[1px] transition-opacity"
-        aria-label="Close"
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
+      <div
+        role="presentation"
+        aria-hidden="true"
+        className="modal-backdrop-animate absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-[1px] transition-opacity"
         onClick={onClose}
       />
       <div className={cn('modal-panel-animate relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl shadow-slate-900/15 ring-1 ring-slate-900/[0.06]', className)}>
         <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold tracking-tight text-slate-900">
+            {title}
+          </h2>
           <Button type="button" variant="ghost" className="h-10 w-10 shrink-0 p-0" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
           </Button>

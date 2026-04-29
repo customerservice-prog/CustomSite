@@ -550,6 +550,12 @@ export function ProjectDetailPage() {
                 <Button type="button" onClick={() => navigate(`/projects/${project.id}/site`)}>
                   {CONVERSION_WORKSPACE_LABEL}
                 </Button>
+                <Link
+                  to={`/rbyan?project=${encodeURIComponent(project.id)}`}
+                  className={buttonClassName('secondary', 'text-xs')}
+                >
+                  Build with AI
+                </Link>
                 {project.siteLiveUrl ? (
                   <a
                     href={project.siteLiveUrl}

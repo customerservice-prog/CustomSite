@@ -13,6 +13,9 @@ function pathActive(pathname: string, to: string) {
   if (to === '/site-builder') {
     return pathname === '/site-builder' || /^\/projects\/[^/]+\/site\/?$/.test(pathname);
   }
+  if (to === '/rbyan') {
+    return pathname === '/rbyan' || pathname.startsWith('/rbyan/');
+  }
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 

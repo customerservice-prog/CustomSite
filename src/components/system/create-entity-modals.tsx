@@ -278,7 +278,12 @@ export function CreateEntityModals() {
                   siteBuildArchetype: '',
                 });
                 closeModal();
-                navigate(`/projects/${pid}`);
+                const created = useAppStore.getState().projects[pid];
+                if (created?.deliveryFocus === 'client_site') {
+                  navigate(`/projects/${pid}/site`);
+                } else {
+                  navigate(`/projects/${pid}`);
+                }
               }}
             >
               Create

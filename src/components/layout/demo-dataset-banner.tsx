@@ -25,17 +25,21 @@ export function DemoDatasetBanner() {
   return (
     <div
       role="status"
-      className="flex shrink-0 items-start gap-3 border-b border-amber-200/80 bg-amber-50 px-4 py-2.5 text-amber-950 md:px-5"
+      className="flex shrink-0 items-start gap-3 border-b border-amber-800/25 bg-amber-100 px-4 py-2.5 text-amber-950 md:px-5"
     >
-      <p className="min-w-0 flex-1 text-xs leading-relaxed md:text-[13px]">
-        <span className="font-semibold">Demo mode.</span> Clients, projects, and tasks you create here live in this browser session only
-        (in-memory). They disappear after a full refresh unless the server is connected to Supabase and you are signed in with a real account.
-        The site builder saves HTML to the server only when the API is reachable (local RAM store when the database is not configured).
+      <p className="min-w-0 flex-1 text-xs leading-relaxed text-amber-950 md:text-[13px]">
+        <span className="font-semibold text-amber-950">Local workspace.</span>{' '}
+        <span className="text-amber-950">
+          You are not using the live admin API (
+          <code className="rounded bg-amber-200/90 px-1.5 py-0.5 font-mono text-[11px] text-amber-950">VITE_USE_REAL_API</code> is off). Client and project lists still come
+          from the demo dataset in memory, but <span className="font-semibold text-amber-950">Site builder files for each project are saved in this browser</span>{' '}
+          (localStorage) so you can build and preview without Supabase. Turn on the real API when you want files and deploy on the server.
+        </span>
       </p>
       <button
         type="button"
         onClick={dismiss}
-        className="shrink-0 rounded-md p-1 text-amber-800/80 transition hover:bg-amber-100 hover:text-amber-950"
+        className="shrink-0 rounded-md p-1 text-amber-900 transition hover:bg-amber-200/90 hover:text-amber-950"
         aria-label="Dismiss demo notice"
       >
         <X className="h-4 w-4" strokeWidth={2} />

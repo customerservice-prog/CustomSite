@@ -3,8 +3,8 @@ import CodeMirror from '@uiw/react-codemirror';
 import { html } from '@codemirror/lang-html';
 import { css } from '@codemirror/lang-css';
 import { javascript } from '@codemirror/lang-javascript';
-import { EditorSelection } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import { EditorSelection, Prec } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,8 @@ type Props = {
   saving: boolean;
   error: string | null;
   dirty: boolean;
+  /** False when the project workspace has no files yet (sidebar empty). */
+  workspaceHasFiles?: boolean;
   empty?: boolean;
   pageGuidance?: string;
   onInsertSection?: () => void;
@@ -54,6 +56,7 @@ export function SiteHtmlEditorPanel({
   saving,
   error,
   dirty,
+  workspaceHasFiles = true,
   empty,
   pageGuidance,
   onInsertSection,
@@ -67,6 +70,22 @@ export function SiteHtmlEditorPanel({
   const [templatesHtmlOpen, setTemplatesHtmlOpen] = useState(false);
   const kind = useMemo(() => editorFileKind(filePath), [filePath]);
 
+  const saveKeymap = useMemo(
+    () =>
+      Prec.highest(
+        keymap.of([
+          {
+            key: 'Mod-s',
+            run: () => {
+              onSave();
+              return true;
+            },
+          },
+        ])
+      ),
+    [onSave]
+  );
+
   const extensions = useMemo(() => {
     const lang =
       kind === 'css'
@@ -74,8 +93,9 @@ export function SiteHtmlEditorPanel({
         : kind === 'javascript'
           ? [javascript(), EditorView.lineWrapping]
           : [html(), EditorView.lineWrapping];
-    return studioChrome ? [...lang, oneDark] : lang;
-  }, [kind, studioChrome]);
+    const base = [...lang, saveKeymap];
+    return studioChrome ? [...base, oneDark] : base;
+  }, [kind, studioChrome, saveKeymap]);
 
   const showCodeEditor =
     surfaceMode === 'code' || kind !== 'html' || (surfaceMode === 'templates' && templatesHtmlOpen);
@@ -142,7 +162,12 @@ export function SiteHtmlEditorPanel({
                     ? 'border border-violet-500/30 bg-violet-500/10 text-violet-100 hover:bg-violet-500/20'
                     : 'shadow-sm shadow-violet-900/10'
                 )}
-                disabled={empty || loading}
+                disabled={loading || !workspaceHasFiles}
+                title={
+                  !workspaceHasFiles
+                    ? 'Add site files first (use Start from template or blank code), then insert sections.'
+                    : undefined
+                }
                 onClick={() => onInsertSection()}
               >
                 <LayoutTemplate className="h-3.5 w-3.5" strokeWidth={2} />

@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
 import {
   Calendar,
+  Code2,
   CreditCard,
+  Eye,
   FileText,
   FolderKanban,
   LayoutDashboard,
   Plus,
+  Rocket,
+  Save,
   Search,
   Settings,
+  Sparkles,
   Upload,
   UserPlus,
   Users,
@@ -19,6 +24,7 @@ import {
 import { useShell } from '@/context/shell-context';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/store/useAppStore';
+import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
 import * as sel from '@/store/selectors';
 
 type Cmd = { id: string; label: string; hint?: string; icon: typeof Search; run: () => void };
@@ -26,13 +32,129 @@ type Cmd = { id: string; label: string; hint?: string; icon: typeof Search; run:
 export function CommandMenu() {
   const { commandOpen, setCommandOpen } = useShell();
   const navigate = useNavigate();
+  const location = useLocation();
   const openModal = useAppStore((s) => s.openModal);
   const [q, setQ] = useState('');
   const clientList = useAppStore(useShallow(sel.clientsList));
   const projectList = useAppStore(useShallow(sel.projectsList));
 
+  const siteCommands = useMemo<Cmd[]>(() => {
+    const siteMatch = location.pathname.match(/^\/projects\/([^/]+)\/site$/);
+    const rbyMatch = location.pathname.startsWith('/rbyan');
+    const qPid = new URLSearchParams(location.search).get('project');
+    const last = useProjectSiteWorkspaceStore.getState().lastFocusedProjectId;
+    const pid =
+      siteMatch?.[1] ||
+      (qPid && useAppStore.getState().projects[qPid] ? qPid : null) ||
+      last ||
+      projectList.filter((p) => p.deliveryFocus === 'client_site').sort((a, b) => a.name.localeCompare(b.name))[0]?.id;
+    if (!pid) return [];
+    const p = useAppStore.getState().projects[pid];
+    const live = p?.siteLiveUrl;
+    return [
+      {
+        id: 'open-builder',
+        label: 'Open Site Builder',
+        hint: p?.name ?? 'Project site',
+        icon: Code2,
+        run: () => navigate(`/projects/${pid}/site`),
+      },
+      {
+        id: 'open-rbyan',
+        label: 'Open Rbyan (AI)',
+        hint: 'Co-build with AI',
+        icon: Sparkles,
+        run: () => {
+          navigate(`/rbyan?project=${encodeURIComponent(pid)}`);
+          useProjectSiteWorkspaceStore.getState().setBuilderSurface(pid, 'ai');
+        },
+      },
+      {
+        id: 'toggle-mode',
+        label: rbyMatch ? 'Switch to code (Site Builder)' : 'Switch to AI (Rbyan)',
+        hint: '⌘/',
+        icon: rbyMatch ? Code2 : Sparkles,
+        run: () => {
+          if (rbyMatch) {
+            navigate(`/projects/${pid}/site`);
+            useProjectSiteWorkspaceStore.getState().setBuilderSurface(pid, 'code');
+          } else {
+            navigate(`/rbyan?project=${encodeURIComponent(pid)}`);
+            useProjectSiteWorkspaceStore.getState().setBuilderSurface(pid, 'ai');
+          }
+        },
+      },
+      {
+        id: 'save-site',
+        label: 'Save site changes',
+        hint: '⌘S in builder',
+        icon: Save,
+        run: () => {
+          navigate(`/projects/${pid}/site`);
+          window.dispatchEvent(new CustomEvent('site-builder-save'));
+        },
+      },
+      {
+        id: 'preview-site',
+        label: 'Open preview (Site Builder)',
+        hint: 'Scrolls preview in builder',
+        icon: Eye,
+        run: () => navigate(`/projects/${pid}/site`),
+      },
+      {
+        id: 'add-page-cmd',
+        label: 'Quick add page',
+        hint: '⌘⇧P',
+        icon: FileText,
+        run: () => {
+          useProjectSiteWorkspaceStore.getState().requestQuickAddPage();
+          navigate(`/projects/${pid}/site?quickPage=1`);
+        },
+      },
+      {
+        id: 'add-section-cmd',
+        label: 'Insert section (builder)',
+        hint: '⌘⇧S',
+        icon: Plus,
+        run: () => {
+          navigate(`/projects/${pid}/site`);
+          window.dispatchEvent(new CustomEvent('workflow-insert-section'));
+        },
+      },
+      ...(live
+        ? [
+            {
+              id: 'publish',
+              label: 'Open live / staging site',
+              hint: 'External',
+              icon: Rocket,
+              run: () => window.open(live, '_blank', 'noopener,noreferrer'),
+            } as Cmd,
+          ]
+        : []),
+      {
+        id: 'dup-site',
+        label: 'Copy site bundle (duplicate)',
+        hint: 'Clipboard JSON',
+        icon: FolderKanban,
+        run: () => {
+          void useProjectSiteWorkspaceStore
+            .getState()
+            .copySiteBundleForDuplicate(pid)
+            .then((ok) => {
+              useAppStore.getState().toast(
+                ok ? 'Site bundle copied to clipboard — import into another project.' : 'Clipboard unavailable.',
+                ok ? 'success' : 'error'
+              );
+            });
+        },
+      },
+    ];
+  }, [location.pathname, location.search, navigate, projectList]);
+
   const commands = useMemo<Cmd[]>(
     () => [
+      ...siteCommands,
       { id: 'dash', label: 'Studio Pulse', hint: 'Command center', icon: LayoutDashboard, run: () => navigate('/dashboard') },
       { id: 'pipe', label: 'Pipeline', hint: 'Leads and deals', icon: Workflow, run: () => navigate('/pipeline') },
       { id: 'cli', label: 'Clients', hint: 'Accounts', icon: Users, run: () => navigate('/clients') },
@@ -49,7 +171,7 @@ export function CommandMenu() {
       { id: 'nev', label: 'New calendar event', hint: 'Schedule', icon: Calendar, run: () => openModal('calendar-event') },
       { id: 'ninvcli', label: 'Invite client', hint: 'Portal access', icon: UserPlus, run: () => openModal('invite-client') },
     ],
-    [navigate, openModal]
+    [navigate, openModal, siteCommands]
   );
 
   const searchHits = useMemo(() => {
@@ -93,10 +215,6 @@ export function CommandMenu() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setCommandOpen(true);
-      }
       if (e.key === 'Escape') setCommandOpen(false);
     };
     document.addEventListener('keydown', onKey);
