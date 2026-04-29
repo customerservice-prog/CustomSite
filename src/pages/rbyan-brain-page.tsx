@@ -23,6 +23,7 @@ import {
 } from '@/lib/rbyan/progressive-build';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
+import { notifyBuildHelperRbyanOutput, RBYAN_PREFILL_STORAGE_KEY } from '@/store/use-build-helper-store';
 
 type ChatMsg = {
   id: string;
@@ -153,6 +154,17 @@ export function RbyanBrainPage() {
   }, [searchParams, projects]);
 
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(RBYAN_PREFILL_STORAGE_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(RBYAN_PREFILL_STORAGE_KEY);
+      setInput((prev) => (prev.trim() ? prev : raw));
+    } catch {
+      /* */
+    }
+  }, []);
+
+  useEffect(() => {
     refreshWorkspace();
   }, [refreshWorkspace]);
 
@@ -266,6 +278,7 @@ export function RbyanBrainPage() {
         }
 
         setLastResult(completed);
+        if (completed.files.length && projectId) notifyBuildHelperRbyanOutput(projectId);
         if (completed.sessionMemory) setSessionMemory(completed.sessionMemory);
         setRbyanSession((s) => ({
           ...s,

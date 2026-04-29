@@ -3,6 +3,7 @@ import type { ProjectSite, ProjectSiteFile } from '@/lib/site-builder/project-si
 import { newFile } from '@/lib/site-builder/project-site-model';
 import { composePreviewDocument } from '@/lib/site-builder/compose-preview-document';
 import { getProjectSite, saveProjectSite } from '@/lib/site-builder/project-site-storage';
+import { notifyBuildHelperRbyanOutput, notifyBuildHelperSiteBuilderManualSave } from '@/store/use-build-helper-store';
 import type { RbyanGeneratedFile, RbyanVersionEntry } from '@/lib/rbyan/types';
 import { rbyanFilesToProjectFiles } from '@/lib/rbyan/types';
 import { appendRbyanVersion, listRbyanVersions } from '@/lib/rbyan/version-history';
@@ -302,6 +303,7 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
         if (withSnapshot) {
           get().appendSnapshot(projectId, 'Manual save', ['Saved from Site Builder'], snapshotFiles);
         }
+        notifyBuildHelperSiteBuilderManualSave(projectId);
         set((s) => {
           const r = get().byProjectId[projectId];
           if (!r) return s;
@@ -341,6 +343,7 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
       plan: meta.plan,
       files,
     });
+    notifyBuildHelperRbyanOutput(projectId);
     set((s) => ({
       byProjectId: {
         ...s.byProjectId,

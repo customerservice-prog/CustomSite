@@ -9,6 +9,9 @@ import { PageContainer } from '@/components/design-system/page-container';
 import { crumbsFromMatches } from '@/lib/breadcrumbs';
 import { DemoDatasetBanner } from '@/components/layout/demo-dataset-banner';
 import { WorkflowGlobalHotkeys } from '@/components/workflow/workflow-global-hotkeys';
+import { BuildHelperDock } from '@/components/build-helper/build-helper-dock';
+import { useBuildHelperStore } from '@/store/use-build-helper-store';
+import { cn } from '@/lib/utils';
 
 export { MobileNavTrigger } from '@/components/layout/sidebar';
 
@@ -20,13 +23,20 @@ export function AppShell() {
   const siteBuilderFull = useMatch({ path: '/projects/:projectId/site', end: true });
   const rbyanBrainFull = useMatch({ path: '/rbyan', end: true });
   const clientPortalExperience = pathname === '/client-portal' || pathname.startsWith('/client-portal/');
+  const helperReserve = useBuildHelperStore((s) => s.enabled && !s.panelCollapsed);
 
   if (siteBuilderFull || rbyanBrainFull) {
     return (
       <div className="flex h-screen flex-col overflow-hidden bg-[#f4f5f8] text-gray-900">
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+        <main
+          className={cn(
+            'flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden',
+            helperReserve && 'lg:pr-[min(380px,42vw)]'
+          )}
+        >
           <Outlet />
         </main>
+        <BuildHelperDock />
         <ToastStack />
         <WorkflowGlobalHotkeys />
         <CommandMenu />
@@ -56,8 +66,9 @@ export function AppShell() {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <DemoDatasetBanner />
+        <BuildHelperDock />
         <TopHeader breadcrumbs={crumbs} />
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className={cn('min-h-0 flex-1 overflow-y-auto', helperReserve && 'lg:pr-[min(380px,42vw)]')}>
           <PageContainer>
             <Outlet />
           </PageContainer>

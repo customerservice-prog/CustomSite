@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
+import { useBuildHelperStore } from '@/store/use-build-helper-store';
 
 const TABS = [
   { id: 'general', label: 'General' },
@@ -93,6 +94,9 @@ function ToggleRow({
 
 export function SettingsPage() {
   const { toast } = useShell();
+  const buildHelperEnabled = useBuildHelperStore((s) => s.enabled);
+  const setBuildHelperEnabled = useBuildHelperStore((s) => s.setEnabled);
+  const setHelperPanelCollapsed = useBuildHelperStore((s) => s.setPanelCollapsed);
   const [tab, setTab] = useState<string>(TABS[0].id);
   const [saved, setSaved] = useState<SettingsForm>(() => ({ ...SETTINGS_INITIAL }));
   const [form, setForm] = useState<SettingsForm>(() => ({ ...SETTINGS_INITIAL }));
@@ -153,6 +157,16 @@ export function SettingsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               />
             </div>
+            <ToggleRow
+              label="Enable Build Helper"
+              description="Step-by-step guidance for your first client build. Right-side checklist; no popups when off."
+              on={buildHelperEnabled}
+              onToggle={() => {
+                const next = !buildHelperEnabled;
+                setBuildHelperEnabled(next);
+                if (next) setHelperPanelCollapsed(false);
+              }}
+            />
           </div>
         )}
 

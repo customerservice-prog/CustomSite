@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Bell, ChevronDown, Globe, LayoutDashboard, MoreHorizontal, Plus, Search } from 'lucide-react';
+import { Bell, ChevronDown, Globe, LayoutDashboard, ListChecks, MoreHorizontal, Plus, Search } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { MobileNavTrigger } from '@/components/layout/sidebar';
@@ -8,6 +8,7 @@ import { Dropdown, DropdownChevronTrigger, DropdownItem } from '@/components/ui/
 import { IconButton } from '@/components/ui/icon-button';
 import type { Crumb } from '@/components/layout/breadcrumbs';
 import { useAppStore } from '@/store/useAppStore';
+import { useBuildHelperStore } from '@/store/use-build-helper-store';
 import { useUnreadNotificationCount, useNotifications } from '@/store/hooks';
 import { cn } from '@/lib/utils';
 
@@ -55,6 +56,9 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
   const markAllRead = useAppStore((s) => s.markAllNotificationsRead);
   const unread = useUnreadNotificationCount();
   const notifications = useNotifications();
+  const buildHelperEnabled = useBuildHelperStore((s) => s.enabled);
+  const setBuildHelperEnabled = useBuildHelperStore((s) => s.setEnabled);
+  const setHelperPanelCollapsed = useBuildHelperStore((s) => s.setPanelCollapsed);
 
   const pageTitle = breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Agency' : 'Agency';
 
@@ -286,6 +290,25 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
           >
             {quickCreateItems}
           </Dropdown>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !buildHelperEnabled;
+              setBuildHelperEnabled(next);
+              if (next) setHelperPanelCollapsed(false);
+            }}
+            className={cn(
+              'flex h-10 shrink-0 items-center justify-center rounded-lg border px-2 text-xs font-semibold transition sm:px-2.5 xl:gap-1.5',
+              buildHelperEnabled
+                ? 'border-indigo-200 bg-indigo-50 text-indigo-900'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+            )}
+            title="Build Helper — checklist for your first client site"
+            aria-pressed={buildHelperEnabled}
+          >
+            <ListChecks className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden />
+            <span className="hidden xl:inline">Build Helper</span>
+          </button>
           {notificationsMenu}
           {moreMenu}
           {accountMenu}
