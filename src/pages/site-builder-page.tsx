@@ -52,6 +52,8 @@ import type { SiteBuildArchetypeId } from '@/lib/types/entities';
 
 type SiteFileRow = { path: string; updated_at?: string | null; content_encoding?: string };
 
+type SiteSeedOutcome = { ok: true } | { ok: false; error: string };
+
 const PAGE_PUB_STORAGE = 'customsite_site_page_pub_v1';
 const LAST_DEPLOY_STORAGE = 'customsite_last_deploy_v1';
 
@@ -328,15 +330,16 @@ export function SiteBuilderPage() {
     setFilesLoading(false);
   }, [activeProjectId, loadSiteFiles]);
 
-  const bootstrapHomepageCore = useCallback(async (): Promise<boolean> => {
-    if (!activeProjectId || !activeProject) return false;
+  const bootstrapHomepageCore = useCallback(async (): Promise<SiteSeedOutcome> => {
+    if (!activeProjectId || !activeProject) return { ok: false, error: 'No project selected.' };
     const init = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/init`, {
       method: 'POST',
       json: { template: 'basic' },
     });
     if (!init.ok) {
-      toast(init.error || 'Could not initialize the site folder', 'error');
-      return false;
+      const err = init.error || 'Could not initialize the site folder';
+      toast(err, 'error');
+      return { ok: false, error: err };
     }
     const indexHtml = buildFullSiteIndexHtml(siteArchetype, {
       siteTitle: activeProject.name,
@@ -347,14 +350,15 @@ export function SiteBuilderPage() {
       json: { path: 'index.html', content: indexHtml, content_encoding: 'utf8' },
     });
     if (!put.ok) {
-      toast(put.error || 'Could not save homepage', 'error');
-      return false;
+      const err = put.error || 'Could not save homepage';
+      toast(err, 'error');
+      return { ok: false, error: err };
     }
     setWorkflow((w) => appendChangelog(activeProjectId, 'Generated full homepage structure', w));
     await refreshServerFiles();
     setSelectedServerPath('index.html');
     setPreviewNonce((n) => n + 1);
-    return true;
+    return { ok: true };
   }, [activeProjectId, activeProject, siteArchetype, clientForProject?.company, toast, refreshServerFiles]);
 
   useEffect(() => {
@@ -521,18 +525,18 @@ export function SiteBuilderPage() {
     void refreshServerFiles();
   }, [activeProjectId, selectedServerPath, editorContent, toast, refreshServerFiles]);
 
-  async function seedFromTemplates() {
-    if (!activeProjectId || !activeProject) return false;
+  async function seedFromTemplates(): Promise<SiteSeedOutcome> {
+    if (!activeProjectId || !activeProject) return { ok: false, error: 'No project selected.' };
     setSiteSeeding(true);
     setSiteSeedError(false);
-    const ok = await bootstrapHomepageCore();
+    const result = await bootstrapHomepageCore();
     setSiteSeeding(false);
-    if (!ok) setSiteSeedError(true);
-    return ok;
+    if (!result.ok) setSiteSeedError(true);
+    return result;
   }
 
-  async function createBlankCodeSite() {
-    if (!activeProjectId || !activeProject) return false;
+  async function createBlankCodeSite(): Promise<SiteSeedOutcome> {
+    if (!activeProjectId || !activeProject) return { ok: false, error: 'No project selected.' };
     setSiteSeeding(true);
     setSiteSeedError(false);
     const init = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/init`, {
@@ -540,10 +544,11 @@ export function SiteBuilderPage() {
       json: { template: 'basic' },
     });
     if (!init.ok) {
-      toast(init.error || 'Could not initialize the site folder', 'error');
+      const err = init.error || 'Could not initialize the site folder';
+      toast(err, 'error');
       setSiteSeeding(false);
       setSiteSeedError(true);
-      return false;
+      return { ok: false, error: err };
     }
     const titleSafe = activeProject.name.replace(/</g, '');
     const minimalHtml = `<!DOCTYPE html>
@@ -566,10 +571,11 @@ export function SiteBuilderPage() {
       json: { path: 'index.html', content: minimalHtml, content_encoding: 'utf8' },
     });
     if (!putHtml.ok) {
-      toast(putHtml.error || 'Could not save index.html', 'error');
+      const err = putHtml.error || 'Could not save index.html';
+      toast(err, 'error');
       setSiteSeeding(false);
       setSiteSeedError(true);
-      return false;
+      return { ok: false, error: err };
     }
     const css = `/* ${titleSafe} — global styles */\n\nbody {\n  margin: 0;\n  background: #f8fafc;\n}\n`;
     const putCss = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/file`, {
@@ -577,17 +583,18 @@ export function SiteBuilderPage() {
       json: { path: 'styles.css', content: css, content_encoding: 'utf8' },
     });
     if (!putCss.ok) {
-      toast(putCss.error || 'Could not save styles.css', 'error');
+      const err = putCss.error || 'Could not save styles.css';
+      toast(err, 'error');
       setSiteSeeding(false);
       setSiteSeedError(true);
-      return false;
+      return { ok: false, error: err };
     }
     setWorkflow((w) => appendChangelog(activeProjectId, 'Created blank index.html + styles.css', w));
     await refreshServerFiles();
     setSelectedServerPath('index.html');
     setPreviewNonce((n) => n + 1);
     setSiteSeeding(false);
-    return true;
+    return { ok: true };
   }
 
   async function createBlankPage() {
@@ -1504,8 +1511,12 @@ export function SiteBuilderPage() {
             disabled={siteSeeding}
             onClick={async () => {
               setNewSiteChoiceMessage(null);
-              const ok = await seedFromTemplates();
-              if (!ok) setNewSiteChoiceMessage('Template start failed. Check the admin API or try blank starter.');
+              const result = await seedFromTemplates();
+              if (!result.ok) {
+                setNewSiteChoiceMessage(
+                  `Template start failed. ${result.error} Create the project in Admin (or add it in Supabase) if it only exists in the local demo.`
+                );
+              }
             }}
           >
             {siteSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutTemplate className="h-4 w-4" strokeWidth={2} />}
@@ -1518,8 +1529,10 @@ export function SiteBuilderPage() {
             disabled={siteSeeding}
             onClick={async () => {
               setNewSiteChoiceMessage(null);
-              const ok = await createBlankCodeSite();
-              if (!ok) setNewSiteChoiceMessage('Could not create blank files.');
+              const result = await createBlankCodeSite();
+              if (!result.ok) {
+                setNewSiteChoiceMessage(`Could not create blank files — ${result.error}`);
+              }
             }}
           >
             {siteSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Code2 className="h-4 w-4" strokeWidth={2} />}

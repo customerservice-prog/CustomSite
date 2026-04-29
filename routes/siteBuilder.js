@@ -27,6 +27,14 @@ function normalizePath(p) {
   return s;
 }
 
+/** Postgres `uuid` columns reject non-UUID strings (e.g. legacy demo ids). */
+function isUuidParam(id) {
+  return (
+    typeof id === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim())
+  );
+}
+
 function safeSelectSiteFiles() {
   return 'path, content, updated_at, content_encoding';
 }
@@ -204,9 +212,27 @@ router.get('/site-builder/templates', (_req, res) => {
 router.post('/projects/:projectId/site/init', async (req, res) => {
   try {
     const { projectId } = req.params;
+    if (!isUuidParam(projectId)) {
+      return res.status(400).json({
+        error:
+          'Invalid project id: expected a UUID (Postgres site_files uses uuid). Use a project created in Admin, or align demo seed ids with your database.',
+      });
+    }
+    const supabase = getService();
+    const { data: projRow, error: projErr } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', projectId.trim())
+      .maybeSingle();
+    if (projErr) return res.status(500).json({ error: projErr.message });
+    if (!projRow) {
+      return res.status(404).json({
+        error:
+          'Project not found in the database. Create this project in Admin (or insert it in Supabase) before starting the site template.',
+      });
+    }
     const templateId = (req.body && req.body.template) || 'basic';
     const files = getTemplateFiles(templateId);
-    const supabase = getService();
     const now = new Date().toISOString();
     for (const [path, content] of Object.entries(files)) {
       const { data: row } = await supabase

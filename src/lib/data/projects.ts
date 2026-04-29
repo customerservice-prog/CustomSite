@@ -1,9 +1,10 @@
 import type { Project } from '@/lib/types/entities';
+import { DEMO_CLIENT_ID, DEMO_PROJECT_ID } from '@/lib/data/demo-ids';
 
 export const projectsSeed: Project[] = [
   {
-    id: 'pef1',
-    clientId: 'cef1',
+    id: DEMO_PROJECT_ID,
+    clientId: DEMO_CLIENT_ID,
     name: 'E-Commerce Site (Tables & Chairs)',
     status: 'Planning',
     budget: 18000,

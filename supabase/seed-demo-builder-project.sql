@@ -1,0 +1,17 @@
+-- Optional: create the demo project row so Site builder API can insert into `site_files`.
+-- IDs must match `src/lib/data/demo-ids.ts` (DEMO_CLIENT_ID / DEMO_PROJECT_ID).
+--
+-- 1. Sign in once so `auth.users` + `public.users` exist for your account.
+-- 2. Copy your `public.users.id` (same as auth user id) from Supabase Table Editor.
+-- 3. Replace YOUR_USER_UUID below and run this in the SQL editor.
+
+-- insert into public.projects (id, client_id, name, status)
+-- values (
+--   '00000000-0000-4000-8000-000000000002',
+--   'YOUR_USER_UUID'::uuid,
+--   'E-Commerce Site (Tables & Chairs)',
+--   'discovery'
+-- )
+-- on conflict (id) do update
+--   set name = excluded.name,
+--       client_id = excluded.client_id;

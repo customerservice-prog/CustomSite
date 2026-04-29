@@ -7,6 +7,8 @@ Run these in the **Supabase** project → **SQL** → **New query**, in order:
 3. `003_site_builder_railway.sql` — site builder + Railway fields on `projects` and `site_files`.
 4. `004_contract_body.sql` — optional `body` text column on `agency_contracts` for in-app proposal drafting.
 
+For the **admin SPA demo project** (`demo-ids.ts`), if “Start from template” returns *project not found*, uncomment and run `../seed-demo-builder-project.sql` with your real `public.users.id` as `client_id`.
+
 After SQL succeeds:
 
 - Create a Storage bucket named `project-files` (optional; used for file uploads) with appropriate policies if you want public file URLs.

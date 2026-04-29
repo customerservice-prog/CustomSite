@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableFooterBar, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
 import { TableToolbar, TableToolbarSection } from '@/components/ui/table-toolbar';
 import { EmptyState } from '@/components/ui/empty-state';
+import { DEMO_CLIENT_ID } from '@/lib/data/demo-ids';
 import { useClients, useProjects } from '@/store/hooks';
 import { DataRowMenu } from '@/components/workspace/data-row-menu';
 import { useShell } from '@/context/shell-context';
@@ -48,7 +49,7 @@ export function ProposalsPage() {
     setRows((prev) => [
       {
         id,
-        clientId: clients[0]?.id ?? 'cef1',
+        clientId: clients[0]?.id ?? DEMO_CLIENT_ID,
         projectId: null,
         title: 'Untitled proposal',
         status: 'Draft',
