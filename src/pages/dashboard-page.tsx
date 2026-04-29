@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { PageHeader } from '@/components/ui/page-header';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClassName } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/format-display';
 import { projectHealthLevel } from '@/lib/system-intelligence';
@@ -72,6 +72,12 @@ export function DashboardPage() {
       .slice(0, 4);
   }, [projects]);
 
+  const activeProjectsTop = useMemo(() => {
+    return [...projects]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 6);
+  }, [projects]);
+
   const milestonesWeek = useMemo(() => store.deadlines.slice(0, 5), [store.deadlines]);
 
   const waitingOnYou = useMemo(() => threads.filter((t) => t.status === 'Unread').length, [threads]);
@@ -123,6 +129,48 @@ export function DashboardPage() {
             : 'Nothing screaming — still close AR and inbox before you call it a win.'}
         </p>
       </div>
+
+      <section className="space-y-3">
+        <h2 className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Your active projects</h2>
+        <p className="text-xs leading-relaxed text-slate-500">
+          Newest motion first — open the project or jump straight into the conversion workspace for client sites.
+        </p>
+        {activeProjectsTop.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200/90 bg-slate-50/60 px-5 py-4 text-[13px] text-slate-600">
+            No projects yet. Create one from the button above or from Clients.
+          </div>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {activeProjectsTop.map((p) => {
+              const c = store.clients[p.clientId];
+              return (
+                <li key={p.id}>
+                  <Card variant="compact" className="flex flex-col gap-2 p-4 ring-1 ring-slate-900/[0.05]">
+                    <div className="min-w-0">
+                      <Link to={`/projects/${p.id}`} className="font-semibold text-slate-900 hover:text-violet-700">
+                        {p.name}
+                      </Link>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {c?.company ?? 'Client'} · {p.status} · due {p.due}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Link to={`/projects/${p.id}`} className={buttonClassName('secondary', 'h-8 px-3 text-xs')}>
+                        Project
+                      </Link>
+                      {p.deliveryFocus === 'client_site' ? (
+                        <Link to={`/projects/${p.id}/site`} className={buttonClassName('primary', 'h-8 px-3 text-xs')}>
+                          Conversion workspace
+                        </Link>
+                      ) : null}
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Priority list — do in order</h2>

@@ -45,49 +45,7 @@ export function sortActivityIds(activities: EntityMap<Activity>): string[] {
 }
 
 function initialNotifications(): AppNotification[] {
-  const now = '2026-04-25T09:00:00.000Z';
-  return [
-    {
-      id: 'n1',
-      kind: 'message',
-      title: 'Client awaiting reply — Michael Lee',
-      body: 'Homepage copy is waiting on your feedback',
-      read: false,
-      createdAt: now,
-      href: '/messages',
-      entityId: 'm1',
-    },
-    {
-      id: 'n2',
-      kind: 'invoice',
-      title: 'Send reminder — invoice past due',
-      body: 'INV-1041 · BrightPath Labs',
-      read: false,
-      createdAt: '2026-04-25T08:00:00.000Z',
-      href: '/invoices/i2',
-      entityId: 'i2',
-    },
-    {
-      id: 'n3',
-      kind: 'contract',
-      title: 'Contract needs signature — follow up',
-      body: 'SOW — Northwind Retail storefront',
-      read: false,
-      createdAt: '2026-04-24T14:00:00.000Z',
-      href: '/clients/c5',
-      entityId: 'ct2',
-    },
-    {
-      id: 'n4',
-      kind: 'task',
-      title: 'Due today — ship or reschedule',
-      body: 'QA accessibility pass',
-      read: true,
-      createdAt: '2026-04-23T12:00:00.000Z',
-      href: '/tasks',
-      entityId: 't2',
-    },
-  ];
+  return [];
 }
 
 export type BootstrapEntities = {

@@ -48,7 +48,7 @@ export function ProposalsPage() {
     setRows((prev) => [
       {
         id,
-        clientId: clients[0]?.id ?? 'c1',
+        clientId: clients[0]?.id ?? 'cef1',
         projectId: null,
         title: 'Untitled proposal',
         status: 'Draft',

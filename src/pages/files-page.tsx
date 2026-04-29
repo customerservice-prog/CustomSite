@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FolderOpen, Link2, Plus, Search, Upload } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
@@ -47,6 +47,7 @@ export function FilesPage() {
   const [visibility, setVisibility] = useState<AgencyFile['visibility']>('Internal');
   const [showUpload, setShowUpload] = useState(false);
   const [drawerFileId, setDrawerFileId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const drawerFile = useAppStore((s) => (drawerFileId ? s.files[drawerFileId] : undefined));
   const drawerActivities = useAppStore(
@@ -93,7 +94,16 @@ export function FilesPage() {
     });
     setName('');
     setShowUpload(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     toast('File added to the library.', 'success');
+  }
+
+  function onPickLocalFile(files: FileList | null) {
+    const f = files?.[0];
+    if (!f) return;
+    setName(f.name);
+    setShowUpload(true);
+    toast(`Selected “${f.name}”. Choose client and project, then save to the library.`, 'success');
   }
 
   const drawerClient = drawerFile ? clients.find((c) => c.id === drawerFile.clientId) : undefined;
@@ -127,11 +137,26 @@ export function FilesPage() {
     <TablePageLayout
       header={
         <div className="space-y-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="sr-only"
+            aria-hidden
+            tabIndex={-1}
+            onChange={(e) => onPickLocalFile(e.target.files)}
+          />
           <PageHeader
             title="Client vs internal"
             description="Control what clients see and what stays internal."
             actions={
-              <Button type="button" className="gap-2" onClick={() => setShowUpload((v) => !v)}>
+              <Button
+                type="button"
+                className="gap-2"
+                onClick={() => {
+                  setShowUpload(true);
+                  fileInputRef.current?.click();
+                }}
+              >
                 <Upload className="h-4 w-4" />
                 Upload file
               </Button>
@@ -159,7 +184,8 @@ export function FilesPage() {
         <Card className="border-indigo-100 bg-indigo-50/30 p-5 shadow-sm ring-1 ring-indigo-100/80">
           <h3 className="text-sm font-bold text-slate-900">Add a file</h3>
           <p className="mt-1 text-sm text-slate-600">
-            Link each upload to a client and project. File size updates when the asset is processed.
+            Pick a file from your computer (opens the dialog), then link it to a client and project. This demo stores the row in your
+            workspace — binary upload to a server is not wired yet.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="File name" aria-label="File name" />
@@ -235,7 +261,14 @@ export function FilesPage() {
           title="No files match"
           description="Upload contracts, creative, or reference material. Mark files as client-visible when they should appear in the portal."
           action={
-            <Button type="button" className="gap-2" onClick={() => setShowUpload(true)}>
+            <Button
+              type="button"
+              className="gap-2"
+              onClick={() => {
+                setShowUpload(true);
+                fileInputRef.current?.click();
+              }}
+            >
               <Plus className="h-4 w-4" />
               Upload file
             </Button>
@@ -357,7 +390,14 @@ export function FilesPage() {
                 <Link2 className="h-4 w-4" />
                 Copy link
               </Button>
-              <Button type="button" variant="secondary" onClick={() => setShowUpload(true)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowUpload(true);
+                  fileInputRef.current?.click();
+                }}
+              >
                 Replace upload
               </Button>
             </div>

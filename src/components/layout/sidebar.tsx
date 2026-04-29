@@ -125,7 +125,7 @@ export function Sidebar() {
   return (
     <>
       <aside
-        className="relative z-20 hidden h-full w-64 shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white md:flex"
+        className="relative z-20 hidden h-full w-64 shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white lg:flex"
         aria-label="Main navigation"
       >
         <SidebarInner />
@@ -133,7 +133,7 @@ export function Sidebar() {
 
       <div
         className={cn(
-          'fixed inset-0 z-40 bg-black/30 transition md:hidden',
+          'fixed inset-0 z-40 bg-black/30 transition lg:hidden',
           mobileNavOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         )}
         aria-hidden={!mobileNavOpen}
@@ -141,7 +141,7 @@ export function Sidebar() {
       />
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 max-w-[88vw] flex-col overflow-hidden border-r border-gray-200 bg-white shadow-xl transition duration-200 md:hidden',
+          'fixed inset-y-0 left-0 z-50 flex w-64 max-w-[88vw] flex-col overflow-hidden border-r border-gray-200 bg-white shadow-xl transition duration-200 lg:hidden',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         )}
         aria-label="Mobile navigation"
@@ -156,7 +156,7 @@ export function Sidebar() {
 export function MobileNavTrigger() {
   const { setMobileNavOpen } = useShell();
   return (
-    <IconButton type="button" className="md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open menu">
+    <IconButton type="button" className="lg:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Open menu">
       <Menu className="h-5 w-5" />
     </IconButton>
   );

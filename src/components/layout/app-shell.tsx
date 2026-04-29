@@ -7,6 +7,7 @@ import { CreateEntityModals } from '@/components/system/create-entity-modals';
 import { WorkspaceModals } from '@/components/system/workspace-modals';
 import { PageContainer } from '@/components/design-system/page-container';
 import { crumbsFromMatches } from '@/lib/breadcrumbs';
+import { DemoDatasetBanner } from '@/components/layout/demo-dataset-banner';
 
 export { MobileNavTrigger } from '@/components/layout/sidebar';
 
@@ -19,6 +20,7 @@ export function AppShell() {
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-gray-50 to-slate-100 text-gray-900">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <DemoDatasetBanner />
         <TopHeader breadcrumbs={crumbs} />
         <main className="min-h-0 flex-1 overflow-y-auto">
           <PageContainer>

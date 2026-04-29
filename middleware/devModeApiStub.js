@@ -28,6 +28,162 @@ function pathName(req) {
   return (req.originalUrl || req.url || '').split('?')[0];
 }
 
+/**
+ * RAM-backed site files + deploy stub when Supabase is off.
+ * Does not require a dev Bearer token so the React conversion workspace works on first load.
+ * @returns {boolean|import('http').ServerResponse|Promise<unknown>} false = not handled; true = handled; or a Promise for async send
+ */
+function tryRespondLocalDemoSite(req, res, m, p) {
+  const siteList = /^\/api\/admin\/projects\/([^/]+)\/site$/;
+  const siteFileGet = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
+  const siteFilePut = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
+  const siteFileDel = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
+  const siteInit = /^\/api\/admin\/projects\/([^/]+)\/site\/init$/;
+
+  if (m === 'GET' && siteList.test(p)) {
+    const projectId = p.match(siteList)[1];
+    const listed = devStore.listPaths(projectId);
+    res.json({ files: listed });
+    return true;
+  }
+  if (m === 'GET' && siteFileGet.test(p)) {
+    const projectId = p.match(siteFileGet)[1];
+    const filePath = normalizePath(req.query.path);
+    if (!filePath) {
+      res.status(400).json({ error: 'Invalid path' });
+      return true;
+    }
+    const data = devStore.getFile(projectId, filePath);
+    if (!data) {
+      res.status(404).json({ error: 'Not found' });
+      return true;
+    }
+    res.json({
+      path: filePath,
+      content: data.content,
+      content_encoding: data.content_encoding || 'utf8',
+      updated_at: data.updated_at,
+    });
+    return true;
+  }
+  if (m === 'PUT' && siteFilePut.test(p)) {
+    const projectId = p.match(siteFilePut)[1];
+    const filePath = normalizePath(req.body && req.body.path);
+    if (!filePath) {
+      res.status(400).json({ error: 'Invalid path' });
+      return true;
+    }
+    const text = req.body && req.body.content != null ? String(req.body.content) : '';
+    if (Buffer.byteLength(text, 'utf8') > 2 * 1024 * 1024) {
+      res.status(400).json({ error: 'File too large (max 2MB)' });
+      return true;
+    }
+    const enc = req.body && req.body.content_encoding;
+    const data = devStore.setFile(projectId, filePath, text, enc);
+    res.json({
+      success: true,
+      file: {
+        project_id: projectId,
+        path: filePath,
+        content: data.content,
+        updated_at: data.updated_at,
+        content_encoding: data.content_encoding || 'utf8',
+      },
+    });
+    return true;
+  }
+  if (m === 'DELETE' && siteFileDel.test(p)) {
+    const projectId = p.match(siteFileDel)[1];
+    const filePath = normalizePath(req.query.path);
+    if (!filePath) {
+      res.status(400).json({ error: 'Invalid path' });
+      return true;
+    }
+    devStore.deleteFile(projectId, filePath);
+    res.json({ success: true });
+    return true;
+  }
+  if (m === 'POST' && siteInit.test(p)) {
+    const projectId = p.match(siteInit)[1];
+    const template = (req.body && req.body.template) || 'basic';
+    const keys = devStore.initStarter(projectId, template);
+    res.json({ success: true, paths: keys, template });
+    return true;
+  }
+
+  if (m === 'GET' && p === '/api/admin/site-builder/templates') {
+    res.json({ templates: TEMPLATE_KEYS });
+    return true;
+  }
+
+  if (m === 'GET' && /^\/api\/admin\/projects\/[^/]+\/site\/export$/.test(p)) {
+    const projectId = p.split('/')[4];
+    const listed = devStore.listPaths(projectId);
+    const files = listed.map(({ path }) => {
+      const f = devStore.getFile(projectId, path);
+      return {
+        path,
+        content: f.content,
+        encoding: f.content_encoding === 'base64' ? 'base64' : 'utf8',
+      };
+    });
+    return createZipBuffer(addServeBundle(files))
+      .then((buf) => {
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="project-${projectId}.zip"`);
+        return res.send(buf);
+      })
+      .catch((e) => res.status(500).json({ error: e.message }));
+  }
+
+  if (m === 'GET' && /^\/api\/admin\/projects\/[^/]+\/builder$/.test(p)) {
+    const projectId = p.split('/')[4];
+    res.json({
+      project: {
+        id: projectId,
+        name: demoProjectRow.name,
+        status: demoProjectRow.status,
+        client_id: demoProjectRow.client_id,
+        website_type: demoProjectRow.website_type,
+        railway_url_staging: 'https://demo-staging.up.railway.app',
+        railway_url_production: '',
+        custom_domain: '',
+        site_settings: {},
+        created_at: demoProjectRow.created_at,
+        client: { email: demoClient.email, full_name: demoClient.full_name, company: demoClient.company },
+      },
+    });
+    return true;
+  }
+
+  if (m === 'PATCH' && /^\/api\/admin\/projects\/[^/]+\/builder$/.test(p)) {
+    res.json({ project: { ...demoProjectRow, ...req.body } });
+    return true;
+  }
+
+  if (m === 'POST' && /^\/api\/admin\/projects\/[^/]+\/site\/upload-asset$/.test(p)) {
+    res.json({ success: true, path: 'assets/uploaded-asset.png', content_encoding: 'base64' });
+    return true;
+  }
+
+  if (m === 'POST' && /^\/api\/admin\/projects\/[^/]+\/deploy$/.test(p)) {
+    res.json({
+      ok: true,
+      partial: true,
+      environment: (req.body && req.body.environment) || 'staging',
+      steps: [
+        { id: 'bundle', label: 'Bundling', status: 'done', at: new Date().toISOString() },
+        { id: 'dev', label: 'Local dev (no Supabase)', status: 'done', detail: 'Deploy API is a stub' },
+      ],
+      publicUrl: 'https://dev-preview.example.com',
+      message: 'Local preview bundle ready. Add Railway credentials in production for live deploys.',
+    });
+    return true;
+  }
+
+  return false;
+}
+
 const demoClient = {
   id: DEV_CLIENT_ID,
   email: 'm.lee@northstar.io',
@@ -81,6 +237,11 @@ function devModeApiStub(req, res, next) {
 
   if (p === '/api/auth/login' && m === 'POST') {
     return next();
+  }
+
+  const localSite = tryRespondLocalDemoSite(req, res, m, p);
+  if (localSite !== false) {
+    return localSite;
   }
 
   const token = extractBearerToken(req);
@@ -264,135 +425,11 @@ function devModeApiStub(req, res, next) {
     return res.json({ success: true, sent: false });
   }
 
-  /** Site files: RAM-backed via devSiteFileStore (GET/PUT/DELETE/init) — used by site-builder.html and React Preview & publishing. */
-  const siteList = /^\/api\/admin\/projects\/([^/]+)\/site$/;
-  const siteFileGet = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
-  const siteFilePut = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
-  const siteFileDel = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
-  const siteInit = /^\/api\/admin\/projects\/([^/]+)\/site\/init$/;
-
-  if (m === 'GET' && siteList.test(p)) {
-    const projectId = p.match(siteList)[1];
-    const listed = devStore.listPaths(projectId);
-    return res.json({ files: listed });
-  }
-  if (m === 'GET' && siteFileGet.test(p)) {
-    const projectId = p.match(siteFileGet)[1];
-    const filePath = normalizePath(req.query.path);
-    if (!filePath) return res.status(400).json({ error: 'Invalid path' });
-    const data = devStore.getFile(projectId, filePath);
-    if (!data) return res.status(404).json({ error: 'Not found' });
-    return res.json({
-      path: filePath,
-      content: data.content,
-      content_encoding: data.content_encoding || 'utf8',
-      updated_at: data.updated_at,
-    });
-  }
-  if (m === 'PUT' && siteFilePut.test(p)) {
-    const projectId = p.match(siteFilePut)[1];
-    const filePath = normalizePath(req.body && req.body.path);
-    if (!filePath) return res.status(400).json({ error: 'Invalid path' });
-    const text = req.body && req.body.content != null ? String(req.body.content) : '';
-    if (Buffer.byteLength(text, 'utf8') > 2 * 1024 * 1024) {
-      return res.status(400).json({ error: 'File too large (max 2MB)' });
-    }
-    const enc = req.body && req.body.content_encoding;
-    const data = devStore.setFile(projectId, filePath, text, enc);
-    return res.json({
-      success: true,
-      file: {
-        project_id: projectId,
-        path: filePath,
-        content: data.content,
-        updated_at: data.updated_at,
-        content_encoding: data.content_encoding || 'utf8',
-      },
-    });
-  }
-  if (m === 'DELETE' && siteFileDel.test(p)) {
-    const projectId = p.match(siteFileDel)[1];
-    const filePath = normalizePath(req.query.path);
-    if (!filePath) return res.status(400).json({ error: 'Invalid path' });
-    devStore.deleteFile(projectId, filePath);
-    return res.json({ success: true });
-  }
-  if (m === 'POST' && siteInit.test(p)) {
-    const projectId = p.match(siteInit)[1];
-    const template = (req.body && req.body.template) || 'basic';
-    const keys = devStore.initStarter(projectId, template);
-    return res.json({ success: true, paths: keys, template });
-  }
-
-  if (m === 'GET' && p === '/api/admin/site-builder/templates') {
-    return res.json({ templates: TEMPLATE_KEYS });
-  }
-
-  if (m === 'GET' && /^\/api\/admin\/projects\/[^/]+\/site\/export$/.test(p)) {
-    const projectId = p.split('/')[4];
-    const listed = devStore.listPaths(projectId);
-    const files = listed.map(({ path }) => {
-      const f = devStore.getFile(projectId, path);
-      return {
-        path,
-        content: f.content,
-        encoding: f.content_encoding === 'base64' ? 'base64' : 'utf8',
-      };
-    });
-    return createZipBuffer(addServeBundle(files))
-      .then((buf) => {
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename="project-${projectId}.zip"`);
-        return res.send(buf);
-      })
-      .catch((e) => res.status(500).json({ error: e.message }));
-  }
-
-  if (m === 'GET' && /^\/api\/admin\/projects\/[^/]+\/builder$/.test(p)) {
-    return res.json({
-      project: {
-        id: demoProjectRow.id,
-        name: demoProjectRow.name,
-        status: demoProjectRow.status,
-        client_id: demoProjectRow.client_id,
-        website_type: demoProjectRow.website_type,
-        railway_url_staging: 'https://demo-staging.up.railway.app',
-        railway_url_production: '',
-        custom_domain: '',
-        site_settings: {},
-        created_at: demoProjectRow.created_at,
-        client: { email: demoClient.email, full_name: demoClient.full_name, company: demoClient.company },
-      },
-    });
-  }
-
-  if (m === 'PATCH' && /^\/api\/admin\/projects\/[^/]+\/builder$/.test(p)) {
-    return res.json({ project: { ...demoProjectRow, ...req.body } });
-  }
-
   if (m === 'POST' && p === '/api/admin/railway/verify') {
     if (!(req.body && req.body.token) && !process.env.RAILWAY_API_TOKEN) {
       return res.status(400).json({ error: 'Pass token in body' });
     }
     return res.json({ ok: true, me: { name: 'Dev', email: 'dev@local' }, teams: [] });
-  }
-
-  if (m === 'POST' && /^\/api\/admin\/projects\/[^/]+\/site\/upload-asset$/.test(p)) {
-    return res.json({ success: true, path: 'assets/uploaded-asset.png', content_encoding: 'base64' });
-  }
-
-  if (m === 'POST' && /^\/api\/admin\/projects\/[^/]+\/deploy$/.test(p)) {
-    return res.json({
-      ok: true,
-      partial: true,
-      environment: (req.body && req.body.environment) || 'staging',
-      steps: [
-        { id: 'bundle', label: 'Bundling', status: 'done', at: new Date().toISOString() },
-        { id: 'dev', label: 'Local dev (no Supabase)', status: 'done', detail: 'Deploy API is a stub' },
-      ],
-      publicUrl: 'https://dev-preview.example.com',
-      message: 'Local preview bundle ready. Add Railway credentials in production for live deploys.',
-    });
   }
 
   if (m === 'GET' && p.startsWith('/api/admin/site-builder/dns-check')) {

@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import { Dropdown, DropdownItem } from '@/components/ui/dropdown';
 import { useShell } from '@/context/shell-context';
@@ -392,6 +393,7 @@ export function SiteBuilderPage() {
     setSavedEditorContent(editorContent);
     setSavedAtMs(Date.now());
     setSavedAgoLabel('just now');
+    toast(`Saved ${friendlyPageName(selectedServerPath)} to the server.`, 'success');
     setPreviewRefreshing(true);
     setPreviewNonce((n) => n + 1);
     setWorkflow((w) => appendChangelog(activeProjectId, `Updated ${friendlyPageName(selectedServerPath)}`, w));
@@ -523,6 +525,8 @@ export function SiteBuilderPage() {
     setDeployPhase(bad ? 'error' : 'success');
     if (bad) {
       toast('Publish finished with issues. Open details below.', 'error');
+    } else {
+      toast('Publish response received — check the log below for environment-specific notes.', 'success');
     }
   }
 
@@ -650,7 +654,7 @@ export function SiteBuilderPage() {
       src={previewSrc ?? undefined}
       srcDoc={previewSrc ? undefined : FALLBACK_PREVIEW_HTML}
       onLoad={() => setPreviewRefreshing(false)}
-      className="h-full min-h-[400px] w-full bg-white"
+      className="h-full min-h-[min(70vh,680px)] w-full bg-white"
       sandbox="allow-same-origin allow-popups allow-scripts"
     />
   );
@@ -705,6 +709,32 @@ export function SiteBuilderPage() {
               Back
             </Link>
           </div>
+          {siteProjects.length > 0 ? (
+            <div className="mt-2 max-w-md">
+              <label className="sr-only" htmlFor="site-builder-project-picker">
+                Client site project
+              </label>
+              <Select
+                id="site-builder-project-picker"
+                className="text-sm"
+                value={activeProjectId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (id) navigate(`/projects/${id}/site`);
+                }}
+              >
+                {siteProjects.map((p) => {
+                  const cl = clients.find((c) => c.id === p.clientId);
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {cl?.company ? ` · ${cl.company}` : ''}
+                    </option>
+                  );
+                })}
+              </Select>
+            </div>
+          ) : null}
           <p className="mt-1 truncate text-sm text-slate-600">{friendlyPageName(selectedServerPath)}</p>
           <p className="mt-0.5 truncate text-xs text-slate-400">
             {ARCHETYPE_LABELS[siteArchetype]}
@@ -712,7 +742,7 @@ export function SiteBuilderPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex items-center rounded-full bg-slate-100/95 p-1 ring-1 ring-slate-200/40">
+          <div className="flex items-center rounded-full bg-slate-100/95 p-1 ring-1 ring-slate-200/40" title="Preview width">
             {deviceBtn('desktop', Monitor)}
             {deviceBtn('tablet', Tablet)}
             {deviceBtn('mobile', Smartphone)}
@@ -954,6 +984,18 @@ export function SiteBuilderPage() {
                       >
                         Open
                       </DropdownItem>
+                      <DropdownItem
+                        onClick={() => {
+                          setSelectedServerPath(f.path);
+                          setPreviewRefreshing(true);
+                          setPreviewNonce((n) => n + 1);
+                          window.requestAnimationFrame(() => {
+                            document.getElementById('site-builder-editor-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          });
+                        }}
+                      >
+                        Edit HTML
+                      </DropdownItem>
                       <DropdownItem onClick={() => openRenameFor(f.path)}>Rename</DropdownItem>
                       <DropdownItem destructive onClick={() => setDeleteConfirmPath(f.path)}>
                         Delete
@@ -1013,7 +1055,7 @@ export function SiteBuilderPage() {
           </div>
         </aside>
 
-        <main className="flex min-h-[360px] min-w-0 flex-[1.35] flex-col overflow-hidden rounded-xl bg-[#e8e9ef] lg:min-h-0 lg:min-w-0 lg:rounded-2xl">
+        <main className="order-3 flex min-h-[min(55vh,520px)] min-w-0 flex-[1.35] flex-col overflow-hidden rounded-xl bg-[#e8e9ef] max-lg:min-h-[45vh] lg:order-none lg:min-h-0 lg:min-w-0 lg:rounded-2xl">
           <div className="flex shrink-0 items-center justify-between px-4 py-3">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Preview</span>
             <div className="flex items-center gap-1">
@@ -1045,7 +1087,7 @@ export function SiteBuilderPage() {
             >
               <div
                 className={cn(
-                  'relative transition-opacity duration-300 ease-out',
+                  'relative min-h-[min(72vh,640px)] transition-opacity duration-300 ease-out lg:min-h-[min(68vh,720px)]',
                   previewRefreshing ? 'opacity-60' : 'opacity-100'
                 )}
               >
@@ -1061,7 +1103,10 @@ export function SiteBuilderPage() {
           </div>
         </main>
 
-        <section className="flex min-h-[min(45vh,22rem)] w-full shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/40 lg:min-h-0 lg:w-[min(36vw,440px)] lg:max-w-[480px] lg:min-w-[280px] lg:rounded-2xl lg:shadow-none lg:ring-0">
+        <section
+          id="site-builder-editor-panel"
+          className="order-2 flex min-h-[min(52vh,28rem)] w-full shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/40 max-lg:min-h-[min(50vh,26rem)] lg:order-none lg:min-h-0 lg:w-[min(36vw,440px)] lg:max-w-[480px] lg:min-w-[280px] lg:rounded-2xl lg:shadow-none lg:ring-0"
+        >
           <SiteHtmlEditorPanel
             pageLabel={friendlyPageName(selectedServerPath)}
             value={editorContent}

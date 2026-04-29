@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { SERVICE_PACKAGES } from '@/lib/service-offer';
 import type { ServicePackageId } from '@/lib/types/entities';
 
 export function CreateEntityModals() {
+  const navigate = useNavigate();
   const activeModal = useAppStore((s) => s.ui.activeModal);
   const selectedClientId = useAppStore((s) => s.ui.selectedClientId);
   const selectedProjectId = useAppStore((s) => s.ui.selectedProjectId);
@@ -116,7 +118,7 @@ export function CreateEntityModals() {
               type="button"
               onClick={() => {
                 if (!clientForm.name.trim() || !clientForm.company.trim() || !clientForm.email.trim()) return;
-                addClient({
+                const newId = addClient({
                   name: clientForm.name,
                   company: clientForm.company,
                   email: clientForm.email,
@@ -125,6 +127,7 @@ export function CreateEntityModals() {
                 });
                 setClientForm({ name: '', company: '', email: '', phone: '', ownerId: currentUserId });
                 closeModal();
+                if (newId) navigate(`/clients/${newId}`);
               }}
             >
               Create
@@ -243,6 +246,7 @@ export function CreateEntityModals() {
                   servicePackage: '',
                 });
                 closeModal();
+                navigate(`/projects/${pid}`);
               }}
             >
               Create
@@ -317,7 +321,7 @@ export function CreateEntityModals() {
                   toast('Client is required.', 'error');
                   return;
                 }
-                addInvoice({
+                const invId = addInvoice({
                   clientId: invoiceForm.clientId,
                   projectId: invoiceForm.projectId || null,
                   amount: Math.max(0, Number(invoiceForm.amount) || 0),
@@ -325,6 +329,7 @@ export function CreateEntityModals() {
                 });
                 setInvoiceForm({ clientId: '', projectId: '', amount: '2500', dueDate: 'May 15' });
                 closeModal();
+                if (invId) navigate(`/invoices/${invId}`);
               }}
             >
               Create
@@ -389,15 +394,17 @@ export function CreateEntityModals() {
               type="button"
               onClick={() => {
                 if (!taskForm.projectId || !taskForm.title.trim()) return;
-                addTask({
+                const tid = addTask({
                   projectId: taskForm.projectId,
                   title: taskForm.title,
                   description: taskForm.description.trim() || undefined,
                   due: taskForm.due,
                   assigneeId: taskForm.assigneeId,
                 });
+                const projId = taskForm.projectId;
                 setTaskForm({ projectId: '', title: '', description: '', due: 'Tomorrow', assigneeId: currentUserId });
                 closeModal();
+                if (tid) navigate(`/projects/${projId}`);
               }}
             >
               Create
