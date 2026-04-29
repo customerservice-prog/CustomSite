@@ -1,6 +1,6 @@
 /**
- * When false, we assume a real API backs the admin (set VITE_USE_REAL_API=1 in production with Supabase).
- * Otherwise show a clear banner: in-memory / demo dataset in the SPA.
+ * When false, the admin assumes a real API (Express + Supabase). Production builds set
+ * `VITE_USE_REAL_API=1` via committed `.env.production`. For local dev, set the same in `.env`.
  */
 export function shouldShowDemoDatasetBanner(): boolean {
   if (import.meta.env.VITE_HIDE_DEMO_BANNER === '1') return false;

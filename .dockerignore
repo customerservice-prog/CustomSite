@@ -2,8 +2,14 @@ node_modules
 npm-debug.log
 .git
 .github
+# Local secrets only — keep `.env.production` in the image so `vite build` bakes real API mode.
 .env
-.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production.local
 *.md
 .DS_Store
 coverage
