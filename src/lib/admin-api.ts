@@ -22,7 +22,9 @@ export function getRailwayCredentials(): { token: string; teamId: string } {
   }
 }
 
-export type AdminJsonResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
+export type AdminJsonResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; status: number; error: string; code?: string };
 
 /**
  * Same-origin fetch to Express `/api/admin/*` with Bearer token when present.
@@ -53,8 +55,10 @@ export async function adminFetchJson<T = unknown>(
   if (ct.includes('application/json')) {
     const data = (await res.json()) as T;
     if (!res.ok) {
-      const err = (data as { error?: string; message?: string })?.error || (data as { message?: string })?.message;
-      return { ok: false, status: res.status, error: err || res.statusText || 'Request failed' };
+      const body = data as { error?: string; message?: string; code?: string };
+      const err = body?.error || body?.message;
+      const code = typeof body?.code === 'string' ? body.code : undefined;
+      return { ok: false, status: res.status, error: err || res.statusText || 'Request failed', code };
     }
     return { ok: true, data };
   }

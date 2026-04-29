@@ -52,7 +52,23 @@ import type { SiteBuildArchetypeId } from '@/lib/types/entities';
 
 type SiteFileRow = { path: string; updated_at?: string | null; content_encoding?: string };
 
-type SiteSeedOutcome = { ok: true } | { ok: false; error: string };
+type SiteSeedOutcome = { ok: true } | { ok: false; error: string; code?: string };
+
+function isAuthSessionFailure(error: string, code?: string): boolean {
+  if (code === 'INVALID_TOKEN' || code === 'NO_TOKEN') return true;
+  if (/invalid or expired session/i.test(error)) return true;
+  if (/^unauthorized$/i.test(error.trim())) return true;
+  return false;
+}
+
+/** User-facing copy for start-from-template / blank-code failures. */
+function formatSiteSeedModalMessage(kind: 'template' | 'blank', result: { error: string; code?: string }): string {
+  if (isAuthSessionFailure(result.error, result.code)) {
+    return `${result.error} Sign in again from your agency login on the same host as this app (for example open client-portal with the agency query param your deployment uses), then return to Site builder. Your saved session token may have expired.`;
+  }
+  const prefix = kind === 'template' ? 'Template start failed.' : 'Blank start failed.';
+  return `${prefix} ${result.error} Create the project in Admin (or add it in Supabase) if it only exists in the local demo.`;
+}
 
 const PAGE_PUB_STORAGE = 'customsite_site_page_pub_v1';
 const LAST_DEPLOY_STORAGE = 'customsite_last_deploy_v1';
@@ -339,7 +355,7 @@ export function SiteBuilderPage() {
     if (!init.ok) {
       const err = init.error || 'Could not initialize the site folder';
       toast(err, 'error');
-      return { ok: false, error: err };
+      return { ok: false, error: err, code: init.code };
     }
     const indexHtml = buildFullSiteIndexHtml(siteArchetype, {
       siteTitle: activeProject.name,
@@ -352,7 +368,7 @@ export function SiteBuilderPage() {
     if (!put.ok) {
       const err = put.error || 'Could not save homepage';
       toast(err, 'error');
-      return { ok: false, error: err };
+      return { ok: false, error: err, code: put.code };
     }
     setWorkflow((w) => appendChangelog(activeProjectId, 'Generated full homepage structure', w));
     await refreshServerFiles();
@@ -548,7 +564,7 @@ export function SiteBuilderPage() {
       toast(err, 'error');
       setSiteSeeding(false);
       setSiteSeedError(true);
-      return { ok: false, error: err };
+      return { ok: false, error: err, code: init.code };
     }
     const titleSafe = activeProject.name.replace(/</g, '');
     const minimalHtml = `<!DOCTYPE html>
@@ -575,7 +591,7 @@ export function SiteBuilderPage() {
       toast(err, 'error');
       setSiteSeeding(false);
       setSiteSeedError(true);
-      return { ok: false, error: err };
+      return { ok: false, error: err, code: putHtml.code };
     }
     const css = `/* ${titleSafe} — global styles */\n\nbody {\n  margin: 0;\n  background: #f8fafc;\n}\n`;
     const putCss = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/file`, {
@@ -587,7 +603,7 @@ export function SiteBuilderPage() {
       toast(err, 'error');
       setSiteSeeding(false);
       setSiteSeedError(true);
-      return { ok: false, error: err };
+      return { ok: false, error: err, code: putCss.code };
     }
     setWorkflow((w) => appendChangelog(activeProjectId, 'Created blank index.html + styles.css', w));
     await refreshServerFiles();
@@ -1531,7 +1547,7 @@ export function SiteBuilderPage() {
               setNewSiteChoiceMessage(null);
               const result = await createBlankCodeSite();
               if (!result.ok) {
-                setNewSiteChoiceMessage(`Could not create blank files — ${result.error}`);
+                setNewSiteChoiceMessage(formatSiteSeedModalMessage('blank', result));
               }
             }}
           >

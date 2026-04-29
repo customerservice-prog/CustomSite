@@ -8,7 +8,10 @@ async function requireAuth(req, res, next) {
   try {
     const auth = req.headers.authorization;
     if (!auth || !auth.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized', code: 'NO_TOKEN' });
+      return res.status(401).json({
+        error: 'Not signed in — open your CustomSite login and sign in, then try again.',
+        code: 'NO_TOKEN',
+      });
     }
     const token = auth.slice(7);
 
