@@ -1,9 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ListChecks, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BUILD_HELPER_STEPS } from '@/lib/build-helper/constants';
-import { deriveBuildHelperStepDone, countDone } from '@/lib/build-helper/derive-progress';
+import { BUILD_STEPS, countCompleted } from '@/lib/build-helper/build-steps';
 import { useBuildHelperStore } from '@/store/use-build-helper-store';
 import { useAppStore } from '@/store/useAppStore';
 import { BuildHelperPanel } from '@/components/build-helper/build-helper-panel';
@@ -18,48 +17,19 @@ export function BuildHelperDock() {
   const dismissFirstRunStrip = useBuildHelperStore((s) => s.dismissFirstRunStrip);
   const tryAutoEnableForEmptyWorkspace = useBuildHelperStore((s) => s.tryAutoEnableForEmptyWorkspace);
   const maybeSetPipelineFinished = useBuildHelperStore((s) => s.maybeSetPipelineFinished);
+  const currentStep = useBuildHelperStore((s) => s.currentStep);
+  const completedSteps = useBuildHelperStore((s) => s.completedSteps);
 
   const projects = useAppStore((s) => s.projects);
-  const clients = useAppStore((s) => s.clients);
-  const invoices = useAppStore((s) => s.invoices);
-  const plansByProjectId = useBuildHelperStore((s) => s.plansByProjectId);
-  const perProject = useBuildHelperStore((s) => s.perProject);
-  const selectedClientId = useAppStore((s) => s.ui.selectedClientId);
-  const selectedProjectId = useAppStore((s) => s.ui.selectedProjectId);
-
   const projectCount = Object.keys(projects).length;
 
   useEffect(() => {
     tryAutoEnableForEmptyWorkspace(projectCount);
   }, [projectCount, tryAutoEnableForEmptyWorkspace]);
 
-  const doneMap = useMemo(() => {
-    const routeProject = pathname.match(/^\/projects\/([^/]+)/)?.[1];
-    const effectiveProjectId =
-      selectedProjectId ||
-      (routeProject && routeProject !== 'site' ? routeProject : null) ||
-      (pathname.includes('/projects/') ? pathname.split('/')[2] : null) ||
-      null;
-    const routeClient = pathname.match(/^\/clients\/([^/]+)/)?.[1];
-    const effectiveClientId =
-      selectedClientId ||
-      routeClient ||
-      (effectiveProjectId ? projects[effectiveProjectId]?.clientId : null) ||
-      null;
-    return deriveBuildHelperStepDone({
-      pathname,
-      selectedClientId: effectiveClientId,
-      selectedProjectId: effectiveProjectId,
-      clients,
-      projects,
-      invoices,
-      plansByProjectId,
-      perProject,
-    });
-  }, [pathname, selectedClientId, selectedProjectId, clients, projects, invoices, plansByProjectId, perProject]);
-
-  const allDone = BUILD_HELPER_STEPS.every((s) => doneMap[s.id]);
-  const completed = countDone(doneMap);
+  const total = BUILD_STEPS.length;
+  const completed = countCompleted(completedSteps);
+  const allDone = currentStep === 'complete';
 
   useEffect(() => {
     maybeSetPipelineFinished(allDone);
@@ -107,7 +77,9 @@ export function BuildHelperDock() {
           <ListChecks className="h-4 w-4 shrink-0" aria-hidden />
           Helper
           {completed > 0 ? (
-            <span className="rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{completed}</span>
+            <span className="rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              {completed}/{total}
+            </span>
           ) : null}
         </button>
       ) : null}

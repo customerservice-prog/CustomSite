@@ -10,6 +10,7 @@ import { crumbsFromMatches } from '@/lib/breadcrumbs';
 import { DemoDatasetBanner } from '@/components/layout/demo-dataset-banner';
 import { WorkflowGlobalHotkeys } from '@/components/workflow/workflow-global-hotkeys';
 import { BuildHelperDock } from '@/components/build-helper/build-helper-dock';
+import { BuildHelperProgressSync } from '@/components/build-helper/build-helper-progress-sync';
 import { useBuildHelperStore } from '@/store/use-build-helper-store';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ export function AppShell() {
   if (siteBuilderFull || rbyanBrainFull) {
     return (
       <div className="flex h-screen flex-col overflow-hidden bg-[#f4f5f8] text-gray-900">
+        <BuildHelperProgressSync />
         <main
           className={cn(
             'flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden',
@@ -66,6 +68,7 @@ export function AppShell() {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <DemoDatasetBanner />
+        <BuildHelperProgressSync />
         <BuildHelperDock />
         <TopHeader breadcrumbs={crumbs} />
         <main className={cn('min-h-0 flex-1 overflow-y-auto', helperReserve && 'lg:pr-[min(380px,42vw)]')}>

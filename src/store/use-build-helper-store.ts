@@ -1,20 +1,24 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { BuildHelperSitePlan, PerProjectBuildHelper } from '@/lib/build-helper/constants';
-import {
-  EDIT_CHECK_KEYS,
-  PUBLISH_CHECK_KEYS,
-  QA_CHECK_KEYS,
-} from '@/lib/build-helper/constants';
+import { normalizeCompletedOrder, type ManualStepId } from '@/lib/build-helper/build-steps';
 
-const STORAGE_KEY = 'cs-build-helper-v1';
+/** localStorage key — must match product spec */
+export const BUILD_HELPER_STORAGE_KEY = 'build_helper_state';
 
-type State = {
+export type BuildHelperSitePlan = {
+  siteType: string;
+  pages: string[];
+  goal: string;
+};
+
+export type BuildHelperStoreState = {
   enabled: boolean;
-  /** When enabled, panel is hidden until user opens from FAB */
   panelCollapsed: boolean;
-  plansByProjectId: Record<string, BuildHelperSitePlan>;
-  perProject: Record<string, PerProjectBuildHelper>;
+  activeProjectId: string | null;
+  activeClientId: string | null;
+  currentStep: string;
+  completedSteps: string[];
+  sitePlan: BuildHelperSitePlan | null;
   firstRunStripVisible: boolean;
   dismissedEmptyWorkspaceOffer: boolean;
   postCompletePromptPending: boolean;
@@ -25,48 +29,46 @@ type State = {
 type Actions = {
   setEnabled: (on: boolean) => void;
   setPanelCollapsed: (v: boolean) => void;
-  saveSitePlan: (projectId: string, plan: Omit<BuildHelperSitePlan, 'updatedAt'>) => void;
-  patchProjectFlags: (projectId: string, patch: Partial<PerProjectBuildHelper>) => void;
-  setQaCheck: (projectId: string, key: keyof NonNullable<PerProjectBuildHelper['qa']>, value: boolean) => void;
-  setPublishCheck: (
-    projectId: string,
-    key: keyof NonNullable<PerProjectBuildHelper['publishQa']>,
-    value: boolean
-  ) => void;
-  setEditCheck: (
-    projectId: string,
-    key: keyof NonNullable<PerProjectBuildHelper['editChecklist']>,
-    value: boolean
-  ) => void;
+  setActiveClientId: (id: string | null) => void;
+  setActiveProjectId: (id: string | null) => void;
+  setSitePlan: (plan: BuildHelperSitePlan | null) => void;
+  markManualStep: (id: ManualStepId) => void;
+  restartChecklist: () => void;
+  /** Internal: apply results from computeReconciledProgress when they change. */
+  applyReconciledProgress: (completedSteps: string[], currentStep: string) => void;
   dismissFirstRunStrip: () => void;
   dismissPostCompletePrompt: () => void;
   respondPostCompletePrompt: (keepOn: boolean) => void;
   tryAutoEnableForEmptyWorkspace: (projectCount: number) => void;
-  resetProgressForActiveProject: (projectId: string | null) => void;
-  markAllCompleteForProject: (projectId: string | null) => void;
   maybeSetPipelineFinished: (allStepsDone: boolean) => void;
 };
 
-export type BuildHelperStore = State & Actions;
+export type BuildHelperStore = BuildHelperStoreState & Actions;
 
-const emptyFlags = (): PerProjectBuildHelper => ({
-  qa: {},
-  publishQa: {},
-  editChecklist: {},
-});
+const initial: BuildHelperStoreState = {
+  enabled: false,
+  panelCollapsed: false,
+  activeProjectId: null,
+  activeClientId: null,
+  currentStep: 'client',
+  completedSteps: [],
+  sitePlan: null,
+  firstRunStripVisible: false,
+  dismissedEmptyWorkspaceOffer: false,
+  postCompletePromptPending: false,
+  hasFinishedFullPipelineOnce: false,
+  autoEmptyWorkspaceChecked: false,
+};
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((v, i) => v === b[i]);
+}
 
 export const useBuildHelperStore = create<BuildHelperStore>()(
   persist(
     (set, get) => ({
-      enabled: false,
-      panelCollapsed: false,
-      plansByProjectId: {},
-      perProject: {},
-      firstRunStripVisible: false,
-      dismissedEmptyWorkspaceOffer: false,
-      postCompletePromptPending: false,
-      hasFinishedFullPipelineOnce: false,
-      autoEmptyWorkspaceChecked: false,
+      ...initial,
 
       setEnabled: (on) =>
         set({
@@ -77,66 +79,29 @@ export const useBuildHelperStore = create<BuildHelperStore>()(
 
       setPanelCollapsed: (v) => set({ panelCollapsed: v }),
 
-      saveSitePlan: (projectId, plan) => {
-        const updatedAt = new Date().toISOString();
-        set((s) => ({
-          plansByProjectId: {
-            ...s.plansByProjectId,
-            [projectId]: { ...plan, updatedAt },
-          },
-        }));
-      },
+      setActiveClientId: (id) => set({ activeClientId: id }),
 
-      patchProjectFlags: (projectId, patch) => {
-        if (!projectId) return;
-        set((s) => {
-          const cur = s.perProject[projectId] ?? emptyFlags();
-          return {
-            perProject: {
-              ...s.perProject,
-              [projectId]: { ...cur, ...patch },
-            },
-          };
-        });
-      },
+      setActiveProjectId: (id) => set({ activeProjectId: id }),
 
-      setQaCheck: (projectId, key, value) => {
-        if (!projectId) return;
-        set((s) => {
-          const cur = s.perProject[projectId] ?? emptyFlags();
-          return {
-            perProject: {
-              ...s.perProject,
-              [projectId]: { ...cur, qa: { ...cur.qa, [key]: value } },
-            },
-          };
-        });
-      },
+      setSitePlan: (plan) => set({ sitePlan: plan }),
 
-      setPublishCheck: (projectId, key, value) => {
-        if (!projectId) return;
+      markManualStep: (id) =>
         set((s) => {
-          const cur = s.perProject[projectId] ?? emptyFlags();
-          return {
-            perProject: {
-              ...s.perProject,
-              [projectId]: { ...cur, publishQa: { ...cur.publishQa, [key]: value } },
-            },
-          };
-        });
-      },
+          if (s.completedSteps.includes(id)) return s;
+          return { completedSteps: normalizeCompletedOrder([...s.completedSteps, id]) };
+        }),
 
-      setEditCheck: (projectId, key, value) => {
-        if (!projectId) return;
-        set((s) => {
-          const cur = s.perProject[projectId] ?? emptyFlags();
-          return {
-            perProject: {
-              ...s.perProject,
-              [projectId]: { ...cur, editChecklist: { ...cur.editChecklist, [key]: value } },
-            },
-          };
-        });
+      restartChecklist: () =>
+        set({
+          completedSteps: [],
+          sitePlan: null,
+          currentStep: 'client',
+        }),
+
+      applyReconciledProgress: (completedSteps, currentStep) => {
+        const s = get();
+        if (arraysEqual(s.completedSteps, completedSteps) && s.currentStep === currentStep) return;
+        set({ completedSteps, currentStep });
       },
 
       dismissFirstRunStrip: () => set({ firstRunStripVisible: false, dismissedEmptyWorkspaceOffer: true }),
@@ -166,42 +131,6 @@ export const useBuildHelperStore = create<BuildHelperStore>()(
         });
       },
 
-      resetProgressForActiveProject: (projectId) => {
-        if (!projectId) return;
-        set((s) => {
-          const { [projectId]: _removed, ...rest } = s.perProject;
-          const { [projectId]: _p, ...plans } = s.plansByProjectId;
-          return { perProject: rest, plansByProjectId: plans };
-        });
-      },
-
-      markAllCompleteForProject: (projectId) => {
-        if (!projectId) return;
-        const qa = Object.fromEntries(QA_CHECK_KEYS.map((k) => [k, true])) as PerProjectBuildHelper['qa'];
-        const publishQa = Object.fromEntries(PUBLISH_CHECK_KEYS.map((k) => [k, true])) as NonNullable<
-          PerProjectBuildHelper['publishQa']
-        >;
-        const editChecklist = Object.fromEntries(EDIT_CHECK_KEYS.map((k) => [k, true])) as NonNullable<
-          PerProjectBuildHelper['editChecklist']
-        >;
-        set((s) => ({
-          perProject: {
-            ...s.perProject,
-            [projectId]: {
-              ...(s.perProject[projectId] ?? emptyFlags()),
-              rbyanDone: true,
-              savedAfterRbyan: true,
-              feedbackSent: true,
-              publishConfirmed: true,
-              wrapUpMarked: true,
-              qa,
-              publishQa,
-              editChecklist,
-            },
-          },
-        }));
-      },
-
       maybeSetPipelineFinished: (allStepsDone) => {
         const s = get();
         if (!allStepsDone || s.hasFinishedFullPipelineOnce || s.postCompletePromptPending) return;
@@ -209,12 +138,15 @@ export const useBuildHelperStore = create<BuildHelperStore>()(
       },
     }),
     {
-      name: STORAGE_KEY,
+      name: BUILD_HELPER_STORAGE_KEY,
       partialize: (s) => ({
         enabled: s.enabled,
         panelCollapsed: s.panelCollapsed,
-        plansByProjectId: s.plansByProjectId,
-        perProject: s.perProject,
+        activeProjectId: s.activeProjectId,
+        activeClientId: s.activeClientId,
+        currentStep: s.currentStep,
+        completedSteps: s.completedSteps,
+        sitePlan: s.sitePlan,
         dismissedEmptyWorkspaceOffer: s.dismissedEmptyWorkspaceOffer,
         hasFinishedFullPipelineOnce: s.hasFinishedFullPipelineOnce,
         autoEmptyWorkspaceChecked: s.autoEmptyWorkspaceChecked,
@@ -223,27 +155,63 @@ export const useBuildHelperStore = create<BuildHelperStore>()(
   )
 );
 
-/** After Rbyan generates or applies output to the project workspace. */
-export function notifyBuildHelperRbyanOutput(projectId: string) {
-  useBuildHelperStore.getState().patchProjectFlags(projectId, { rbyanDone: true });
-}
+/** One-time migration from pre-spec persist key. */
+export function migrateLegacyBuildHelperStorageOnce(): void {
+  try {
+    const nextKey = BUILD_HELPER_STORAGE_KEY;
+    const raw = localStorage.getItem('cs-build-helper-v1');
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { state?: Record<string, unknown> };
+    const st = parsed?.state;
+    if (!st || typeof st !== 'object') return;
 
-/** After a manual save from Site Builder (not apply-Rbyan-only). */
-export function notifyBuildHelperSiteBuilderManualSave(projectId: string) {
-  const st = useBuildHelperStore.getState().perProject[projectId];
-  if (st?.rbyanDone) {
-    useBuildHelperStore.getState().patchProjectFlags(projectId, { savedAfterRbyan: true });
+    const enabled = Boolean(st.enabled);
+    const panelCollapsed = Boolean(st.panelCollapsed);
+    const plansByProjectId = st.plansByProjectId as Record<string, { siteType?: string; pages?: string[]; goal?: string }> | undefined;
+    const perProject = st.perProject as Record<string, { feedbackSent?: boolean; wrapUpMarked?: boolean }> | undefined;
+    const firstPid = Object.keys(plansByProjectId ?? {})[0];
+    const sitePlan =
+      firstPid && plansByProjectId?.[firstPid]
+        ? {
+            siteType: String(plansByProjectId[firstPid]!.siteType ?? ''),
+            pages: Array.isArray(plansByProjectId[firstPid]!.pages) ? plansByProjectId[firstPid]!.pages! : [],
+            goal: String(plansByProjectId[firstPid]!.goal ?? ''),
+          }
+        : null;
+
+    const completed: string[] = [];
+    if (firstPid && perProject?.[firstPid]?.feedbackSent) completed.push('feedback');
+    if (firstPid && perProject?.[firstPid]?.wrapUpMarked) completed.push('invoice');
+
+    const migrated: BuildHelperStoreState = {
+      ...initial,
+      enabled,
+      panelCollapsed,
+      activeProjectId: firstPid || null,
+      activeClientId: null,
+      sitePlan: sitePlan && sitePlan.siteType && sitePlan.pages.length && sitePlan.goal ? sitePlan : null,
+      completedSteps: normalizeCompletedOrder(completed),
+      currentStep: 'client',
+    };
+
+    localStorage.setItem(nextKey, JSON.stringify({ state: migrated, version: 0 }));
+    localStorage.removeItem('cs-build-helper-v1');
+    useBuildHelperStore.setState(migrated);
+  } catch {
+    /* */
   }
 }
 
-export function buildRbyanPrefillPrompt(plan: BuildHelperSitePlan | undefined, clientName: string, company: string): string {
-  const st = plan?.siteType
-    ? SITE_TYPE_LABEL(plan.siteType)
-    : 'a conversion-focused';
+export function buildRbyanPrefillPrompt(
+  plan: BuildHelperSitePlan | null,
+  clientName: string,
+  company: string
+): string {
+  const st = plan?.siteType ? SITE_TYPE_LABEL(plan.siteType) : 'a conversion-focused';
   const pages = plan?.pages?.length ? plan.pages.join(', ') : 'Home, Services, About, Contact';
   const goal = plan?.goal ? GOAL_LABEL(plan.goal) : 'drive more qualified leads';
   const who = company || clientName || 'the client';
-  return `Build a ${st} website for ${who}. The goal is to ${goal}. Include these pages: ${pages}. Make it modern, responsive, and conversion-focused.`;
+  return `Build a ${st} site with pages ${pages} focused on ${goal}. Client: ${who}. Make it modern, responsive, and conversion-focused.`;
 }
 
 function SITE_TYPE_LABEL(id: string): string {

@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Check,
   ChevronRight,
@@ -12,141 +12,111 @@ import {
 } from 'lucide-react';
 import { Button, buttonClassName } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
-import {
-  BUILD_HELPER_STEPS,
-  EDIT_CHECK_LABELS,
-  EDIT_CHECK_KEYS,
-  FEEDBACK_MESSAGE,
-  GOAL_OPTIONS,
-  PAGE_OPTIONS,
-  PUBLISH_CHECK_LABELS,
-  PUBLISH_CHECK_KEYS,
-  QA_CHECK_LABELS,
-  QA_CHECK_KEYS,
-  SITE_TYPE_OPTIONS,
-} from '@/lib/build-helper/constants';
-import {
-  countDone,
-  deriveBuildHelperStepDone,
-  firstIncompleteStep,
-  highlightStepForPath,
-} from '@/lib/build-helper/derive-progress';
+import { FEEDBACK_MESSAGE, GOAL_OPTIONS, PAGE_OPTIONS, SITE_TYPE_OPTIONS } from '@/lib/build-helper/constants';
+import { BUILD_STEPS, countCompleted } from '@/lib/build-helper/build-steps';
 import {
   buildRbyanPrefillPrompt,
   RBYAN_PREFILL_STORAGE_KEY,
   useBuildHelperStore,
+  type BuildHelperSitePlan,
 } from '@/store/use-build-helper-store';
 import { useAppStore } from '@/store/useAppStore';
 import { useClients, useProjects } from '@/store/hooks';
 import { cn } from '@/lib/utils';
 import { useShell } from '@/context/shell-context';
 
+const STEP_HINT: Record<string, string> = {
+  client: 'Add the business you are building for.',
+  project: 'Create a website project for this client.',
+  plan: 'Decide site type, pages, and conversion goal.',
+  rbyan: 'Generate the first version with Rbyan.',
+  edit: 'Review and customize files in Site Builder.',
+  qa: 'Preview desktop/tablet/mobile and verify behavior.',
+  feedback: 'Share preview link and collect client notes.',
+  publish: 'Ship when the site is production-ready.',
+  invoice: 'Invoice and mark the engagement complete.',
+  complete: 'All steps done for this checklist.',
+};
+
 export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const { toast } = useShell();
+
+  const enabled = useBuildHelperStore((s) => s.enabled);
+  const activeClientId = useBuildHelperStore((s) => s.activeClientId);
+  const activeProjectId = useBuildHelperStore((s) => s.activeProjectId);
+  const currentStep = useBuildHelperStore((s) => s.currentStep);
+  const completedSteps = useBuildHelperStore((s) => s.completedSteps);
+  const sitePlan = useBuildHelperStore((s) => s.sitePlan);
+  const setActiveClientId = useBuildHelperStore((s) => s.setActiveClientId);
+  const setActiveProjectId = useBuildHelperStore((s) => s.setActiveProjectId);
+  const setSitePlan = useBuildHelperStore((s) => s.setSitePlan);
+  const markManualStep = useBuildHelperStore((s) => s.markManualStep);
+  const restartChecklist = useBuildHelperStore((s) => s.restartChecklist);
+  const postCompletePromptPending = useBuildHelperStore((s) => s.postCompletePromptPending);
+  const respondPostCompletePrompt = useBuildHelperStore((s) => s.respondPostCompletePrompt);
+  const dismissPostCompletePrompt = useBuildHelperStore((s) => s.dismissPostCompletePrompt);
 
   const clients = useClients();
   const projects = useProjects();
   const projectsById = useAppStore((s) => s.projects);
   const clientsById = useAppStore((s) => s.clients);
-  const invoices = useAppStore((s) => s.invoices);
-  const selectedClientId = useAppStore((s) => s.ui.selectedClientId);
-  const selectedProjectId = useAppStore((s) => s.ui.selectedProjectId);
   const setSelectedClientId = useAppStore((s) => s.setSelectedClientId);
   const setSelectedProjectId = useAppStore((s) => s.setSelectedProjectId);
   const openModal = useAppStore((s) => s.openModal);
 
-  const enabled = useBuildHelperStore((s) => s.enabled);
-  const plansByProjectId = useBuildHelperStore((s) => s.plansByProjectId);
-  const perProject = useBuildHelperStore((s) => s.perProject);
-  const saveSitePlan = useBuildHelperStore((s) => s.saveSitePlan);
-  const patchProjectFlags = useBuildHelperStore((s) => s.patchProjectFlags);
-  const setQaCheck = useBuildHelperStore((s) => s.setQaCheck);
-  const setPublishCheck = useBuildHelperStore((s) => s.setPublishCheck);
-  const setEditCheck = useBuildHelperStore((s) => s.setEditCheck);
-  const resetProgressForActiveProject = useBuildHelperStore((s) => s.resetProgressForActiveProject);
-  const markAllCompleteForProject = useBuildHelperStore((s) => s.markAllCompleteForProject);
-  const postCompletePromptPending = useBuildHelperStore((s) => s.postCompletePromptPending);
-  const respondPostCompletePrompt = useBuildHelperStore((s) => s.respondPostCompletePrompt);
-  const dismissPostCompletePrompt = useBuildHelperStore((s) => s.dismissPostCompletePrompt);
-
-  const routeProject = pathname.match(/^\/projects\/([^/]+)/)?.[1];
-  const effectiveProjectId =
-    selectedProjectId ||
-    (routeProject && routeProject !== 'site' ? routeProject : null) ||
-    (pathname.includes('/projects/') ? pathname.split('/')[2] : null) ||
-    '';
-  const routeClient = pathname.match(/^\/clients\/([^/]+)/)?.[1];
-  const effectiveClientId =
-    selectedClientId ||
-    routeClient ||
-    (effectiveProjectId ? projectsById[effectiveProjectId]?.clientId : null) ||
-    '';
-
   const clientProjects = useMemo(
-    () => projects.filter((p) => p.deliveryFocus === 'client_site' && p.clientId === effectiveClientId),
-    [projects, effectiveClientId]
+    () => projects.filter((p) => p.deliveryFocus === 'client_site' && p.clientId === activeClientId),
+    [projects, activeClientId]
   );
 
-  const plan = effectiveProjectId ? plansByProjectId[effectiveProjectId] : undefined;
-  const flags = effectiveProjectId ? perProject[effectiveProjectId] : undefined;
+  const doneSet = useMemo(() => new Set(completedSteps), [completedSteps]);
+  const total = BUILD_STEPS.length;
+  const completed = countCompleted(completedSteps);
+  const pct = Math.round((100 * completed) / total);
 
-  const doneMap = useMemo(
-    () =>
-      deriveBuildHelperStepDone({
-        pathname,
-        selectedClientId: effectiveClientId || null,
-        selectedProjectId: effectiveProjectId || null,
-        clients: clientsById,
-        projects: projectsById,
-        invoices,
-        plansByProjectId,
-        perProject,
-      }),
-    [
-      pathname,
-      effectiveClientId,
-      effectiveProjectId,
-      clientsById,
-      projectsById,
-      invoices,
-      plansByProjectId,
-      perProject,
-    ]
-  );
+  const [siteType, setSiteType] = useState(sitePlan?.siteType ?? '');
+  const [goal, setGoal] = useState(sitePlan?.goal ?? '');
+  const [pages, setPages] = useState<Set<string>>(() => new Set(sitePlan?.pages ?? []));
 
-  const highlight = highlightStepForPath(pathname);
-  const completed = countDone(doneMap);
-  const current = firstIncompleteStep(doneMap);
-  const nextIdx = BUILD_HELPER_STEPS.findIndex((s) => s.id === current);
-  const nextTitle = nextIdx >= 0 && nextIdx < BUILD_HELPER_STEPS.length - 1 ? BUILD_HELPER_STEPS[nextIdx + 1]!.title : '—';
+  useEffect(() => {
+    if (sitePlan) {
+      setSiteType(sitePlan.siteType);
+      setGoal(sitePlan.goal);
+      setPages(new Set(sitePlan.pages));
+    } else {
+      setSiteType('');
+      setGoal('');
+      setPages(new Set());
+    }
+  }, [sitePlan]);
 
-  const siteTypeVal = plan?.siteType ?? '';
-  const goalVal = plan?.goal ?? '';
-  const pagesVal = new Set(plan?.pages ?? []);
+  if (!enabled) return null;
 
-  function previewUrl(pid: string) {
-    const base = `${window.location.origin}${window.location.pathname}`;
-    return `${base}#/projects/${encodeURIComponent(pid)}/site`;
-  }
+  const activeClient = activeClientId ? clientsById[activeClientId] : undefined;
+  const activeProject = activeProjectId ? projectsById[activeProjectId] : undefined;
 
-  function openRbyanPrefilled() {
-    if (!effectiveProjectId) {
+  function openRbyan() {
+    if (!activeProjectId) {
       toast('Select a project first.', 'info');
       return;
     }
-    const c = effectiveClientId ? clientsById[effectiveClientId] : undefined;
-    const text = buildRbyanPrefillPrompt(plan, c?.name ?? '', c?.company ?? '');
+    const text = buildRbyanPrefillPrompt(sitePlan, activeClient?.name ?? '', activeClient?.company ?? '');
     try {
       sessionStorage.setItem(RBYAN_PREFILL_STORAGE_KEY, text);
     } catch {
       /* */
     }
-    navigate(`/rbyan?project=${encodeURIComponent(effectiveProjectId)}`);
+    navigate(`/rbyan?project=${encodeURIComponent(activeProjectId)}`);
   }
 
-  if (!enabled) return null;
+  function previewUrl() {
+    if (!activeProjectId) return '';
+    const base = `${window.location.origin}${window.location.pathname}`;
+    return `${base}#/projects/${encodeURIComponent(activeProjectId)}/site`;
+  }
+
+  const cur = BUILD_STEPS.find((s) => s.id === currentStep);
 
   return (
     <div className="flex h-full flex-col border-l border-slate-200 bg-white shadow-[0_0_24px_rgba(15,23,42,0.06)]">
@@ -156,21 +126,18 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
             <ListChecks className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />
             <h2 className="text-sm font-semibold text-slate-900">Build Helper</h2>
           </div>
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">Follow this checklist to complete your first client site.</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">Step-by-step guidance for your first client build.</p>
           <p className="mt-2 text-[11px] font-medium text-indigo-700">
-            {completed} of {BUILD_HELPER_STEPS.length} complete
+            {completed} of {total} complete
           </p>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full rounded-full bg-indigo-600 transition-[width]"
-              style={{ width: `${Math.round((100 * completed) / BUILD_HELPER_STEPS.length)}%` }}
-            />
+            <div className="h-full rounded-full bg-indigo-600 transition-[width]" style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-[11px] text-slate-600">
-            Current: <span className="font-semibold text-slate-800">{BUILD_HELPER_STEPS.find((x) => x.id === current)?.title}</span>
-          </p>
-          <p className="text-[11px] text-slate-500">
-            Next: <span className="font-medium text-slate-700">{nextTitle}</span>
+          <p className="mt-2 text-[11px] text-slate-600">
+            Current:{' '}
+            <span className="font-semibold text-slate-800">
+              {currentStep === 'complete' ? 'All complete' : (cur?.title ?? currentStep)}
+            </span>
           </p>
         </div>
         <button
@@ -184,15 +151,17 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Context</p>
           <label className="mb-1 block text-[11px] font-medium text-slate-600">Client</label>
           <Select
             className="mb-2 w-full text-sm"
-            value={effectiveClientId || ''}
+            value={activeClientId ?? ''}
             onChange={(e) => {
               const id = e.target.value || null;
+              setActiveClientId(id);
               setSelectedClientId(id);
+              setActiveProjectId(null);
               setSelectedProjectId(null);
             }}
           >
@@ -206,12 +175,16 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
           <label className="mb-1 block text-[11px] font-medium text-slate-600">Project</label>
           <Select
             className="w-full text-sm"
-            value={effectiveProjectId || ''}
+            value={activeProjectId ?? ''}
             onChange={(e) => {
               const id = e.target.value || null;
+              setActiveProjectId(id);
               setSelectedProjectId(id);
               const p = id ? projectsById[id] : undefined;
-              if (p) setSelectedClientId(p.clientId);
+              if (p) {
+                setActiveClientId(p.clientId);
+                setSelectedClientId(p.clientId);
+              }
             }}
           >
             <option value="">Select project…</option>
@@ -223,109 +196,283 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          {BUILD_HELPER_STEPS.map((step) => (
-            <StepBlock
-              key={step.id}
-              step={step}
-              done={doneMap[step.id]}
-              highlighted={highlight === step.id}
-              effectiveClientId={effectiveClientId}
-              effectiveProjectId={effectiveProjectId}
-              siteTypeVal={siteTypeVal}
-              goalVal={goalVal}
-              pagesVal={pagesVal}
-              flags={flags}
-              onSavePlan={() => {
-                if (!effectiveProjectId) {
-                  toast('Select a project for the plan.', 'info');
-                  return;
-                }
-                if (!siteTypeVal || !goalVal || pagesVal.size === 0) {
-                  toast('Pick site type, goal, and at least one page.', 'info');
-                  return;
-                }
-                saveSitePlan(effectiveProjectId, {
-                  siteType: siteTypeVal,
-                  goal: goalVal,
-                  pages: [...pagesVal],
-                });
-                toast('Site plan saved for this project.', 'success');
-              }}
-              onTogglePage={(page) => {
-                if (!effectiveProjectId) return;
-                const next = new Set(pagesVal);
-                if (next.has(page)) next.delete(page);
-                else next.add(page);
-                saveSitePlan(effectiveProjectId, {
-                  siteType: siteTypeVal || 'service',
-                  goal: goalVal || 'leads',
-                  pages: [...next],
-                });
-              }}
-              onSiteType={(v) => {
-                if (!effectiveProjectId) return;
-                saveSitePlan(effectiveProjectId, {
-                  siteType: v,
-                  goal: goalVal || 'leads',
-                  pages: plan?.pages?.length ? plan.pages : ['Home'],
-                });
-              }}
-              onGoal={(v) => {
-                if (!effectiveProjectId) return;
-                saveSitePlan(effectiveProjectId, {
-                  siteType: siteTypeVal || 'service',
-                  goal: v,
-                  pages: plan?.pages?.length ? plan.pages : ['Home'],
-                });
-              }}
-              openRbyanPrefilled={openRbyanPrefilled}
-              previewUrl={previewUrl}
-              patchProjectFlags={patchProjectFlags}
-              setQaCheck={setQaCheck}
-              setPublishCheck={setPublishCheck}
-              setEditCheck={setEditCheck}
-              openModal={openModal}
-              setSelectedClientId={setSelectedClientId}
-              navigate={navigate}
-              toast={toast}
-            />
-          ))}
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Steps</p>
+        <ul className="mb-4 space-y-1">
+          {BUILD_STEPS.map((s) => {
+            const done = doneSet.has(s.id);
+            const active = s.id === currentStep;
+            return (
+              <li
+                key={s.id}
+                className={cn(
+                  'flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs transition',
+                  done ? 'border-emerald-200 bg-emerald-50/50 text-emerald-950' : 'border-slate-100 bg-white text-slate-700',
+                  active && !done ? 'ring-1 ring-indigo-300' : ''
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px]',
+                    done ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'
+                  )}
+                >
+                  {done ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : ''}
+                </span>
+                <span className={cn('font-medium', active && 'text-indigo-900')}>{s.title}</span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-800/80">Current step</p>
+          <h3 className="mt-1 text-sm font-semibold text-slate-900">
+            {currentStep === 'complete' ? 'Pipeline complete' : (cur?.title ?? currentStep)}
+          </h3>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{STEP_HINT[currentStep] ?? ''}</p>
+
+          <div className="mt-3">
+            {currentStep === 'complete' ? (
+              <p className="text-xs text-slate-700">You have finished every Build Helper step for this run.</p>
+            ) : null}
+
+            {currentStep === 'client' ? (
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" className="h-9 px-3 text-xs" onClick={() => navigate('/clients')}>
+                  Clients
+                </Button>
+                <Button type="button" className="h-9 px-3 text-xs" onClick={() => openModal('create-client')}>
+                  Add client
+                </Button>
+              </div>
+            ) : null}
+
+            {currentStep === 'project' ? (
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" className="h-9 px-3 text-xs" onClick={() => navigate('/projects')}>
+                  Projects
+                </Button>
+                <Button
+                  type="button"
+                  className="h-9 px-3 text-xs"
+                  onClick={() => {
+                    if (!activeClientId) {
+                      toast('Select a client first.', 'info');
+                      return;
+                    }
+                    setSelectedClientId(activeClientId);
+                    openModal('create-project');
+                  }}
+                >
+                  Create project
+                </Button>
+              </div>
+            ) : null}
+
+            {currentStep === 'plan' ? (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] font-medium text-slate-600">Site type</label>
+                  <Select className="mt-0.5 w-full text-xs" value={siteType} onChange={(e) => setSiteType(e.target.value)}>
+                    <option value="">Choose…</option>
+                    {SITE_TYPE_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-medium text-slate-600">Goal</label>
+                  <Select className="mt-0.5 w-full text-xs" value={goal} onChange={(e) => setGoal(e.target.value)}>
+                    <option value="">Choose…</option>
+                    {GOAL_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <p className="text-[10px] font-medium text-slate-600">Pages</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {PAGE_OPTIONS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => {
+                          const n = new Set(pages);
+                          if (n.has(p)) n.delete(p);
+                          else n.add(p);
+                          setPages(n);
+                        }}
+                        className={cn(
+                          'rounded-full border px-2 py-0.5 text-[10px] font-medium transition',
+                          pages.has(p) ? 'border-indigo-500 bg-indigo-50 text-indigo-900' : 'border-slate-200 text-slate-600'
+                        )}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  className="h-9 w-full text-xs"
+                  onClick={() => {
+                    if (!siteType || !goal || pages.size === 0) {
+                      toast('Choose site type, goal, and at least one page.', 'info');
+                      return;
+                    }
+                    const next: BuildHelperSitePlan = { siteType, goal, pages: [...pages] };
+                    setSitePlan(next);
+                    toast('Site plan saved.', 'success');
+                  }}
+                >
+                  Save site plan
+                </Button>
+              </div>
+            ) : null}
+
+            {currentStep === 'rbyan' ? (
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" className="h-9 px-3 text-xs" onClick={openRbyan}>
+                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+                  Open Rbyan
+                </Button>
+                <Link
+                  className={cn(
+                    buttonClassName('secondary', 'h-9 px-3 text-xs font-semibold'),
+                    !activeProjectId && 'pointer-events-none opacity-50'
+                  )}
+                  to={activeProjectId ? `/rbyan?project=${encodeURIComponent(activeProjectId)}` : '#'}
+                >
+                  Rbyan (no prefill)
+                </Link>
+              </div>
+            ) : null}
+
+            {currentStep === 'edit' ? (
+              <Link
+                className={cn(
+                  buttonClassName('primary', 'h-9 px-3 text-xs'),
+                  !activeProjectId && 'pointer-events-none opacity-50'
+                )}
+                to={activeProjectId ? `/projects/${activeProjectId}/site` : '#'}
+              >
+                Open Site Builder
+              </Link>
+            ) : null}
+
+            {currentStep === 'qa' ? (
+              <div className="flex flex-col gap-2">
+                <Link
+                  className={cn(
+                    buttonClassName('secondary', 'h-9 px-3 text-xs'),
+                    !activeProjectId && 'pointer-events-none opacity-50'
+                  )}
+                  to={activeProjectId ? `/projects/${activeProjectId}/site` : '#'}
+                >
+                  Open preview
+                </Link>
+                <Button type="button" className="h-9 px-3 text-xs" onClick={() => markManualStep('qa')}>
+                  Mark QA complete
+                </Button>
+              </div>
+            ) : null}
+
+            {currentStep === 'feedback' ? (
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-9 px-3 text-xs"
+                  disabled={!activeProjectId}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(previewUrl()).then(
+                      () => toast('Preview link copied.', 'success'),
+                      () => toast('Could not copy.', 'error')
+                    );
+                  }}
+                >
+                  <ClipboardCopy className="mr-1 h-3.5 w-3.5" />
+                  Copy preview link
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-9 px-3 text-xs"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(FEEDBACK_MESSAGE).then(
+                      () => toast('Message copied.', 'success'),
+                      () => toast('Could not copy.', 'error')
+                    );
+                  }}
+                >
+                  Copy suggested message
+                </Button>
+                <Button type="button" className="h-9 px-3 text-xs" onClick={() => markManualStep('feedback')}>
+                  Mark feedback sent
+                </Button>
+              </div>
+            ) : null}
+
+            {currentStep === 'publish' ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-[11px] text-slate-600">
+                  Detected when project <code className="rounded bg-white/80 px-1">siteStatus</code> is live. Use your
+                  normal publish flow in Site Builder / project settings.
+                </p>
+                <Link
+                  className={cn(
+                    buttonClassName('primary', 'h-9 px-3 text-xs'),
+                    !activeProjectId && 'pointer-events-none opacity-50'
+                  )}
+                  to={activeProjectId ? `/projects/${activeProjectId}/site` : '#'}
+                >
+                  Publish site
+                </Link>
+                {activeProject ? (
+                  <Link
+                    className={buttonClassName('secondary', 'inline-flex h-9 items-center px-3 text-xs')}
+                    to={activeProjectId ? `/projects/${activeProjectId}` : '#'}
+                  >
+                    Project <ExternalLink className="ml-1 h-3 w-3" />
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
+
+            {currentStep === 'invoice' ? (
+              <div className="flex flex-wrap gap-2">
+                <Link className={buttonClassName('secondary', 'h-9 px-3 text-xs')} to="/invoices">
+                  Invoices
+                </Link>
+                <Button type="button" variant="secondary" className="h-9 px-3 text-xs" onClick={() => openModal('create-invoice')}>
+                  Create invoice
+                </Button>
+                <Button type="button" className="h-9 px-3 text-xs" onClick={() => markManualStep('invoice')}>
+                  Mark complete
+                </Button>
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+        <div className="mt-4 border-t border-slate-100 pt-3">
           <Button
             type="button"
             variant="secondary"
             className="w-full text-xs"
             onClick={() => {
-              if (!effectiveProjectId) {
-                toast('Select a project to reset its helper progress.', 'info');
-                return;
-              }
-              if (window.confirm('Reset Build Helper progress for this project?')) {
-                resetProgressForActiveProject(effectiveProjectId);
-                toast('Checklist reset for this project.', 'success');
+              if (window.confirm('Restart checklist? This clears completed steps and the site plan.')) {
+                restartChecklist();
+                toast('Checklist restarted.', 'success');
               }
             }}
           >
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+            <RotateCcw className="mr-1.5 inline h-3.5 w-3.5" />
             Restart checklist
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full text-xs"
-            onClick={() => {
-              if (!effectiveProjectId) {
-                toast('Select a project first.', 'info');
-                return;
-              }
-              markAllCompleteForProject(effectiveProjectId);
-              toast('All steps marked complete (testing).', 'info');
-            }}
-          >
-            Mark all complete
           </Button>
         </div>
       </div>
@@ -337,12 +484,7 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
             <Button type="button" className="flex-1 text-xs" onClick={() => respondPostCompletePrompt(true)}>
               Keep on
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="flex-1 text-xs"
-              onClick={() => respondPostCompletePrompt(false)}
-            >
+            <Button type="button" variant="secondary" className="flex-1 text-xs" onClick={() => respondPostCompletePrompt(false)}>
               Turn off
             </Button>
             <button
@@ -358,431 +500,4 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
       ) : null}
     </div>
   );
-}
-
-function StepBlock({
-  step,
-  done,
-  highlighted,
-  effectiveClientId,
-  effectiveProjectId,
-  siteTypeVal,
-  goalVal,
-  pagesVal,
-  flags,
-  onSavePlan,
-  onTogglePage,
-  onSiteType,
-  onGoal,
-  openRbyanPrefilled,
-  previewUrl,
-  patchProjectFlags,
-  setQaCheck,
-  setPublishCheck,
-  setEditCheck,
-  openModal,
-  setSelectedClientId,
-  navigate,
-  toast,
-}: {
-  step: (typeof BUILD_HELPER_STEPS)[number];
-  done: boolean;
-  highlighted: boolean;
-  effectiveClientId: string;
-  effectiveProjectId: string;
-  siteTypeVal: string;
-  goalVal: string;
-  pagesVal: Set<string>;
-  flags: ReturnType<typeof useBuildHelperStore.getState>['perProject'][string] | undefined;
-  onSavePlan: () => void;
-  onTogglePage: (page: string) => void;
-  onSiteType: (v: string) => void;
-  onGoal: (v: string) => void;
-  openRbyanPrefilled: () => void;
-  previewUrl: (pid: string) => string;
-  patchProjectFlags: ReturnType<typeof useBuildHelperStore.getState>['patchProjectFlags'];
-  setQaCheck: ReturnType<typeof useBuildHelperStore.getState>['setQaCheck'];
-  setPublishCheck: ReturnType<typeof useBuildHelperStore.getState>['setPublishCheck'];
-  setEditCheck: ReturnType<typeof useBuildHelperStore.getState>['setEditCheck'];
-  openModal: ReturnType<typeof useAppStore.getState>['openModal'];
-  setSelectedClientId: ReturnType<typeof useAppStore.getState>['setSelectedClientId'];
-  navigate: ReturnType<typeof useNavigate>;
-  toast: (m: string, v?: 'success' | 'error' | 'info') => void;
-}) {
-  return (
-    <section
-      className={cn(
-        'rounded-lg border p-3 transition',
-        done ? 'border-emerald-200/80 bg-emerald-50/40' : 'border-slate-200 bg-white',
-        highlighted && !done ? 'ring-1 ring-indigo-300' : ''
-      )}
-    >
-      <div className="flex items-start gap-2">
-        <span
-          className={cn(
-            'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]',
-            done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 bg-white text-transparent'
-          )}
-        >
-          {done ? <Check className="h-3 w-3" strokeWidth={3} /> : ' '}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-xs font-semibold text-slate-900">{step.title}</h3>
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-600">{step.short}</p>
-          <StepActions
-            stepId={step.id}
-            effectiveClientId={effectiveClientId}
-            effectiveProjectId={effectiveProjectId}
-            siteTypeVal={siteTypeVal}
-            goalVal={goalVal}
-            pagesVal={pagesVal}
-            flags={flags}
-            onSavePlan={onSavePlan}
-            onTogglePage={onTogglePage}
-            onSiteType={onSiteType}
-            onGoal={onGoal}
-            openRbyanPrefilled={openRbyanPrefilled}
-            previewUrl={previewUrl}
-            patchProjectFlags={patchProjectFlags}
-            setQaCheck={setQaCheck}
-            setPublishCheck={setPublishCheck}
-            setEditCheck={setEditCheck}
-            openModal={openModal}
-            setSelectedClientId={setSelectedClientId}
-            navigate={navigate}
-            toast={toast}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StepActions({
-  stepId,
-  effectiveClientId,
-  effectiveProjectId,
-  siteTypeVal,
-  goalVal,
-  pagesVal,
-  flags,
-  onSavePlan,
-  onTogglePage,
-  onSiteType,
-  onGoal,
-  openRbyanPrefilled,
-  previewUrl,
-  patchProjectFlags,
-  setQaCheck,
-  setPublishCheck,
-  setEditCheck,
-  openModal,
-  setSelectedClientId,
-  navigate,
-  toast,
-}: {
-  stepId: (typeof BUILD_HELPER_STEPS)[number]['id'];
-  effectiveClientId: string;
-  effectiveProjectId: string;
-  siteTypeVal: string;
-  goalVal: string;
-  pagesVal: Set<string>;
-  flags: ReturnType<typeof useBuildHelperStore.getState>['perProject'][string] | undefined;
-  onSavePlan: () => void;
-  onTogglePage: (page: string) => void;
-  onSiteType: (v: string) => void;
-  onGoal: (v: string) => void;
-  openRbyanPrefilled: () => void;
-  previewUrl: (pid: string) => string;
-  patchProjectFlags: ReturnType<typeof useBuildHelperStore.getState>['patchProjectFlags'];
-  setQaCheck: ReturnType<typeof useBuildHelperStore.getState>['setQaCheck'];
-  setPublishCheck: ReturnType<typeof useBuildHelperStore.getState>['setPublishCheck'];
-  setEditCheck: ReturnType<typeof useBuildHelperStore.getState>['setEditCheck'];
-  openModal: ReturnType<typeof useAppStore.getState>['openModal'];
-  setSelectedClientId: ReturnType<typeof useAppStore.getState>['setSelectedClientId'];
-  navigate: ReturnType<typeof useNavigate>;
-  toast: (m: string, v?: 'success' | 'error' | 'info') => void;
-}) {
-  const pid = effectiveProjectId;
-
-  if (stepId === 'setup_client') {
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <Button type="button" variant="secondary" className="text-xs" onClick={() => navigate('/clients')}>
-          Clients
-        </Button>
-        <Button type="button" className="text-xs" onClick={() => openModal('create-client')}>
-          Add client
-        </Button>
-      </div>
-    );
-  }
-
-  if (stepId === 'create_project') {
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <Button type="button" variant="secondary" className="text-xs" onClick={() => navigate('/projects')}>
-          Projects
-        </Button>
-        <Button
-          type="button"
-          className="text-xs"
-          onClick={() => {
-            if (!effectiveClientId) {
-              toast('Pick a client in Context first.', 'info');
-              return;
-            }
-            setSelectedClientId(effectiveClientId);
-            openModal('create-project');
-          }}
-        >
-          Create project
-        </Button>
-      </div>
-    );
-  }
-
-  if (stepId === 'plan_site') {
-    return (
-      <div className="mt-2 space-y-2">
-        <div>
-          <label className="text-[10px] font-medium text-slate-500">Site type</label>
-          <Select className="mt-0.5 w-full text-xs" value={siteTypeVal} onChange={(e) => onSiteType(e.target.value)}>
-            <option value="">Choose…</option>
-            {SITE_TYPE_OPTIONS.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <label className="text-[10px] font-medium text-slate-500">Goal</label>
-          <Select className="mt-0.5 w-full text-xs" value={goalVal} onChange={(e) => onGoal(e.target.value)}>
-            <option value="">Choose…</option>
-            {GOAL_OPTIONS.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium text-slate-500">Pages</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {PAGE_OPTIONS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => onTogglePage(p)}
-                className={cn(
-                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition',
-                  pagesVal.has(p) ? 'border-indigo-500 bg-indigo-50 text-indigo-900' : 'border-slate-200 text-slate-600'
-                )}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
-        <Button type="button" className="w-full text-xs" onClick={onSavePlan}>
-          Save plan
-        </Button>
-      </div>
-    );
-  }
-
-  if (stepId === 'rbyan') {
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <Button type="button" className="h-9 px-3 text-xs" onClick={openRbyanPrefilled}>
-          <Sparkles className="mr-1 h-3.5 w-3.5" />
-          Open Rbyan (prefill)
-        </Button>
-        <Link
-          className={cn(buttonClassName('secondary', 'h-9 px-3 text-xs font-semibold'))}
-          to={pid ? `/rbyan?project=${encodeURIComponent(pid)}` : '/rbyan'}
-        >
-          Rbyan
-        </Link>
-      </div>
-    );
-  }
-
-  if (stepId === 'site_builder') {
-    return (
-      <div className="mt-2 space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          <Link
-            className={cn(
-              buttonClassName('primary', 'h-9 px-3 text-xs'),
-              !pid && 'pointer-events-none opacity-50'
-            )}
-            to={pid ? `/projects/${pid}/site` : '#'}
-          >
-            Open Site Builder
-          </Link>
-        </div>
-        <p className="text-[10px] font-medium text-slate-500">Edit checklist</p>
-        <div className="space-y-1">
-          {EDIT_CHECK_KEYS.map((k) => (
-            <label key={k} className="flex items-center gap-2 text-[11px] text-slate-700">
-              <input
-                type="checkbox"
-                checked={flags?.editChecklist?.[k] === true}
-                onChange={(e) => pid && setEditCheck(pid, k, e.target.checked)}
-                className="rounded border-slate-300"
-              />
-              {EDIT_CHECK_LABELS[k]}
-            </label>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (stepId === 'preview_qa') {
-    return (
-      <div className="mt-2 space-y-2">
-        <Link
-          className={cn(buttonClassName('secondary', 'h-9 px-3 text-xs'), !pid && 'pointer-events-none opacity-50')}
-          to={pid ? `/projects/${pid}/site` : '#'}
-        >
-          Open preview
-        </Link>
-        <div className="space-y-1">
-          {QA_CHECK_KEYS.map((k) => (
-            <label key={k} className="flex items-center gap-2 text-[11px] text-slate-700">
-              <input
-                type="checkbox"
-                checked={flags?.qa?.[k] === true}
-                onChange={(e) => pid && setQaCheck(pid, k, e.target.checked)}
-                className="rounded border-slate-300"
-              />
-              {QA_CHECK_LABELS[k]}
-            </label>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (stepId === 'feedback') {
-    return (
-      <div className="mt-2 space-y-2">
-        <Button
-          type="button"
-          variant="secondary"
-          className="text-xs"
-          disabled={!pid}
-          onClick={() => {
-            void navigator.clipboard.writeText(previewUrl(pid)).then(
-              () => toast('Preview link copied.', 'success'),
-              () => toast('Could not copy — copy manually.', 'error')
-            );
-          }}
-        >
-          <ClipboardCopy className="mr-1 h-3.5 w-3.5" />
-          Copy preview link
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="text-xs"
-          onClick={() => {
-            void navigator.clipboard.writeText(FEEDBACK_MESSAGE).then(
-              () => toast('Message copied.', 'success'),
-              () => toast('Could not copy.', 'error')
-            );
-          }}
-        >
-          Copy suggested message
-        </Button>
-        <Button
-          type="button"
-          className="text-xs"
-          disabled={!pid}
-          onClick={() => {
-            patchProjectFlags(pid, { feedbackSent: true });
-            toast('Marked feedback as sent.', 'success');
-          }}
-        >
-          Mark feedback sent
-        </Button>
-      </div>
-    );
-  }
-
-  if (stepId === 'publish') {
-    return (
-      <div className="mt-2 space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          <Link
-            className={cn(buttonClassName('primary', 'h-9 px-3 text-xs'), !pid && 'pointer-events-none opacity-50')}
-            to={pid ? `/projects/${pid}/site` : '#'}
-          >
-            Publish in Site Builder
-          </Link>
-          <Link
-            className={cn(buttonClassName('secondary', 'h-9 px-3 text-xs'), !pid && 'pointer-events-none opacity-50')}
-            to={pid ? `/projects/${pid}` : '#'}
-          >
-            Project <ExternalLink className="ml-1 inline h-3 w-3" />
-          </Link>
-        </div>
-        <div className="space-y-1">
-          {PUBLISH_CHECK_KEYS.map((k) => (
-            <label key={k} className="flex items-center gap-2 text-[11px] text-slate-700">
-              <input
-                type="checkbox"
-                checked={flags?.publishQa?.[k] === true}
-                onChange={(e) => pid && setPublishCheck(pid, k, e.target.checked)}
-                className="rounded border-slate-300"
-              />
-              {PUBLISH_CHECK_LABELS[k]}
-            </label>
-          ))}
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full text-xs"
-          disabled={!pid}
-          onClick={() => {
-            patchProjectFlags(pid, { publishConfirmed: true });
-            toast('Marked publish checklist done.', 'success');
-          }}
-        >
-          Mark published (manual)
-        </Button>
-      </div>
-    );
-  }
-
-  if (stepId === 'invoice_wrap') {
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <Link className={buttonClassName('primary', 'h-9 px-3 text-xs')} to="/invoices">
-          Invoices
-        </Link>
-        <Button type="button" variant="secondary" className="h-9 px-3 text-xs" onClick={() => openModal('create-invoice')}>
-          Create invoice
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="text-xs"
-          disabled={!pid}
-          onClick={() => {
-            patchProjectFlags(pid, { wrapUpMarked: true });
-            toast('Marked project wrap-up done.', 'success');
-          }}
-        >
-          Mark wrap-up done
-        </Button>
-      </div>
-    );
-  }
-
-  return null;
 }

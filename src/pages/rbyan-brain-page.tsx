@@ -23,7 +23,7 @@ import {
 } from '@/lib/rbyan/progressive-build';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
-import { notifyBuildHelperRbyanOutput, RBYAN_PREFILL_STORAGE_KEY } from '@/store/use-build-helper-store';
+import { RBYAN_PREFILL_STORAGE_KEY } from '@/store/use-build-helper-store';
 
 type ChatMsg = {
   id: string;
@@ -278,7 +278,6 @@ export function RbyanBrainPage() {
         }
 
         setLastResult(completed);
-        if (completed.files.length && projectId) notifyBuildHelperRbyanOutput(projectId);
         if (completed.sessionMemory) setSessionMemory(completed.sessionMemory);
         setRbyanSession((s) => ({
           ...s,
