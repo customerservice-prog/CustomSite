@@ -27,6 +27,7 @@ import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/works
 import { DetailDrawer } from '@/components/design-system/detail-drawer';
 import { ActionMenu } from '@/components/design-system/action-menu';
 import { formatCurrency } from '@/lib/format-display';
+import { CONVERSION_WORKSPACE_LABEL } from '@/lib/offer-positioning';
 import { RecommendedNextAction, type NextActionItem } from '@/components/workspace/recommended-next-action';
 import { useTasks } from '@/store/hooks';
 
@@ -60,7 +61,7 @@ export function ProjectsPage() {
   }, [projects, store]);
 
   const rows = useMemo(() => {
-    return projects.filter((p) => {
+    const filtered = projects.filter((p) => {
       const client = clientMap[p.clientId];
       const match =
         !q.trim() ||
@@ -69,7 +70,17 @@ export function ProjectsPage() {
       const st = status === 'all' || p.status === status;
       return match && st;
     });
-  }, [projects, q, status, clientMap]);
+    const rank = (pid: string) => {
+      const h = healthByProjectId[pid] ?? 'healthy';
+      if (h === 'blocked') return 0;
+      if (h === 'at_risk') return 1;
+      return 2;
+    };
+    return filtered.sort((a, b) => {
+      const d = rank(a.id) - rank(b.id);
+      return d !== 0 ? d : a.name.localeCompare(b.name);
+    });
+  }, [projects, q, status, clientMap, healthByProjectId]);
 
   const drawerProject = drawerProjectId ? store.projects[drawerProjectId] : undefined;
   const drawerClient = drawerProject ? store.clients[drawerProject.clientId] : undefined;
@@ -95,6 +106,20 @@ export function ProjectsPage() {
     }
     return { healthy, atRisk, blocked };
   }, [projects, store]);
+
+  const decisionLines = useMemo(() => {
+    const lines: string[] = [];
+    const blockedList = projects.filter((p) => projectHealthLevel(store, p.id) === 'blocked');
+    for (const p of blockedList.slice(0, 2)) {
+      const co = clientMap[p.clientId]?.company ?? 'Client';
+      lines.push(`${p.name} (${co}) is blocked — assign an owner and unblock cash or delivery.`);
+    }
+    const atRisk = projects.filter((p) => projectHealthLevel(store, p.id) === 'at_risk');
+    for (const p of atRisk.slice(0, 2)) {
+      lines.push(`${p.name} is at risk — deadline ${p.due}. Review tasks before you promise more scope.`);
+    }
+    return lines.slice(0, 3);
+  }, [projects, store, clientMap]);
 
   const projectNextActions: NextActionItem[] = useMemo(() => {
     const items: NextActionItem[] = [];
@@ -134,8 +159,8 @@ export function ProjectsPage() {
       header={
         <div className="space-y-4">
           <PageHeader
-            title="Projects"
-            description="Track delivery, budget, blockers, and client ownership in one place."
+            title="What will miss if you ignore it?"
+            description="Blocked and at-risk float to the top — healthy work should not compete for attention."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('create-project')}>
                 <Plus className="h-4 w-4" />
@@ -143,20 +168,36 @@ export function ProjectsPage() {
               </Button>
             }
           />
-          <Card variant="compact" className="border-0 bg-gray-50/90 ring-1 ring-gray-200/80">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Delivery health</p>
-            <div className="mt-2 flex flex-wrap gap-4 text-sm">
+          {decisionLines.length > 0 && (
+            <Card variant="compact" className="border-l-4 border-slate-800 bg-white py-3 ring-1 ring-slate-900/5">
+              <p className="text-[11px] font-bold uppercase text-slate-600">Decide next</p>
+              <ul className="mt-2 list-disc space-y-1.5 pl-4 text-sm text-slate-900">
+                {decisionLines.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {healthCounts.blocked > 0 && (
+            <Card variant="compact" className="border-l-4 border-red-600 bg-red-50/60 ring-1 ring-red-900/10">
+              <p className="text-sm font-bold text-red-950">{healthCounts.blocked} project(s) blocked — cash and trust stall.</p>
+              <p className="mt-1 text-xs text-red-900/85">Open the first row in the table and clear the blocker before you add scope.</p>
+            </Card>
+          )}
+          <Card variant="compact" className="border border-slate-200/90 bg-white">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Delivery mix</p>
+            <div className="mt-2 flex flex-wrap gap-4 text-xs sm:text-sm">
               <span>
-                <span className="font-semibold text-emerald-700">{healthCounts.healthy}</span>{' '}
-                <span className="text-gray-600">on track</span>
+                <span className="font-semibold text-emerald-800">{healthCounts.healthy}</span>{' '}
+                <span className="text-slate-600">on track</span>
               </span>
               <span>
-                <span className="font-semibold text-amber-700">{healthCounts.atRisk}</span>{' '}
-                <span className="text-gray-600">need care</span>
+                <span className="font-semibold text-amber-800">{healthCounts.atRisk}</span>{' '}
+                <span className="text-slate-600">slipping</span>
               </span>
               <span>
-                <span className="font-semibold text-red-700">{healthCounts.blocked}</span>{' '}
-                <span className="text-gray-600">blocked</span>
+                <span className="font-semibold text-red-800">{healthCounts.blocked}</span>{' '}
+                <span className="text-slate-600">blocked</span>
               </span>
             </div>
           </Card>
@@ -236,6 +277,7 @@ export function ProjectsPage() {
             <TableRow>
               <TableHeadCell>Project</TableHeadCell>
               <TableHeadCell>Client</TableHeadCell>
+              <TableHeadCell>Client site</TableHeadCell>
               <TableHeadCell>Status</TableHeadCell>
               <TableHeadCell>Health</TableHeadCell>
               <TableHeadCell className="text-right">Budget</TableHeadCell>
@@ -277,6 +319,29 @@ export function ProjectsPage() {
                     )}
                   </TableCell>
                   <TableCell>
+                    {p.deliveryFocus === 'client_site' ? (
+                      <div className="flex flex-col gap-1">
+                        <Badge
+                          variant={
+                            p.siteStatus === 'live' ? 'success' : p.siteStatus === 'review' ? 'info' : 'warning'
+                          }
+                          className="w-fit capitalize"
+                        >
+                          {p.siteStatus ?? 'draft'}
+                        </Badge>
+                        <Link
+                          to={`/projects/${p.id}/site`}
+                          className="text-[11px] font-semibold text-violet-800 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {CONVERSION_WORKSPACE_LABEL} →
+                        </Link>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">Retainer / app</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={projectStatusBadgeVariant(p.status)}>{p.status}</Badge>
                   </TableCell>
                   <TableCell>
@@ -297,6 +362,9 @@ export function ProjectsPage() {
                       items={[
                         { label: 'View details', onClick: () => setDrawerProjectId(p.id) },
                         { label: 'Open project page', onClick: () => navigate(`/projects/${p.id}`) },
+                        ...(p.deliveryFocus === 'client_site'
+                          ? [{ label: CONVERSION_WORKSPACE_LABEL, onClick: () => navigate(`/projects/${p.id}/site`) }]
+                          : []),
                         { label: 'New task', onClick: () => { navigate('/tasks'); } },
                         {
                           label: 'New invoice',
@@ -399,6 +467,18 @@ export function ProjectsPage() {
                 </Link>
               </div>
             </div>
+            {drawerProject.deliveryFocus === 'client_site' && (
+              <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-purple-900">Client site</p>
+                <p className="mt-1 text-sm text-slate-800">
+                  Status <span className="font-semibold capitalize">{drawerProject.siteStatus ?? 'draft'}</span> ·{' '}
+                  {drawerProject.sitePageCount ?? '—'} pages · Last: {drawerProject.lastSiteUpdateLabel ?? '—'}
+                </p>
+                {drawerProject.siteLiveUrl && (
+                  <p className="mt-1 truncate text-xs text-purple-800">{drawerProject.siteLiveUrl}</p>
+                )}
+              </div>
+            )}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Activity</p>
               <ul className="mt-2 space-y-2 border-t border-slate-100 pt-3">

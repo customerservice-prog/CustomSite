@@ -16,11 +16,18 @@ const toneBorder: Record<NonNullable<NextActionItem['tone']>, string> = {
 };
 
 /** Compact “do this next” strip — not a full-width banner. */
-export function RecommendedNextAction({ items }: { items: NextActionItem[] }) {
+export function RecommendedNextAction({
+  items,
+  heading = 'Decide now',
+}: {
+  items: NextActionItem[];
+  /** Short label — avoid generic “recommended”. */
+  heading?: string;
+}) {
   if (!items.length) return null;
   return (
     <div className="rounded-xl border border-gray-200/90 bg-white/90 px-4 py-3 shadow-sm ring-1 ring-gray-900/[0.03]">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Recommended next actions</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{heading}</p>
       <ul className="mt-2 divide-y divide-gray-100">
         {items.map((it) => (
           <li key={it.label} className="first:pt-0 last:pb-0">

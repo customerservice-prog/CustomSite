@@ -8,6 +8,7 @@ import { Button, buttonClassName } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { invoiceStatusBadgeVariant, messageStatusBadgeVariant, taskStatusBadgeVariant } from '@/lib/statuses';
 import { hoursSinceIso } from '@/lib/system-intelligence';
+import { formatCurrency } from '@/lib/format-display';
 import { useShell } from '@/context/shell-context';
 import { useInvoice, useActivitiesFeed } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
@@ -132,14 +133,14 @@ export function InvoiceDetailPage() {
               {lines.map((line) => (
                 <tr key={line.label}>
                   <td className="py-3 text-slate-700">{line.label}</td>
-                  <td className="py-3 text-right font-medium tabular-nums text-slate-900">${line.amount.toLocaleString()}</td>
+                  <td className="py-3 text-right font-medium tabular-nums text-slate-900">{formatCurrency(line.amount)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
                 <td className="pt-4 text-right text-sm font-semibold text-slate-500">Total</td>
-                <td className="pt-4 text-right text-lg font-bold tabular-nums text-slate-900">${invoice.amount.toLocaleString()}</td>
+                <td className="pt-4 text-right text-lg font-bold tabular-nums text-slate-900">{formatCurrency(invoice.amount)}</td>
               </tr>
             </tfoot>
           </table>

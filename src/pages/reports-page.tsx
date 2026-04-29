@@ -1,4 +1,5 @@
 import { Download, FileBarChart } from 'lucide-react';
+import { useShallow } from 'zustand/shallow';
 import { ReportLayout } from '@/components/layout/templates/report-layout';
 import { TablePageLayout } from '@/components/layout/templates/table-page-layout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -16,6 +17,9 @@ import {
   useProjects,
   useRevenueHealth,
 } from '@/store/hooks';
+import { useAppStore } from '@/store/useAppStore';
+import * as sel from '@/store/selectors';
+import { formatCurrency } from '@/lib/format-display';
 
 function BarRow({
   label,
@@ -27,7 +31,7 @@ function BarRow({
   label: string;
   value: number;
   max: number;
-  tone?: 'indigo' | 'emerald' | 'amber';
+  tone?: 'indigo' | 'emerald' | 'amber' | 'rose';
   /** When set, shown instead of raw `value` (e.g. formatted currency). */
   valueDisplay?: string;
 }) {
@@ -37,7 +41,9 @@ function BarRow({
       ? 'bg-emerald-500'
       : tone === 'amber'
         ? 'bg-amber-500'
-        : 'bg-indigo-500';
+        : tone === 'rose'
+          ? 'bg-rose-500'
+          : 'bg-indigo-500';
   return (
     <div>
       <div className="mb-1 flex justify-between text-xs font-semibold text-slate-600">
@@ -62,35 +68,48 @@ export function ReportsPage() {
   const revenueHealth = useRevenueHealth();
   const narrativeInsights = useAutomatedInsights();
   const { toast } = useShell();
+  const overdueAmount = useAppStore(useShallow((s) => sel.getOverdueInvoicesAmount(s)));
 
-  const revenueByMonth = useMemo(() => {
-    const paid = invoices.filter((i) => i.status === 'Paid');
-    const total = paid.reduce((s, i) => s + i.amount, 0);
-    const collected = Math.round(total * 0.35);
-    const ar = Math.round(m.outstanding);
-    const pipe = Math.round(m.pipelineValue);
-    const arMax = Math.max(ar, m.paidRevenue, 1);
+  const executiveFinanceBars = useMemo(() => {
+    const max$ = Math.max(1, m.paidRevenue, m.outstanding, overdueAmount, m.pipelineValue);
     return [
       {
-        label: 'Collected (rolling)',
-        value: collected,
-        max: total || 1,
-        valueDisplay: `$${collected.toLocaleString()}`,
+        label: 'Revenue collected',
+        value: m.paidRevenue,
+        max: max$,
+        valueDisplay: formatCurrency(m.paidRevenue),
+        tone: 'emerald' as const,
       },
       {
         label: 'Outstanding AR',
-        value: ar,
-        max: arMax,
-        valueDisplay: `$${ar.toLocaleString()}`,
+        value: m.outstanding,
+        max: max$,
+        valueDisplay: formatCurrency(m.outstanding),
+        tone: 'indigo' as const,
       },
       {
-        label: 'Open pipeline (weighted)',
-        value: pipe,
-        max: Math.max(pipe, m.paidRevenue, 1),
-        valueDisplay: `$${pipe.toLocaleString()}`,
+        label: 'Overdue amount',
+        value: overdueAmount,
+        max: max$,
+        valueDisplay: formatCurrency(overdueAmount),
+        tone: 'rose' as const,
+      },
+      {
+        label: 'Pipeline value (open leads)',
+        value: m.pipelineValue,
+        max: max$,
+        valueDisplay: formatCurrency(m.pipelineValue),
+        tone: 'amber' as const,
       },
     ];
-  }, [invoices, m.outstanding, m.paidRevenue, m.pipelineValue]);
+  }, [m.outstanding, m.paidRevenue, m.pipelineValue, overdueAmount]);
+
+  const utilizationBar = useMemo(() => {
+    const denom = Math.max(1, projects.length);
+    const active = projects.filter((p) => ['Live', 'Review', 'Development', 'Design'].includes(p.status)).length;
+    const pct = Math.round((active / denom) * 100);
+    return { label: 'Delivery utilization', value: pct, max: 100, valueDisplay: `${pct}% · ${active}/${denom} projects` };
+  }, [projects]);
 
   const aging = useMemo(() => {
     const open = invoices.filter((i) => !['Paid', 'Void'].includes(i.status));
@@ -132,7 +151,7 @@ export function ReportsPage() {
       header={
         <PageHeader
           title="Reports"
-          description="See revenue, risk, pipeline, and delivery health at a glance."
+          description="Cash, AR, overdue exposure, pipeline, and where the team is focused."
           actions={
             <>
               <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
@@ -162,12 +181,12 @@ export function ReportsPage() {
         />
       }
     >
-      <Card className="mb-4 p-5 shadow-md ring-1 ring-slate-900/[0.05]">
+        <Card className="mb-4 p-5 shadow-md ring-1 ring-slate-900/[0.05]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold text-slate-900">Executive snapshot</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Key signals for revenue, delivery, and risk — window <span className="font-semibold text-slate-700">{range}</span>.
+              Live totals from your books — range <span className="font-semibold text-slate-700">{range}</span> (filters coming soon).
             </p>
           </div>
           <span
@@ -183,24 +202,34 @@ export function ReportsPage() {
           </span>
         </div>
         <p className="mt-2 text-sm text-slate-700">{revenueHealth.detail}</p>
-        <ul className="mt-4 space-y-2">
-          {narrativeInsights.map((line, i) => (
-            <li key={i} className="flex gap-2 text-sm leading-snug text-slate-700">
-              <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-indigo-500" aria-hidden />
-              {line}
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Suggested next moves</p>
+          <ul className="mt-2 space-y-2">
+            {narrativeInsights.map((line, i) => (
+              <li key={i} className="flex gap-2 text-sm leading-snug text-slate-700">
+                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-indigo-500" aria-hidden />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <Card className="p-5 shadow-md ring-1 ring-slate-900/[0.05]">
-          <h2 className="text-sm font-bold text-slate-900">Revenue &amp; AR</h2>
-          <p className="mt-1 text-xs text-slate-500">Cash collected vs. open balances</p>
+          <h2 className="text-sm font-bold text-slate-900">Revenue &amp; exposure</h2>
+          <p className="mt-1 text-xs text-slate-500">Collected cash, open AR, overdue, and pipeline — scaled to the largest dollar line.</p>
           <div className="mt-5 space-y-4">
-            {revenueByMonth.map((r) => (
-              <BarRow key={r.label} label={r.label} value={r.value} max={r.max} tone="emerald" valueDisplay={r.valueDisplay} />
+            {executiveFinanceBars.map((r) => (
+              <BarRow key={r.label} label={r.label} value={r.value} max={r.max} tone={r.tone} valueDisplay={r.valueDisplay} />
             ))}
+            <BarRow
+              label={utilizationBar.label}
+              value={utilizationBar.value}
+              max={utilizationBar.max}
+              tone="indigo"
+              valueDisplay={utilizationBar.valueDisplay}
+            />
           </div>
         </Card>
 
@@ -260,7 +289,7 @@ export function ReportsPage() {
               <div key={c.id} className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
                 <p className="font-semibold text-slate-900">{c.company}</p>
                 <p className="text-xs text-slate-500">{c.name}</p>
-                <p className="mt-2 text-lg font-bold tabular-nums text-indigo-900">${c.lifetimeValue.toLocaleString()}</p>
+                <p className="mt-2 text-lg font-bold tabular-nums text-indigo-900">{formatCurrency(c.lifetimeValue)}</p>
               </div>
             ))}
           </div>

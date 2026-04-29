@@ -34,4 +34,15 @@ export const paymentsSeed: Payment[] = [
     processorStatus: 'processing',
     payoutStatus: 'scheduled',
   },
+  {
+    id: 'pay4',
+    invoiceId: 'i1',
+    clientId: 'c5',
+    amount: 1200,
+    status: 'completed',
+    method: 'ACH',
+    createdAt: '2026-04-22T10:00:00.000Z',
+    processorStatus: 'settled',
+    payoutStatus: 'paid_out',
+  },
 ];

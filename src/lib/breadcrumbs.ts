@@ -1,5 +1,6 @@
 import type { UIMatch } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
+import { CONVERSION_WORKSPACE_LABEL } from '@/lib/offer-positioning';
 import { routeMeta } from '@/lib/routes-meta';
 
 export type Crumb = { label: string; to?: string };
@@ -32,6 +33,14 @@ export function crumbsFromMatches(matches: UIMatch[]): Crumb[] {
 
   if (meta.segment === 'projects' && params.projectId) {
     const p = state.projects[params.projectId];
+    if (segments[2] === 'site') {
+      return [
+        ...base,
+        { label: 'Projects', to: '/projects' },
+        { label: p?.name ?? 'Project', to: `/projects/${params.projectId}` },
+        { label: CONVERSION_WORKSPACE_LABEL },
+      ];
+    }
     return [...base, { label: 'Projects', to: '/projects' }, { label: p?.name ?? 'Project' }];
   }
 

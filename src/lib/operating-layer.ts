@@ -40,10 +40,7 @@ export function saveStudioSnapshot(state: RootState) {
 /** FOMO + continuity — explicit “since you were last here” hooks. */
 export function buildSinceLastVisitLines(state: RootState, prev: StudioSessionSnapshot | null): string[] {
   if (!prev) {
-    return [
-      'Starting fresh — from this visit onward we’ll remember what moved so your next login opens with “here’s what you missed.”',
-      'Run the loop below once; the next time you land, we’ll lead with concrete counts (messages, cash, delivery).',
-    ];
+    return ['First session logged — next login will highlight what moved since you left.', 'Run money and inbox once today so the baseline is honest.'];
   }
   const since = new Date(prev.savedAt).getTime();
   const lines: string[] = [];

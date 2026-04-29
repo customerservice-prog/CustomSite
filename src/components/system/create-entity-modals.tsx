@@ -2,9 +2,13 @@ import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { useClients, useInvoices, useProjects } from '@/store/hooks';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { PROJECT_TEMPLATES, getProjectTemplate } from '@/lib/project-templates';
+import { SERVICE_PACKAGES } from '@/lib/service-offer';
+import type { ServicePackageId } from '@/lib/types/entities';
 
 export function CreateEntityModals() {
   const activeModal = useAppStore((s) => s.ui.activeModal);
@@ -40,6 +44,8 @@ export function CreateEntityModals() {
     budget: '24000',
     due: 'Jun 30',
     ownerId: 'u1' as string,
+    templateId: '' as string,
+    servicePackage: '' as '' | ServicePackageId,
   });
   const [invoiceForm, setInvoiceForm] = useState({
     clientId: '',
@@ -50,6 +56,7 @@ export function CreateEntityModals() {
   const [taskForm, setTaskForm] = useState({
     projectId: '',
     title: '',
+    description: '',
     due: 'Tomorrow',
     assigneeId: 'u1' as string,
   });
@@ -142,9 +149,54 @@ export function CreateEntityModals() {
               ))}
             </Select>
           </Field>
+          <Field label="Package sold (optional)">
+            <Select
+              value={projectForm.servicePackage}
+              onChange={(e) =>
+                setProjectForm((f) => ({
+                  ...f,
+                  servicePackage: e.target.value as '' | ServicePackageId,
+                }))
+              }
+            >
+              <option value="">Not set</option>
+              {SERVICE_PACKAGES.map((pkg) => (
+                <option key={pkg.id} value={pkg.id}>
+                  {pkg.name} — {pkg.headline}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Start from template">
+            <Select
+              value={projectForm.templateId}
+              onChange={(e) => {
+                const v = e.target.value;
+                const tmpl = v ? getProjectTemplate(v) : undefined;
+                setProjectForm((f) => ({
+                  ...f,
+                  templateId: v,
+                  budget: tmpl ? String(tmpl.defaultBudget) : f.budget,
+                  due: tmpl ? tmpl.defaultDue : f.due,
+                }));
+              }}
+            >
+              <option value="">Blank (minimal starter tasks)</option>
+              {PROJECT_TEMPLATES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field label="Project name">
             <Input value={projectForm.name} onChange={(e) => setProjectForm((f) => ({ ...f, name: e.target.value }))} />
           </Field>
+          {projectForm.templateId && (
+            <p className="text-xs text-slate-500">
+              {getProjectTemplate(projectForm.templateId)?.description ?? ''} Leave the name empty to auto-name from the template.
+            </p>
+          )}
           <Field label="Budget (USD)">
             <Input
               inputMode="numeric"
@@ -169,16 +221,27 @@ export function CreateEntityModals() {
             <Button
               type="button"
               onClick={() => {
-                if (!projectForm.clientId || !projectForm.name.trim()) return;
+                if (!projectForm.clientId) return;
+                if (!projectForm.templateId && !projectForm.name.trim()) return;
                 const pid = addProject({
                   name: projectForm.name,
                   clientId: projectForm.clientId,
                   budget: Math.max(0, Number(projectForm.budget) || 0),
                   due: projectForm.due,
                   ownerId: projectForm.ownerId,
+                  templateId: projectForm.templateId || undefined,
+                  servicePackage: projectForm.servicePackage || undefined,
                 });
                 if (!pid) return;
-                setProjectForm({ name: '', clientId: '', budget: '24000', due: 'Jun 30', ownerId: currentUserId });
+                setProjectForm({
+                  name: '',
+                  clientId: '',
+                  budget: '24000',
+                  due: 'Jun 30',
+                  ownerId: currentUserId,
+                  templateId: '',
+                  servicePackage: '',
+                });
                 closeModal();
               }}
             >
@@ -299,6 +362,15 @@ export function CreateEntityModals() {
           <Field label="Title">
             <Input value={taskForm.title} onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))} />
           </Field>
+          <Field label="Description / notes">
+            <Textarea
+              value={taskForm.description}
+              onChange={(e) => setTaskForm((f) => ({ ...f, description: e.target.value }))}
+              rows={4}
+              className="min-h-[100px]"
+              placeholder="Brief, blockers, client context, links…"
+            />
+          </Field>
           <Field label="Due">
             <Input value={taskForm.due} onChange={(e) => setTaskForm((f) => ({ ...f, due: e.target.value }))} />
           </Field>
@@ -320,10 +392,11 @@ export function CreateEntityModals() {
                 addTask({
                   projectId: taskForm.projectId,
                   title: taskForm.title,
+                  description: taskForm.description.trim() || undefined,
                   due: taskForm.due,
                   assigneeId: taskForm.assigneeId,
                 });
-                setTaskForm({ projectId: '', title: '', due: 'Tomorrow', assigneeId: currentUserId });
+                setTaskForm({ projectId: '', title: '', description: '', due: 'Tomorrow', assigneeId: currentUserId });
                 closeModal();
               }}
             >

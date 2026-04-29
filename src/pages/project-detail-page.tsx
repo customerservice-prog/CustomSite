@@ -1,5 +1,5 @@
-import { Link, useParams } from 'react-router-dom';
-import { useMemo } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { DetailPageLayout } from '@/components/layout/templates/detail-page-layout';
 import { Tabs } from '@/components/ui/tabs';
@@ -16,28 +16,87 @@ import {
   taskStatusBadgeVariant,
 } from '@/lib/statuses';
 import { hoursSinceLastProjectThreadActivity, projectHealthLabel, projectHealthLevel } from '@/lib/system-intelligence';
-import type { Project } from '@/lib/types/entities';
+import { daysSinceIso } from '@/lib/days-since';
+import { LIFECYCLE_LABELS, LIFECYCLE_ORDER, clientDeliveryStatusLabel } from '@/lib/project-lifecycle';
+import { OFFER_PHASE_CLIENT, OFFER_PHASE_ORDER, lifecycleStageToOfferPhase } from '@/lib/service-offer';
+import {
+  AFTER_LIVE_LINE,
+  POST_LAUNCH_CLIENT_LINE,
+  focusFallbackForPhase,
+  narrativeThisPhase,
+  narrativeWhatsNext,
+  offerStepNumber,
+  primaryFocusFromTasks,
+} from '@/lib/project-service-narrative';
+import { AGENCY_SITE_PAGES } from '@/lib/site-production/defaults';
+import { pageStatusDisplay } from '@/lib/site-production/page-status-labels';
+import { compileSectionsToPreviewHtml } from '@/lib/site-production/compile-preview-html';
+import { formatCurrency } from '@/lib/format-display';
+import { liveBuildNextLines } from '@/lib/live-build-status';
+import { buildProjectLiveActivityFeed } from '@/lib/project-live-feed';
+import { microProgressForPage } from '@/lib/site-production/page-micro-progress';
+import { siteProductionBundleKey, useSiteProductionStore } from '@/store/useSiteProductionStore';
+import type { Project, ProjectLifecycleStage } from '@/lib/types/entities';
 import { useShell } from '@/context/shell-context';
 import { useProject, useProjectActivities } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
+import { cn } from '@/lib/utils';
+import {
+  CONVERSION_WORKSPACE_LABEL,
+  DELIVERY_ADVANTAGE,
+  OFFER_PACKAGES,
+  OFFER_STATEMENT,
+  PROCESS_STEPS,
+  RISK_REVERSAL,
+} from '@/lib/offer-positioning';
+
+const ACTIVE_SITE_STAGES: ProjectLifecycleStage[] = ['discovery', 'proposal_contract', 'build', 'review'];
+
+function lifecycleStageIndex(project: Project): number {
+  const i = LIFECYCLE_ORDER.indexOf(project.lifecycleStage);
+  return i < 0 ? 0 : i;
+}
 
 function milestoneRowsForProject(project: Project) {
+  if (project.deliveryFocus === 'client_site') {
+    const cur = lifecycleStageIndex(project);
+    return [
+      { id: 'diagnose', label: 'Diagnose — where visitors drop', done: cur > 2 },
+      { id: 'rebuild', label: 'Rebuild — conversion path on the page', done: cur > 3 },
+      { id: 'launch', label: 'Launch — go live without breaking the path', done: cur > 5 },
+      { id: 'optimize', label: 'Optimize — tighten from real traffic', done: cur >= 6 },
+    ];
+  }
   return [
-    { id: '1', label: 'Discovery & scope', done: true },
-    { id: '2', label: 'Design approval', done: project.status !== 'Planning' && project.status !== 'Design' },
-    { id: '3', label: 'Development complete', done: project.status === 'Live' || project.status === 'Review' },
-    { id: '4', label: 'Launch & handoff', done: project.status === 'Live' },
+    { id: '1', label: 'Align outcomes & scope', done: true },
+    {
+      id: '2',
+      label: 'Lock plan & revenue signals',
+      done: project.status !== 'Planning' && project.status !== 'Design',
+    },
+    {
+      id: '3',
+      label: 'Ship work clients can book or buy from',
+      done: project.status === 'Live' || project.status === 'Review',
+    },
+    { id: '4', label: 'Launch, hand off, close the loop', done: project.status === 'Live' },
   ];
 }
 
 export function ProjectDetailPage() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const { toast } = useShell();
   const project = useProject(projectId);
   const projectActivities = useProjectActivities(projectId);
   const completeTask = useAppStore((s) => s.completeTask);
   const advanceProjectPhase = useAppStore((s) => s.advanceProjectPhase);
+  const advanceProjectLifecycle = useAppStore((s) => s.advanceProjectLifecycle);
+  const toggleTaskChecklistItem = useAppStore((s) => s.toggleTaskChecklistItem);
+  const setProjectWaitingOn = useAppStore((s) => s.setProjectWaitingOn);
+  const requestClientFeedback = useAppStore((s) => s.requestClientFeedback);
+  const sendInvoice = useAppStore((s) => s.sendInvoice);
   const users = useAppStore(useShallow((s) => s.users));
   const store = useAppStore((s) => s);
 
@@ -59,6 +118,14 @@ export function ProjectDetailPage() {
   const projectContracts = useAppStore(
     useShallow((s) => (projectId ? sel.getContractsForProject(s, projectId) : []))
   );
+
+  const ensurePagesForProject = useSiteProductionStore((s) => s.ensurePagesForProject);
+  const sectionsByBundle = useSiteProductionStore((s) => s.sectionsByBundle);
+
+  useEffect(() => {
+    if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
+    ensurePagesForProject(projectId);
+  }, [projectId, project, ensurePagesForProject]);
 
   const nextAction = useMemo(() => {
     if (!projectId || !project) return null;
@@ -116,10 +183,27 @@ export function ProjectDetailPage() {
     };
   }, [projectId, project, projectTasks, projectContracts, projectInvoices, client?.name, store]);
 
+  const homePreviewHtml = useMemo(() => {
+    if (!projectId || !project || project.deliveryFocus !== 'client_site') return '';
+    const k = siteProductionBundleKey(project.id, '/');
+    const secs = [...(sectionsByBundle[k] ?? [])].sort((a, b) => a.order - b.order);
+    return compileSectionsToPreviewHtml(secs, { pageTitle: 'Home', viewport: 'desktop' });
+  }, [projectId, project, sectionsByBundle]);
+
+  const primaryFocusLine = useMemo(() => {
+    if (!project) return null;
+    return primaryFocusFromTasks(projectTasks) ?? focusFallbackForPhase(lifecycleStageToOfferPhase(project.lifecycleStage));
+  }, [project, projectTasks]);
+
+  const liveFeed = useMemo(() => {
+    if (!project) return { today: [] as string[], yesterday: [] as string[] };
+    return buildProjectLiveActivityFeed(projectActivities, project.siteImprovements ?? null);
+  }, [project, projectActivities]);
+
   if (!project) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-        <h1 className="text-lg font-bold text-slate-900">Project not found</h1>
+      <div className="rounded-3xl bg-white px-8 py-14 text-center shadow-sm ring-1 ring-slate-900/[0.06]">
+        <h1 className="text-lg font-bold tracking-tight text-slate-900">Project not found</h1>
         <Link to="/projects" className={buttonClassName('primary', 'mt-6 inline-flex')}>
           Back to projects
         </Link>
@@ -135,11 +219,21 @@ export function ProjectDetailPage() {
   const startLabel = new Date(project.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   const budgetRemaining = Math.max(0, project.budget - project.spent);
   const blockedCount = projectTasks.filter((t) => t.status === 'Blocked').length;
-  const overdueTaskCount = projectTasks.filter((t) => t.status !== 'Done' && t.due === 'Today').length;
   const unreadProjectThreads = projectMessages.filter((m) => m.status === 'Unread').length;
   const atRisk = pct >= 88 || blockedCount > 0 || unreadProjectThreads > 0;
   const threadQuietH = hoursSinceLastProjectThreadActivity(store, project.id);
   const ph = projectHealthLevel(store, project.id);
+  const stalledSite =
+    project.deliveryFocus === 'client_site' &&
+    project.waitingOn !== 'client' &&
+    ACTIVE_SITE_STAGES.includes(project.lifecycleStage) &&
+    daysSinceIso(project.updatedAt) >= 6;
+  const invoiceToRemind = projectInvoices.find((i) => i.status === 'Overdue' || i.status === 'Sent' || i.status === 'Draft');
+  const clientFacingStatus = clientDeliveryStatusLabel(project.lifecycleStage);
+  const offerPhase = lifecycleStageToOfferPhase(project.lifecycleStage);
+  const phaseTitle = OFFER_PHASE_CLIENT[offerPhase].title;
+  const focusHeadline = primaryFocusLine ?? focusFallbackForPhase(offerPhase);
+  const nextLines = liveBuildNextLines(offerPhase, clientFacingStatus);
 
   return (
     <DetailPageLayout
@@ -147,33 +241,85 @@ export function ProjectDetailPage() {
       backLabel="Projects"
       title={project.name}
       meta={
-        <span>
-          Timeline {startLabel} → due {project.due} · Phase {project.status} · {client?.company} · Owner {owner?.name}
-        </span>
+        project.deliveryFocus === 'client_site' ? (
+          <span>
+            Website for <span className="font-semibold text-slate-900">{client?.company ?? 'Client'}</span> ·{' '}
+            {clientFacingStatus} · Last studio touch {project.lastSiteUpdateLabel ?? '—'}
+          </span>
+        ) : (
+          <span>
+            Timeline {startLabel} → due {project.due} · {LIFECYCLE_LABELS[project.lifecycleStage]} · {client?.company} · Owner{' '}
+            {owner?.name}
+            {project.deliveryFocus === 'product_other' && <> · Retainer / product work</>}
+          </span>
+        )
       }
       badge={
         <span className="flex flex-wrap items-center gap-2">
-          <Badge variant={projectStatusBadgeVariant(project.status)}>{project.status}</Badge>
-          <Badge variant={projectHealthBadgeVariant(ph)}>{projectHealthLabel(ph)}</Badge>
+          {project.deliveryFocus === 'client_site' ? (
+            <Badge
+              variant={
+                clientFacingStatus === 'Live' ? 'success' : clientFacingStatus === 'Ready for review' ? 'info' : 'neutral'
+              }
+              className="text-xs font-bold"
+            >
+              {clientFacingStatus}
+            </Badge>
+          ) : (
+            <>
+              <Badge variant={projectStatusBadgeVariant(project.status)}>{project.status}</Badge>
+              <Badge variant={projectHealthBadgeVariant(ph)}>{projectHealthLabel(ph)}</Badge>
+            </>
+          )}
+          {project.waitingOn === 'client' && <Badge variant="warning">Waiting on client</Badge>}
+          {project.waitingOn === 'agency' && (
+            <Badge variant="neutral" className="border-amber-200 bg-amber-50 text-amber-950">
+              On us
+            </Badge>
+          )}
         </span>
       }
       actions={
         <>
-          <Button type="button" variant="secondary" onClick={() => projectId && advanceProjectPhase(projectId)}>
-            Advance phase
+          <Button type="button" onClick={() => projectId && advanceProjectLifecycle(projectId)}>
+            {project.deliveryFocus === 'client_site' ? 'Record next phase' : 'Advance lifecycle'}
           </Button>
+          {project.deliveryFocus !== 'client_site' && (
+            <Button type="button" variant="secondary" onClick={() => projectId && advanceProjectPhase(projectId)}>
+              Advance legacy phase
+            </Button>
+          )}
+          {project.deliveryFocus === 'client_site' && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => projectId && navigate(`/projects/${projectId}/site`)}
+            >
+              {CONVERSION_WORKSPACE_LABEL}
+            </Button>
+          )}
+          {project.deliveryFocus === 'client_site' && (
+            <Button type="button" variant="secondary" onClick={() => requestClientFeedback(project.id)}>
+              Request client feedback
+            </Button>
+          )}
           <Button
             type="button"
             variant="secondary"
             onClick={() =>
               toast(
-                'Client update posted — anyone on the portal sees it on refresh; follow up in Messages if it is urgent.',
+                'Update logged — your client sees this alongside their preview and status.',
                 'success'
               )
             }
           >
-            Share update
+            Log client update
           </Button>
+          {invoiceToRemind && (
+            <Button type="button" variant="secondary" onClick={() => sendInvoice(invoiceToRemind.id)}>
+              Remind {invoiceToRemind.number}
+            </Button>
+          )}
           <Link to="/time-tracking" className={buttonClassName('primary', 'gap-2')}>
             Log time
           </Link>
@@ -181,104 +327,401 @@ export function ProjectDetailPage() {
       }
       sidebar={
         <>
-          <Card className="border-indigo-100 bg-indigo-50/40 p-4 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wide text-indigo-800">Next up</p>
+          <Card variant="compact" className="bg-gradient-to-b from-violet-50/80 to-indigo-50/20 ring-violet-200/30">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-violet-900/90">Needs you</p>
             {nextAction ? (
               <>
                 <p className="mt-2 text-sm font-bold text-slate-900">{nextAction.title}</p>
                 <p className="mt-1 text-xs text-slate-600">{nextAction.body}</p>
-                <Link to={nextAction.href} className="mt-3 inline-block text-xs font-semibold text-indigo-700 hover:underline">
+                <Link to={nextAction.href} className="mt-3 inline-block text-xs font-semibold text-violet-700 transition-colors hover:text-violet-900">
                   {nextAction.tone === 'danger' ? 'Resolve now →' : 'Take action →'}
                 </Link>
               </>
             ) : (
-              <p className="mt-2 text-sm text-slate-600">No urgent actions — keep milestones moving.</p>
+              <p className="mt-2 text-sm text-slate-600">Nothing urgent on this project right now.</p>
             )}
           </Card>
-          <Card
-            className={`p-4 shadow-sm ${
-              ph === 'blocked'
-                ? 'border-rose-200 bg-rose-50/60'
-                : ph === 'at_risk' || atRisk
-                  ? 'border-amber-200 bg-amber-50/50'
-                  : 'border-slate-100'
-            }`}
-          >
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Delivery health</p>
-            <ul className="mt-2 space-y-2 text-sm text-slate-700">
-              <li className="flex justify-between gap-2">
-                <span>Budget burn</span>
-                <span className="font-semibold tabular-nums">{pct}%</span>
-              </li>
-              {threadQuietH != null && (
-                <li className="text-slate-600">
-                  Last thread activity:{' '}
-                  <span className="font-semibold text-slate-800">
-                    {threadQuietH < 24 ? `${threadQuietH}h ago` : `${Math.round(threadQuietH / 24)} days ago`}
-                  </span>
-                </li>
-              )}
-              {blockedCount > 0 && (
-                <li className="font-medium text-rose-700">{blockedCount} blocked task{blockedCount === 1 ? '' : 's'}</li>
-              )}
-              {overdueTaskCount > 0 && (
-                <li className="font-medium text-amber-800">{overdueTaskCount} due today</li>
-              )}
-              {unreadProjectThreads > 0 && (
-                <li className="font-medium text-indigo-800">{unreadProjectThreads} thread awaiting reply</li>
-              )}
-              {!atRisk && ph === 'healthy' && (
-                <li className="text-slate-500">On track — no red flags on this snapshot.</li>
-              )}
-            </ul>
-          </Card>
-          <Card className="p-4 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Recent updates</p>
-            <ul className="mt-2 space-y-2">
-              {projectActivities.slice(0, 4).map((a) => (
-                <li key={a.id} className="text-xs text-slate-700">
-                  <span className="font-medium text-slate-800">{a.title}</span>
-                  <span className="mt-0.5 block text-[10px] text-slate-400">{a.timeLabel}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          {project.deliveryFocus !== 'client_site' && (
+            <>
+              <Card
+                variant="compact"
+                className={
+                  ph === 'blocked'
+                    ? 'bg-rose-50/70 ring-rose-200/50'
+                    : ph === 'at_risk' || atRisk
+                      ? 'bg-amber-50/50 ring-amber-200/40'
+                      : ''
+                }
+              >
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Delivery health</p>
+                <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                  <li className="flex justify-between gap-2">
+                    <span>Budget burn</span>
+                    <span className="font-semibold tabular-nums">{pct}%</span>
+                  </li>
+                  {threadQuietH != null && (
+                    <li className="text-slate-600">
+                      Last thread:{' '}
+                      <span className="font-semibold text-slate-800">
+                        {threadQuietH < 24 ? `${threadQuietH}h ago` : `${Math.round(threadQuietH / 24)} days ago`}
+                      </span>
+                    </li>
+                  )}
+                  {blockedCount > 0 && (
+                    <li className="font-medium text-rose-700">{blockedCount} blocked task{blockedCount === 1 ? '' : 's'}</li>
+                  )}
+                </ul>
+              </Card>
+              <Card variant="compact">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Recent updates</p>
+                <ul className="mt-2 space-y-2">
+                  {projectActivities.slice(0, 4).map((a) => (
+                    <li key={a.id} className="text-xs text-slate-700">
+                      <span className="font-medium text-slate-800">{a.title}</span>
+                      <span className="mt-0.5 block text-[10px] text-slate-400">{a.timeLabel}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </>
+          )}
+          {project.deliveryFocus === 'client_site' && project.clientPortalVisible === false && (
+            <p className="rounded-xl bg-amber-50/90 px-3 py-2.5 text-[11px] leading-relaxed text-amber-950 ring-1 ring-amber-200/50">
+              Clients don&apos;t see this project in the portal yet.
+            </p>
+          )}
         </>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="p-5 lg:col-span-2">
-          <h3 className="text-sm font-bold text-slate-900">Overview</h3>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">
-            Everything here rolls up to {client?.name ?? 'the client'} — tasks, files, messages, invoices, and contracts stay tied to this
-            project.
-          </p>
-          <div className="mt-4">
-            <div className="mb-1 flex justify-between text-xs font-semibold text-slate-500">
-              <span>Budget consumed</span>
-              <span className="tabular-nums">
-                ${project.spent.toLocaleString()} / ${project.budget.toLocaleString()} ({pct}%)
-              </span>
+      {project.deliveryFocus === 'client_site' && (
+        <>
+          <section className="mb-8 rounded-3xl bg-gradient-to-b from-white via-violet-50/[0.35] to-slate-50/30 px-6 py-8 shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.06] sm:px-8 sm:py-9">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700/90">Current focus</p>
+            <p className="mt-3 text-[13px] font-medium text-slate-500">Right now we&apos;re working on</p>
+            <p className="mt-1 text-2xl font-bold leading-[1.15] tracking-tight text-slate-900 sm:text-3xl">{focusHeadline}</p>
+            {stalledSite && (
+              <p className="mt-4 rounded-xl bg-rose-50/90 px-4 py-3 text-sm font-medium leading-relaxed text-rose-950 ring-1 ring-rose-200/50">
+                No studio touches in {daysSinceIso(project.updatedAt)}+ days — you&apos;re not marked waiting on the client.
+              </p>
+            )}
+            <p className="mt-8 text-[11px] font-bold uppercase tracking-wide text-slate-400">Next</p>
+            <p className="mt-1.5 text-[15px] font-semibold leading-snug tracking-tight text-slate-800">{nextLines.join(' → ')}</p>
+          </section>
+
+          <section className="mb-8 rounded-3xl bg-white px-6 py-7 shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.06] sm:px-8">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700/90">Offer & process</p>
+            <p className="mt-2 max-w-3xl text-sm font-medium leading-relaxed text-slate-800">{OFFER_STATEMENT}</p>
+            <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-slate-600">{DELIVERY_ADVANTAGE}</p>
+            <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {PROCESS_STEPS.map((step, i) => (
+                <li key={step.id} className="rounded-2xl bg-slate-50/80 px-4 py-3 ring-1 ring-slate-900/[0.04]">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                    {i + 1}. {step.title}
+                  </p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{step.body}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-5 text-xs leading-relaxed text-slate-600">{RISK_REVERSAL}</p>
+            <div className="mt-8 border-t border-slate-100 pt-6">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Engagement bands</p>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                {OFFER_PACKAGES.map((pkg) => (
+                  <div key={pkg.id} className="rounded-2xl bg-gradient-to-b from-slate-50/90 to-white px-4 py-4 ring-1 ring-slate-200/60">
+                    <p className="text-sm font-bold text-slate-900">
+                      {pkg.name}{' '}
+                      <span className="font-semibold text-violet-700">{pkg.priceBand}</span>
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{pkg.forWho}</p>
+                    <p className="mt-2 text-[11px] font-medium leading-snug text-slate-700">{pkg.outcome}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <ProgressBar value={pct} max={100} />
-            <p className="mt-2 text-xs text-slate-600">
-              <span className="font-semibold text-slate-800">${budgetRemaining.toLocaleString()}</span> remaining · next milestone:{' '}
-              <span className="font-medium text-slate-800">{milestones.find((m) => !m.done)?.label ?? 'Complete'}</span>
-            </p>
+          </section>
+
+          <section className="mb-10 rounded-3xl bg-slate-50/40 px-6 py-7 ring-1 ring-slate-900/[0.04] sm:px-8">
+            <h3 className="text-lg font-bold tracking-tight text-slate-900">Live activity</h3>
+            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-slate-500">What shipped or changed on this site.</p>
+            <div className="mt-8 grid gap-10 sm:grid-cols-2 sm:gap-12">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Today</p>
+                <ul className="mt-3 space-y-2.5 text-[13px] leading-relaxed text-slate-800">
+                  {liveFeed.today.map((l) => (
+                    <li key={l} className="flex gap-2.5">
+                      <span className="shrink-0 font-medium text-emerald-600">→</span>
+                      <span>{l}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Yesterday</p>
+                <ul className="mt-3 space-y-2.5 text-[13px] leading-relaxed text-slate-600">
+                  {liveFeed.yesterday.map((l) => (
+                    <li key={l} className="flex gap-2.5">
+                      <span className="shrink-0 text-slate-400">→</span>
+                      <span>{l}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      {project.deliveryFocus === 'client_site' && (
+        <div className="mb-10 overflow-hidden rounded-3xl bg-white shadow-md shadow-slate-900/[0.04] ring-1 ring-slate-900/[0.06]">
+          <div className="grid gap-0 lg:grid-cols-2">
+            <div className="space-y-6 p-6 sm:p-8 lg:bg-slate-50/35">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Live conversion rebuild</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
+                  Phase <span className="font-semibold text-slate-900">{phaseTitle}</span>
+                  <span className="mx-2 text-slate-300">·</span>
+                  Step {offerStepNumber(offerPhase)} of 4
+                </p>
+                <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
+                  Status{' '}
+                  <span className="font-semibold text-slate-900">{clientFacingStatus}</span>
+                  {project.waitingOn === 'client' ? (
+                    <span className="text-amber-800"> · Waiting on client</span>
+                  ) : project.waitingOn === 'agency' ? (
+                    <span className="text-violet-800"> · On us to ship</span>
+                  ) : null}
+                </p>
+              </div>
+              <div className="flex gap-1.5">
+                {OFFER_PHASE_ORDER.map((ph) => {
+                  const curIdx = OFFER_PHASE_ORDER.indexOf(offerPhase);
+                  const idx = OFFER_PHASE_ORDER.indexOf(ph);
+                  const done = idx < curIdx;
+                  const active = ph === offerPhase;
+                  return (
+                    <div
+                      key={ph}
+                      title={OFFER_PHASE_CLIENT[ph].title}
+                      className={cn(
+                        'h-2 flex-1 rounded-full transition-colors',
+                        done && 'bg-emerald-500',
+                        active && 'bg-violet-600 ring-2 ring-violet-300/70',
+                        !done && !active && 'bg-slate-200'
+                      )}
+                    />
+                  );
+                })}
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Pages in this site</p>
+                <div className="mt-2 overflow-hidden rounded-xl bg-white ring-1 ring-slate-900/[0.06]">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50/90 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2">Page</th>
+                        <th className="px-3 py-2">Progress</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2 text-right">Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/90 bg-white">
+                      {AGENCY_SITE_PAGES.map((pg) => {
+                        const mp = microProgressForPage(pg);
+                        return (
+                          <tr key={pg.path} className="transition-colors duration-150 hover:bg-slate-50/60">
+                            <td className="px-3 py-2 font-medium text-slate-900">{pg.name}</td>
+                            <td className="max-w-[140px] px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <ProgressBar value={mp.pct} max={100} className="h-2 min-w-[72px] flex-1" />
+                                <span className="shrink-0 tabular-nums text-xs font-semibold text-slate-700">{mp.pct}%</span>
+                              </div>
+                              <p className="mt-0.5 text-[10px] text-slate-500">{mp.hint}</p>
+                            </td>
+                            <td className="px-3 py-2 text-slate-700">{pageStatusDisplay(pg.publishState)}</td>
+                            <td className="px-3 py-2 text-right text-slate-500">{pg.updatedLabel}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 border-t border-slate-200/60 pt-5">
+                <Button type="button" onClick={() => navigate(`/projects/${project.id}/site`)}>
+                  {CONVERSION_WORKSPACE_LABEL}
+                </Button>
+                {project.siteLiveUrl ? (
+                  <a
+                    href={project.siteLiveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonClassName('secondary', 'gap-2')}
+                  >
+                    Open live / staging
+                  </a>
+                ) : null}
+                <Link to="/messages" className={buttonClassName('secondary', 'text-xs')}>
+                  Messages
+                </Link>
+                <Link to="/invoices" className={buttonClassName('secondary', 'text-xs')}>
+                  Invoices
+                </Link>
+                <Link to="/files" className={buttonClassName('secondary', 'text-xs')}>
+                  Files
+                </Link>
+              </div>
+            </div>
+            <div className="flex flex-col bg-slate-950 p-6 text-white sm:p-7 lg:min-h-[320px]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Live conversion preview — Home</p>
+                <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white">{clientFacingStatus}</span>
+              </div>
+              <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-xl bg-white shadow-inner ring-1 ring-white/10">
+                <iframe
+                  title="Live conversion preview"
+                  srcDoc={homePreviewHtml}
+                  className="h-[min(520px,62vh)] w-full bg-white"
+                  sandbox="allow-same-origin allow-popups"
+                />
+              </div>
+              <p className="mt-2 text-[10px] text-white/55">Same preview the client sees in their portal.</p>
+              <p className="mt-2 text-[10px] text-white/50">Last studio touch: {project.lastSiteUpdateLabel ?? '—'}</p>
+            </div>
           </div>
+        </div>
+      )}
+
+      {project.deliveryFocus !== 'client_site' && (
+        <Card className="mb-8 p-6 sm:p-7">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+            Step {offerStepNumber(offerPhase)} of 4 · {OFFER_PHASE_CLIENT[offerPhase].title}
+          </p>
+          <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{OFFER_PHASE_CLIENT[offerPhase].title}</h2>
+          <p className="mt-4 text-[13px] leading-relaxed text-slate-600">{narrativeThisPhase(offerPhase)}</p>
+          <p className="mt-3 text-[13px] leading-relaxed text-slate-600">
+            <span className="font-semibold text-slate-800">Focus </span>
+            {primaryFocusLine}
+          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
+            <span className="font-semibold text-slate-800">Next </span>
+            {narrativeWhatsNext(offerPhase)}
+          </p>
         </Card>
-        <Card className="p-5">
-          <h3 className="text-sm font-bold text-slate-900">Client</h3>
-          {client && (
-            <div className="mt-3">
-              <Link to={`/clients/${client.id}`} className="text-lg font-semibold text-indigo-700 hover:text-indigo-900">
-                {client.name}
-              </Link>
-              <p className="text-sm text-slate-500">{client.email}</p>
-            </div>
+      )}
+
+      {project.deliveryFocus === 'client_site' && (
+        <Card className="mb-10 p-6 sm:p-7">
+          <h3 className="text-lg font-bold tracking-tight text-slate-900">What we fixed</h3>
+          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-slate-500">Before → after.</p>
+          <ul className="mt-6 divide-y divide-slate-100/90">
+            {(project.siteBeforeAfter?.length
+              ? project.siteBeforeAfter
+              : [
+                  { id: 'd-ba-0', before: 'Unclear headline', after: 'Clear value statement' },
+                  { id: 'd-ba-1', before: 'No primary CTA', after: 'Strong ask above the fold' },
+                  { id: 'd-ba-2', before: 'Messy flow', after: 'Structured sections toward contact' },
+                ]
+            ).map((row) => (
+              <li key={row.id} className="flex flex-col gap-1 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <span className="text-sm text-rose-800 line-through decoration-rose-300/80">{row.before}</span>
+                <span className="hidden text-slate-300 sm:inline" aria-hidden>
+                  →
+                </span>
+                <span className="text-sm font-semibold text-emerald-900">{row.after}</span>
+              </li>
+            ))}
+          </ul>
+          {project.siteImprovements?.[0] && (
+            <p className="mt-5 border-t border-slate-100/90 pt-5 text-[13px] leading-relaxed text-slate-600">
+              <span className="font-semibold text-slate-800">Why it matters </span>
+              {project.siteImprovements.map((i) => i.expectedImpact).filter(Boolean).slice(0, 2).join(' ')}
+            </p>
           )}
         </Card>
-      </div>
+      )}
+
+      {project.deliveryFocus === 'client_site' && project.siteStatus === 'live' && (
+        <Card className="mb-10 bg-emerald-50/50 p-6 ring-emerald-200/60">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-900">Your site is live</p>
+          <p className="mt-3 text-[13px] leading-relaxed text-slate-800">
+            {project.siteLiveUrl ? (
+              <>
+                Address:{' '}
+                <a href={project.siteLiveUrl} className="font-semibold text-emerald-900 underline decoration-emerald-300/80 underline-offset-2" target="_blank" rel="noreferrer">
+                  {project.siteLiveUrl}
+                </a>
+              </>
+            ) : (
+              'Point your domain when you are ready — we can keep preview up until DNS is flipped.'
+            )}
+          </p>
+          <p className="mt-3 text-[13px] leading-relaxed text-slate-600">{AFTER_LIVE_LINE}</p>
+        </Card>
+      )}
+
+      {project.lifecycleStage === 'post_launch' && project.deliveryFocus === 'client_site' && (
+        <Card variant="compact" className="mb-10 bg-violet-50/40 ring-violet-200/35">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-violet-900">After launch</p>
+          <p className="mt-2 text-[13px] leading-relaxed text-slate-700">{POST_LAUNCH_CLIENT_LINE}</p>
+        </Card>
+      )}
+
+      {project.deliveryFocus !== 'client_site' && (
+        <Card variant="compact" className="mb-10 bg-violet-50/25 ring-violet-200/25">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-violet-900">Quick actions</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" className="text-xs" onClick={() => requestClientFeedback(project.id)}>
+              Request client feedback
+            </Button>
+            <Button type="button" variant="secondary" className="text-xs" onClick={() => setProjectWaitingOn(project.id, null)}>
+              Mark on us
+            </Button>
+            {invoiceToRemind && (
+              <Button type="button" className="text-xs" onClick={() => sendInvoice(invoiceToRemind.id)}>
+                Invoice reminder · {invoiceToRemind.number}
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
+      <Card className="p-6 sm:p-7 lg:p-8">
+        <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-start lg:gap-12">
+          <div className="min-w-0">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Overview</h3>
+            <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-slate-600">
+              {project.deliveryFocus === 'client_site'
+                ? `Home for ${client?.company ?? 'the client'}'s website — what changed, how it looks, and what happens next. Budget and invoices stay here.`
+                : `Everything for ${client?.name ?? 'the client'} — scope, time, invoices, and files in one place.`}
+            </p>
+            <div className="mt-6 max-w-xl">
+              <div className="mb-1.5 flex justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <span>Budget consumed</span>
+                <span className="tabular-nums text-slate-600">
+                  {formatCurrency(project.spent)} / {formatCurrency(project.budget)} ({pct}%)
+                </span>
+              </div>
+              <ProgressBar value={pct} max={100} />
+              <p className="mt-2.5 text-[12px] leading-relaxed text-slate-500">
+                <span className="font-semibold text-slate-700">{formatCurrency(budgetRemaining)}</span> remaining · next milestone{' '}
+                <span className="font-medium text-slate-700">{milestones.find((m) => !m.done)?.label ?? 'Complete'}</span>
+              </p>
+            </div>
+          </div>
+          {client && (
+            <div className="min-w-0 border-t border-slate-100 pt-8 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Client</h3>
+              <Link
+                to={`/clients/${client.id}`}
+                className="mt-2 block text-lg font-semibold tracking-tight text-violet-700 transition-colors hover:text-violet-900"
+              >
+                {client.name}
+              </Link>
+              <p className="mt-1 text-[13px] text-slate-500">{client.email}</p>
+            </div>
+          )}
+        </div>
+      </Card>
 
       <Tabs
         defaultId="timeline"
@@ -287,10 +730,10 @@ export function ProjectDetailPage() {
             id: 'timeline',
             label: 'Timeline',
             content: (
-              <Card className="p-5">
-                <ul className="space-y-3">
+              <div className="rounded-2xl bg-slate-50/50 px-4 py-2 ring-1 ring-slate-900/[0.04] sm:px-5 sm:py-3">
+                <ul className="divide-y divide-slate-100/80">
                   {milestones.map((m) => (
-                    <li key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-2">
+                    <li key={m.id} className="flex items-center gap-3 py-3.5 first:pt-2 last:pb-2">
                       <span
                         className={
                           m.done
@@ -304,7 +747,7 @@ export function ProjectDetailPage() {
                     </li>
                   ))}
                 </ul>
-              </Card>
+              </div>
             ),
           },
           {
@@ -327,31 +770,68 @@ export function ProjectDetailPage() {
                       <TableCell colSpan={5} className="px-4 py-8 text-center text-slate-500">
                         <p className="font-medium text-slate-700">No tasks on this engagement yet</p>
                         <p className="mt-1 max-w-md text-sm text-slate-500">
-                          Tasks are how you protect scope and milestones. Add one from <strong>Project actions → Add task</strong> — it stays tied to this client
-                          and shows up on your studio pulse.
+                          Add tasks from the task board so dates and owners stay tied to this client.
                         </p>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    projectTasks.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="font-medium text-slate-900">{t.title}</TableCell>
-                        <TableCell>
-                          <Badge variant={taskStatusBadgeVariant(t.status)}>{t.status}</Badge>
-                        </TableCell>
-                        <TableCell>{users[t.assigneeId]?.name}</TableCell>
-                        <TableCell className="text-slate-500">{t.due}</TableCell>
-                        <TableCell className="text-right">
-                          {t.status !== 'Done' ? (
-                            <Button type="button" variant="secondary" className="text-xs" onClick={() => completeTask(t.id)}>
-                              Mark complete
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-slate-400">Done</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    projectTasks.flatMap((t) => {
+                      const sub = Boolean(t.description || (t.checklist && t.checklist.length > 0));
+                      const main = (
+                        <TableRow key={t.id}>
+                          <TableCell className="font-medium text-slate-900">
+                            <div>{t.title}</div>
+                            {t.lifecycleStage && (
+                              <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                {LIFECYCLE_LABELS[t.lifecycleStage]}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={taskStatusBadgeVariant(t.status)}>{t.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {t.assigneeId ? users[t.assigneeId]?.name ?? '—' : <span className="text-amber-800">Unassigned</span>}
+                          </TableCell>
+                          <TableCell className="text-slate-500">{t.due}</TableCell>
+                          <TableCell className="text-right">
+                            {t.status !== 'Done' ? (
+                              <Button type="button" variant="secondary" className="text-xs" onClick={() => completeTask(t.id)}>
+                                Mark complete
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-slate-400">Done</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                      if (!sub) return [main];
+                      const detail = (
+                        <TableRow key={`${t.id}-detail`} className="bg-slate-50/80">
+                          <TableCell colSpan={5} className="py-3 text-sm text-slate-600">
+                            {t.description && <p className="mb-2 text-slate-700">{t.description}</p>}
+                            {t.checklist && t.checklist.length > 0 && (
+                              <ul className="space-y-1.5">
+                                {t.checklist.map((c) => (
+                                  <li key={c.id}>
+                                    <label className="flex cursor-pointer items-start gap-2 text-xs">
+                                      <input
+                                        type="checkbox"
+                                        className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300"
+                                        checked={c.done}
+                                        onChange={() => toggleTaskChecklistItem(t.id, c.id)}
+                                      />
+                                      <span className={c.done ? 'text-slate-400 line-through' : 'text-slate-800'}>{c.label}</span>
+                                    </label>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                      return [main, detail];
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -362,10 +842,10 @@ export function ProjectDetailPage() {
             label: 'Files',
             content:
               projectFiles.length === 0 ? (
-                <Card className="border-dashed border-slate-200 bg-slate-50/60 p-8 text-center">
+                <Card className="border border-dashed border-slate-200/80 bg-slate-50/50 p-8 text-center shadow-none ring-0">
                   <p className="font-semibold text-slate-800">Upload work to this project</p>
                   <p className="mt-2 text-sm text-slate-600">
-                    Files you attach here appear under this client and in the workspace library — use the Files page to upload with the right
+                    Files you attach here land on this client and this project — use Files to upload with the right
                     project selected.
                   </p>
                   <Link to="/files" className={`${buttonClassName('primary', 'mt-4 inline-flex')}`}>
@@ -401,16 +881,19 @@ export function ProjectDetailPage() {
             id: 'messages',
             label: 'Messages',
             content: (
-              <ul className="space-y-2">
+              <ul className="divide-y divide-slate-100 rounded-2xl bg-white ring-1 ring-slate-900/[0.05]">
                 {projectMessages.length === 0 ? (
-                  <li className="text-sm text-slate-500">No threads on this project yet.</li>
+                  <li className="px-4 py-6 text-[13px] text-slate-500">No threads on this project yet.</li>
                 ) : (
                   projectMessages.map((m) => (
-                    <li key={m.id} className="rounded-xl border border-slate-100 bg-white px-4 py-3">
-                      <Link to="/messages" className="block transition hover:bg-slate-50/80">
-                        <p className="font-semibold text-slate-900">{m.participant}</p>
-                        <p className="text-sm text-slate-600">{m.preview}</p>
-                        <p className="mt-2 text-xs font-semibold text-indigo-600">Open in inbox →</p>
+                    <li key={m.id}>
+                      <Link
+                        to="/messages"
+                        className="block px-4 py-3.5 transition-colors duration-150 hover:bg-slate-50/80 sm:px-5"
+                      >
+                        <p className="font-semibold tracking-tight text-slate-900">{m.participant}</p>
+                        <p className="mt-0.5 text-[13px] leading-relaxed text-slate-600">{m.preview}</p>
+                        <p className="mt-2 text-[11px] font-semibold text-violet-700">Open in inbox →</p>
                       </Link>
                     </li>
                   ))
@@ -475,7 +958,7 @@ export function ProjectDetailPage() {
                     projectInvoices.map((inv) => (
                       <TableRow key={inv.id} clickable>
                         <TableCell>
-                          <Link to={`/invoices/${inv.id}`} className="font-semibold text-indigo-700">
+                          <Link to={`/invoices/${inv.id}`} className="font-semibold text-violet-700 hover:text-violet-900">
                             {inv.number}
                           </Link>
                         </TableCell>
@@ -494,23 +977,22 @@ export function ProjectDetailPage() {
             id: 'activity',
             label: 'Activity',
             content: (
-              <Card className="p-5">
+              <div className="rounded-2xl bg-slate-50/50 px-5 py-5 ring-1 ring-slate-900/[0.04]">
                 {activityRows.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    As invoices send, tasks complete, and files upload, this timeline fills in — everything is scoped to this project
-                    automatically.
+                  <p className="text-[13px] leading-relaxed text-slate-500">
+                    Invoices, tasks, and files logged against this project show up here.
                   </p>
                 ) : (
-                  <ul className="space-y-3">
+                  <ul className="space-y-3.5">
                     {activityRows.map((a) => (
-                      <li key={a.id} className="text-sm text-slate-700">
+                      <li key={a.id} className="text-[13px] leading-relaxed text-slate-700">
                         {a.title}
-                        <span className="mt-0.5 block text-xs text-slate-400">{a.timeLabel}</span>
+                        <span className="mt-0.5 block text-[11px] text-slate-400">{a.timeLabel}</span>
                       </li>
                     ))}
                   </ul>
                 )}
-              </Card>
+              </div>
             ),
           },
         ]}

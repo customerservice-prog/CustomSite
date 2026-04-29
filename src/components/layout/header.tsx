@@ -15,6 +15,35 @@ interface TopHeaderProps {
   breadcrumbs: Crumb[];
 }
 
+function SearchField({
+  onOpenCommand,
+  className,
+}: {
+  onOpenCommand: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn('relative min-w-0', className)}>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
+      <input
+        type="search"
+        readOnly
+        onClick={() => onOpenCommand()}
+        onFocus={(e) => {
+          e.target.blur();
+          onOpenCommand();
+        }}
+        placeholder="Search clients, projects, sites…"
+        className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 bg-gray-50/80 py-0 pl-10 pr-3 text-sm text-gray-900 placeholder:text-gray-400 transition hover:border-gray-300 hover:bg-white lg:pr-14"
+        aria-label="Search agency"
+      />
+      <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[10px] font-medium text-gray-500 lg:inline">
+        ⌘K
+      </kbd>
+    </div>
+  );
+}
+
 export function TopHeader({ breadcrumbs }: TopHeaderProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -27,7 +56,7 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
   const unread = useUnreadNotificationCount();
   const notifications = useNotifications();
 
-  const pageTitle = breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Workspace' : 'Workspace';
+  const pageTitle = breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Agency' : 'Agency';
 
   const groupedNotifications = useMemo(() => {
     const sorted = [...notifications].sort(
@@ -122,141 +151,145 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
     </>
   );
 
-  return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-4 md:px-6">
-      <MobileNavTrigger />
-      <div className="hidden min-w-0 md:block md:max-w-[min(40%,280px)]">
-        <Breadcrumbs items={breadcrumbs} className="text-xs text-gray-600 md:text-sm" />
-      </div>
-      <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900 md:hidden">{pageTitle}</h1>
+  const openCommand = () => setCommandOpen(true);
 
-      <div className="ml-auto flex shrink-0 items-center gap-3">
-        {!onStudioPulse && (
-          <Link
-            to="/dashboard"
-            className="hidden items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-purple-700 sm:inline-flex"
-          >
-            <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="hidden sm:inline">Studio Pulse</span>
-          </Link>
-        )}
-
-        <div className="relative hidden w-[360px] min-[1024px]:block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
-          <input
-            type="search"
-            readOnly
-            onClick={() => setCommandOpen(true)}
-            onFocus={(e) => {
-              e.target.blur();
-              setCommandOpen(true);
-            }}
-            placeholder="Search workspace…"
-            className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 bg-white py-0 pl-10 pr-12 text-sm text-gray-900 placeholder:text-gray-400"
-            aria-label="Search workspace"
-          />
-          <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 min-[1024px]:inline">
-            ⌘K
-          </kbd>
-        </div>
-
-        <IconButton
+  const accountMenu = (
+    <Dropdown
+      align="right"
+      trigger={
+        <button
           type="button"
-          className="min-[1024px]:hidden"
-          aria-label="Search"
-          onClick={() => setCommandOpen(true)}
+          className="flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white py-1 pl-1 pr-2 transition hover:border-gray-300 hover:bg-gray-50"
+          aria-label="Account"
         >
-          <Search className="h-5 w-5 text-gray-600" />
-        </IconButton>
+          <Avatar name={currentUser?.name ?? 'You'} size="sm" />
+          <ChevronDown className="hidden h-4 w-4 text-gray-500 sm:block" />
+        </button>
+      }
+    >
+      <DropdownItem onClick={() => navigate('/settings')}>Settings</DropdownItem>
+      <DropdownItem onClick={() => navigate('/dashboard')}>Studio Pulse</DropdownItem>
+    </Dropdown>
+  );
 
-        <div className="hidden sm:block">
-          <Dropdown align="right" trigger={<DropdownChevronTrigger label="Quick create" />}>
+  const notificationsMenu = (
+    <Dropdown
+      align="right"
+      trigger={
+        <button
+          type="button"
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
+          aria-label="Notifications"
+        >
+          <Bell className="h-5 w-5" />
+          {unread > 0 && (
+            <span className="absolute right-1 top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-purple-600 px-0.5 text-[9px] font-bold text-white">
+              {unread > 9 ? '9+' : unread}
+            </span>
+          )}
+        </button>
+      }
+    >
+      <div className="border-b border-gray-100 px-3 py-2">
+        <button type="button" className="text-xs font-medium text-purple-600" onClick={markAllRead}>
+          Mark all read
+        </button>
+      </div>
+      <div className="max-h-64 overflow-y-auto py-1">
+        {notifications.length === 0 ? (
+          <p className="px-3 py-3 text-center text-sm text-gray-500">No notifications.</p>
+        ) : (
+          <>
+            <NotificationSection label="Urgent" items={groupedNotifications.urgent} maxItems={5} />
+            <NotificationSection label="Today" items={groupedNotifications.today} />
+            <NotificationSection label="Recent" items={groupedNotifications.recent} maxItems={6} />
+          </>
+        )}
+      </div>
+    </Dropdown>
+  );
+
+  const moreMenu = (
+    <Dropdown
+      align="right"
+      trigger={
+        <IconButton aria-label="More" type="button" className="h-10 w-10 border border-gray-200 bg-white">
+          <MoreHorizontal className="h-5 w-5 text-gray-600" />
+        </IconButton>
+      }
+    >
+      <DropdownItem onClick={() => setCommandOpen(true)}>
+        <span className="flex items-center gap-2">
+          <Search className="h-4 w-4" /> Search
+        </span>
+      </DropdownItem>
+      <DropdownItem onClick={() => window.open('/index.html', '_blank', 'noopener')}>
+        <span className="flex items-center gap-2">
+          <Globe className="h-4 w-4" /> View site
+        </span>
+      </DropdownItem>
+    </Dropdown>
+  );
+
+  return (
+    <header className="shrink-0 border-b border-gray-200 bg-white">
+      {/* One grid at all breakpoints: mobile = title row + full-width search row; lg+ = single row, no duplicate controls */}
+      <div className="mx-auto grid max-w-[100vw] grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-2 gap-y-2 px-3 py-2.5 sm:px-4 lg:grid-cols-[auto_minmax(0,min(280px,28vw))_minmax(240px,1fr)_auto] lg:grid-rows-1 lg:items-center lg:gap-x-3 lg:px-6 lg:py-2.5 xl:min-h-16">
+        <div className="col-start-1 row-start-1 self-center">
+          <MobileNavTrigger />
+        </div>
+        <div className="col-start-2 row-start-1 min-w-0 self-center">
+          <div className="hidden min-w-0 lg:block">
+            <Breadcrumbs items={breadcrumbs} className="text-xs text-gray-600 xl:text-sm" />
+          </div>
+          <h1 className="truncate text-sm font-semibold leading-tight text-gray-900 lg:hidden">{pageTitle}</h1>
+        </div>
+        <div className="col-span-3 col-start-1 row-start-2 min-w-0 w-full lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:max-w-xl lg:justify-self-center">
+          <SearchField onOpenCommand={openCommand} className="w-full" />
+        </div>
+        <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-end gap-1 self-center sm:gap-1.5 lg:col-start-4">
+          {!onStudioPulse && (
+            <>
+              <Link
+                to="/dashboard"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-purple-700 transition hover:border-purple-200 hover:bg-purple-50 xl:hidden"
+                title="Studio Pulse"
+                aria-label="Studio Pulse"
+              >
+                <LayoutDashboard className="h-5 w-5 shrink-0" />
+              </Link>
+              <Link
+                to="/dashboard"
+                className="hidden items-center gap-1.5 rounded-lg bg-purple-600 px-2.5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-purple-700 xl:inline-flex"
+              >
+                <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden />
+                <span>Studio Pulse</span>
+              </Link>
+            </>
+          )}
+          <IconButton type="button" aria-label="Search" onClick={openCommand} className="lg:hidden">
+            <Search className="h-5 w-5 text-gray-600" />
+          </IconButton>
+          <div className="hidden sm:block">
+            <Dropdown align="right" trigger={<DropdownChevronTrigger label="Quick create" />}>
+              {quickCreateItems}
+            </Dropdown>
+          </div>
+          <Dropdown
+            align="right"
+            className="sm:hidden"
+            trigger={
+              <IconButton aria-label="Quick create" type="button" className="h-10 w-10 border border-gray-200 bg-white">
+                <Plus className="h-5 w-5 text-gray-700" />
+              </IconButton>
+            }
+          >
             {quickCreateItems}
           </Dropdown>
+          {notificationsMenu}
+          {moreMenu}
+          {accountMenu}
         </div>
-        <Dropdown
-          align="right"
-          className="sm:hidden"
-          trigger={
-            <IconButton aria-label="Quick create" type="button" className="h-10 w-10 border border-gray-200 bg-white">
-              <Plus className="h-5 w-5 text-gray-700" />
-            </IconButton>
-          }
-        >
-          {quickCreateItems}
-        </Dropdown>
-
-        <Dropdown
-          align="right"
-          trigger={
-            <button
-              type="button"
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              {unread > 0 && (
-                <span className="absolute right-1 top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-purple-600 px-0.5 text-[9px] font-bold text-white">
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
-            </button>
-          }
-        >
-          <div className="border-b border-gray-100 px-3 py-2">
-            <button type="button" className="text-xs font-medium text-purple-600" onClick={markAllRead}>
-              Mark all read
-            </button>
-          </div>
-          <div className="max-h-64 overflow-y-auto py-1">
-            {notifications.length === 0 ? (
-              <p className="px-3 py-3 text-center text-sm text-gray-500">No notifications.</p>
-            ) : (
-              <>
-                <NotificationSection label="Urgent" items={groupedNotifications.urgent} maxItems={5} />
-                <NotificationSection label="Today" items={groupedNotifications.today} />
-                <NotificationSection label="Recent" items={groupedNotifications.recent} maxItems={6} />
-              </>
-            )}
-          </div>
-        </Dropdown>
-
-        <Dropdown
-          align="right"
-          trigger={
-            <button type="button" className="hidden h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 sm:flex" aria-label="More">
-              <MoreHorizontal className="h-5 w-5 text-gray-600" />
-            </button>
-          }
-        >
-          <DropdownItem onClick={() => setCommandOpen(true)}>
-            <span className="flex items-center gap-2">
-              <Search className="h-4 w-4" /> Search
-            </span>
-          </DropdownItem>
-          <DropdownItem onClick={() => window.open('/index.html', '_blank', 'noopener')}>
-            <span className="flex items-center gap-2">
-              <Globe className="h-4 w-4" /> View site
-            </span>
-          </DropdownItem>
-        </Dropdown>
-
-        <Dropdown
-          align="right"
-          trigger={
-            <button
-              type="button"
-              className="flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white py-1 pl-1 pr-2"
-              aria-label="Account"
-            >
-              <Avatar name={currentUser?.name ?? 'You'} size="sm" />
-              <ChevronDown className="hidden h-4 w-4 text-gray-500 sm:block" />
-            </button>
-          }
-        >
-          <DropdownItem onClick={() => navigate('/settings')}>Settings</DropdownItem>
-          <DropdownItem onClick={() => navigate('/dashboard')}>Studio Pulse</DropdownItem>
-        </Dropdown>
       </div>
     </header>
   );

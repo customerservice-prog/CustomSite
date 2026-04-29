@@ -367,14 +367,14 @@ export function buildAutomatedInsights(state: RootState): string[] {
   const overdueSum = overdue.reduce((s, i) => s + i.amount, 0);
   if (overdue.length > 0) {
     lines.push(
-      `About $${overdueSum.toLocaleString()} is past due across ${overdue.length} invoice${overdue.length === 1 ? '' : 's'} — a gentle nudge usually beats silence.`
+      `$${overdueSum.toLocaleString()} is past due on ${overdue.length} invoice${overdue.length === 1 ? '' : 's'} — send reminders and confirm payment dates.`
     );
   }
 
   const atRiskProjects = sel.projectsList(state).filter((p) => projectHealthLevel(state, p.id) !== 'healthy');
   if (atRiskProjects.length > 0) {
     lines.push(
-      `${atRiskProjects.length} engagement${atRiskProjects.length === 1 ? '' : 's'} need a little extra care — small decisions now prevent big apologies later.`
+      `${atRiskProjects.length} project${atRiskProjects.length === 1 ? '' : 's'} need a scope or timeline check-in with the client.`
     );
   }
 
@@ -382,16 +382,16 @@ export function buildAutomatedInsights(state: RootState): string[] {
   const paidSum = paid.reduce((s, i) => s + i.amount, 0);
   const openLeads = sel.leadsList(state).filter((l) => l.stage !== 'Won' && l.stage !== 'Lost').length;
   if (paidSum > 0) {
-    lines.push(`You’ve recognized $${paidSum.toLocaleString()} in paid work — ${openLeads} opportunit${openLeads === 1 ? 'y' : 'ies'} still in play.`);
+    lines.push(`$${paidSum.toLocaleString()} collected to date — ${openLeads} open lead${openLeads === 1 ? '' : 's'} in the pipeline.`);
   }
 
   const unread = sel.getUnreadThreads(state).length;
   if (unread > 0) {
-    lines.push(`${unread} thread${unread === 1 ? '' : 's'} are emotionally “open loops” for clients — closing them builds trust.`);
+    lines.push(`${unread} message thread${unread === 1 ? '' : 's'} are waiting on your reply.`);
   }
 
   if (lines.length === 0) {
-    lines.push('Cash and delivery look steady — a good day to push one pipeline conversation or deepen a favorite client.');
+    lines.push('Collections and delivery look steady — pick one pipeline conversation for today.');
   }
 
   return lines.slice(0, 5);

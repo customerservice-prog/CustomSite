@@ -196,6 +196,8 @@ export function CalendarPage() {
                     return <div key={`e-${i}`} className="aspect-square rounded-lg bg-transparent" />;
                   }
                   const n = eventCountByDay[cell.day] || 0;
+                  const dayIso = `${CAL_YEAR}-${String(CAL_MONTH + 1).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`;
+                  const titlesHere = upcoming.filter((u) => u.date.startsWith(dayIso)).slice(0, 2);
                   const isToday = cell.day === CAL_ANCHOR_DAY;
                   const isSelected = selectedDay === cell.day;
                   return (
@@ -207,7 +209,7 @@ export function CalendarPage() {
                         setView('month');
                       }}
                       className={cn(
-                        'flex aspect-square flex-col items-center justify-center rounded-lg border text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                        'flex aspect-square flex-col items-stretch justify-start rounded-lg border p-1 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
                         isSelected ? 'ring-2 ring-indigo-500 ring-offset-1' : '',
                         isToday
                           ? 'border-indigo-400 bg-indigo-50 text-indigo-950 shadow-sm'
@@ -215,15 +217,20 @@ export function CalendarPage() {
                             ? 'border-slate-200 bg-white text-slate-900 hover:border-slate-300'
                             : 'border-transparent text-slate-400 hover:bg-slate-50'
                       )}
-                      title={n ? `${n} item${n === 1 ? '' : 's'} on Apr ${cell.day}` : `Apr ${cell.day}`}
+                      title={n ? `${n} item${n === 1 ? '' : 's'} · ${titlesHere.map((t) => t.title).join(' · ')}` : `Apr ${cell.day}`}
                     >
-                      <span>{cell.day}</span>
-                      {n > 0 && (
-                        <span className="mt-1 flex gap-0.5" aria-hidden>
-                          {Array.from({ length: Math.min(n, 3) }).map((_, j) => (
-                            <span key={j} className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                      <span className="block text-center text-sm font-semibold leading-none">{cell.day}</span>
+                      {titlesHere.length > 0 && (
+                        <div className="mt-1 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+                          {titlesHere.map((u) => (
+                            <span key={u.id} className="block truncate text-[9px] font-medium leading-tight text-indigo-900">
+                              {u.title}
+                            </span>
                           ))}
-                        </span>
+                          {n > titlesHere.length && (
+                            <span className="block text-[8px] font-semibold text-slate-500">+{n - titlesHere.length}</span>
+                          )}
+                        </div>
                       )}
                     </button>
                   );

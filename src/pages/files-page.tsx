@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderOpen, Plus, Search, Upload } from 'lucide-react';
+import { FolderOpen, Link2, Plus, Search, Upload } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { TablePageLayout } from '@/components/layout/templates/table-page-layout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -128,8 +128,8 @@ export function FilesPage() {
       header={
         <div className="space-y-4">
           <PageHeader
-            title="Files"
-            description="Manage client-ready files, internal assets, and portal visibility."
+            title="Client vs internal"
+            description="Control what clients see and what stays internal."
             actions={
               <Button type="button" className="gap-2" onClick={() => setShowUpload((v) => !v)}>
                 <Upload className="h-4 w-4" />
@@ -337,6 +337,25 @@ export function FilesPage() {
             <div className="flex flex-wrap gap-2">
               <Button type="button" onClick={() => toast(`Download started for ${drawerFile.name}.`, 'success')}>
                 Download
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="gap-2"
+                onClick={() => {
+                  const url = `${window.location.origin}/#/files?highlight=${encodeURIComponent(drawerFile.id)}`;
+                  if (navigator.clipboard?.writeText) {
+                    void navigator.clipboard.writeText(url).then(
+                      () => toast('Link copied for your team.', 'success'),
+                      () => toast(url, 'info')
+                    );
+                  } else {
+                    toast(url, 'info');
+                  }
+                }}
+              >
+                <Link2 className="h-4 w-4" />
+                Copy link
               </Button>
               <Button type="button" variant="secondary" onClick={() => setShowUpload(true)}>
                 Replace upload

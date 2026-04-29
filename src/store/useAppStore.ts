@@ -12,7 +12,11 @@ import type {
   Message,
   Payment,
   Project,
+  ProjectDeliveryFocus,
+  ProjectLifecycleStage,
+  ServicePackageId,
   Task,
+  TaskChecklistItem,
 } from '@/lib/types/entities';
 import type { ClientStatus, PipelineStage, ProjectStatus } from '@/lib/statuses';
 import { PIPELINE_STAGES } from '@/lib/statuses';
@@ -25,6 +29,9 @@ import { newId, isoNow } from '@/store/ids';
 import { planAutonomousActions } from '@/lib/autonomous-operator-cycle';
 import type { OperatorEvent } from '@/store/operator-state';
 import type { DeadlineSeed } from '@/lib/data/deadlines';
+import { getProjectTemplate, instantiateTemplateTasks } from '@/lib/project-templates';
+import { LIFECYCLE_LABELS, nextLifecycleStage, projectStatusForLifecycle } from '@/lib/project-lifecycle';
+import { useSiteProductionStore } from '@/store/useSiteProductionStore';
 
 const DELIVERY_PHASE_FLOW: ProjectStatus[] = ['Planning', 'Design', 'Development', 'Review', 'Live'];
 
@@ -100,6 +107,10 @@ export interface AppStore extends RootState {
       due: string;
       status?: ProjectStatus;
       ownerId?: string;
+      /** When set, seeds lifecycle, delivery focus, and full task system from template. */
+      templateId?: string | null;
+      deliveryFocus?: ProjectDeliveryFocus;
+      servicePackage?: ServicePackageId | null;
     },
     options?: { silent?: boolean; skipStarterTasks?: boolean }
   ) => string;
@@ -109,7 +120,18 @@ export interface AppStore extends RootState {
     amount: number;
     dueDate: string;
   }) => string;
-  addTask: (input: { projectId: string; title: string; due: string; assigneeId?: string }, options?: { silent?: boolean }) => string;
+  addTask: (
+    input: {
+      projectId: string;
+      title: string;
+      due: string;
+      assigneeId?: string;
+      description?: string;
+      checklist?: TaskChecklistItem[];
+      lifecycleStage?: ProjectLifecycleStage;
+    },
+    options?: { silent?: boolean }
+  ) => string;
   addFile: (input: {
     name: string;
     projectId: string;
@@ -137,6 +159,11 @@ export interface AppStore extends RootState {
   undoOperatorEvent: (eventId: string) => void;
 
   advanceProjectPhase: (projectId: string) => void;
+  /** Standardized website lifecycle (inquiry → post-launch). */
+  advanceProjectLifecycle: (projectId: string) => void;
+  toggleTaskChecklistItem: (taskId: string, itemId: string) => void;
+  setProjectWaitingOn: (projectId: string, waiting: 'client' | 'agency' | null) => void;
+  requestClientFeedback: (projectId: string) => void;
   advanceLeadStage: (leadId: string) => void;
   convertWonLead: (leadId: string) => string | null;
   addExpense: (input: {
@@ -305,7 +332,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   addProject: (input, options) => {
     const silent = options?.silent;
-    const skipTasks = options?.skipStarterTasks;
+    const tmpl = input.templateId ? getProjectTemplate(input.templateId) : undefined;
+    if (input.templateId && !tmpl) {
+      if (!silent) get().toast('Unknown template — pick a standard template or leave blank.', 'error');
+      return '';
+    }
+    const deliveryFocus: ProjectDeliveryFocus = tmpl?.deliveryFocus ?? input.deliveryFocus ?? 'client_site';
+    const skipStarterStubs = options?.skipStarterTasks || Boolean(tmpl);
     const client = get().clients[input.clientId];
     if (!client) {
       if (!silent) get().toast('Pick a valid client — projects always belong to a client.', 'error');
@@ -314,36 +347,63 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const id = newId('project');
     const now = isoNow();
     const ownerId = input.ownerId ?? get().currentUserId;
+    const lifecycleStage: ProjectLifecycleStage = tmpl
+      ? tmpl.initialLifecycleStage
+      : deliveryFocus === 'product_other'
+        ? 'inquiry'
+        : 'discovery';
+    const budget = tmpl ? tmpl.defaultBudget : input.budget;
+    const dueStr = (tmpl ? tmpl.defaultDue : input.due).trim();
+    const nameInput = input.name.trim();
+    const name = nameInput || (tmpl ? `${tmpl.name} — ${client.company}` : '');
+    if (!name) {
+      if (!silent) get().toast('Enter a project name (or pick a template to auto-name).', 'error');
+      return '';
+    }
+    const status = input.status ?? projectStatusForLifecycle(lifecycleStage);
     const project: Project = {
       id,
       clientId: input.clientId,
-      name: input.name.trim(),
-      status: input.status ?? 'Planning',
-      budget: input.budget,
+      name,
+      status,
+      budget,
       spent: 0,
-      due: input.due.trim(),
+      due: dueStr,
       ownerId,
       createdAt: now,
       updatedAt: now,
+      lifecycleStage,
+      templateId: tmpl ? tmpl.id : null,
+      waitingOn: null,
+      deliveryFocus,
+      siteStatus: deliveryFocus === 'client_site' ? 'draft' : undefined,
+      siteLiveUrl: null,
+      lastSiteUpdateLabel: deliveryFocus === 'client_site' ? 'Not launched yet' : undefined,
+      sitePageCount: deliveryFocus === 'client_site' ? 5 : undefined,
+      clientPortalVisible: deliveryFocus === 'client_site' ? true : undefined,
+      servicePackage: input.servicePackage ?? null,
     };
-    const starterStubs = skipTasks
+    const starterStubs = skipStarterStubs
       ? []
       : [
           { title: 'Discovery checklist', due: 'This week' },
           { title: 'Stakeholder kickoff session', due: 'Next week' },
           { title: 'Scope sign-off', due: 'Next week' },
         ];
-    const taskRows: Task[] = starterStubs.map((stub) => ({
+    const stubTasks: Task[] = starterStubs.map((stub) => ({
       id: newId('task'),
       projectId: id,
       title: stub.title,
       status: 'Todo' as const,
       due: stub.due,
       assigneeId: ownerId,
+      lifecycleStage: 'discovery' as const,
       createdAt: now,
       updatedAt: now,
     }));
-    const taskMap = Object.fromEntries(taskRows.map((t) => [t.id, t]));
+    const templateTasks = tmpl ? instantiateTemplateTasks(id, ownerId, tmpl.id, () => newId('task'), now) : [];
+    const allTaskRows = [...stubTasks, ...templateTasks];
+    const taskMap = Object.fromEntries(allTaskRows.map((t) => [t.id, t]));
     set((s) => ({
       projects: { ...s.projects, [id]: project },
       tasks: { ...s.tasks, ...taskMap },
@@ -356,7 +416,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         },
       },
     }));
-    for (const t of taskRows) {
+    for (const t of allTaskRows) {
       get().logActivity({
         type: 'task_created',
         entityKind: 'task',
@@ -372,7 +432,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
       title: `Project “${project.name}” opened for ${client.company}`,
       metadata: { clientId: input.clientId, projectId: id },
     });
-    if (!silent) get().toast(`Project “${project.name}” created with starter tasks`, 'success');
+    if (deliveryFocus === 'client_site') {
+      useSiteProductionStore.getState().ensurePagesForProject(id);
+    }
+    if (!silent) {
+      get().toast(
+        tmpl
+          ? `Project “${name}” created — ${templateTasks.length} template tasks + default pages.`
+          : `Project “${name}” created with starter tasks`,
+        'success'
+      );
+    }
     return id;
   },
 
@@ -432,6 +502,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
       status: 'Todo',
       due: input.due.trim(),
       assigneeId,
+      description: input.description?.trim() || undefined,
+      checklist: input.checklist,
+      lifecycleStage: input.lifecycleStage,
       createdAt: now,
       updatedAt: now,
     };
@@ -596,7 +669,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         projectId: inv.projectId ?? undefined,
       },
     });
-    get().toast(`${inv.number} marked paid — revenue recognized and client balance cleared.`, 'success');
+    get().toast(`${inv.number} collected — out of AR and off your chase list.`, 'success');
   },
 
   completeTask: (taskId) => {
@@ -604,12 +677,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (!t || t.status === 'Done') return;
     const now = isoNow();
     const project = get().projects[t.projectId];
-    set((s) => ({
-      tasks: {
+    set((s) => {
+      const nextTasks = {
         ...s.tasks,
-        [taskId]: { ...t, status: 'Done', updatedAt: now },
-      },
-    }));
+        [taskId]: { ...t, status: 'Done' as const, updatedAt: now },
+      };
+      const proj = project ? { ...project, updatedAt: now } : null;
+      return {
+        tasks: nextTasks,
+        ...(proj ? { projects: { ...s.projects, [t.projectId]: proj } } : {}),
+      };
+    });
     get().logActivity({
       type: 'task_completed',
       entityKind: 'task',
@@ -620,7 +698,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         clientId: project?.clientId,
       },
     });
-    get().toast('Task marked complete — your delivery snapshot just updated.', 'success');
+    get().toast('Task closed — it leaves blocked / due-soon queues immediately.', 'success');
   },
 
   appendTeamMessage: (threadId, body) => {
@@ -646,7 +724,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
           [threadId]: {
             ...thread,
             preview: body.trim().slice(0, 120),
-            status: 'Replied',
+            /** Team replied — ball is with the client until they write back. */
+            status: 'Waiting',
             updatedAt: now,
             lastActivityLabel: formatRelativeShort(now),
           },
@@ -945,7 +1024,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
     }
     if (planned.length > 0) {
-      get().toast(`${planned.length} workflow action${planned.length === 1 ? '' : 's'} completed`, 'info');
+      get().toast(`${planned.length} follow-up action${planned.length === 1 ? '' : 's'} completed.`, 'info');
     }
   },
 
@@ -1029,6 +1108,92 @@ export const useAppStore = create<AppStore>((set, get) => ({
     get().toast(`Phase updated: ${next}`, 'success');
   },
 
+  advanceProjectLifecycle: (projectId) => {
+    const p = get().projects[projectId];
+    if (!p) return;
+    const next = nextLifecycleStage(p.lifecycleStage);
+    if (!next) {
+      get().toast('Already at post-launch — keep optimizing or close the engagement.', 'info');
+      return;
+    }
+    const prev = p.lifecycleStage;
+    const now = isoNow();
+    const nextStatus = projectStatusForLifecycle(next);
+    set((s) => ({
+      projects: {
+        ...s.projects,
+        [projectId]: {
+          ...p,
+          lifecycleStage: next,
+          status: nextStatus,
+          updatedAt: now,
+          waitingOn: null,
+        },
+      },
+    }));
+    get().logActivity({
+      type: 'project_phase_changed',
+      entityKind: 'project',
+      entityId: projectId,
+      title: `“${p.name}” lifecycle ${prev} → ${next}`,
+      metadata: { clientId: p.clientId, projectId, from: prev, to: next },
+    });
+    if (next === 'launch') {
+      get().toast('Launch phase: domain, SSL, QA, and client walkthrough — treat this as the milestone moment.', 'success');
+    } else if (next === 'post_launch') {
+      get().toast('Site is live in the program — shift to optimization: speed, CTAs, and measured improvements.', 'success');
+    } else {
+      get().toast(`${LIFECYCLE_LABELS[prev]} → ${LIFECYCLE_LABELS[next]}`, 'success');
+    }
+  },
+
+  toggleTaskChecklistItem: (taskId, itemId) => {
+    const t = get().tasks[taskId];
+    if (!t?.checklist?.length) return;
+    const now = isoNow();
+    const checklist = t.checklist.map((c) => (c.id === itemId ? { ...c, done: !c.done } : c));
+    const proj = get().projects[t.projectId];
+    set((s) => ({
+      tasks: {
+        ...s.tasks,
+        [taskId]: { ...t, checklist, updatedAt: now },
+      },
+      ...(proj
+        ? {
+            projects: {
+              ...s.projects,
+              [t.projectId]: { ...proj, updatedAt: now },
+            },
+          }
+        : {}),
+    }));
+  },
+
+  setProjectWaitingOn: (projectId, waiting) => {
+    const p = get().projects[projectId];
+    if (!p) return;
+    const now = isoNow();
+    set((s) => ({
+      projects: {
+        ...s.projects,
+        [projectId]: { ...p, waitingOn: waiting ?? null, updatedAt: now },
+      },
+    }));
+  },
+
+  requestClientFeedback: (projectId) => {
+    const p = get().projects[projectId];
+    if (!p) return;
+    const now = isoNow();
+    set((s) => ({
+      projects: {
+        ...s.projects,
+        [projectId]: { ...p, waitingOn: 'client', updatedAt: now },
+      },
+    }));
+    get().toast('Marked waiting on client — nudge them in Messages with a clear deadline.', 'success');
+  },
+
   advanceLeadStage: (leadId) => {
     const lead = get().leads[leadId];
     if (!lead) return;
@@ -1088,6 +1253,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         due: '30 days',
         status: 'Planning',
         ownerId: lead.ownerId,
+        servicePackage: 'growth',
       },
       { silent: true }
     );

@@ -9,9 +9,9 @@ export function Table({
 }: HTMLAttributes<HTMLTableElement> & { footer?: ReactNode; dense?: boolean }) {
   return (
     <>
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-900/[0.06]">
         <table
-          className={cn('min-w-full border-collapse text-left text-sm text-gray-700', dense && 'text-[13px]', className)}
+          className={cn('min-w-full border-collapse text-left text-sm text-slate-700', dense && 'text-[13px]', className)}
           {...props}
         />
       </div>
@@ -32,7 +32,7 @@ export function TableFooterBar({ from, to, total }: { from: number; to: number; 
 }
 
 export function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn('border-b border-gray-200 bg-white', className)} {...props} />;
+  return <thead className={cn('border-b border-slate-100 bg-slate-50/50', className)} {...props} />;
 }
 
 export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
@@ -48,7 +48,7 @@ export function TableRow({
   return (
     <tr
       className={cn(
-        'h-[68px] border-b border-gray-100 transition-colors hover:bg-gray-50',
+        'h-[60px] border-b border-slate-100/90 transition-colors duration-150 ease-out hover:bg-slate-50/80',
         clickable && 'cursor-pointer',
         selected && 'bg-purple-50',
         className
@@ -61,12 +61,12 @@ export function TableRow({
 export function TableHeadCell({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn('h-12 px-4 text-left text-xs font-medium uppercase tracking-wide text-gray-500', className)}
+      className={cn('h-11 px-4 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500', className)}
       {...props}
     />
   );
 }
 
 export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('px-4 align-middle text-gray-800', className)} {...props} />;
+  return <td className={cn('px-4 align-middle text-slate-800', className)} {...props} />;
 }

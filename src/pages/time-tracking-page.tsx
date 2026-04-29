@@ -65,8 +65,8 @@ export function TimeTrackingPage() {
     <TablePageLayout
       header={
         <PageHeader
-          title="Time tracking"
-          description="Weekly timesheets with billable flags — roll hours into invoices without re-keying."
+          title="Billable hours"
+          description="Log what shipped — roll billable time into invoices without re-keying."
           actions={
             <>
               <Button type="button" variant="secondary" onClick={() => toast('Export runs from the selected range.', 'info')}>

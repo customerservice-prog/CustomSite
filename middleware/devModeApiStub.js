@@ -264,6 +264,7 @@ function devModeApiStub(req, res, next) {
     return res.json({ success: true, sent: false });
   }
 
+  /** Site files: RAM-backed via devSiteFileStore (GET/PUT/DELETE/init) — used by site-builder.html and React Preview & publishing. */
   const siteList = /^\/api\/admin\/projects\/([^/]+)\/site$/;
   const siteFileGet = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
   const siteFilePut = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
@@ -272,11 +273,7 @@ function devModeApiStub(req, res, next) {
 
   if (m === 'GET' && siteList.test(p)) {
     const projectId = p.match(siteList)[1];
-    let listed = devStore.listPaths(projectId);
-    if (!listed.length) {
-      devStore.initStarter(projectId, 'business');
-      listed = devStore.listPaths(projectId);
-    }
+    const listed = devStore.listPaths(projectId);
     return res.json({ files: listed });
   }
   if (m === 'GET' && siteFileGet.test(p)) {

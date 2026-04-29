@@ -41,6 +41,45 @@ export type Client = {
   lastActivityLabel: string;
 };
 
+/** What this engagement primarily ships — most rows are client-facing sites. */
+export type ProjectDeliveryFocus = 'client_site' | 'product_other';
+
+/** Productized offer tier — matches public Starter / Growth / Pro. */
+export type ServicePackageId = 'starter' | 'growth' | 'pro';
+
+/** Client site lifecycle (only meaningful when deliveryFocus is client_site). */
+export type ClientSiteStatus = 'draft' | 'review' | 'live';
+
+/** Default pipeline every website project follows — reduces thinking per engagement. */
+export type ProjectLifecycleStage =
+  | 'inquiry'
+  | 'discovery'
+  | 'proposal_contract'
+  | 'build'
+  | 'review'
+  | 'launch'
+  | 'post_launch';
+
+export type TaskChecklistItem = {
+  id: string;
+  label: string;
+  done: boolean;
+};
+
+/** Shipped change + why it matters — shown to reinforce value. */
+export type SiteImprovement = {
+  id: string;
+  whatChanged: string;
+  expectedImpact: string;
+};
+
+/** Before → after framing so clients see transformation, not jargon. */
+export type SiteBeforeAfter = {
+  id: string;
+  before: string;
+  after: string;
+};
+
 export type Project = {
   id: string;
   clientId: string;
@@ -52,6 +91,29 @@ export type Project = {
   ownerId: string;
   createdAt: string;
   updatedAt: string;
+  /** Standardized delivery pipeline (esp. client_site). */
+  lifecycleStage: ProjectLifecycleStage;
+  /** When created from a template — never start from scratch. */
+  templateId?: string | null;
+  /** Who owes the next move for momentum / Pulse. */
+  waitingOn?: 'client' | 'agency' | null;
+  deliveryFocus: ProjectDeliveryFocus;
+  /** Staging / review / live — for client_site projects. */
+  siteStatus?: ClientSiteStatus;
+  /** Canonical URL the client sees when live (preview hostname ok). */
+  siteLiveUrl?: string | null;
+  /** Human label for last publish or content touch. */
+  lastSiteUpdateLabel?: string;
+  /** Pages in scope for this site (marketing-style count). */
+  sitePageCount?: number;
+  /** When true, this project’s preview and files show in the client portal. */
+  clientPortalVisible?: boolean;
+  /** Productized package sold to the client (conversion program tier). */
+  servicePackage?: ServicePackageId | null;
+  /** Concrete improvements already made on the site (perceived progress). */
+  siteImprovements?: SiteImprovement[];
+  /** Plain-language fixes (weak → strong) for client-facing views. */
+  siteBeforeAfter?: SiteBeforeAfter[];
 };
 
 export type Lead = {
@@ -75,7 +137,15 @@ export type Task = {
   title: string;
   status: TaskStatus;
   due: string;
+  /** Empty when nobody owns it yet — common in real shops. */
   assigneeId: string;
+  /** Shown when status is Blocked — why delivery stopped. */
+  blockerReason?: string;
+  /** How this task runs — checklist and notes the team follows. */
+  description?: string;
+  checklist?: TaskChecklistItem[];
+  /** Which lifecycle stage this task belongs to (filter + coach). */
+  lifecycleStage?: ProjectLifecycleStage;
   createdAt: string;
   updatedAt: string;
 };

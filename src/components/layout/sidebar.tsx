@@ -51,6 +51,7 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
           <div className="min-w-0 flex-1 text-left">
             <p className="truncate text-sm font-semibold text-gray-900">CustomSite</p>
             <p className="truncate text-xs text-gray-500">{workspace.name}</p>
+            <p className="truncate text-[10px] leading-tight text-gray-400">Sites · AR · delivery</p>
           </div>
         </Link>
         <IconButton type="button" className="md:hidden" onClick={() => onNavigate?.()} aria-label="Close menu">

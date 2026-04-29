@@ -9,6 +9,9 @@ const padding: Record<CardVariant, string> = {
   large: 'p-8',
 };
 
+/** Default: soft ring + lift shadow — avoids heavy “boxed dashboard” borders. */
+const surface = 'rounded-2xl bg-white shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.06]';
+
 export function Card({
   className,
   variant = 'default',
@@ -16,7 +19,7 @@ export function Card({
 }: HTMLAttributes<HTMLDivElement> & { variant?: CardVariant }) {
   return (
     <div
-      className={cn('rounded-2xl border border-gray-200 bg-white shadow-sm', padding[variant], className)}
+      className={cn(surface, padding[variant], className)}
       {...props}
     />
   );

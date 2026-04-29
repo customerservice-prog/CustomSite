@@ -95,7 +95,7 @@ export function ClientsPage() {
     >
       {hydration.status === 'error' && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {hydration.error ?? 'Something went wrong loading workspace data.'}
+          {hydration.error ?? 'Something went wrong loading agency data.'}
         </div>
       )}
 

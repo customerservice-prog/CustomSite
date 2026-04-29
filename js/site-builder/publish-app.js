@@ -9,6 +9,17 @@ let projects = [];
 let files = [];
 let selectedPath = 'index.html';
 let previewWidth = '100%';
+/** @type {'project' | 'mirror'} */
+let previewMode = 'project';
+
+/** When the API has no site files yet, show these pages and load the public marketing mirror so preview is never blank. */
+const MIRROR_PAGES = [
+  { path: 'index.html', label: 'Home' },
+  { path: 'agency.html', label: 'Agency' },
+  { path: 'portfolio.html', label: 'Portfolio' },
+  { path: 'pricing.html', label: 'Pricing' },
+  { path: 'contact.html', label: 'Contact' },
+];
 
 function showAuthBanner() {
   const b = document.getElementById('pdErrorBanner');
@@ -20,6 +31,8 @@ function showAuthBanner() {
 
 function pageLabel(path) {
   const p = String(path || '');
+  const mirror = MIRROR_PAGES.find((x) => x.path === p);
+  if (mirror) return mirror.label;
   if (p === 'index.html') return 'Home';
   if (p === 'styles.css') return 'Styles';
   if (p === 'app.js') return 'Scripts';
@@ -28,6 +41,7 @@ function pageLabel(path) {
 }
 
 function statusForPath(path) {
+  if (previewMode === 'mirror') return { label: 'Live mirror', cls: 'pub' };
   if (path === 'index.html' || path === 'styles.css') return { label: 'Published', cls: 'pub' };
   return { label: 'Draft', cls: 'draft' };
 }
@@ -35,8 +49,15 @@ function statusForPath(path) {
 function setPreviewFrame() {
   const fr = document.getElementById('pdFrame');
   const sz = document.getElementById('pdFrameSizer');
-  if (!fr || !sz || !projectId) return;
-  fr.src = `/preview/${projectId}/${encodeURI(selectedPath)}?t=${Date.now()}`;
+  if (!fr || !sz) return;
+  if (previewMode === 'mirror') {
+    const p = selectedPath || 'index.html';
+    fr.src = `/${encodeURI(p)}?pdMirror=1&t=${Date.now()}`;
+  } else if (projectId) {
+    fr.src = `/preview/${projectId}/${encodeURI(selectedPath)}?t=${Date.now()}`;
+  } else {
+    return;
+  }
   if (previewWidth === '100%') {
     sz.style.maxWidth = '100%';
     fr.style.width = '100%';
@@ -56,7 +77,7 @@ function renderFileList() {
     p.className = 'pd-pages-h';
     p.style.textTransform = 'none';
     p.style.letterSpacing = 'normal';
-    p.textContent = 'No pages yet — use Deploy or connect your project.';
+    p.textContent = 'No pages found — sign in and pick a project, or open Site builder from the admin workspace.';
     box.appendChild(p);
     return;
   }
@@ -79,8 +100,28 @@ function renderFileList() {
 
 async function loadFiles() {
   if (!projectId) return;
-  const d = await api(`/api/admin/projects/${projectId}/site`);
+  let d = await api(`/api/admin/projects/${projectId}/site`);
   files = d.files || [];
+  if (!files.length) {
+    try {
+      await api(`/api/admin/projects/${projectId}/site/init`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: 'business' }),
+      });
+      d = await api(`/api/admin/projects/${projectId}/site`);
+      files = d.files || [];
+    } catch (_) {
+      /* fall through to mirror */
+    }
+  }
+  if (!files.length) {
+    previewMode = 'mirror';
+    files = MIRROR_PAGES.map((row) => ({ path: row.path, updated_at: null }));
+    selectedPath = 'index.html';
+  } else {
+    previewMode = 'project';
+  }
   renderFileList();
   const prefer = files.some((f) => f.path === 'index.html') ? 'index.html' : files[0]?.path || 'index.html';
   selectedPath = prefer;
@@ -125,7 +166,12 @@ async function runDeploy(env) {
       method: 'POST',
       body: JSON.stringify({ environment: env }),
     });
-    toast(r.ok ? 'Deploy queued' : (r.error || 'Deploy finished'), r.ok ? 'success' : 'info');
+    const stepHint = Array.isArray(r.steps) && r.steps.length ? ` (${r.steps.length} steps logged)` : '';
+    const partial = r.partial ? ' — partial / manual ZIP may be required' : '';
+    toast(
+      r.ok === false || r.error ? String(r.error || 'Deploy failed') : `Deploy API completed${stepHint}${partial}`,
+      r.ok === false || r.error ? 'error' : 'success'
+    );
   } catch (e) {
     toast(e.message || 'Deploy failed', 'error');
   }
@@ -150,12 +196,15 @@ function main() {
     window.open(`/site-builder?project=${pid}&file=${file}`, '_blank', 'noopener');
   });
   document.getElementById('pdPreviewUrl')?.addEventListener('click', () => {
-    if (!projectId) {
+    if (!projectId && previewMode !== 'mirror') {
       toast('Select a project', 'error');
       return;
     }
-    const path = encodeURIComponent(selectedPath || 'index.html');
-    const url = `${window.location.origin}/preview/${projectId}/${path}`;
+    const safePath = String(selectedPath || 'index.html').replace(/^\/+/, '');
+    const url =
+      previewMode === 'mirror'
+        ? `${window.location.origin}/${encodeURI(safePath)}`
+        : `${window.location.origin}/preview/${projectId}/${encodeURI(safePath)}`;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       void navigator.clipboard.writeText(url).then(() => toast('Preview URL copied', 'success'));
     } else {

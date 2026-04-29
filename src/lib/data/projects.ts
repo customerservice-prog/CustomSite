@@ -1,5 +1,14 @@
 import type { Project } from '@/lib/types/entities';
 
+const imp = (
+  prefix: string,
+  rows: { whatChanged: string; expectedImpact: string }[]
+): Project['siteImprovements'] =>
+  rows.map((r, i) => ({ id: `${prefix}-si-${i}`, whatChanged: r.whatChanged, expectedImpact: r.expectedImpact }));
+
+const b4 = (prefix: string, rows: { before: string; after: string }[]): Project['siteBeforeAfter'] =>
+  rows.map((r, i) => ({ id: `${prefix}-ba-${i}`, before: r.before, after: r.after }));
+
 export const projectsSeed: Project[] = [
   {
     id: 'p1',
@@ -12,6 +21,30 @@ export const projectsSeed: Project[] = [
     ownerId: 'u1',
     createdAt: '2026-02-01T12:00:00.000Z',
     updatedAt: '2026-04-24T15:00:00.000Z',
+    lifecycleStage: 'build',
+    templateId: 'tmpl-standard-website',
+    waitingOn: 'agency',
+    deliveryFocus: 'client_site',
+    siteStatus: 'review',
+    siteLiveUrl: 'https://preview.northwind-brand.example',
+    lastSiteUpdateLabel: 'Apr 24 · hero + proof tightened',
+    sitePageCount: 4,
+    clientPortalVisible: true,
+    servicePackage: 'growth',
+    siteImprovements: imp('p1', [
+      {
+        whatChanged: 'Rewrote homepage headline',
+        expectedImpact: 'Clearer value in the first screen → more visitors keep scrolling toward contact.',
+      },
+      {
+        whatChanged: 'Added proof section above the fold',
+        expectedImpact: 'Trust earlier in the visit → higher confidence before the ask.',
+      },
+      {
+        whatChanged: 'Tightened mobile hero spacing',
+        expectedImpact: 'Easier thumb path on phones → less drop-off on small screens.',
+      },
+    ]),
   },
   {
     id: 'p2',
@@ -24,6 +57,30 @@ export const projectsSeed: Project[] = [
     ownerId: 'u2',
     createdAt: '2026-03-01T12:00:00.000Z',
     updatedAt: '2026-04-24T10:00:00.000Z',
+    lifecycleStage: 'review',
+    templateId: 'tmpl-standard-website',
+    waitingOn: 'client',
+    deliveryFocus: 'client_site',
+    siteStatus: 'review',
+    siteLiveUrl: 'https://staging.acme-portfolio.example',
+    lastSiteUpdateLabel: 'Apr 24 · contact CTA swapped',
+    sitePageCount: 4,
+    clientPortalVisible: true,
+    servicePackage: 'growth',
+    siteImprovements: imp('p2', [
+      {
+        whatChanged: 'Swapped contact CTA to a single primary button',
+        expectedImpact: 'One obvious next step → more inquiries instead of scattered clicks.',
+      },
+      {
+        whatChanged: 'Simplified main navigation labels',
+        expectedImpact: 'Faster scanning → fewer people bouncing on “where do I go?”.',
+      },
+      {
+        whatChanged: 'Improved portfolio grid on mobile',
+        expectedImpact: 'Work samples stay readable on phones → better engagement from mobile ads.',
+      },
+    ]),
   },
   {
     id: 'p3',
@@ -36,6 +93,11 @@ export const projectsSeed: Project[] = [
     ownerId: 'u2',
     createdAt: '2026-03-15T12:00:00.000Z',
     updatedAt: '2026-04-23T09:00:00.000Z',
+    lifecycleStage: 'build',
+    templateId: null,
+    waitingOn: 'client',
+    deliveryFocus: 'product_other',
+    servicePackage: null,
   },
   {
     id: 'p4',
@@ -48,6 +110,35 @@ export const projectsSeed: Project[] = [
     ownerId: 'u1',
     createdAt: '2025-11-01T12:00:00.000Z',
     updatedAt: '2026-04-01T12:00:00.000Z',
+    lifecycleStage: 'post_launch',
+    templateId: 'tmpl-landing',
+    waitingOn: null,
+    deliveryFocus: 'client_site',
+    siteStatus: 'live',
+    siteLiveUrl: 'https://ridgeline.example.com',
+    lastSiteUpdateLabel: 'Mar 28 · published',
+    sitePageCount: 4,
+    clientPortalVisible: true,
+    servicePackage: 'starter',
+    siteImprovements: imp('p4', [
+      {
+        whatChanged: 'Published new single-offer landing layout',
+        expectedImpact: 'One dominant action on the page → better match to paid traffic.',
+      },
+      {
+        whatChanged: 'Shortened form to essential fields',
+        expectedImpact: 'Less friction at submit → more completed leads.',
+      },
+      {
+        whatChanged: 'Compressed hero load time',
+        expectedImpact: 'Faster first paint → fewer abandonments on slow networks.',
+      },
+    ]),
+    siteBeforeAfter: b4('p4', [
+      { before: 'Long form with drop-off', after: 'Short form — only what you need to qualify' },
+      { before: 'Slow hero load', after: 'Faster first screen on mobile' },
+      { before: 'Split attention CTAs', after: 'One offer, one action' },
+    ]),
   },
   {
     id: 'p5',
@@ -59,6 +150,47 @@ export const projectsSeed: Project[] = [
     due: 'Aug 1',
     ownerId: 'u2',
     createdAt: '2026-04-01T12:00:00.000Z',
-    updatedAt: '2026-04-25T08:00:00.000Z',
+    updatedAt: '2026-04-10T08:00:00.000Z',
+    lifecycleStage: 'proposal_contract',
+    templateId: 'tmpl-redesign',
+    waitingOn: 'agency',
+    deliveryFocus: 'client_site',
+    siteStatus: 'draft',
+    siteLiveUrl: null,
+    lastSiteUpdateLabel: 'Apr 25 · IA only',
+    sitePageCount: 4,
+    clientPortalVisible: true,
+    servicePackage: 'pro',
+    siteImprovements: imp('p5', [
+      {
+        whatChanged: 'Mapped new IA for storefront sections',
+        expectedImpact: 'Clearer paths to products → fewer confused exits before add-to-cart.',
+      },
+      {
+        whatChanged: 'Drafted stronger category page intros',
+        expectedImpact: 'Context before listings → better relevance for search visitors.',
+      },
+    ]),
+    siteBeforeAfter: b4('p5', [
+      { before: 'Flat category pages', after: 'Intro + proof before product grid' },
+      { before: 'Checkout anxiety', after: 'Trust strip before payment step' },
+    ]),
+  },
+  {
+    id: 'p6',
+    clientId: 'c4',
+    name: 'Design sprint retainer',
+    status: 'Planning',
+    budget: 4800,
+    spent: 1200,
+    due: 'May 15',
+    ownerId: 'u1',
+    createdAt: '2026-04-05T12:00:00.000Z',
+    updatedAt: '2026-04-19T11:00:00.000Z',
+    lifecycleStage: 'discovery',
+    templateId: null,
+    waitingOn: null,
+    deliveryFocus: 'product_other',
+    servicePackage: null,
   },
 ];

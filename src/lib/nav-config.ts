@@ -51,7 +51,7 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Invoices', to: '/invoices', icon: Receipt },
       { label: 'Payments', to: '/payments', icon: CreditCard },
       { label: 'Expenses', to: '/expenses', icon: Wallet },
-      { label: 'Time tracking', to: '/time-tracking', icon: Clock },
+      { label: 'Billable hours', to: '/time-tracking', icon: Clock },
     ],
   },
   {
@@ -66,7 +66,7 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { label: 'Reports', to: '/reports', icon: BarChart3 },
       { label: 'Client portal', to: '/client-portal', icon: ShieldCheck },
-      { label: 'Site builder', to: '/site-builder', icon: Wand2 },
+      { label: 'Conversion workspace', to: '/projects', icon: Wand2 },
       { label: 'Settings', to: '/settings', icon: Settings },
     ],
   },

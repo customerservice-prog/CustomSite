@@ -8,8 +8,8 @@ export const messageThreadsSeed: MessageThread[] = [
     participant: 'Michael Lee',
     preview: 'Can we review the homepage copy?',
     status: 'Unread',
-    updatedAt: '2026-04-25T08:48:00.000Z',
-    lastActivityLabel: '12m ago',
+    updatedAt: '2026-04-22T08:48:00.000Z',
+    lastActivityLabel: '6d ago',
   },
   {
     id: 'm2',
@@ -41,6 +41,16 @@ export const messageThreadsSeed: MessageThread[] = [
     updatedAt: '2026-04-24T12:00:00.000Z',
     lastActivityLabel: '1d ago',
   },
+  {
+    id: 'm5',
+    clientId: 'c2',
+    projectId: 'p3',
+    participant: 'Michael Lee',
+    preview: 'Contract follow-up — no reply from our team in almost a week.',
+    status: 'Unread',
+    updatedAt: '2026-04-16T09:00:00.000Z',
+    lastActivityLabel: '12d ago',
+  },
 ];
 
 export const messagesSeed: Message[] = [
@@ -67,5 +77,13 @@ export const messagesSeed: Message[] = [
     from: 'client',
     createdAt: '2026-04-25T08:22:00.000Z',
     timeLabel: '10:22 AM',
+  },
+  {
+    id: 'cm5',
+    threadId: 'm5',
+    body: 'Contract follow-up — no reply from our team in almost a week.',
+    from: 'client',
+    createdAt: '2026-04-18T09:00:00.000Z',
+    timeLabel: 'Apr 18',
   },
 ];

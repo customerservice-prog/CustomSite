@@ -8,7 +8,7 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   calendar: { title: 'Calendar', segment: 'calendar' },
   invoices: { title: 'Invoices', segment: 'invoices' },
   payments: { title: 'Payments', segment: 'payments' },
-  'time-tracking': { title: 'Time tracking', segment: 'time-tracking' },
+  'time-tracking': { title: 'Billable hours', segment: 'time-tracking' },
   expenses: { title: 'Expenses', segment: 'expenses' },
   messages: { title: 'Messages', segment: 'messages' },
   contracts: { title: 'Contracts', segment: 'contracts' },
@@ -17,7 +17,7 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   files: { title: 'Files', segment: 'files' },
   activity: { title: 'Activity', segment: 'activity' },
   reports: { title: 'Reports', segment: 'reports' },
-  'site-builder': { title: 'Site Builder', segment: 'site-builder' },
+  'site-builder': { title: 'Conversion workspace', segment: 'site-builder' },
   'client-portal': { title: 'Client Portal', segment: 'client-portal' },
   settings: { title: 'Settings', segment: 'settings' },
 };

@@ -119,7 +119,7 @@ export function SettingsPage() {
       <SettingsLayout tabs={[...TABS]} activeTab={tab} onTabChange={setTab}>
         {tab === 'general' && (
           <div className="space-y-6">
-            <SectionHeader title="Workspace" description="Legal name and defaults shown on documents." />
+            <SectionHeader title="Agency profile" description="Legal name and defaults shown on invoices and contracts." />
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="ws-name">
@@ -309,7 +309,7 @@ export function SettingsPage() {
             <SectionHeader title="Access" description="Protect firm and client data." />
             <ToggleRow
               label="Require MFA for admins"
-              description="Applies to billing and workspace settings."
+              description="Applies to billing and agency defaults."
               on={form.mfa}
               onToggle={() => setForm((f) => ({ ...f, mfa: !f.mfa }))}
             />

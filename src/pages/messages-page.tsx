@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { daysSinceIso } from '@/lib/days-since';
 import { messageStatusBadgeVariant } from '@/lib/statuses';
 import { titleCaseStatus } from '@/lib/format-display';
 import { useShell } from '@/context/shell-context';
@@ -31,9 +33,13 @@ export function MessagesPage() {
   const sortedThreads = useMemo(() => {
     return [...allThreads].sort((a, b) => threadSortRank(a.status) - threadSortRank(b.status));
   }, [allThreads]);
-  const [selectedId, setSelectedId] = useState(sortedThreads[0]?.id ?? '');
+  const defaultThreadId = useMemo(() => {
+    const u = sortedThreads.find((t) => t.status === 'Unread');
+    return u?.id ?? sortedThreads[0]?.id ?? '';
+  }, [sortedThreads]);
+  const [selectedId, setSelectedId] = useState(defaultThreadId);
   const [q, setQ] = useState('');
-  const [inboxFilter, setInboxFilter] = useState<'all' | 'unread' | 'waiting'>('all');
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'unread' | 'waiting'>('unread');
   const [draft, setDraft] = useState('');
   const [attachSimulated, setAttachSimulated] = useState(false);
   const appendTeamMessage = useAppStore((s) => s.appendTeamMessage);
@@ -41,8 +47,8 @@ export function MessagesPage() {
   const clientById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c])), [clients]);
 
   useEffect(() => {
-    if (!selectedId && sortedThreads[0]) setSelectedId(sortedThreads[0].id);
-  }, [sortedThreads, selectedId]);
+    if (!selectedId && defaultThreadId) setSelectedId(defaultThreadId);
+  }, [sortedThreads, selectedId, defaultThreadId]);
 
   useEffect(() => {
     setAttachSimulated(false);
@@ -71,6 +77,12 @@ export function MessagesPage() {
   }, [threads, selectedId]);
 
   const selected = sortedThreads.find((t) => t.id === selectedId) ?? threads[0];
+
+  const unreadCount = useMemo(() => sortedThreads.filter((t) => t.status === 'Unread').length, [sortedThreads]);
+  const staleWaitingCount = useMemo(
+    () => sortedThreads.filter((t) => t.status === 'Waiting' && daysSinceIso(t.updatedAt) >= 3).length,
+    [sortedThreads]
+  );
 
   const messageNextActions: NextActionItem[] = useMemo(() => {
     const items: NextActionItem[] = [];
@@ -115,16 +127,33 @@ export function MessagesPage() {
     appendTeamMessage(selected.id, draft.trim());
     setDraft('');
     setAttachSimulated(false);
-    toast('Delivered — your client sees this in their thread.', 'success');
+    toast('Message sent — clients see this in their portal thread with your branding.', 'success');
   }
 
   return (
     <div className="space-y-6">
       <div className="space-y-3">
         <PageHeader
-          title="Messages"
-          description="See who is waiting on you, who owes you a reply, and what to close next."
+          title="Client communications"
+          description="Curated threads tied to engagements — reply with clear milestones, review requests, and next steps so every touch feels like a senior partner, not a chat app."
         />
+        {(unreadCount > 0 || staleWaitingCount > 0) && (
+          <Card variant="compact" className="border-l-4 border-slate-800 bg-slate-50/90 py-3">
+            <p className="text-[11px] font-bold uppercase text-slate-600">Decide next</p>
+            <ul className="mt-2 space-y-1.5 text-sm text-slate-900">
+              {unreadCount > 0 && (
+                <li>
+                  <span className="font-semibold text-red-800">{unreadCount} client{unreadCount === 1 ? '' : 's'} waiting</span> on your reply — respond while context is fresh; delays read as deprioritized.
+                </li>
+              )}
+              {staleWaitingCount > 0 && (
+                <li>
+                  <span className="font-semibold text-amber-900">{staleWaitingCount} thread{staleWaitingCount === 1 ? '' : 's'}</span> with no client reply in 3+ days — send a tight follow-up with a deadline.
+                </li>
+              )}
+            </ul>
+          </Card>
+        )}
         <RecommendedNextAction items={messageNextActions} />
       </div>
 
@@ -146,7 +175,7 @@ export function MessagesPage() {
                 {(
                   [
                     { id: 'all' as const, label: 'All' },
-                    { id: 'unread' as const, label: 'Unread' },
+                    { id: 'unread' as const, label: 'Needs your reply' },
                     { id: 'waiting' as const, label: 'Waiting on client' },
                   ] as const
                 ).map(({ id, label }) => (
@@ -265,7 +294,7 @@ export function MessagesPage() {
                   <Textarea
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    placeholder="Write a reply…"
+                    placeholder="Write a concise update — milestone, review request, or next step with a date…"
                     className="min-h-[44px] flex-1 resize-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {

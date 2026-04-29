@@ -26,29 +26,29 @@ export function DetailPageLayout({
   className?: string;
 }) {
   return (
-    <div className={cn('space-y-8', className)}>
-      <div>
+    <div className={cn('space-y-10', className)}>
+      <div className="pb-2">
         <Link
           to={backHref}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 transition hover:text-indigo-600"
+          className="inline-flex items-center gap-1 text-[13px] font-semibold text-slate-500 transition-colors duration-150 hover:text-violet-700"
         >
           <ChevronLeft className="h-4 w-4" />
           {backLabel}
         </Link>
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-2">
+        <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">{title}</h1>
+              <h1 className="text-3xl font-bold leading-[1.08] tracking-tighter text-slate-900 sm:text-4xl">{title}</h1>
               {badge}
             </div>
-            {meta && <div className="text-sm text-slate-500">{meta}</div>}
+            {meta && <div className="max-w-3xl text-sm leading-relaxed text-slate-500">{meta}</div>}
           </div>
-          {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+          {actions && <div className="flex flex-wrap gap-2 lg:pt-1">{actions}</div>}
         </div>
       </div>
       {sidebar ? (
-        <div className="grid gap-8 lg:grid-cols-[1fr_minmax(280px,340px)] lg:items-start">
-          <div className="min-w-0 space-y-8">{children}</div>
+        <div className="grid gap-10 lg:grid-cols-[1fr_minmax(280px,340px)] lg:items-start">
+          <div className="min-w-0 space-y-10">{children}</div>
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">{sidebar}</aside>
         </div>
       ) : (

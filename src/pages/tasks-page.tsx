@@ -169,8 +169,8 @@ export function TasksPage() {
       header={
         <div className="space-y-4">
           <PageHeader
-            title="Tasks"
-            description="Clear today’s work, unblock delivery, and close the loop before dates slip."
+            title="What is blocked or due?"
+            description="Blocked rows carry the reason — unassigned work is a decision, not a style choice."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('create-task')}>
                 <Plus className="h-4 w-4" />
@@ -242,7 +242,7 @@ export function TasksPage() {
         <EmptyState
           icon={ClipboardList}
           title="No tasks match"
-          description="Try another search or status filter, or add a task to keep delivery on track."
+          description="Widen filters or add a task — blocked and due-soon work should not hide here."
           action={
             <Button type="button" className="gap-2" onClick={() => openModal('create-task')}>
               <Plus className="h-4 w-4" />
@@ -322,14 +322,14 @@ export function TasksPage() {
                   {subset.map((t: Task) => {
                     const project = projectById[t.projectId];
                     const client = project ? clientById[project.clientId] : undefined;
-                    const assignee = users[t.assigneeId];
+                    const assignee = t.assigneeId ? users[t.assigneeId] : undefined;
                     return (
                       <TableRow
                         key={t.id}
                         selected={selected.has(t.id) || drawerTaskId === t.id}
                         clickable
                         onClick={() => setDrawerTaskId(t.id)}
-                        className={cn(drawerTaskId === t.id && 'bg-indigo-50/50')}
+                        className={cn(drawerTaskId === t.id && 'bg-indigo-50/50', t.status === 'Blocked' && 'bg-red-50/30')}
                       >
                         <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
                           <input
@@ -340,7 +340,12 @@ export function TasksPage() {
                             aria-label={`Select ${t.title}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900">{t.title}</TableCell>
+                        <TableCell className="max-w-[min(280px,40vw)]">
+                          <span className="font-medium text-slate-900">{t.title}</span>
+                          {t.status === 'Blocked' && t.blockerReason ? (
+                            <p className="mt-1 text-xs font-semibold leading-snug text-red-800">{t.blockerReason}</p>
+                          ) : null}
+                        </TableCell>
                         <TableCell>
                           {project ? (
                             <Link
@@ -372,10 +377,14 @@ export function TasksPage() {
                         </TableCell>
                         <TableCell className="tabular-nums text-slate-600">{t.due}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar name={assignee?.name ?? '?'} size="sm" />
-                            <span className="text-slate-600">{assignee?.name ?? '—'}</span>
-                          </div>
+                          {t.assigneeId ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar name={assignee?.name ?? '?'} size="sm" />
+                              <span className="text-slate-600">{assignee?.name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs font-bold uppercase tracking-wide text-amber-900">Unassigned</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                           {t.status !== 'Done' ? (
@@ -442,8 +451,13 @@ export function TasksPage() {
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Owner</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">{assigneeForDrawer?.name ?? '—'}</p>
-                <p className="text-sm text-slate-600">{assigneeForDrawer?.email ?? ''}</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {drawerTask.assigneeId ? assigneeForDrawer?.name ?? '—' : 'Unassigned — pick an owner'}
+                </p>
+                {drawerTask.assigneeId ? <p className="text-sm text-slate-600">{assigneeForDrawer?.email ?? ''}</p> : null}
+                {drawerTask.status === 'Blocked' && drawerTask.blockerReason ? (
+                  <p className="mt-3 text-xs font-semibold text-red-800">{drawerTask.blockerReason}</p>
+                ) : null}
               </div>
             </div>
             <div>

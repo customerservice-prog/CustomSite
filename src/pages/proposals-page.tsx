@@ -66,7 +66,7 @@ export function ProposalsPage() {
       header={
         <PageHeader
           title="Proposals"
-          description="Scoped offers with pricing, acceptance tracking, and a clear path to contract."
+          description="Scoped offers with fees — send, get a yes, then close the contract."
           actions={
             <Button type="button" className="gap-2" onClick={addProposal}>
               <Plus className="h-4 w-4" />

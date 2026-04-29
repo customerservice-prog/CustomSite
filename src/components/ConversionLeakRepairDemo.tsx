@@ -4,49 +4,49 @@ import { cn } from '@/lib/utils';
 
 const LOOP_FADE_MS = 600;
 
-/** Public story: Confusion → Leak → Diagnose → Rebuild → Trust → Convert */
+/** Public story: chaos → drop-offs → diagnosis → rebuild → trust → clear CTA */
 export const scenes = [
   {
     id: 'chaos',
-    label: 'Confusion',
-    timeline: 'Confusion',
-    description: 'Unclear story, competing blocks, and a CTA people never find.',
-    ms: 5000,
+    label: 'Chaos',
+    timeline: 'Chaos',
+    description: 'Visitors bounce around. Competing messages. No obvious next step.',
+    ms: 4800,
   },
   {
     id: 'hook',
-    label: 'Leak',
-    timeline: 'Leak',
-    description: 'Visitors arrive — most leave before they act.',
-    ms: 3500,
+    label: 'Drop-offs',
+    timeline: 'Drop-offs',
+    description: 'Most people leave before they call, book, or buy.',
+    ms: 3600,
   },
   {
     id: 'diagnosis',
-    label: 'Diagnose',
-    timeline: 'Diagnose',
-    description: 'We map what blocks the path — message, proof, flow, and the ask.',
-    ms: 6500,
+    label: 'Diagnosis',
+    timeline: 'Diagnosis',
+    description: 'We overlay where it breaks: headline, CTA, proof, page order.',
+    ms: 6200,
   },
   {
     id: 'rebuild',
     label: 'Rebuild',
     timeline: 'Rebuild',
-    description: 'One obvious path and a CTA that is impossible to miss.',
-    ms: 6500,
+    description: 'Pages get restructured so one action is obvious on each screen.',
+    ms: 5800,
   },
   {
     id: 'trust',
     label: 'Trust',
     timeline: 'Trust',
-    description: 'Proof before the ask so the CTA feels safe, not desperate.',
-    ms: 5000,
+    description: 'Proof and credibility show up before we ask for the click.',
+    ms: 4800,
   },
   {
     id: 'result',
-    label: 'Convert',
-    timeline: 'Convert',
-    description: 'Same traffic — more leads, calls, and customers.',
-    ms: 3500,
+    label: 'Clear CTA',
+    timeline: 'CTA',
+    description: 'One path to contact or checkout. More leads from the same visits.',
+    ms: 4000,
   },
 ] as const;
 
@@ -59,7 +59,7 @@ const DIAG_FINDINGS = [
   'Path to action is weak',
 ];
 
-const CHAOS_CALLOUTS = ['Confusing', 'Hidden CTA', 'Friction'] as const;
+const CHAOS_CALLOUTS = ['No clear next step', 'Buried CTA', 'Weak message'] as const;
 const WIN_CALLOUTS = ['Clear', 'Action', 'Trust'] as const;
 
 function usePrefersReducedMotion(): boolean {
@@ -201,7 +201,7 @@ export function ConversionLeakRepairDemo() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       role="img"
-      aria-label="Conversion story: visitors leak, friction exposed, expert diagnosis, path rebuilt, trust before the ask, stronger results. Pauses on hover."
+      aria-label="Animation: chaotic visits, drop-offs, diagnosis overlay, rebuild, trust added, clear path to CTA. Pauses on hover."
     >
       <div className="relative flex h-full max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_24px_55px_-14px_rgba(15,23,42,0.22)]">
         <div
@@ -260,7 +260,7 @@ export function ConversionLeakRepairDemo() {
             {showHookBanner && (
               <div className="pointer-events-none absolute left-1/2 top-[12%] z-[36] max-w-[92%] -translate-x-1/2 text-center">
                 <span className="rounded-full border border-rose-300/90 bg-white/95 px-3 py-1.5 text-[0.68rem] font-bold tracking-tight text-rose-900 shadow-md sm:text-sm">
-                  Most visitors never convert
+                  Traffic isn&apos;t turning into leads
                 </span>
               </div>
             )}
@@ -441,7 +441,7 @@ export function ConversionLeakRepairDemo() {
                     weakPhase && 'opacity-70'
                   )}
                 >
-                  {strongCopy ? 'Book a conversion audit' : 'Learn more'}
+                  {strongCopy ? 'Get a quick breakdown' : 'Learn more'}
                 </span>
               </div>
 

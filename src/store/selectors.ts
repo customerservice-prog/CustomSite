@@ -8,8 +8,10 @@ import type {
   Message,
   MessageThread,
   Project,
+  ProjectLifecycleStage,
   Task,
 } from '@/lib/types/entities';
+import { daysSinceIso } from '@/lib/days-since';
 import { PIPELINE_STAGES } from '@/lib/statuses';
 import type { RootState } from '@/store/root-state';
 
@@ -181,6 +183,14 @@ export function getOverdueInvoices(state: RootState): Invoice[] {
   return invoicesList(state).filter((i) => i.status === 'Overdue');
 }
 
+export function getOverdueInvoicesAmount(state: RootState): number {
+  return getOverdueInvoices(state).reduce((s, i) => s + i.amount, 0);
+}
+
+export function getPaymentsForInvoice(state: RootState, invoiceId: string) {
+  return paymentsList(state).filter((p) => p.invoiceId === invoiceId);
+}
+
 export function getRevenueFromPaidInvoices(state: RootState): number {
   return invoicesList(state).filter((i) => i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
 }
@@ -309,4 +319,15 @@ export function getActivityHref(state: RootState, a: Activity): string | null {
     default:
       return null;
   }
+}
+
+/** Client-site projects that should be moving but have gone quiet (agency owes a nudge). */
+export function getStalledSiteProjects(state: RootState, minQuietDays = 6): Project[] {
+  const active: ProjectLifecycleStage[] = ['discovery', 'proposal_contract', 'build', 'review'];
+  return Object.values(state.projects).filter((p) => {
+    if (p.deliveryFocus !== 'client_site') return false;
+    if (!active.includes(p.lifecycleStage)) return false;
+    if (p.waitingOn === 'client') return false;
+    return daysSinceIso(p.updatedAt) >= minQuietDays;
+  });
 }

@@ -21,6 +21,7 @@ import { useShell } from '@/context/shell-context';
 import { useClient, useClientActivityFeed } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
+import { CONVERSION_WORKSPACE_LABEL } from '@/lib/offer-positioning';
 
 export function ClientDetailPage() {
   const { clientId } = useParams();
@@ -63,7 +64,7 @@ export function ClientDetailPage() {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
         <h1 className="text-lg font-bold text-slate-900">Client not found</h1>
-        <p className="mt-2 text-sm text-slate-500">We could not find this client in your workspace.</p>
+        <p className="mt-2 text-sm text-slate-500">We could not find this client in your agency records.</p>
         <Link to="/clients" className={buttonClassName('primary', 'mt-6 inline-flex')}>
           Back to clients
         </Link>
@@ -118,6 +119,26 @@ export function ClientDetailPage() {
               <Link to="/invoices" className={`${buttonClassName('secondary', 'mt-4 w-full justify-center text-xs')}`}>
                 Collect balance
               </Link>
+            )}
+          </Card>
+          <Card className="border-purple-100 bg-purple-50/30 p-4 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-purple-900">Client portal &amp; their sites</p>
+            <p className="mt-2 text-xs text-slate-700">
+              Clients see progress, files, invoices, and messages in one place — tied to the projects you ship for them.
+            </p>
+            {clientProjects.filter((p) => p.deliveryFocus === 'client_site').map((p) => (
+              <div key={p.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-purple-100 bg-white/80 px-2 py-2 text-xs">
+                <span className="font-semibold text-slate-900">{p.name}</span>
+                <Badge variant={p.siteStatus === 'live' ? 'success' : p.siteStatus === 'review' ? 'info' : 'warning'}>
+                  {p.siteStatus ?? 'draft'}
+                </Badge>
+                <Link to={`/projects/${p.id}/site`} className="font-semibold text-violet-800 underline">
+                  {CONVERSION_WORKSPACE_LABEL} →
+                </Link>
+              </div>
+            ))}
+            {clientProjects.every((p) => p.deliveryFocus !== 'client_site') && (
+              <p className="mt-2 text-xs text-slate-500">No marketing-site projects yet — open one when you sell a site build.</p>
             )}
           </Card>
           <Card className="p-4 shadow-sm">
