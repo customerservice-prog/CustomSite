@@ -15,6 +15,7 @@ import type {
   ProjectDeliveryFocus,
   ProjectLifecycleStage,
   ServicePackageId,
+  SiteBuildArchetypeId,
   Task,
   TaskChecklistItem,
 } from '@/lib/types/entities';
@@ -109,6 +110,8 @@ export interface AppStore extends RootState {
       ownerId?: string;
       /** When set, seeds lifecycle, delivery focus, and full task system from template. */
       templateId?: string | null;
+      /** Conversion site voice for builder templates (client_site). */
+      siteBuildArchetype?: SiteBuildArchetypeId | null;
       deliveryFocus?: ProjectDeliveryFocus;
       servicePackage?: ServicePackageId | null;
     },
@@ -163,6 +166,8 @@ export interface AppStore extends RootState {
   advanceProjectLifecycle: (projectId: string) => void;
   toggleTaskChecklistItem: (taskId: string, itemId: string) => void;
   setProjectWaitingOn: (projectId: string, waiting: 'client' | 'agency' | null) => void;
+  /** Builder: conversion template voice (service / ecommerce / landing / agency). */
+  setProjectSiteBuildArchetype: (projectId: string, siteBuildArchetype: SiteBuildArchetypeId | null) => void;
   requestClientFeedback: (projectId: string) => void;
   advanceLeadStage: (leadId: string) => void;
   convertWonLead: (leadId: string) => string | null;
@@ -374,6 +379,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       updatedAt: now,
       lifecycleStage,
       templateId: tmpl ? tmpl.id : null,
+      siteBuildArchetype: input.siteBuildArchetype ?? null,
       waitingOn: null,
       deliveryFocus,
       siteStatus: deliveryFocus === 'client_site' ? 'draft' : undefined,
@@ -1177,6 +1183,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
       projects: {
         ...s.projects,
         [projectId]: { ...p, waitingOn: waiting ?? null, updatedAt: now },
+      },
+    }));
+  },
+
+  setProjectSiteBuildArchetype: (projectId, siteBuildArchetype) => {
+    const p = get().projects[projectId];
+    if (!p) return;
+    const now = isoNow();
+    set((s) => ({
+      projects: {
+        ...s.projects,
+        [projectId]: { ...p, siteBuildArchetype: siteBuildArchetype ?? null, updatedAt: now },
       },
     }));
   },

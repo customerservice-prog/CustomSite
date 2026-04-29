@@ -3,13 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
   ChevronDown,
+  ChevronLeft,
   ChevronUp,
+  Code2,
   ExternalLink,
-  Layers,
-  LayoutGrid,
+  LayoutTemplate,
   Loader2,
   Maximize2,
-  Minimize2,
   Monitor,
   MoreHorizontal,
   Plus,
@@ -17,6 +17,7 @@ import {
   Rocket,
   Smartphone,
   Tablet,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,11 +28,11 @@ import { Dropdown, DropdownItem } from '@/components/ui/dropdown';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 import { useClients, useProjects } from '@/store/hooks';
+import { useAppStore } from '@/store/useAppStore';
 import { adminFetchJson, getRailwayCredentials } from '@/lib/admin-api';
-import { SiteHtmlEditorPanel } from '@/components/site-builder/site-html-editor-panel';
+import { SiteHtmlEditorPanel, type BuilderSurfaceMode } from '@/components/site-builder/site-html-editor-panel';
 import { SectionLibraryModal } from '@/components/site-builder/section-library-modal';
-import { ARCHETYPE_LABELS, projectSiteArchetype } from '@/lib/site-builder/archetypes';
-import { pageGuidanceFor } from '@/lib/site-builder/page-guidance';
+import { projectSiteArchetype, SITE_BUILD_ARCHETYPE_OPTIONS } from '@/lib/site-builder/archetypes';
 import {
   appendChangelog,
   loadBuilderWorkflow,
@@ -39,15 +40,15 @@ import {
   type BuilderWorkflowState,
 } from '@/lib/site-builder/builder-workflow-storage';
 import {
-  SECTION_LIBRARY,
-  buildFullSiteIndexHtml,
-  buildInteriorSitePageHtml,
-  buildLibrarySectionHtml,
   insertBeforeBodyClose,
+  insertCsSectionAfter,
   parsePageSections,
+  removeCsSection,
   reorderCsSections,
 } from '@/lib/site-builder/site-structure-html';
-import { DELIVERY_ADVANTAGE, OFFER_STATEMENT, PROCESS_STEPS, RISK_REVERSAL } from '@/lib/offer-positioning';
+import { buildFullSiteIndexHtml, buildInteriorSitePageHtml, type InteriorPageKind } from '@/lib/site-templates/compose-site-html';
+import { SECTION_LIBRARY_ROWS, buildSectionByTemplateId, type SectionTemplateRow } from '@/lib/site-templates/section-catalog';
+import type { SiteBuildArchetypeId } from '@/lib/types/entities';
 
 type SiteFileRow = { path: string; updated_at?: string | null; content_encoding?: string };
 
@@ -59,6 +60,7 @@ const STATIC_PAGE_LABELS: Record<string, string> = {
   'services.html': 'Services',
   'about.html': 'About',
   'contact.html': 'Contact',
+  'styles.css': 'Styles (CSS)',
 };
 
 const FALLBACK_PREVIEW_HTML = `<!DOCTYPE html>
@@ -72,7 +74,7 @@ const FALLBACK_PREVIEW_HTML = `<!DOCTYPE html>
   <main style="font-family:system-ui,-apple-system,sans-serif;max-width:36rem;margin:4rem auto;padding:0 1.5rem;color:#64748b;line-height:1.6">
     <p style="font-size:0.875rem;letter-spacing:0.02em;text-transform:uppercase;color:#94a3b8;margin-bottom:1rem">Preview</p>
     <h1 style="font-size:1.375rem;font-weight:600;color:#0f172a;margin:0 0 0.75rem">Preview will show here</h1>
-    <p style="margin:0">Add your homepage to see the live conversion preview.</p>
+    <p style="margin:0">Add an HTML page (for example index.html) in the agency builder to preview this project site.</p>
   </main>
 </body>
 </html>`;
@@ -123,6 +125,30 @@ function defaultPubForPath(path: string): 'draft' | 'published' {
   return 'draft';
 }
 
+const BUILDER_SURFACE_STORAGE = 'customsite_site_builder_surface_mode_v1';
+
+function isHtmlSitePath(path: string): boolean {
+  return /\.html?$/i.test(path);
+}
+
+function readBuilderSurfaceMode(projectId: string): BuilderSurfaceMode {
+  try {
+    const v = localStorage.getItem(`${BUILDER_SURFACE_STORAGE}:${projectId}`);
+    if (v === 'code' || v === 'templates') return v;
+  } catch {
+    /* */
+  }
+  return 'code';
+}
+
+function writeBuilderSurfaceMode(projectId: string, mode: BuilderSurfaceMode) {
+  try {
+    localStorage.setItem(`${BUILDER_SURFACE_STORAGE}:${projectId}`, mode);
+  } catch {
+    /* */
+  }
+}
+
 function slugToHtmlPath(raw: string): string | null {
   const s = raw.trim().toLowerCase().replace(/^\/+/, '').replace(/\.html?$/i, '');
   if (!s || s.includes('..') || s.includes('/') || !/^[a-z0-9][a-z0-9-_]*$/i.test(s)) return null;
@@ -167,51 +193,13 @@ function formatDeployedAt(iso: string): string {
   }
 }
 
-type BuilderWorkflowStep = 'page' | 'sections' | 'preview' | 'publish';
-
-function builderGuidance(args: {
-  htmlPagesLen: number;
-  pageName: string;
-  sectionCount: number;
-  dirty: boolean;
-  deployPhase: 'idle' | 'deploying' | 'success' | 'error';
-}): { currentFocus: string; nextStep: string } {
-  if (args.htmlPagesLen === 0) {
-    return {
-      currentFocus: 'This project does not have site pages yet.',
-      nextStep: 'Create a homepage — we will drop in a conversion-ready structure you can reshape with sections.',
-    };
-  }
-  if (args.sectionCount === 0) {
-    return {
-      currentFocus: `You are on “${args.pageName}” with no structured blocks yet.`,
-      nextStep: 'Use Insert section to add hero, trust, bundles, and CTA templates — then watch the preview update.',
-    };
-  }
-  if (args.dirty) {
-    return {
-      currentFocus: 'Changes are only on your screen until you save.',
-      nextStep: 'Save the page so the live preview and publish step use the latest version.',
-    };
-  }
-  if (args.deployPhase === 'success') {
-    return {
-      currentFocus: 'Latest publish completed.',
-      nextStep: 'Share the live link with the client or keep iterating — saves are instant on the preview URL.',
-    };
-  }
-  return {
-    currentFocus: `“${args.pageName}” has ${args.sectionCount} conversion section${args.sectionCount === 1 ? '' : 's'} in the journey.`,
-    nextStep: 'Polish in preview, then publish when the site should go live to staging or production.',
-  };
-}
-
 export function SiteBuilderPage() {
   const { toast } = useShell();
   const navigate = useNavigate();
   const params = useParams<{ projectId?: string }>();
   const projects = useProjects();
   const clients = useClients();
+  const setProjectSiteBuildArchetype = useAppStore((s) => s.setProjectSiteBuildArchetype);
 
   const siteProjects = useMemo(
     () => projects.filter((p) => p.deliveryFocus === 'client_site').sort((a, b) => a.name.localeCompare(b.name)),
@@ -248,8 +236,15 @@ export function SiteBuilderPage() {
   const [renameTargetPath, setRenameTargetPath] = useState<string | null>(null);
   const [renameSlug, setRenameSlug] = useState('');
   const [deleteConfirmPath, setDeleteConfirmPath] = useState<string | null>(null);
-  const [creatingHomepage, setCreatingHomepage] = useState(false);
+  const [siteSeeding, setSiteSeeding] = useState(false);
+  const [siteSeedError, setSiteSeedError] = useState(false);
+  const [newSiteChoiceOpen, setNewSiteChoiceOpen] = useState(false);
+  const [newSiteChoiceMessage, setNewSiteChoiceMessage] = useState<string | null>(null);
+  const [surfaceMode, setSurfaceMode] = useState<BuilderSurfaceMode>('code');
   const [sectionLibraryOpen, setSectionLibraryOpen] = useState(false);
+  /** `null` = append before `</body>`; else insert after this section index. */
+  const [insertSectionAfterIndex, setInsertSectionAfterIndex] = useState<number | null>(null);
+  const [addPageInteriorKind, setAddPageInteriorKind] = useState<InteriorPageKind>('service');
   const [focusSectionRequest, setFocusSectionRequest] = useState<{ id: string } | null>(null);
   const [workflow, setWorkflow] = useState<BuilderWorkflowState>({
     reviewStatus: 'draft',
@@ -265,11 +260,10 @@ export function SiteBuilderPage() {
 
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
-  const [builderStep, setBuilderStep] = useState<BuilderWorkflowStep>('preview');
 
-  const pagesRailRef = useRef<HTMLAsideElement | null>(null);
+  const pagesRailRef = useRef<HTMLElement | null>(null);
   const previewRailRef = useRef<HTMLElement | null>(null);
-  const publishAnchorRef = useRef<HTMLDivElement | null>(null);
+  const publishAnchorRef = useRef<HTMLButtonElement | null>(null);
 
   const [editorContent, setEditorContent] = useState('');
   const [savedEditorContent, setSavedEditorContent] = useState('');
@@ -280,45 +274,33 @@ export function SiteBuilderPage() {
   const [savedAgoLabel, setSavedAgoLabel] = useState('');
 
   const htmlPages = useMemo(() => siteFiles.filter((f) => /\.html?$/i.test(f.path)), [siteFiles]);
-  const htmlPathsKey = useMemo(
+  const workspaceFiles = useMemo(
     () =>
-      siteFiles
-        .filter((f) => /\.html?$/i.test(f.path))
-        .map((f) => f.path)
-        .sort()
-        .join('|'),
+      [...siteFiles]
+        .filter((f) => /\.(html?|css|js|mjs)$/i.test(f.path))
+        .sort((a, b) => {
+          if (a.path === 'index.html') return -1;
+          if (b.path === 'index.html') return 1;
+          return a.path.localeCompare(b.path);
+        }),
     [siteFiles]
   );
+  const workspacePathsKey = useMemo(() => workspaceFiles.map((f) => f.path).join('|'), [workspaceFiles]);
 
   const previewMaxW = previewDevice === 'mobile' ? 375 : previewDevice === 'tablet' ? 768 : 1280;
 
-  const pageSections = useMemo(() => parsePageSections(editorContent), [editorContent]);
-
-  const pageGuidance = useMemo(
-    () =>
-      activeProject
-        ? pageGuidanceFor(selectedServerPath, friendlyPageName(selectedServerPath), siteArchetype)
-        : '',
-    [activeProject, selectedServerPath, siteArchetype]
-  );
-
-  const scrollToBuilderTarget = useCallback((step: BuilderWorkflowStep) => {
-    const prefersReduced =
-      typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const opts: ScrollIntoViewOptions = { behavior: prefersReduced ? 'auto' : 'smooth', block: 'nearest' };
-    if (step === 'page' || step === 'sections') {
-      pagesRailRef.current?.scrollIntoView(opts);
-      if (step === 'sections') {
-        window.requestAnimationFrame(() => document.getElementById('site-builder-sections-anchor')?.scrollIntoView(opts));
-      }
-      return;
+  const previewPagePath = useMemo(() => {
+    if (htmlPages.length === 0) return null;
+    if (isHtmlSitePath(selectedServerPath) && htmlPages.some((f) => f.path === selectedServerPath)) {
+      return selectedServerPath;
     }
-    if (step === 'preview') {
-      previewRailRef.current?.scrollIntoView(opts);
-      return;
-    }
-    publishAnchorRef.current?.scrollIntoView(opts);
-  }, []);
+    return htmlPages.find((f) => f.path === 'index.html')?.path ?? htmlPages[0]!.path;
+  }, [htmlPages, selectedServerPath]);
+
+  const pageSections = useMemo(() => {
+    if (!isHtmlSitePath(selectedServerPath)) return [];
+    return parsePageSections(editorContent);
+  }, [editorContent, selectedServerPath]);
 
   const loadSiteFiles = useCallback(async (): Promise<boolean> => {
     if (!activeProjectId) return false;
@@ -331,9 +313,10 @@ export function SiteBuilderPage() {
     const files = r.data.files ?? [];
     setSiteFiles(files);
     setSelectedServerPath((prev) => {
-      if (!files.length) return 'index.html';
-      if (files.some((f) => f.path === prev)) return prev;
-      return files.find((f) => /\.html?$/i.test(f.path))?.path ?? files[0]!.path;
+      const editable = files.filter((f) => /\.(html?|css|js|mjs)$/i.test(f.path));
+      if (!editable.length) return prev || 'index.html';
+      if (editable.some((f) => f.path === prev)) return prev;
+      return editable.find((f) => /\.html?$/i.test(f.path))?.path ?? editable[0]!.path;
     });
     return true;
   }, [activeProjectId, toast]);
@@ -344,6 +327,50 @@ export function SiteBuilderPage() {
     await loadSiteFiles();
     setFilesLoading(false);
   }, [activeProjectId, loadSiteFiles]);
+
+  const bootstrapHomepageCore = useCallback(async (): Promise<boolean> => {
+    if (!activeProjectId || !activeProject) return false;
+    const init = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/init`, {
+      method: 'POST',
+      json: { template: 'basic' },
+    });
+    if (!init.ok) {
+      toast(init.error || 'Could not initialize the site folder', 'error');
+      return false;
+    }
+    const indexHtml = buildFullSiteIndexHtml(siteArchetype, {
+      siteTitle: activeProject.name,
+      clientCompany: clientForProject?.company,
+    });
+    const put = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/file`, {
+      method: 'PUT',
+      json: { path: 'index.html', content: indexHtml, content_encoding: 'utf8' },
+    });
+    if (!put.ok) {
+      toast(put.error || 'Could not save homepage', 'error');
+      return false;
+    }
+    setWorkflow((w) => appendChangelog(activeProjectId, 'Generated full homepage structure', w));
+    await refreshServerFiles();
+    setSelectedServerPath('index.html');
+    setPreviewNonce((n) => n + 1);
+    return true;
+  }, [activeProjectId, activeProject, siteArchetype, clientForProject?.company, toast, refreshServerFiles]);
+
+  useEffect(() => {
+    if (!activeProjectId || filesLoading) return;
+    if (siteFiles.length > 0) {
+      setNewSiteChoiceOpen(false);
+      setNewSiteChoiceMessage(null);
+      return;
+    }
+    setNewSiteChoiceOpen(true);
+  }, [activeProjectId, filesLoading, siteFiles.length]);
+
+  useEffect(() => {
+    if (!activeProjectId) return;
+    setSurfaceMode(readBuilderSurfaceMode(activeProjectId));
+  }, [activeProjectId]);
 
   useEffect(() => {
     if (!params.projectId || siteProjects.length === 0) return;
@@ -356,6 +383,7 @@ export function SiteBuilderPage() {
 
   useEffect(() => {
     if (!activeProjectId) return;
+    setSiteSeedError(false);
     setPagePub(loadPagePub(activeProjectId));
     setWorkflow(loadBuilderWorkflow(activeProjectId));
     const d = loadLastDeploy(activeProjectId);
@@ -366,13 +394,14 @@ export function SiteBuilderPage() {
 
   useEffect(() => {
     if (!activeProjectId) return;
+    setSiteFiles([]);
     void refreshServerFiles();
   }, [activeProjectId, refreshServerFiles]);
 
   useEffect(() => {
     if (!activeProjectId || !selectedServerPath) return;
-    if (!htmlPathsKey) return;
-    const paths = htmlPathsKey.split('|');
+    if (!workspacePathsKey) return;
+    const paths = workspacePathsKey.split('|').filter(Boolean);
     if (!paths.includes(selectedServerPath)) return;
     let cancelled = false;
     (async () => {
@@ -385,12 +414,26 @@ export function SiteBuilderPage() {
       if (cancelled) return;
       setEditorLoading(false);
       if (!r.ok) {
-        const fallback = activeProject
-          ? buildInteriorSitePageHtml(siteArchetype, friendlyPageName(selectedServerPath), activeProject.name)
-          : '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Page</title></head><body><p>Could not load.</p></body></html>';
+        const lower = selectedServerPath.toLowerCase();
+        let fallback: string;
+        if (lower.endsWith('.css')) {
+          fallback = '/* File missing on server — add styles, then Save. */\n';
+        } else if (lower.endsWith('.js') || lower.endsWith('.mjs')) {
+          fallback = '// File missing on server — add script, then Save.\n';
+        } else if (activeProject) {
+          fallback = buildInteriorSitePageHtml(
+            siteArchetype,
+            friendlyPageName(selectedServerPath),
+            activeProject.name,
+            'service',
+            clientForProject?.company
+          );
+        } else {
+          fallback = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Page</title></head><body><p>Could not load.</p></body></html>';
+        }
         setEditorContent(fallback);
         setSavedEditorContent(fallback);
-        setEditorError("We couldn't load this page. You can still edit and save.");
+        setEditorError("We couldn't load this file from the server. You can still edit and save.");
         return;
       }
       const text = r.data.content != null ? String(r.data.content) : '';
@@ -400,7 +443,7 @@ export function SiteBuilderPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeProjectId, selectedServerPath, htmlPathsKey, activeProject, siteArchetype]);
+  }, [activeProjectId, selectedServerPath, workspacePathsKey, activeProject, siteArchetype, clientForProject?.company]);
 
   useEffect(() => {
     if (savedAtMs == null) {
@@ -427,16 +470,18 @@ export function SiteBuilderPage() {
 
   const dirty = editorContent !== savedEditorContent;
 
-  const { currentFocus, nextStep } = useMemo(
-    () =>
-      builderGuidance({
-        htmlPagesLen: htmlPages.length,
-        pageName: friendlyPageName(selectedServerPath),
-        sectionCount: pageSections.length,
-        dirty,
-        deployPhase,
-      }),
-    [htmlPages.length, selectedServerPath, pageSections.length, dirty, deployPhase]
+  const localPreviewHtml = useMemo(() => {
+    if (!activeProject) return FALLBACK_PREVIEW_HTML;
+    if (htmlPages.length === 0) return FALLBACK_PREVIEW_HTML;
+    return buildFullSiteIndexHtml(siteArchetype, {
+      siteTitle: activeProject.name,
+      clientCompany: clientForProject?.company,
+    });
+  }, [activeProject, siteArchetype, clientForProject?.company, htmlPages.length]);
+
+  const templateOutlineLabels = useMemo(
+    () => ['Hero', 'Trust', 'Products', 'Bundles', 'Testimonials', 'CTA', 'Footer'],
+    []
   );
 
   const statusForServerPath = useCallback(
@@ -476,35 +521,73 @@ export function SiteBuilderPage() {
     void refreshServerFiles();
   }, [activeProjectId, selectedServerPath, editorContent, toast, refreshServerFiles]);
 
-  async function createHomepage() {
-    if (!activeProjectId || !activeProject) return;
-    setCreatingHomepage(true);
+  async function seedFromTemplates() {
+    if (!activeProjectId || !activeProject) return false;
+    setSiteSeeding(true);
+    setSiteSeedError(false);
+    const ok = await bootstrapHomepageCore();
+    setSiteSeeding(false);
+    if (!ok) setSiteSeedError(true);
+    return ok;
+  }
+
+  async function createBlankCodeSite() {
+    if (!activeProjectId || !activeProject) return false;
+    setSiteSeeding(true);
+    setSiteSeedError(false);
     const init = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/init`, {
       method: 'POST',
       json: { template: 'basic' },
     });
     if (!init.ok) {
-      setCreatingHomepage(false);
-      toast(init.error || 'Something went wrong', 'error');
-      return;
+      toast(init.error || 'Could not initialize the site folder', 'error');
+      setSiteSeeding(false);
+      setSiteSeedError(true);
+      return false;
     }
-    const indexHtml = buildFullSiteIndexHtml(siteArchetype, {
-      siteTitle: activeProject.name,
-      clientCompany: clientForProject?.company,
-    });
-    const put = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/file`, {
+    const titleSafe = activeProject.name.replace(/</g, '');
+    const minimalHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${titleSafe}</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main style="max-width:42rem;margin:3rem auto;padding:0 1.25rem;font-family:system-ui,sans-serif;line-height:1.6;color:#0f172a">
+    <h1 style="font-size:1.5rem;margin-bottom:0.75rem">Blank site shell</h1>
+    <p style="color:#475569">Edit in <strong>Code</strong> mode, or switch to <strong>Templates</strong> to seed conversion sections.</p>
+  </main>
+</body>
+</html>`;
+    const putHtml = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/file`, {
       method: 'PUT',
-      json: { path: 'index.html', content: indexHtml, content_encoding: 'utf8' },
+      json: { path: 'index.html', content: minimalHtml, content_encoding: 'utf8' },
     });
-    setCreatingHomepage(false);
-    if (!put.ok) {
-      toast(put.error || 'Could not save homepage', 'error');
-      return;
+    if (!putHtml.ok) {
+      toast(putHtml.error || 'Could not save index.html', 'error');
+      setSiteSeeding(false);
+      setSiteSeedError(true);
+      return false;
     }
-    setWorkflow((w) => appendChangelog(activeProjectId, 'Generated full homepage structure', w));
+    const css = `/* ${titleSafe} — global styles */\n\nbody {\n  margin: 0;\n  background: #f8fafc;\n}\n`;
+    const putCss = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/file`, {
+      method: 'PUT',
+      json: { path: 'styles.css', content: css, content_encoding: 'utf8' },
+    });
+    if (!putCss.ok) {
+      toast(putCss.error || 'Could not save styles.css', 'error');
+      setSiteSeeding(false);
+      setSiteSeedError(true);
+      return false;
+    }
+    setWorkflow((w) => appendChangelog(activeProjectId, 'Created blank index.html + styles.css', w));
     await refreshServerFiles();
     setSelectedServerPath('index.html');
     setPreviewNonce((n) => n + 1);
+    setSiteSeeding(false);
+    return true;
   }
 
   async function createBlankPage() {
@@ -518,7 +601,13 @@ export function SiteBuilderPage() {
       return;
     }
     const title = (addPageName.trim() || path.replace(/\.html$/i, '').replace(/[-_]/g, ' ')).replace(/</g, '');
-    const pageHtml = buildInteriorSitePageHtml(siteArchetype, title, activeProject.name);
+    const pageHtml = buildInteriorSitePageHtml(
+      siteArchetype,
+      title,
+      activeProject.name,
+      addPageInteriorKind,
+      clientForProject?.company
+    );
     const r = await adminFetchJson(`/api/admin/projects/${encodeURIComponent(activeProjectId)}/site/file`, {
       method: 'PUT',
       json: { path, content: pageHtml, content_encoding: 'utf8' },
@@ -531,26 +620,77 @@ export function SiteBuilderPage() {
     setAddPageName('');
     setAddPageSlug('');
     slugAutoRef.current = true;
-    setWorkflow((w) => appendChangelog(activeProjectId, `Added page “${title}” with starter sections`, w));
+    setWorkflow((w) =>
+      appendChangelog(
+        activeProjectId,
+        `Added page “${title}” (${addPageInteriorKind === 'landing' ? 'landing' : 'service'} structure)`,
+        w
+      )
+    );
     await refreshServerFiles();
     setSelectedServerPath(path);
     setPreviewNonce((n) => n + 1);
   }
 
-  function applySectionFromLibrary(item: (typeof SECTION_LIBRARY)[0]) {
-    const block = buildLibrarySectionHtml(item);
-    const next = insertBeforeBodyClose(editorContent, block);
+  function applySectionFromLibrary(item: SectionTemplateRow) {
+    if (!activeProject) return;
+    if (!isHtmlSitePath(selectedServerPath)) {
+      toast('Open an HTML page to insert conversion sections.', 'info');
+      return;
+    }
+    const ctx = {
+      siteTitle: activeProject.name,
+      clientCompany: clientForProject?.company,
+      pageTitle: friendlyPageName(selectedServerPath),
+    };
+    const block = buildSectionByTemplateId(item.templateId, siteArchetype, ctx);
+    if (!block) {
+      toast('Could not build that section.', 'error');
+      return;
+    }
+    const pageName = friendlyPageName(selectedServerPath);
+    const afterIdx = insertSectionAfterIndex;
+    let next: string;
+    if (afterIdx === null) {
+      next = insertBeforeBodyClose(editorContent, block);
+    } else {
+      next = insertCsSectionAfter(editorContent, afterIdx, block);
+    }
     setEditorContent(next);
     setSectionLibraryOpen(false);
+    setInsertSectionAfterIndex(null);
     if (activeProjectId) {
-      setWorkflow((w) => appendChangelog(activeProjectId, `Inserted “${item.title}”`, w));
+      const where = afterIdx === null ? `on ${pageName}` : `below “${pageSections[afterIdx]?.label ?? 'section'}” on ${pageName}`;
+      setWorkflow((w) => appendChangelog(activeProjectId, `Inserted “${item.libraryTitle}” ${where}`, w));
     }
+    setPreviewRefreshing(true);
+    setPreviewNonce((n) => n + 1);
+  }
+
+  function removeSectionAt(index: number) {
+    const label = pageSections[index]?.label ?? 'Section';
+    const pageName = friendlyPageName(selectedServerPath);
+    setEditorContent(removeCsSection(editorContent, index));
+    if (activeProjectId) {
+      setWorkflow((w) => appendChangelog(activeProjectId, `Removed ${label} from ${pageName}`, w));
+    }
+    setPreviewRefreshing(true);
+    setPreviewNonce((n) => n + 1);
   }
 
   function moveSection(from: number, delta: number) {
     const to = from + delta;
     if (to < 0 || to >= pageSections.length) return;
+    const a = pageSections[from]?.label ?? 'Section';
+    const b = pageSections[to]?.label ?? 'section';
+    const pageName = friendlyPageName(selectedServerPath);
     setEditorContent(reorderCsSections(editorContent, from, to));
+    if (activeProjectId) {
+      const dir = delta < 0 ? 'above' : 'below';
+      setWorkflow((w) => appendChangelog(activeProjectId, `Moved ${a} ${dir} ${b} on ${pageName}`, w));
+    }
+    setPreviewRefreshing(true);
+    setPreviewNonce((n) => n + 1);
   }
 
   async function runPublish() {
@@ -691,15 +831,11 @@ export function SiteBuilderPage() {
     setPreviewNonce((n) => n + 1);
   }
 
-  const canPreview =
-    Boolean(activeProjectId) &&
-    htmlPages.length > 0 &&
-    htmlPages.some((f) => f.path === selectedServerPath) &&
-    /\.html?$/i.test(selectedServerPath);
+  const canPreview = Boolean(activeProjectId) && previewPagePath != null && /\.html?$/i.test(previewPagePath);
 
   const previewSrc =
     canPreview && activeProjectId
-      ? `/preview/${encodeURIComponent(activeProjectId)}/${encodeURIComponent(selectedServerPath)}?t=${previewNonce}`
+      ? `/preview/${encodeURIComponent(activeProjectId)}/${encodeURIComponent(previewPagePath)}?t=${previewNonce}`
       : null;
 
   const liveSiteHref = activeProject?.siteLiveUrl?.trim() || sessionDeployUrl || '';
@@ -712,10 +848,10 @@ export function SiteBuilderPage() {
       key={id}
       onClick={() => setPreviewDevice(id)}
       className={cn(
-        'rounded-full p-2.5 transition-all duration-200',
+        'rounded-md p-2 transition-all duration-200',
         previewDevice === id
-          ? 'bg-white text-violet-700 shadow-sm shadow-slate-900/8'
-          : 'text-slate-500 hover:bg-white/60 hover:text-slate-800'
+          ? 'bg-white/10 text-white ring-1 ring-white/15'
+          : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-200'
       )}
       aria-pressed={previewDevice === id}
       aria-label={id === 'desktop' ? 'Desktop width' : id === 'tablet' ? 'Tablet width' : 'Mobile width'}
@@ -724,13 +860,16 @@ export function SiteBuilderPage() {
     </button>
   );
 
+  const showServerPreview = Boolean(previewSrc);
+  const previewDoc = showServerPreview ? undefined : localPreviewHtml;
+
   const previewIframe = (
     <iframe
       title="Live conversion preview"
-      src={previewSrc ?? undefined}
-      srcDoc={previewSrc ? undefined : FALLBACK_PREVIEW_HTML}
+      src={showServerPreview ? previewSrc! : undefined}
+      srcDoc={previewDoc}
       onLoad={() => setPreviewRefreshing(false)}
-      className="h-full min-h-[min(76vh,720px)] w-full bg-white"
+      className="h-full min-h-0 w-full min-h-[min(52vh,560px)] flex-1 bg-white lg:min-h-[min(64vh,720px)]"
       sandbox="allow-same-origin allow-popups allow-scripts"
     />
   );
@@ -772,236 +911,159 @@ export function SiteBuilderPage() {
     [activeProjectId]
   );
 
+  const setSurfaceModePersist = useCallback(
+    (mode: BuilderSurfaceMode) => {
+      setSurfaceMode(mode);
+      if (activeProjectId) writeBuilderSurfaceMode(activeProjectId, mode);
+    },
+    [activeProjectId]
+  );
+
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f5f8]">
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-4 bg-white/90 px-5 py-4 backdrop-blur-sm">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <h1 className="truncate text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{activeProject?.name ?? 'Project'}</h1>
-            <Link
-              to={`/projects/${activeProjectId}`}
-              className="shrink-0 text-xs font-medium text-slate-400 transition-colors hover:text-violet-600"
-            >
-              Back
-            </Link>
-          </div>
-          {siteProjects.length > 0 ? (
-            <div className="mt-2 max-w-md">
-              <label className="sr-only" htmlFor="site-builder-project-picker">
-                Client site project
-              </label>
-              <Select
-                id="site-builder-project-picker"
-                className="text-sm"
-                value={activeProjectId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  if (id) navigate(`/projects/${id}/site`);
-                }}
-              >
-                {siteProjects.map((p) => {
-                  const cl = clients.find((c) => c.id === p.clientId);
-                  return (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                      {cl?.company ? ` · ${cl.company}` : ''}
-                    </option>
-                  );
-                })}
-              </Select>
-            </div>
-          ) : null}
-          <p className="mt-1 truncate text-sm text-slate-600">{friendlyPageName(selectedServerPath)}</p>
-          <p className="mt-0.5 text-xs leading-snug text-slate-500">
-            We are rebuilding this site for {clientForProject?.company ?? 'your client'} — page → sections → preview → publish.
-          </p>
-          <p className="mt-0.5 truncate text-xs text-slate-400">
-            {ARCHETYPE_LABELS[siteArchetype]}
-            {clientForProject?.company ? ` · ${clientForProject.company}` : ''}
-          </p>
-        </div>
-        <div ref={publishAnchorRef} className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex items-center rounded-full bg-slate-100/95 p-1 ring-1 ring-slate-200/40" title="Preview width">
-            {deviceBtn('desktop', Monitor)}
-            {deviceBtn('tablet', Tablet)}
-            {deviceBtn('mobile', Smartphone)}
-          </div>
-          <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              className="h-9 px-4 text-sm font-semibold shadow-sm shadow-slate-900/5"
-              disabled={saving || !dirty || editorLoading || htmlPages.length === 0}
-              onClick={() => void saveFile()}
-            >
-              {saving ? 'Saving…' : 'Save page for preview'}
-            </Button>
-            {savedAtMs != null && (
-              <span className="text-xs text-slate-400 tabular-nums">Saved {savedAgoLabel || formatRelativeSaved(savedAtMs)}</span>
-            )}
-          </div>
-          <Button
-            type="button"
-            className="h-9 gap-2 px-5 text-sm font-semibold shadow-md shadow-violet-900/15"
-            disabled={deployLoading || !htmlPages.length}
-            onClick={() => void runPublish()}
+    <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden bg-zinc-950 text-zinc-100 max-lg:min-h-min max-lg:flex-none lg:min-h-0 lg:flex-1">
+      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-white/10 px-2 sm:gap-2.5 sm:px-3">
+        <Link
+          to={`/projects/${activeProjectId}`}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/5 hover:text-white"
+          aria-label="Back to project"
+        >
+          <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+        </Link>
+        {siteProjects.length > 0 && (
+          <Select
+            id="site-builder-project-picker"
+            aria-label="Project"
+            className="h-8 max-w-[10rem] shrink-0 border-zinc-700 bg-zinc-900 text-xs text-zinc-100 sm:max-w-[12rem]"
+            value={activeProjectId}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) navigate(`/projects/${id}/site`);
+            }}
           >
-            {deployLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" strokeWidth={1.75} />}
-            {deployLoading ? 'Publishing…' : 'Publish site'}
-          </Button>
-          {liveSiteHref ? (
-            <a
-              href={liveSiteHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-            >
-              <ExternalLink className="h-4 w-4 opacity-70" strokeWidth={1.75} />
-              View live
-            </a>
+            {siteProjects.map((p) => {
+              const cl = clients.find((c) => c.id === p.clientId);
+              return (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {cl?.company ? ` · ${cl.company}` : ''}
+                </option>
+              );
+            })}
+          </Select>
+        )}
+        <Select
+          aria-label="File"
+          className="h-8 min-w-0 flex-1 border-zinc-700 bg-zinc-900 text-xs text-zinc-100 sm:max-w-md"
+          value={workspaceFiles.some((f) => f.path === selectedServerPath) ? selectedServerPath : (workspaceFiles[0]?.path ?? selectedServerPath)}
+          disabled={!workspaceFiles.length}
+          onChange={(e) => {
+            setSelectedServerPath(e.target.value);
+            setPreviewRefreshing(true);
+            setPreviewNonce((n) => n + 1);
+          }}
+        >
+          {workspaceFiles.length === 0 ? (
+            <option value="">No files</option>
           ) : (
-            <span className="px-1 text-xs text-slate-400">Live link appears after publish</span>
+            workspaceFiles.map((f) => (
+              <option key={f.path} value={f.path}>
+                {friendlyPageName(f.path)}
+              </option>
+            ))
           )}
+        </Select>
+        <div className="hidden h-6 w-px shrink-0 bg-white/10 sm:block" aria-hidden />
+        <div className="flex shrink-0 rounded-md bg-zinc-900/90 p-0.5 ring-1 ring-white/10" role="group" aria-label="Editor mode">
+          <button
+            type="button"
+            onClick={() => setSurfaceModePersist('code')}
+            className={cn(
+              'inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold transition-all duration-200',
+              surfaceMode === 'code'
+                ? 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/30'
+                : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-200'
+            )}
+          >
+            <Code2 className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+            Code
+          </button>
+          <button
+            type="button"
+            onClick={() => setSurfaceModePersist('templates')}
+            className={cn(
+              'inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold transition-all duration-200',
+              surfaceMode === 'templates'
+                ? 'bg-violet-500/20 text-violet-100 ring-1 ring-violet-400/35'
+                : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-200'
+            )}
+          >
+            <LayoutTemplate className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+            Templates
+          </button>
         </div>
+        <div className="min-w-2 flex-1" />
+        {savedAtMs != null && !dirty && (
+          <span className="hidden shrink-0 text-[10px] text-zinc-500 sm:inline tabular-nums">{savedAgoLabel || formatRelativeSaved(savedAtMs)}</span>
+        )}
+        <Button
+          type="button"
+          variant="secondary"
+          className="h-8 shrink-0 border-zinc-600 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+          disabled={saving || !dirty || editorLoading || siteFiles.length === 0}
+          onClick={() => void saveFile()}
+        >
+          {saving ? 'Saving…' : 'Save changes'}
+        </Button>
+        <Button
+          ref={publishAnchorRef}
+          type="button"
+          className="h-8 shrink-0 px-4 text-xs font-semibold shadow-lg shadow-violet-950/40"
+          disabled={deployLoading || !htmlPages.length}
+          onClick={() => void runPublish()}
+        >
+          {deployLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" strokeWidth={1.75} />}
+          {deployLoading ? 'Publishing…' : 'Publish site'}
+        </Button>
+        {liveSiteHref ? (
+          <a
+            href={liveSiteHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View live site"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            <ExternalLink className="h-4 w-4" strokeWidth={1.75} />
+          </a>
+        ) : null}
       </header>
 
-      <div className="shrink-0 border-b border-slate-200/70 bg-white px-4 py-3 sm:px-5">
-        <nav aria-label="Website build workflow" className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {(
-              [
-                ['page', 'Page', LayoutGrid],
-                ['sections', 'Sections', Layers],
-                ['preview', 'Preview', Monitor],
-                ['publish', 'Publish', Rocket],
-              ] as const
-            ).map(([id, label, Icon], i) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => {
-                  setBuilderStep(id);
-                  scrollToBuilderTarget(id);
-                }}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-all',
-                  builderStep === id
-                    ? 'bg-violet-700 text-white shadow-md shadow-violet-900/20'
-                    : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200/80 hover:bg-slate-200/80 hover:text-slate-900'
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums',
-                    builderStep === id ? 'bg-white/20 text-white' : 'bg-white text-slate-500'
-                  )}
-                >
-                  {i + 1}
-                </span>
-                <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={1.75} aria-hidden />
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="min-w-0 flex-1 rounded-xl border border-slate-100 bg-gradient-to-br from-slate-50 to-violet-50/30 px-3 py-2.5 lg:max-w-xl">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Current focus</p>
-            <p className="mt-0.5 text-xs font-medium leading-snug text-slate-900">{currentFocus}</p>
-            <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-violet-700">Next step</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{nextStep}</p>
-          </div>
-        </nav>
-      </div>
-
-      <div className="border-b border-violet-100/70 bg-gradient-to-r from-violet-50/95 via-white to-indigo-50/50 px-5 py-3">
-        <p className="text-xs font-semibold leading-snug text-slate-900">{OFFER_STATEMENT}</p>
-        <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{DELIVERY_ADVANTAGE}</p>
-        <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          {PROCESS_STEPS.map((s, i) => (
-            <li key={s.id} className="flex items-center gap-1">
-              <span className="text-violet-600">{i + 1}</span>
-              <span className="normal-case font-medium tracking-normal text-slate-600">{s.title}</span>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-2 text-[10px] leading-snug text-slate-500">{RISK_REVERSAL}</p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100/80 bg-white/70 px-5 py-2.5 text-xs backdrop-blur-sm">
-        <span className="font-medium text-slate-600">
-          {workflow.reviewStatus === 'draft' && 'Internal draft'}
-          {workflow.reviewStatus === 'review_requested' && 'Review requested'}
-          {workflow.reviewStatus === 'ready_for_review' && 'Ready for client review'}
-        </span>
-        <div className="flex flex-wrap gap-1.5">
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-8 px-3 text-xs"
-            onClick={() => patchWorkflow({ reviewStatus: 'review_requested' })}
-          >
-            Request client review
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-8 px-3 text-xs"
-            onClick={() => patchWorkflow({ reviewStatus: 'ready_for_review' })}
-          >
-            Mark ready for review
-          </Button>
-          <Button type="button" variant="ghost" className="h-8 px-2 text-xs" onClick={() => patchWorkflow({ reviewStatus: 'draft' })}>
-            Back to draft
-          </Button>
+      {siteSeeding && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-violet-950/40 px-3 py-1 text-[11px] text-violet-200">
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+          Creating site files…
         </div>
-        <details className="min-w-[10rem] flex-1">
-          <summary className="cursor-pointer font-medium text-slate-500">Feedback notes</summary>
-          <textarea
-            className="mt-2 w-full min-w-[12rem] max-w-md rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800"
-            rows={3}
-            placeholder="What the client asked for, decisions, next steps…"
-            value={workflow.feedbackNotes}
-            onChange={(e) => setWorkflow((w) => ({ ...w, feedbackNotes: e.target.value }))}
-            onBlur={(e) => patchWorkflow({ feedbackNotes: e.target.value })}
-          />
-        </details>
-        <details className="min-w-[8rem]">
-          <summary className="cursor-pointer font-medium text-slate-500">Change log</summary>
-          <ul className="mt-2 max-h-32 max-w-xs space-y-1 overflow-y-auto text-[11px] text-slate-600">
-            {workflow.changelog.length === 0 && <li className="text-slate-400">No entries yet.</li>}
-            {[...workflow.changelog].reverse().map((c, i) => (
-              <li key={`${c.at}-${i}`}>
-                <span className="text-slate-400">{formatDeployedAt(c.at)}</span> — {c.message}
-              </li>
-            ))}
-          </ul>
-        </details>
-      </div>
-
+      )}
+      {siteSeedError && !siteSeeding && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-red-500/20 bg-red-950/30 px-3 py-1 text-[11px] text-red-200">
+          Starter files could not be created. Try again from the project screen.
+        </div>
+      )}
       {showDeployStrip && (
-        <div className="shrink-0 border-t border-slate-100/80 bg-white/80 px-5 py-3 backdrop-blur-sm">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            {deployPhase === 'deploying' && (
-              <span className="inline-flex items-center gap-2 font-medium text-amber-800">
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
-                Deploying…
-              </span>
-            )}
-            {deployPhase === 'success' && <span className="font-semibold text-emerald-700">Live</span>}
-            {deployPhase === 'error' && <span className="font-semibold text-red-700">Couldn't publish</span>}
-            {deployPhase === 'idle' && deployLog && !deployLoading && (
-              <span className="text-slate-500">Last publish</span>
-            )}
-            {lastDeploy?.at && (
-              <span className="text-xs text-slate-500">· {formatDeployedAt(lastDeploy.at)}</span>
-            )}
-          </div>
+        <div className="relative flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-white/10 bg-black/35 px-3 py-1.5 text-[11px] text-zinc-400">
+          {deployPhase === 'deploying' && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-amber-300/95">
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+              Publishing…
+            </span>
+          )}
+          {deployPhase === 'success' && <span className="font-semibold text-emerald-400">Published</span>}
+          {deployPhase === 'error' && <span className="font-semibold text-red-400">Publish failed</span>}
+          {deployPhase === 'idle' && deployLog && !deployLoading && <span>Last publish</span>}
+          {lastDeploy?.at && <span className="text-zinc-500">· {formatDeployedAt(lastDeploy.at)}</span>}
           {deployLog && deployLog !== 'Deploying…' && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-xs font-medium text-slate-400 transition-colors hover:text-slate-600">
-                Activity details
-              </summary>
-              <pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-slate-50/90 p-3 text-[11px] leading-relaxed text-slate-600">
+            <details className="ml-auto">
+              <summary className="cursor-pointer text-zinc-500 hover:text-zinc-300">Log</summary>
+              <pre className="mt-1 max-h-36 overflow-auto rounded border border-white/10 bg-zinc-950 p-2 text-[10px] leading-relaxed text-zinc-300">
                 {deployLog}
               </pre>
             </details>
@@ -1009,61 +1071,61 @@ export function SiteBuilderPage() {
         </div>
       )}
 
-      <div className="flex min-h-[calc(100dvh-13rem)] flex-1 flex-col gap-3 p-3 lg:min-h-0 lg:flex-row lg:gap-4 lg:p-4">
-        <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-xl bg-[#ececf1] lg:w-[240px] lg:rounded-2xl">
-          <div className="flex shrink-0 items-center justify-between px-3 py-3 lg:px-4">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Pages</h2>
-            <button
-              type="button"
-              onClick={() => {
-                setAddPageOpen(true);
-                slugAutoRef.current = true;
-                setAddPageName('');
-                setAddPageSlug('');
-              }}
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-violet-700 transition-colors hover:bg-white/70"
-            >
-              <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-              Add
-            </button>
+      <div className="group/studio flex min-h-0 flex-1 flex-col transition-opacity duration-200 max-lg:flex-none max-lg:overflow-visible lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden lg:has-[#site-builder-editor-panel:focus-within]:[&_.studio-rail]:opacity-40 lg:has-[#site-builder-editor-panel:focus-within]:[&_.studio-rail]:hover:opacity-100">
+        <aside
+          ref={pagesRailRef}
+          className="studio-rail flex w-full shrink-0 flex-col border-white/10 bg-zinc-900/50 lg:order-1 lg:w-52 lg:border-r"
+        >
+          <div className="flex items-center justify-between gap-2 border-b border-white/10 px-2 py-2">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Files</span>
+            <div className="flex items-center gap-0.5">
+              {surfaceMode === 'templates' && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-7 gap-1 px-1.5 text-[10px] font-semibold text-zinc-400 hover:bg-white/5 hover:text-white"
+                  onClick={() => {
+                    setInsertSectionAfterIndex(null);
+                    setSectionLibraryOpen(true);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                  Section
+                </Button>
+              )}
+              <button
+                type="button"
+                title="New page"
+                onClick={() => {
+                  setAddPageOpen(true);
+                  slugAutoRef.current = true;
+                  setAddPageName('');
+                  setAddPageSlug('');
+                  setAddPageInteriorKind('service');
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <Plus className="h-4 w-4" strokeWidth={2} />
+              </button>
+            </div>
           </div>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-3 lg:px-3">
             {filesLoading && (
-              <div className="flex items-center gap-2 px-2 py-4 text-sm text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              <div className="flex items-center gap-2 px-2 py-4 text-xs text-zinc-500">
+                <Loader2 className="h-4 w-4 animate-spin text-zinc-600" />
                 Loading…
               </div>
             )}
-            {!filesLoading && htmlPages.length === 0 && (
-              <div className="rounded-xl bg-white/60 px-3 py-6 text-center shadow-sm ring-1 ring-white/80">
-                <p className="text-sm font-semibold text-slate-800">Start building your site</p>
-                <p className="mx-auto mt-2 max-w-[200px] text-xs leading-relaxed text-slate-500">Add a homepage to unlock the preview and editor.</p>
-                <Button
-                  type="button"
-                  className="mt-4 inline-flex h-9 items-center gap-2 px-4 text-sm"
-                  disabled={creatingHomepage}
-                  onClick={() => void createHomepage()}
-                >
-                  {creatingHomepage ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Creating…
-                    </>
-                  ) : (
-                    'Create homepage'
-                  )}
-                </Button>
-              </div>
-            )}
-            {htmlPages.map((f) => {
+            {workspaceFiles.map((f) => {
               const active = selectedServerPath === f.path;
+              const isPage = isHtmlSitePath(f.path);
               const st = statusForServerPath(f.path);
               return (
                 <div
                   key={f.path}
                   className={cn(
-                    'group flex items-stretch overflow-hidden rounded-xl transition-colors duration-150',
-                    active ? 'bg-white shadow-sm ring-1 ring-slate-200/80' : 'hover:bg-white/50'
+                    'group flex items-stretch border-b border-white/5 transition-colors duration-150',
+                    active ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
                   )}
                 >
                   <button
@@ -1073,29 +1135,35 @@ export function SiteBuilderPage() {
                       setPreviewRefreshing(true);
                       setPreviewNonce((n) => n + 1);
                     }}
-                    className="min-w-0 flex-1 px-3 py-3 text-left"
+                    className="min-w-0 flex-1 px-2.5 py-2.5 text-left transition-transform duration-150 active:scale-[0.99]"
                   >
-                    <p className={cn('truncate text-sm', active ? 'font-semibold text-slate-900' : 'font-medium text-slate-700')}>
+                    <p className={cn('truncate text-xs', active ? 'font-semibold text-white' : 'font-medium text-zinc-400')}>
                       {friendlyPageName(f.path)}
                     </p>
-                    <Badge
-                      variant="neutral"
-                      className={cn(
-                        'mt-1.5 text-[10px] font-medium ring-1 ring-slate-200/60',
-                        st === 'published' ? 'bg-slate-100 text-slate-700' : 'bg-white/90 text-slate-500'
-                      )}
-                    >
-                      {st === 'published' ? 'Live' : 'Draft'}
-                    </Badge>
+                    {isPage ? (
+                      <Badge
+                        variant="neutral"
+                        className={cn(
+                          'mt-1 border-0 text-[9px] font-medium ring-1 ring-white/10',
+                          st === 'published' ? 'bg-emerald-500/15 text-emerald-200' : 'bg-white/5 text-zinc-500'
+                        )}
+                      >
+                        {st === 'published' ? 'Live' : 'Draft'}
+                      </Badge>
+                    ) : (
+                      <Badge variant="neutral" className="mt-1 border-0 bg-white/5 text-[9px] font-medium text-zinc-500 ring-1 ring-white/10">
+                        Asset
+                      </Badge>
+                    )}
                   </button>
-                  <div className="flex shrink-0 items-start py-1 pr-1">
+                  <div className="flex shrink-0 items-start py-1 pr-0.5">
                     <Dropdown
                       align="right"
                       trigger={
                         <button
                           type="button"
-                          className="rounded-lg p-2 text-slate-400 opacity-100 transition-colors hover:bg-white/80 hover:text-slate-700 sm:opacity-0 sm:group-hover:opacity-100"
-                          aria-label="Page options"
+                          className="rounded-md p-1.5 text-zinc-500 opacity-100 transition-colors hover:bg-white/5 hover:text-zinc-200 sm:opacity-0 sm:group-hover:opacity-100"
+                          aria-label="File options"
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
@@ -1110,86 +1178,200 @@ export function SiteBuilderPage() {
                       >
                         Open
                       </DropdownItem>
-                      <DropdownItem
-                        onClick={() => {
-                          setSelectedServerPath(f.path);
-                          setPreviewRefreshing(true);
-                          setPreviewNonce((n) => n + 1);
-                          window.requestAnimationFrame(() => {
-                            document.getElementById('site-builder-editor-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          });
-                        }}
-                      >
-                        Open HTML source
-                      </DropdownItem>
+                      {isPage && (
+                        <DropdownItem
+                          onClick={() => {
+                            setSelectedServerPath(f.path);
+                            setPreviewRefreshing(true);
+                            setPreviewNonce((n) => n + 1);
+                            window.requestAnimationFrame(() => {
+                              document.getElementById('site-builder-editor-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            });
+                          }}
+                        >
+                          Open in editor
+                        </DropdownItem>
+                      )}
                       <DropdownItem onClick={() => openRenameFor(f.path)}>Rename</DropdownItem>
                       <DropdownItem destructive onClick={() => setDeleteConfirmPath(f.path)}>
                         Delete
                       </DropdownItem>
-                      <DropdownItem onClick={() => setPathStatus(f.path, st === 'published' ? 'draft' : 'published')}>
-                        {st === 'published' ? 'Mark as draft' : 'Mark as live'}
-                      </DropdownItem>
+                      {isPage && (
+                        <DropdownItem onClick={() => setPathStatus(f.path, st === 'published' ? 'draft' : 'published')}>
+                          {st === 'published' ? 'Mark as draft' : 'Mark as live'}
+                        </DropdownItem>
+                      )}
                     </Dropdown>
                   </div>
                 </div>
               );
             })}
-            {htmlPages.length > 0 && (
-              <div id="site-builder-sections-anchor" className="mt-3 border-t border-slate-200/50 pt-3 scroll-mt-24">
-                <h3 className="px-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Sections on this page</h3>
-                {pageSections.length === 0 ? (
-                  <p className="mt-2 px-1 text-[11px] leading-relaxed text-slate-500">
-                    Tap <span className="font-medium text-slate-800">Insert section</span> for hero, trust, bundles, and CTA templates — your
-                    outline builds here.
-                  </p>
-                ) : (
-                  <ul className="mt-1.5 space-y-0.5">
-                    {pageSections.map((s, i) => (
-                      <li key={s.id}>
-                        <div className="flex items-center gap-0.5 rounded-lg hover:bg-white/40">
-                          <button
-                            type="button"
-                            onClick={() => setFocusSectionRequest({ id: s.id })}
-                            className="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-xs font-medium text-slate-700"
-                          >
-                            {s.label}
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded p-1 text-slate-400 hover:bg-white/80 hover:text-slate-700 disabled:opacity-30"
-                            disabled={i === 0}
-                            aria-label="Move section up"
-                            onClick={() => moveSection(i, -1)}
-                          >
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded p-1 text-slate-400 hover:bg-white/80 hover:text-slate-700 disabled:opacity-30"
-                            disabled={i === pageSections.length - 1}
-                            aria-label="Move section down"
-                            onClick={() => moveSection(i, 1)}
-                          >
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+          </div>
+          {surfaceMode === 'templates' && siteFiles.length > 0 && (
+            <div className="shrink-0 border-t border-white/10 px-2 py-2">
+              <Select
+                className="h-7 w-full border-zinc-700 bg-zinc-950 text-[11px] text-zinc-100"
+                value={siteArchetype}
+                disabled={!activeProjectId}
+                onChange={(e) => {
+                  const v = e.target.value as SiteBuildArchetypeId;
+                  if (activeProjectId) setProjectSiteBuildArchetype(activeProjectId, v);
+                }}
+              >
+                {SITE_BUILD_ARCHETYPE_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <div className="mt-1.5 flex gap-1">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-7 flex-1 border-zinc-700 bg-zinc-800 px-1.5 text-[10px] font-semibold text-zinc-100 hover:bg-zinc-700"
+                  onClick={() => setSectionLibraryOpen(true)}
+                >
+                  Library
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-7 flex-1 border-zinc-700 bg-zinc-800 px-1.5 text-[10px] font-semibold text-zinc-100 hover:bg-zinc-700"
+                  onClick={() => {
+                    setAddPageOpen(true);
+                    slugAutoRef.current = true;
+                    setAddPageName('');
+                    setAddPageSlug('');
+                    setAddPageInteriorKind('service');
+                  }}
+                >
+                  + Page
+                </Button>
+              </div>
+            </div>
+          )}
+          {surfaceMode === 'templates' && siteFiles.length > 0 && isHtmlSitePath(selectedServerPath) && (
+            <div id="site-builder-sections-anchor" className="min-h-0 max-h-[42vh] shrink-0 overflow-y-auto border-t border-white/10 px-2 py-2">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Structure</span>
+                <button
+                  type="button"
+                  className="rounded p-1 text-zinc-500 hover:bg-white/5 hover:text-violet-300"
+                  title="Add section"
+                  onClick={() => {
+                    setInsertSectionAfterIndex(null);
+                    setSectionLibraryOpen(true);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                </button>
+              </div>
+              {pageSections.length === 0 ? (
+                selectedServerPath.toLowerCase() === 'index.html' ? (
+                  <ul className="mt-1.5 space-y-0.5 border-l border-white/10 pl-2">
+                    {templateOutlineLabels.map((label) => (
+                      <li key={label} className="text-[10px] text-zinc-500">
+                        {label}
                       </li>
                     ))}
                   </ul>
-                )}
-              </div>
-            )}
-          </div>
+                ) : (
+                  <p className="mt-1.5 text-[10px] text-zinc-500">Add sections below.</p>
+                )
+              ) : (
+                <ul className="mt-1.5 space-y-0.5">
+                  {pageSections.map((s, i) => (
+                    <li key={s.id}>
+                      <div className="flex items-center gap-0.5 rounded hover:bg-white/5">
+                        <button
+                          type="button"
+                          onClick={() => setFocusSectionRequest({ id: s.id })}
+                          className="min-w-0 flex-1 truncate px-1 py-0.5 text-left text-[10px] font-medium text-zinc-300"
+                        >
+                          {s.label}
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded p-0.5 text-violet-400 hover:bg-violet-500/10"
+                          title="Insert below"
+                          aria-label="Insert section below"
+                          onClick={() => {
+                            setInsertSectionAfterIndex(i);
+                            setSectionLibraryOpen(true);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded p-0.5 text-zinc-600 hover:text-zinc-300 disabled:opacity-30"
+                          disabled={i === 0}
+                          aria-label="Move up"
+                          onClick={() => moveSection(i, -1)}
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded p-0.5 text-zinc-600 hover:text-zinc-300 disabled:opacity-30"
+                          disabled={i === pageSections.length - 1}
+                          aria-label="Move down"
+                          onClick={() => moveSection(i, 1)}
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+                          aria-label={`Remove ${s.label}`}
+                          onClick={() => removeSectionAt(i)}
+                        >
+                          <Trash2 className="h-3 w-3" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </aside>
 
-        <main
-          ref={previewRailRef}
-          className="order-2 flex min-h-[min(62vh,560px)] min-w-0 flex-[2.15] flex-col overflow-hidden rounded-xl bg-[#e8e9ef] max-lg:min-h-[min(52vh,480px)] lg:order-none lg:min-h-0 lg:min-w-0 lg:rounded-2xl"
+        <section
+          id="site-builder-editor-panel"
+          tabIndex={-1}
+          className="studio-editor order-2 flex min-h-[min(44vh,360px)] min-w-0 flex-col overflow-hidden outline-none transition-shadow duration-200 focus-within:shadow-[inset_0_0_0_1px_rgba(139,92,246,0.22)] max-lg:order-2 max-lg:flex-none lg:min-h-0 lg:flex-1"
         >
-          <div className="flex shrink-0 items-center justify-between px-4 py-3">
-            <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Live preview</span>
-              <p className="mt-0.5 text-[10px] text-slate-500">What your client experiences — make this the source of truth.</p>
+          <SiteHtmlEditorPanel
+            studioChrome
+            hideToolbarSave
+            pageLabel={friendlyPageName(selectedServerPath)}
+            filePath={selectedServerPath}
+            surfaceMode={surfaceMode}
+            value={editorContent}
+            onChange={setEditorContent}
+            onSave={() => void saveFile()}
+            loading={editorLoading}
+            saving={saving}
+            error={editorError}
+            dirty={dirty}
+            empty={siteFiles.length === 0}
+            onInsertSection={() => {
+              setInsertSectionAfterIndex(null);
+              setSectionLibraryOpen(true);
+            }}
+            focusSectionRequest={focusSectionRequest}
+            onConsumeSectionFocus={() => setFocusSectionRequest(null)}
+          />
+        </section>
+
+        <aside
+          ref={previewRailRef}
+          className="studio-rail order-3 flex min-h-[min(36vh,320px)] w-full shrink-0 flex-col border-white/10 bg-zinc-950/80 max-lg:flex-none lg:order-3 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:border-l"
+        >
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/10 px-2 py-2">
+            <div className="flex items-center gap-0.5 rounded-md bg-black/40 p-0.5">{deviceBtn('desktop', Monitor)}{deviceBtn('tablet', Tablet)}
+              {deviceBtn('mobile', Smartphone)}
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -1198,80 +1380,188 @@ export function SiteBuilderPage() {
                   setPreviewRefreshing(true);
                   setPreviewNonce((n) => n + 1);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-white/60 hover:text-slate-800"
+                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
               >
                 <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} />
-                Refresh
+                Update preview
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewFullscreen((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-white/60 hover:text-slate-800"
+                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
               >
-                {previewFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                Focus preview
+                <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Open full preview
               </button>
             </div>
           </div>
-          <div className="min-h-0 flex-1 overflow-auto px-3 pb-4 pt-0 sm:px-5">
+          {previewPagePath && previewPagePath !== selectedServerPath && (
+            <p className="border-b border-white/5 px-2 py-1 font-mono text-[10px] text-violet-300/90">
+              Preview {previewPagePath} · editing {selectedServerPath}
+            </p>
+          )}
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
             <div
-              className="relative mx-auto overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04] transition-[max-width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-              style={{ maxWidth: previewMaxW, width: '100%' }}
+              className="relative mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-lg bg-black/40 ring-1 ring-white/10 transition-[max-width] duration-300 ease-out"
+              style={{ maxWidth: previewMaxW }}
             >
               <div
                 className={cn(
-                  'relative min-h-[min(78vh,680px)] transition-opacity duration-300 ease-out lg:min-h-[min(74vh,820px)]',
-                  previewRefreshing ? 'opacity-60' : 'opacity-100'
+                  'relative flex min-h-0 flex-1 flex-col transition-opacity duration-200 ease-out',
+                  previewRefreshing ? 'opacity-50' : 'opacity-100'
                 )}
               >
                 {previewRefreshing && (
-                  <div className="pointer-events-none absolute right-3 top-3 z-10 flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-medium text-slate-500 shadow-sm ring-1 ring-slate-200/60">
-                    <Loader2 className="h-3 w-3 animate-spin text-violet-500" aria-hidden />
-                    Updating
+                  <div className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-2 py-1 text-[10px] font-medium text-zinc-300">
+                    <Loader2 className="h-3 w-3 animate-spin text-violet-400" aria-hidden />
+                    Loading
                   </div>
                 )}
                 {previewIframe}
               </div>
             </div>
           </div>
-        </main>
-
-        <section
-          id="site-builder-editor-panel"
-          className="order-3 flex min-h-[min(44vh,22rem)] w-full shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/40 max-lg:min-h-[min(42vh,20rem)] lg:order-none lg:min-h-0 lg:w-[min(30vw,360px)] lg:max-w-[400px] lg:min-w-[260px] lg:rounded-2xl lg:shadow-none lg:ring-0"
-        >
-          <SiteHtmlEditorPanel
-            pageLabel={friendlyPageName(selectedServerPath)}
-            value={editorContent}
-            onChange={setEditorContent}
-            onSave={() => void saveFile()}
-            loading={editorLoading}
-            saving={saving}
-            error={editorError}
-            dirty={dirty}
-            empty={htmlPages.length === 0}
-            pageGuidance={pageGuidance}
-            onInsertSection={() => setSectionLibraryOpen(true)}
-            focusSectionRequest={focusSectionRequest}
-            onConsumeSectionFocus={() => setFocusSectionRequest(null)}
-          />
-        </section>
+        </aside>
       </div>
 
-      {previewFullscreen && previewSrc && (
-        <div className="fixed inset-0 z-[80] flex flex-col bg-slate-950/88 p-4 backdrop-blur-md">
-          <div className="mb-3 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setPreviewNonce((n) => n + 1)}>
-              Refresh
+      <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 bg-black/25 px-2 py-1 text-[10px] text-zinc-500">
+        <span className="font-medium text-zinc-400">
+          {workflow.reviewStatus === 'draft' && 'Draft'}
+          {workflow.reviewStatus === 'review_requested' && 'Review requested'}
+          {workflow.reviewStatus === 'ready_for_review' && 'Ready for review'}
+        </span>
+        <details className="min-w-0">
+          <summary className="cursor-pointer font-medium text-zinc-500 hover:text-zinc-300">Review</summary>
+          <div className="mt-1 flex max-w-md flex-col gap-2 rounded border border-white/10 bg-zinc-900/90 p-2">
+            <div className="flex flex-wrap gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-6 px-2 text-[10px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+                onClick={() => patchWorkflow({ reviewStatus: 'review_requested' })}
+              >
+                Request review
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-6 px-2 text-[10px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+                onClick={() => patchWorkflow({ reviewStatus: 'ready_for_review' })}
+              >
+                Ready for review
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-6 px-2 text-[10px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+                onClick={() => patchWorkflow({ reviewStatus: 'draft' })}
+              >
+                Draft
+              </Button>
+            </div>
+            <textarea
+              className="w-full rounded border border-white/10 bg-zinc-950 px-2 py-1 text-[10px] text-zinc-200"
+              rows={2}
+              placeholder="Notes"
+              value={workflow.feedbackNotes}
+              onChange={(e) => setWorkflow((w) => ({ ...w, feedbackNotes: e.target.value }))}
+              onBlur={(e) => patchWorkflow({ feedbackNotes: e.target.value })}
+            />
+          </div>
+        </details>
+        <details className="ml-auto min-w-0">
+          <summary className="cursor-pointer font-medium text-zinc-500 hover:text-zinc-300">Changelog</summary>
+          <ul className="mt-1 max-h-28 max-w-md overflow-y-auto rounded border border-white/10 bg-zinc-900 p-2 text-[10px] text-zinc-400">
+            {workflow.changelog.length === 0 && <li className="text-zinc-600">Empty</li>}
+            {[...workflow.changelog].reverse().map((c, i) => (
+              <li key={`${c.at}-${i}`}>
+                {formatDeployedAt(c.at)} — {c.message}
+              </li>
+            ))}
+          </ul>
+        </details>
+      </footer>
+
+      <Modal
+        open={newSiteChoiceOpen}
+        onClose={() => {
+          setNewSiteChoiceOpen(false);
+          navigate('/projects');
+        }}
+        title="Start this client site"
+      >
+        <p className="text-sm leading-relaxed text-slate-600">
+          No files on the server for this project yet. Pick one — both create real, editable HTML/CSS you can ship. This workspace is for agency
+          production; clients use the portal for review.
+        </p>
+        {newSiteChoiceMessage && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-950 ring-1 ring-amber-100">{newSiteChoiceMessage}</p>
+        )}
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <Button
+            type="button"
+            className="h-11 flex-1 gap-2 text-sm font-semibold"
+            disabled={siteSeeding}
+            onClick={async () => {
+              setNewSiteChoiceMessage(null);
+              const ok = await seedFromTemplates();
+              if (!ok) setNewSiteChoiceMessage('Template start failed. Check the admin API or try blank starter.');
+            }}
+          >
+            {siteSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutTemplate className="h-4 w-4" strokeWidth={2} />}
+            Start from template
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 flex-1 gap-2 text-sm font-semibold"
+            disabled={siteSeeding}
+            onClick={async () => {
+              setNewSiteChoiceMessage(null);
+              const ok = await createBlankCodeSite();
+              if (!ok) setNewSiteChoiceMessage('Could not create blank files.');
+            }}
+          >
+            {siteSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Code2 className="h-4 w-4" strokeWidth={2} />}
+            Start from blank code
+          </Button>
+        </div>
+        <p className="mt-4 text-center text-xs text-slate-500">
+          <button type="button" className="font-semibold text-violet-700 hover:underline" onClick={() => navigate('/projects')}>
+            Back to projects
+          </button>
+        </p>
+      </Modal>
+
+      {previewFullscreen && (previewSrc || localPreviewHtml) && (
+        <div className="fixed inset-0 z-[80] flex flex-col bg-zinc-950/95 p-3 backdrop-blur-md sm:p-4">
+          <div className="mb-2 flex shrink-0 justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-8 border-white/10 bg-zinc-800 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+              onClick={() => {
+                setPreviewRefreshing(true);
+                setPreviewNonce((n) => n + 1);
+              }}
+            >
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
+              Update preview
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setPreviewFullscreen(false)}>
-              Close
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-8 border-white/10 bg-zinc-800 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+              onClick={() => setPreviewFullscreen(false)}
+            >
+              Exit full preview
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-white/10">
             <iframe
               title="Fullscreen preview"
-              src={previewSrc}
+              src={showServerPreview ? previewSrc! : undefined}
+              srcDoc={showServerPreview ? undefined : localPreviewHtml}
               onLoad={() => setPreviewRefreshing(false)}
               className="h-full w-full bg-white"
               sandbox="allow-same-origin allow-popups allow-scripts"
@@ -1286,6 +1576,7 @@ export function SiteBuilderPage() {
           setAddPageOpen(false);
           setAddPageName('');
           setAddPageSlug('');
+          setAddPageInteriorKind('service');
           slugAutoRef.current = true;
         }}
         title="New page"
@@ -1316,6 +1607,18 @@ export function SiteBuilderPage() {
             />
             <p className="mt-1.5 text-[11px] text-slate-400">Shown in your site URL.</p>
           </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700">Page structure</label>
+            <Select
+              value={addPageInteriorKind}
+              onChange={(e) => setAddPageInteriorKind(e.target.value as InteriorPageKind)}
+              className="text-sm"
+            >
+              <option value="service">Service / detail (hero → problem → details → process → proof → CTA)</option>
+              <option value="landing">Campaign landing (hero → problem → solution → proof → offer → FAQ → CTA)</option>
+            </Select>
+            <p className="mt-1.5 text-[11px] text-slate-400">Never starts blank — we seed the full section stack for this page type.</p>
+          </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <Button
@@ -1325,6 +1628,7 @@ export function SiteBuilderPage() {
               setAddPageOpen(false);
               setAddPageName('');
               setAddPageSlug('');
+              setAddPageInteriorKind('service');
               slugAutoRef.current = true;
             }}
           >
@@ -1356,8 +1660,16 @@ export function SiteBuilderPage() {
 
       <SectionLibraryModal
         open={sectionLibraryOpen}
-        onClose={() => setSectionLibraryOpen(false)}
-        items={SECTION_LIBRARY}
+        onClose={() => {
+          setSectionLibraryOpen(false);
+          setInsertSectionAfterIndex(null);
+        }}
+        items={SECTION_LIBRARY_ROWS}
+        insertContext={
+          insertSectionAfterIndex !== null
+            ? `Insert below “${pageSections[insertSectionAfterIndex]?.label ?? 'section'}”.`
+            : 'Insert at bottom of page (before closing body).'
+        }
         onPick={(item) => applySectionFromLibrary(item)}
       />
 

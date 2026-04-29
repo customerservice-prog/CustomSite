@@ -13,7 +13,11 @@ import { MessagesPage } from '@/pages/messages-page';
 import { SettingsPage } from '@/pages/settings-page';
 import { SiteBuilderPage } from '@/pages/site-builder-page';
 import { SiteBuilderRedirectPage } from '@/pages/site-builder-redirect-page';
-import { ClientPortalPage } from '@/pages/client-portal-page';
+import { ClientPortalLayout } from '@/components/client-portal/client-portal-layout';
+import { ClientPortalOverviewPage } from '@/pages/client-portal/client-portal-overview-page';
+import { ClientPortalMessagesPage } from '@/pages/client-portal/client-portal-messages-page';
+import { ClientPortalFilesPage } from '@/pages/client-portal/client-portal-files-page';
+import { ClientPortalInvoicesPage } from '@/pages/client-portal/client-portal-invoices-page';
 import { TasksPage } from '@/pages/tasks-page';
 import { ActivityPage } from '@/pages/activity-page';
 import { FilesPage } from '@/pages/files-page';
@@ -58,7 +62,16 @@ export const router = createHashRouter([
       { path: 'activity', element: <ActivityPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'site-builder', element: <SiteBuilderRedirectPage /> },
-      { path: 'client-portal', element: <ClientPortalPage /> },
+      {
+        path: 'client-portal',
+        element: <ClientPortalLayout />,
+        children: [
+          { index: true, element: <ClientPortalOverviewPage /> },
+          { path: 'messages', element: <ClientPortalMessagesPage /> },
+          { path: 'files', element: <ClientPortalFilesPage /> },
+          { path: 'invoices', element: <ClientPortalInvoicesPage /> },
+        ],
+      },
       { path: 'settings', element: <SettingsPage /> },
     ],
   },

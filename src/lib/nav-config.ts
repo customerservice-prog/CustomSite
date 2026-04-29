@@ -67,7 +67,7 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Growth & Admin',
     items: [
       { label: 'Reports', to: '/reports', icon: BarChart3 },
-      { label: 'Client portal', to: '/client-portal', icon: ShieldCheck },
+      { label: 'Client preview', to: '/client-portal', icon: ShieldCheck },
       { label: 'Conversion workspace', to: '/projects', icon: LayoutGrid },
       { label: 'Settings', to: '/settings', icon: Settings },
     ],

@@ -1,4 +1,4 @@
-import { Outlet, useMatch, useMatches } from 'react-router-dom';
+import { Outlet, useLocation, useMatch, useMatches } from 'react-router-dom';
 import { TopHeader } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import { CommandMenu } from '@/components/ui/command-menu';
@@ -15,12 +15,28 @@ export { MobileNavTrigger } from '@/components/layout/sidebar';
 export function AppShell() {
   const matches = useMatches();
   const crumbs = crumbsFromMatches(matches);
+  const { pathname } = useLocation();
   const siteBuilderFull = useMatch({ path: '/projects/:projectId/site', end: true });
+  const clientPortalExperience = pathname === '/client-portal' || pathname.startsWith('/client-portal/');
 
   if (siteBuilderFull) {
     return (
       <div className="flex h-screen flex-col overflow-hidden bg-[#f4f5f8] text-gray-900">
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+          <Outlet />
+        </main>
+        <ToastStack />
+        <CommandMenu />
+        <CreateEntityModals />
+        <WorkspaceModals />
+      </div>
+    );
+  }
+
+  if (clientPortalExperience) {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden bg-stone-100 text-stone-900">
+        <main className="min-h-0 flex-1 overflow-y-auto">
           <Outlet />
         </main>
         <ToastStack />

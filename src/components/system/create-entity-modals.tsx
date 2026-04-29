@@ -9,7 +9,8 @@ import { useClients, useInvoices, useProjects } from '@/store/hooks';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { PROJECT_TEMPLATES, getProjectTemplate } from '@/lib/project-templates';
 import { SERVICE_PACKAGES } from '@/lib/service-offer';
-import type { ServicePackageId } from '@/lib/types/entities';
+import type { ServicePackageId, SiteBuildArchetypeId } from '@/lib/types/entities';
+import { SITE_BUILD_ARCHETYPE_OPTIONS } from '@/lib/site-builder/archetypes';
 
 export function CreateEntityModals() {
   const navigate = useNavigate();
@@ -48,6 +49,7 @@ export function CreateEntityModals() {
     ownerId: 'u1' as string,
     templateId: '' as string,
     servicePackage: '' as '' | ServicePackageId,
+    siteBuildArchetype: '' as '' | SiteBuildArchetypeId,
   });
   const [invoiceForm, setInvoiceForm] = useState({
     clientId: '',
@@ -181,6 +183,8 @@ export function CreateEntityModals() {
                   templateId: v,
                   budget: tmpl ? String(tmpl.defaultBudget) : f.budget,
                   due: tmpl ? tmpl.defaultDue : f.due,
+                  siteBuildArchetype:
+                    tmpl?.deliveryFocus === 'client_site' ? f.siteBuildArchetype || 'service_business' : '',
                 }));
               }}
             >
@@ -199,6 +203,28 @@ export function CreateEntityModals() {
             <p className="text-xs text-slate-500">
               {getProjectTemplate(projectForm.templateId)?.description ?? ''} Leave the name empty to auto-name from the template.
             </p>
+          )}
+          {getProjectTemplate(projectForm.templateId)?.deliveryFocus === 'client_site' && (
+            <Field label="What type of site are we building?">
+              <Select
+                value={projectForm.siteBuildArchetype || 'service_business'}
+                onChange={(e) =>
+                  setProjectForm((f) => ({
+                    ...f,
+                    siteBuildArchetype: e.target.value as SiteBuildArchetypeId,
+                  }))
+                }
+              >
+                {SITE_BUILD_ARCHETYPE_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                Sets default homepage structure, starter copy, and section templates in the builder.
+              </p>
+            </Field>
           )}
           <Field label="Budget (USD)">
             <Input
@@ -226,6 +252,7 @@ export function CreateEntityModals() {
               onClick={() => {
                 if (!projectForm.clientId) return;
                 if (!projectForm.templateId && !projectForm.name.trim()) return;
+                const tmpl = projectForm.templateId ? getProjectTemplate(projectForm.templateId) : undefined;
                 const pid = addProject({
                   name: projectForm.name,
                   clientId: projectForm.clientId,
@@ -234,6 +261,10 @@ export function CreateEntityModals() {
                   ownerId: projectForm.ownerId,
                   templateId: projectForm.templateId || undefined,
                   servicePackage: projectForm.servicePackage || undefined,
+                  siteBuildArchetype:
+                    tmpl?.deliveryFocus === 'client_site'
+                      ? projectForm.siteBuildArchetype || 'service_business'
+                      : undefined,
                 });
                 if (!pid) return;
                 setProjectForm({
@@ -244,6 +275,7 @@ export function CreateEntityModals() {
                   ownerId: currentUserId,
                   templateId: '',
                   servicePackage: '',
+                  siteBuildArchetype: '',
                 });
                 closeModal();
                 navigate(`/projects/${pid}`);

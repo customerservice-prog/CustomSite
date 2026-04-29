@@ -13,7 +13,7 @@ export function newSectionId(): string {
 const TYPE_LABELS: Record<string, string> = {
   hero: 'Hero',
   trust: 'Trust',
-  services: 'Products & services',
+  services: 'Products',
   bundles: 'Bundles & offers',
   comparison: 'Comparison',
   testimonials: 'Testimonials',
@@ -30,6 +30,12 @@ const TYPE_LABELS: Record<string, string> = {
   'comparison-table': 'Comparison',
   'testimonial-cards': 'Testimonials',
   'cta-band': 'CTA block',
+  faq: 'FAQ',
+  problem: 'Problem',
+  solution: 'Solution',
+  proof: 'Proof',
+  'service-detail': 'Service details',
+  process: 'Process',
 };
 
 export function sectionLabel(type: string): string {
@@ -100,8 +106,57 @@ export function reorderCsSections(fullHtml: string, fromIndex: number, toIndex: 
   }
 }
 
-/** Conversion copy tuned by archetype — every line pushes clarity or action. */
-function conversionVoice(a: SiteArchetype): {
+/** Remove the nth tracked section (0-based among `data-cs-section` direct body children). */
+export function removeCsSection(fullHtml: string, index: number): string {
+  try {
+    const doc = new DOMParser().parseFromString(fullHtml, 'text/html');
+    const body = doc.body;
+    const sections = [...body.children].filter((c) => c.hasAttribute('data-cs-section'));
+    if (index < 0 || index >= sections.length) return fullHtml;
+    sections[index]!.remove();
+    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  } catch {
+    return fullHtml;
+  }
+}
+
+/**
+ * Insert a full section HTML fragment after section `afterIndex` (0-based). Use -1 to insert before the first section (after nav if present).
+ */
+export function insertCsSectionAfter(fullHtml: string, afterIndex: number, fragmentHtml: string): string {
+  try {
+    const fragDoc = new DOMParser().parseFromString(
+      `<!DOCTYPE html><html><body>${fragmentHtml}</body></html>`,
+      'text/html'
+    );
+    const newNode = fragDoc.body.firstElementChild;
+    if (!newNode) return insertBeforeBodyClose(fullHtml, fragmentHtml);
+
+    const doc = new DOMParser().parseFromString(fullHtml, 'text/html');
+    const body = doc.body;
+    const sections = [...body.children].filter((c) => c.hasAttribute('data-cs-section'));
+    const imported = doc.importNode(newNode, true);
+
+    if (afterIndex < 0) {
+      const nav = [...body.children].find((c) => c.tagName === 'NAV');
+      if (nav) nav.insertAdjacentElement('afterend', imported as Element);
+      else if (sections[0]) body.insertBefore(imported, sections[0]);
+      else body.appendChild(imported);
+    } else if (afterIndex >= sections.length - 1) {
+      const last = sections[sections.length - 1];
+      if (last) last.insertAdjacentElement('afterend', imported as Element);
+      else return insertBeforeBodyClose(fullHtml, fragmentHtml);
+    } else {
+      sections[afterIndex]!.insertAdjacentElement('afterend', imported as Element);
+    }
+    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  } catch {
+    return insertBeforeBodyClose(fullHtml, fragmentHtml);
+  }
+}
+
+/** Conversion copy tuned by archetype â€” every line pushes clarity or action. */
+export function conversionVoice(a: SiteArchetype): {
   heroTitle: string;
   heroSub: string;
   primaryCta: string;
@@ -112,11 +167,11 @@ function conversionVoice(a: SiteArchetype): {
   switch (a) {
     case 'ecommerce':
       return {
-        heroTitle: 'Ship-ready bundles your customers feel good buying',
+        heroTitle: 'Event furniture delivered fast, built to last.',
         heroSub:
-          'Clear tiers, honest delivery dates, and one-tap checkout — fewer abandoned carts, more repeat orders.',
+          'Shop tables, chairs, tents, and bundles for events, venues, and rentals â€” clear stock, insured freight, crews that show up briefed.',
         primaryCta: 'Shop best sellers',
-        secondaryCta: 'See delivery zones',
+        secondaryCta: 'Get a bulk quote',
         urgency: 'Order before cutoff for next-week delivery slots.',
         finalCta: 'Checkout in under 2 minutes',
       };
@@ -127,7 +182,7 @@ function conversionVoice(a: SiteArchetype): {
           'Strip the noise: headline states the outcome, proof handles doubt, CTA tells them exactly what happens next.',
         primaryCta: 'Claim the offer',
         secondaryCta: 'See what you get',
-        urgency: 'Spots are capped this month — when they are gone, this page closes.',
+        urgency: 'Spots are capped this month â€” when they are gone, this page closes.',
         finalCta: 'Lock in your spot',
       };
     case 'agency':
@@ -137,23 +192,23 @@ function conversionVoice(a: SiteArchetype): {
           'You sell outcomes, not decks. This page proves process, shows the work, and asks for the next step without awkwardness.',
         primaryCta: 'Book a fit call',
         secondaryCta: 'View selected work',
-        urgency: 'We onboard two new partners per quarter — next window opens soon.',
+        urgency: 'We onboard two new partners per quarter â€” next window opens soon.',
         finalCta: 'Start the brief',
       };
     default:
       return {
-        heroTitle: 'High-quality event furniture delivered on your timeline',
+        heroTitle: 'Get more qualified leads from your website.',
         heroSub:
-          'Clients choose you when risk drops: fast quotes, insured delivery, and crews who show up ready — say that above the fold.',
-        primaryCta: 'Get a quote in 24h',
-        secondaryCta: 'See packages',
-        urgency: 'Most venues book setup slots 48 hours out — hold yours now.',
-        finalCta: 'Book setup',
+          'We rebuild unclear sites into focused conversion systems â€” clear offer above the fold, proof that kills doubt, and one obvious next step.',
+        primaryCta: 'Request a quote',
+        secondaryCta: 'See how it works',
+        urgency: 'We return quotes within one business day â€” include scope so we can answer in one pass.',
+        finalCta: 'Book a discovery call',
       };
   }
 }
 
-const CS_STYLES = `<style id="cs-pro-structure">
+export const CS_STYLES = `<style id="cs-pro-structure">
 :root { --cs-accent:#4f46e5; --cs-accent2:#6366f1; --cs-gold:#d4a853; --cs-muted:#64748b; --cs-card:#f8fafc; }
 .cs-body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;color:#0f172a;line-height:1.55;background:#fff;}
 .cs-nav{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid #e2e8f0;}
@@ -213,13 +268,16 @@ const CS_STYLES = `<style id="cs-pro-structure">
 .cs-var-minimal.cs-hero .cs-hero-lead{color:#475569;}
 .cs-var-minimal.cs-hero .cs-btn-ghost{color:#334155;border-color:#cbd5e1;}
 .cs-var-minimal.cs-hero .cs-btn-ghost:hover{background:#f1f5f9;}
+.cs-faq{background:#fff;}
+.cs-faq details{border:1px solid #e2e8f0;border-radius:.65rem;padding:.85rem 1rem;margin-bottom:.65rem;background:#f8fafc;}
+.cs-faq summary{cursor:pointer;font-weight:800;font-size:.88rem;color:#0f172a;}
+.cs-faq p{margin:.5rem 0 0;font-size:.82rem;color:#475569;line-height:1.5;}
+.cs-problem{background:linear-gradient(180deg,#fff7ed,#fff);}
+.cs-process .cs-step{display:flex;gap:.75rem;margin-bottom:1rem;align-items:flex-start;}
+.cs-process .cs-step-num{flex-shrink:0;width:1.75rem;height:1.75rem;border-radius:999px;background:var(--cs-accent);color:#fff;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;}
 </style>`;
 
-function navHtml(siteTitle: string): string {
-  return `<nav class="cs-nav"><div class="cs-nav-inner"><a class="cs-logo" href="#">${escapeHtml(siteTitle)}</a><div class="cs-nav-links"><a href="#trust">Proof</a><a href="#services">What we offer</a><a href="#bundles">Packages</a><a href="#compare">Why us</a><a href="#stories">Results</a><a class="cs-btn cs-btn-darkbg" href="#cta">Get started</a></div></div></nav>`;
-}
-
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -227,453 +285,6 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-export function buildFullSiteIndexHtml(archetype: SiteArchetype, ctx: { siteTitle: string; clientCompany?: string }): string {
-  const v = conversionVoice(archetype);
-  const brand = escapeHtml(ctx.siteTitle);
-  const co = ctx.clientCompany ? escapeHtml(ctx.clientCompany) : 'your team';
-
-  const hero = wrapCsSection(
-    'hero',
-    `<div class="cs-inner">
-      <h1>${escapeHtml(v.heroTitle)}</h1>
-      <p class="cs-hero-lead">${escapeHtml(v.heroSub)} Built for ${co} — swap details, keep the promise.</p>
-      <div class="cs-hero-actions">
-        <a class="cs-btn" href="#cta">${escapeHtml(v.primaryCta)}</a>
-        <a class="cs-btn cs-btn-ghost" href="#bundles">${escapeHtml(v.secondaryCta)}</a>
-      </div>
-      <div class="cs-hero-visual" role="img" aria-label="Product or service preview placeholder">Drop hero image / mockup here</div>
-    </div>`,
-    newSectionId(),
-    'cs-hero',
-    { purpose: 'convert', stage: 'top', variant: 'bold' }
-  );
-
-  const trust = wrapCsSection(
-    'trust',
-    `<div class="cs-inner" id="trust">
-      <div class="cs-trust-grid">
-        <div><div class="cs-trust-stat">5,000+</div><div class="cs-trust-label">events &amp; installs served</div></div>
-        <div><div class="cs-trust-stat">48h</div><div class="cs-trust-label">typical quote turnaround</div></div>
-        <div><div class="cs-trust-stat">10 yr</div><div class="cs-trust-label">durability-backed guarantee*</div></div>
-        <div><div class="cs-trust-stat">4.9★</div><div class="cs-trust-label">avg. post-event rating</div></div>
-      </div>
-      <div class="cs-trust-bullets">
-        <span>Insured delivery</span><span>·</span><span>Dedicated setup crew</span><span>·</span><span>No surprise fees on scope</span>
-      </div>
-      <p class="cs-muted" style="margin:1rem 0 0;text-align:center;font-size:.72rem;">*Edit guarantee language to match what you can legally stand behind.</p>
-    </div>`,
-    newSectionId(),
-    'cs-trust',
-    { purpose: 'trust', stage: 'top', variant: 'minimal' }
-  );
-
-  const services = wrapCsSection(
-    'services',
-    `<div class="cs-inner" id="services">
-      <h2 style="margin:0 0 .35rem;font-size:1.4rem;font-weight:800;">Pick the line that fits the job</h2>
-      <p class="cs-muted" style="margin:0 0 1.25rem;max-width:40rem;">Short labels + price hints reduce “how much?” friction. One CTA per card.</p>
-      <div class="cs-grid">
-        <div class="cs-card">
-          <h3>Essentials line</h3>
-          <p class="cs-muted" style="margin:0;font-size:.88rem;">Seating, tables, basics — in stock, fast turnaround.</p>
-          <p class="cs-price-hint">From $899 / event</p>
-          <div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.8rem;padding:.5rem 1rem;">Configure</a></div>
-        </div>
-        <div class="cs-card">
-          <h3>Premium staging</h3>
-          <p class="cs-muted" style="margin:0;font-size:.88rem;">Statement pieces + lighting — for launches &amp; galas.</p>
-          <p class="cs-price-hint">From $2.4k / event</p>
-          <div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.8rem;padding:.5rem 1rem;">See mood boards</a></div>
-        </div>
-        <div class="cs-card">
-          <h3>Full-service</h3>
-          <p class="cs-muted" style="margin:0;font-size:.88rem;">Design → delivery → strike — one invoice, one team.</p>
-          <p class="cs-price-hint">Custom quote</p>
-          <div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.8rem;padding:.5rem 1rem;">Book walkthrough</a></div>
-        </div>
-      </div>
-    </div>`,
-    newSectionId(),
-    '',
-    { purpose: 'convert', stage: 'middle', variant: 'bold' }
-  );
-
-  const bundles = wrapCsSection(
-    'bundles',
-    `<div class="cs-inner cs-bundles" id="bundles" style="border-radius:1rem;padding:2rem 1rem;">
-      <h2 style="margin:0 0 .35rem;font-size:1.4rem;font-weight:800;">Packages buyers compare in seconds</h2>
-      <p class="cs-muted" style="margin:0 0 1.25rem;max-width:42rem;">Make differences obvious: what ships, what support, what speed. Highlight the middle tier most people pick.</p>
-      <div class="cs-grid" style="align-items:stretch;">
-        <div class="cs-card"><h3>Starter</h3><p class="cs-muted" style="margin:0;font-size:.85rem;">Core inventory · email support · 5-day lead time</p><p class="cs-price-hint">$X / mo</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.78rem;padding:.45rem .9rem;background:#64748b;">Choose Starter</a></div></div>
-        <div class="cs-card cs-popular"><span class="cs-popular-badge">Most chosen</span><h3>Pro</h3><p class="cs-muted" style="margin:0;font-size:.85rem;">Priority routing · phone support · 48h rush option</p><p class="cs-price-hint">$Y / mo</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.78rem;padding:.45rem .9rem;">Choose Pro</a></div></div>
-        <div class="cs-card"><h3>Premium</h3><p class="cs-muted" style="margin:0;font-size:.85rem;">On-site supervisor · custom SKUs · SLA-backed windows</p><p class="cs-price-hint">$Z / mo</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.78rem;padding:.45rem .9rem;background:#0f172a;">Talk to sales</a></div></div>
-      </div>
-    </div>`,
-    newSectionId(),
-    '',
-    { purpose: 'convert', stage: 'middle', variant: 'bold' }
-  );
-
-  const comparison = wrapCsSection(
-    'comparison',
-    `<div class="cs-inner cs-compare" id="compare">
-      <h2 style="margin:0 0 .75rem;font-size:1.4rem;font-weight:800;">Why teams switch to us — not “another vendor”</h2>
-      <table>
-        <thead><tr><th>Decision factor</th><th class="cs-win">You (${brand})</th><th class="cs-lose">Typical alternative</th></tr></thead>
-        <tbody>
-          <tr><td>Price clarity upfront</td><td class="cs-win">Line-item quote in 24h</td><td class="cs-lose">Ballpark → surprises</td></tr>
-          <tr><td>Delivery speed</td><td class="cs-win">Named arrival window</td><td class="cs-lose">“Sometime Friday”</td></tr>
-          <tr><td>Quality / condition</td><td class="cs-win">Photo-checked pack list</td><td class="cs-lose">Mixed batches</td></tr>
-          <tr><td>Guarantee in writing</td><td class="cs-win">Backed terms you can show legal</td><td class="cs-lose">Handshake policies</td></tr>
-          <tr><td>Support when it breaks</td><td class="cs-win">Single hotline + backup crew</td><td class="cs-lose">Ticket queues</td></tr>
-        </tbody>
-      </table>
-    </div>`,
-    newSectionId(),
-    '',
-    { purpose: 'convert', stage: 'middle', variant: 'minimal' }
-  );
-
-  const testimonials = wrapCsSection(
-    'testimonials',
-    `<div class="cs-inner" id="stories">
-      <h2 style="margin:0 0 .75rem;font-size:1.4rem;font-weight:800;">Results, not adjectives</h2>
-      <div class="cs-grid">
-        <blockquote class="cs-quote">“They cut our venue setup from 6 hours to under 2 — same headcount. We rebooked for three more seasons.”<strong>Jordan M. · Director of Ops, Northwind Events</strong><cite>200+ guest corporate summit · Chicago</cite></blockquote>
-        <blockquote class="cs-quote">“First quote matched the final invoice. That alone saved us a board conversation.”<strong>Alex R. · Procurement, Harborline Hospitality</strong><cite>Multi-city product tour</cite></blockquote>
-      </div>
-    </div>`,
-    newSectionId(),
-    '',
-    { purpose: 'trust', stage: 'middle', variant: 'bold' }
-  );
-
-  const cta = wrapCsSection(
-    'cta',
-    `<div class="cs-inner" id="cta">
-      <h2>Get your setup sorted in 48 hours</h2>
-      <p style="opacity:.95;margin:0 0 .35rem;font-weight:600;">${escapeHtml(v.urgency)}</p>
-      <p style="opacity:.88;margin:0 0 1.25rem;font-size:.9rem;">Tell us date, headcount, and venue — we reply with what ships and what it costs.</p>
-      <a class="cs-btn cs-btn-darkbg" href="#">${escapeHtml(v.finalCta)}</a>
-    </div>`,
-    newSectionId(),
-    'cs-cta',
-    { purpose: 'convert', stage: 'bottom', variant: 'bold' }
-  );
-
-  const footer = wrapCsSection(
-    'footer',
-    `<div class="cs-inner">
-      <div class="cs-footer-grid">
-        <div><div style="font-weight:800;color:#f8fafc;margin-bottom:.5rem;">${brand}</div><div class="cs-footer-trust">Licensed · Insured · References on request</div></div>
-        <div><div style="font-weight:700;color:#cbd5e1;margin-bottom:.35rem;">Navigate</div><a href="#services">Offers</a> · <a href="#bundles">Packages</a> · <a href="#compare">Compare</a> · <a href="#cta">Book</a></div>
-        <div><div style="font-weight:700;color:#cbd5e1;margin-bottom:.35rem;">Contact</div><span>hello@yourcompany.com</span><br /><span>(555) 010‑0199</span></div>
-      </div>
-    </div>`,
-    newSectionId(),
-    'cs-footer',
-    { purpose: 'inform', stage: 'bottom', variant: 'minimal' }
-  );
-
-  const body = `<body class="cs-body">
-${navHtml(ctx.siteTitle)}
-${hero}
-${trust}
-${services}
-${bundles}
-${comparison}
-${testimonials}
-${cta}
-${footer}
-</body>`;
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${brand}</title>
-  ${CS_STYLES}
-</head>
-${body}
-</html>`;
-}
-
-export function buildInteriorSitePageHtml(archetype: SiteArchetype, pageTitle: string, siteTitle: string): string {
-  const v = conversionVoice(archetype);
-  const t = escapeHtml(pageTitle);
-  const b = escapeHtml(siteTitle);
-
-  const hero = wrapCsSection(
-    'hero',
-    `<div class="cs-inner" style="padding:1.5rem 0 1rem;">
-      <p class="cs-muted" style="margin:0 0 .35rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;">${b}</p>
-      <h1 style="margin:0 0 .65rem;font-size:clamp(1.45rem,3vw,2rem);font-weight:800;line-height:1.15;">${t}</h1>
-      <p class="cs-muted" style="margin:0 0 1rem;max-width:36rem;">State the outcome in one line — then prove it below. If this page does not move someone toward a quote, cut copy until it does.</p>
-      <div class="cs-hero-actions" style="margin-bottom:0;">
-        <a class="cs-btn" href="index.html#cta">${escapeHtml(v.primaryCta)}</a>
-        <a class="cs-btn cs-btn-ghost" href="#proof" style="border-color:#e2e8f0;color:#475569;">See proof</a>
-      </div>
-    </div>`,
-    newSectionId(),
-    'cs-hero',
-    { purpose: 'convert', stage: 'top', variant: 'minimal' }
-  );
-
-  const proof = wrapCsSection(
-    'trust',
-    `<div class="cs-inner" id="proof" style="padding-top:1rem;padding-bottom:1rem;">
-      <div class="cs-trust-bullets" style="justify-content:flex-start;">
-        <span>Named project owner</span><span>·</span><span>Written SLA</span><span>·</span><span>Reference call on request</span>
-      </div>
-    </div>`,
-    newSectionId(),
-    'cs-trust',
-    { purpose: 'trust', stage: 'top', variant: 'minimal' }
-  );
-
-  const main = wrapCsSection(
-    'services',
-    `<div class="cs-inner">
-      <div class="cs-card" style="max-width:44rem;">
-        <h3 style="margin:0 0 .5rem;font-size:1.1rem;font-weight:800;">What to put on this page</h3>
-        <ul class="cs-muted" style="margin:0;padding-left:1.1rem;font-size:.88rem;">
-          <li>Who it is for + what they get in week one</li>
-          <li>Objections → one-line rebuttals (noise, budget, timing)</li>
-          <li>One primary CTA repeated at the bottom</li>
-        </ul>
-        <p class="cs-price-hint" style="margin-top:1rem;">Swap this card for packages, bios, FAQs, or a fee table.</p>
-      </div>
-    </div>`,
-    newSectionId(),
-    '',
-    { purpose: 'inform', stage: 'middle', variant: 'minimal' }
-  );
-
-  const cta = wrapCsSection(
-    'cta',
-    `<div class="cs-inner cs-cta" style="border-radius:.75rem;padding:2rem 1.25rem;">
-      <h2 style="margin:0 0 .35rem;font-size:1.25rem;font-weight:800;">${escapeHtml(v.urgency)}</h2>
-      <p style="opacity:.9;margin:0 0 1rem;font-size:.88rem;">Same-day reply on business days — include venue + date.</p>
-      <a class="cs-btn cs-btn-darkbg" href="index.html#cta">${escapeHtml(v.finalCta)}</a>
-    </div>`,
-    newSectionId(),
-    'cs-cta',
-    { purpose: 'convert', stage: 'bottom', variant: 'bold' }
-  );
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${t} · ${b}</title>
-  ${CS_STYLES}
-</head>
-<body class="cs-body" style="padding:0 1rem 2.5rem;">
-${hero}
-${proof}
-${main}
-${cta}
-</body>
-</html>`;
-}
-
-export type SectionLibraryItem = {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  buildInner: () => string;
-  purpose: CsPurpose;
-  stage: CsStage;
-  variant: CsVariant;
-  /** Optional extra section class (e.g. cs-hero) */
-  sectionClass?: string;
-};
-
-export const SECTION_LIBRARY: SectionLibraryItem[] = [
-  {
-    id: 'lib-hero-minimal',
-    title: 'Hero — minimal',
-    description: 'Tight copy, single CTA — when traffic is warm.',
-    type: 'hero-minimal',
-    purpose: 'convert',
-    stage: 'top',
-    variant: 'minimal',
-    sectionClass: 'cs-hero',
-    buildInner: () =>
-      `<div class="cs-inner" style="padding:2rem 0;color:#0f172a;">
-        <h2 style="margin:0 0 .5rem;font-size:1.65rem;font-weight:800;">Cut 30% off setup time this season</h2>
-        <p class="cs-muted" style="margin:0 0 1rem;max-width:32rem;">Fewer trucks, tighter windows, one coordinator — say the mechanism, not the slogan.</p>
-        <a class="cs-btn" href="#cta">Get the plan</a>
-      </div>`,
-  },
-  {
-    id: 'lib-hero-bold',
-    title: 'Hero — bold',
-    description: 'Dual CTA + visual slot — default high-conversion layout.',
-    type: 'hero-bold',
-    purpose: 'convert',
-    stage: 'top',
-    variant: 'bold',
-    sectionClass: 'cs-hero',
-    buildInner: () =>
-      `<div class="cs-inner">
-        <h2 style="margin:0 0 .5rem;font-size:1.85rem;font-weight:800;">Win the weekend — furniture that shows up ready</h2>
-        <p class="cs-hero-lead">Quote in 24h · insured freight · crew briefed on your floor plan.</p>
-        <div class="cs-hero-actions">
-          <a class="cs-btn" href="#cta">Hold my date</a>
-          <a class="cs-btn cs-btn-ghost" href="#bundles">Compare packages</a>
-        </div>
-        <div class="cs-hero-visual">Hero visual</div>
-      </div>`,
-  },
-  {
-    id: 'lib-hero-premium',
-    title: 'Hero — premium',
-    description: 'Dark, high-trust — for upmarket / B2B premium.',
-    type: 'hero-premium',
-    purpose: 'convert',
-    stage: 'top',
-    variant: 'premium',
-    sectionClass: 'cs-hero',
-    buildInner: () =>
-      `<div class="cs-inner">
-        <h2 style="margin:0 0 .5rem;font-size:1.9rem;font-weight:800;">White-glove installs for venues that cannot miss</h2>
-        <p class="cs-hero-lead">Dedicated producer · contingency stock on truck · post-event strike included.</p>
-        <div class="cs-hero-actions"><a class="cs-btn" href="#cta">Request executive brief</a></div>
-      </div>`,
-  },
-  {
-    id: 'lib-trust-minimal',
-    title: 'Trust — compact stats',
-    description: 'Numbers that kill doubt — delivery, volume, guarantee.',
-    type: 'trust-bar',
-    purpose: 'trust',
-    stage: 'top',
-    variant: 'minimal',
-    sectionClass: 'cs-trust',
-    buildInner: () =>
-      `<div class="cs-inner"><div class="cs-trust-grid">
-        <div><div class="cs-trust-stat">5k+</div><div class="cs-trust-label">events</div></div>
-        <div><div class="cs-trust-stat">48h</div><div class="cs-trust-label">quotes</div></div>
-        <div><div class="cs-trust-stat">10 yr</div><div class="cs-trust-label">guarantee</div></div>
-      </div></div>`,
-  },
-  {
-    id: 'lib-trust-bold',
-    title: 'Trust — proof strip',
-    description: 'Guarantee + delivery + warranty in one scannable row.',
-    type: 'trust-proof',
-    purpose: 'trust',
-    stage: 'top',
-    variant: 'bold',
-    sectionClass: 'cs-trust',
-    buildInner: () =>
-      `<div class="cs-inner">
-        <div class="cs-trust-bullets" style="justify-content:center;font-size:.85rem;">
-          <span>Insured to the door</span><span>·</span><span>10-year durability backing</span><span>·</span><span>5,000+ events without a no-show crew</span>
-        </div>
-      </div>`,
-  },
-  {
-    id: 'lib-products',
-    title: 'Services — decision cards',
-    description: 'Categories + price hints + CTA each — reduce friction.',
-    type: 'product-grid',
-    purpose: 'convert',
-    stage: 'middle',
-    variant: 'bold',
-    buildInner: () =>
-      `<div class="cs-inner"><h3 style="margin:0 0 1rem;font-size:1.2rem;font-weight:800;">Choose a lane</h3><div class="cs-grid">
-        <div class="cs-card"><h3>Rush line</h3><p class="cs-muted" style="margin:0;font-size:.85rem;">In-stock SKUs · 72h deploy</p><p class="cs-price-hint">From $1.2k</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.75rem;padding:.45rem .85rem;">Check dates</a></div></div>
-        <div class="cs-card"><h3>Catalog line</h3><p class="cs-muted" style="margin:0;font-size:.85rem;">Full lookbooks · 2-week lead</p><p class="cs-price-hint">From $2.8k</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.75rem;padding:.45rem .85rem;">Build a cart</a></div></div>
-        <div class="cs-card"><h3>Custom build</h3><p class="cs-muted" style="margin:0;font-size:.85rem;">Bespoke sets · design call</p><p class="cs-price-hint">Custom</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.75rem;padding:.45rem .85rem;">Book design</a></div></div>
-      </div></div>`,
-  },
-  {
-    id: 'lib-bundles',
-    title: 'Bundles — 3 tiers + “most chosen”',
-    description: 'Clear deltas + highlighted middle tier.',
-    type: 'pricing-bundles',
-    purpose: 'convert',
-    stage: 'middle',
-    variant: 'bold',
-    buildInner: () =>
-      `<div class="cs-inner cs-bundles" style="border-radius:1rem;padding:1.75rem 1rem;"><h3 style="margin:0 0 1rem;font-weight:800;">Pick the bundle that matches risk</h3><div class="cs-grid">
-        <div class="cs-card"><h3>Starter</h3><p class="cs-muted" style="margin:0;font-size:.8rem;">Self-assembly guide · email support</p><p class="cs-price-hint">$X</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.72rem;background:#64748b;">Select</a></div></div>
-        <div class="cs-card cs-popular"><span class="cs-popular-badge">Most chosen</span><h3>Pro</h3><p class="cs-muted" style="margin:0;font-size:.8rem;">Crew on-site · backup stock</p><p class="cs-price-hint">$Y</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.72rem;">Select Pro</a></div></div>
-        <div class="cs-card"><h3>Premium</h3><p class="cs-muted" style="margin:0;font-size:.8rem;">Producer + SLA window</p><p class="cs-price-hint">$Z</p><div class="cs-card-footer"><a class="cs-btn" href="#cta" style="font-size:.72rem;background:#0f172a;">Talk to us</a></div></div>
-      </div></div>`,
-  },
-  {
-    id: 'lib-compare',
-    title: 'Comparison — you vs others',
-    description: 'Eliminate alternatives on speed, clarity, guarantee, support.',
-    type: 'comparison-table',
-    purpose: 'convert',
-    stage: 'middle',
-    variant: 'minimal',
-    buildInner: () =>
-      `<div class="cs-inner cs-compare"><table><thead><tr><th>Factor</th><th class="cs-win">You</th><th class="cs-lose">Others</th></tr></thead><tbody>
-        <tr><td>Price clarity</td><td class="cs-win">Itemized in one business day</td><td class="cs-lose">Ranges that creep</td></tr>
-        <tr><td>Delivery speed</td><td class="cs-win">Named crew + window</td><td class="cs-lose">“Driver will call”</td></tr>
-        <tr><td>Guarantee</td><td class="cs-win">In the contract</td><td class="cs-lose">Verbal only</td></tr>
-        <tr><td>Support</td><td class="cs-win">Direct line</td><td class="cs-lose">Portal roulette</td></tr>
-      </tbody></table></div>`,
-  },
-  {
-    id: 'lib-testimonials',
-    title: 'Testimonials — result + context',
-    description: 'Quote + role + specific outcome (template).',
-    type: 'testimonial-cards',
-    purpose: 'trust',
-    stage: 'middle',
-    variant: 'bold',
-    buildInner: () =>
-      `<div class="cs-inner"><div class="cs-grid">
-        <blockquote class="cs-quote">“Saved us 4 hours on load-in — same footprint as last year.”<strong>Casey L. · Ops Lead, Riverfront Convention</strong><cite>1,200 attendees · two-day show</cite></blockquote>
-        <blockquote class="cs-quote">“We stopped getting ‘what will this cost?’ emails after we sent them this breakdown.”<strong>Morgan P. · Marketing, Alloy Retail</strong><cite>Nationwide pop-up tour</cite></blockquote>
-      </div></div>`,
-  },
-  {
-    id: 'lib-cta-minimal',
-    title: 'CTA — minimal strip',
-    description: 'Urgency line + one button.',
-    type: 'cta-band',
-    purpose: 'convert',
-    stage: 'bottom',
-    variant: 'minimal',
-    sectionClass: 'cs-cta',
-    buildInner: () =>
-      `<div class="cs-inner" style="text-align:center;padding:1.5rem 0;">
-        <p style="margin:0 0 .75rem;font-weight:700;color:#0f172a;">Slots for next Friday are 60% full.</p>
-        <a class="cs-btn" href="#">Hold my slot</a>
-      </div>`,
-  },
-  {
-    id: 'lib-cta-bold',
-    title: 'CTA — bold close',
-    description: 'Urgency + subcopy + strong button.',
-    type: 'cta-band',
-    purpose: 'convert',
-    stage: 'bottom',
-    variant: 'bold',
-    sectionClass: 'cs-cta',
-    buildInner: () =>
-      `<div class="cs-inner">
-        <h3 style="margin:0 0 .35rem;font-size:1.35rem;font-weight:800;">Lock delivery before the calendar fills</h3>
-        <p style="opacity:.92;margin:0 0 1rem;font-size:.9rem;">Reply with date + headcount — we send what ships, what it costs, and what happens next.</p>
-        <a class="cs-btn cs-btn-darkbg" href="#">Get the quote</a>
-      </div>`,
-  },
-];
-
-export function buildLibrarySectionHtml(item: SectionLibraryItem): string {
-  return wrapCsSection(item.type, item.buildInner(), newSectionId(), item.sectionClass ?? '', {
-    purpose: item.purpose,
-    stage: item.stage,
-    variant: item.variant,
-  });
+export function navHtml(siteTitle: string): string {
+  return `<nav class="cs-nav"><div class="cs-nav-inner"><a class="cs-logo" href="#">${escapeHtml(siteTitle)}</a><div class="cs-nav-links"><a href="#trust">Proof</a><a href="#services">What we offer</a><a href="#bundles">Packages</a><a href="#compare">Why us</a><a href="#stories">Results</a><a class="cs-btn cs-btn-darkbg" href="#cta">Get started</a></div></div></nav>`;
 }

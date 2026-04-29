@@ -50,6 +50,9 @@ export type ServicePackageId = 'starter' | 'growth' | 'pro';
 /** Client site lifecycle (only meaningful when deliveryFocus is client_site). */
 export type ClientSiteStatus = 'draft' | 'review' | 'live';
 
+/** Matches `SiteArchetype` — set at project creation for template copy + section library. */
+export type SiteBuildArchetypeId = 'service_business' | 'ecommerce' | 'landing' | 'agency';
+
 /** Default pipeline every website project follows — reduces thinking per engagement. */
 export type ProjectLifecycleStage =
   | 'inquiry'
@@ -95,6 +98,11 @@ export type Project = {
   lifecycleStage: ProjectLifecycleStage;
   /** When created from a template — never start from scratch. */
   templateId?: string | null;
+  /**
+   * Website template / conversion voice for this client site.
+   * When set, overrides archetype inferred from `templateId` for the builder.
+   */
+  siteBuildArchetype?: SiteBuildArchetypeId | null;
   /** Who owes the next move for momentum / Pulse. */
   waitingOn?: 'client' | 'agency' | null;
   deliveryFocus: ProjectDeliveryFocus;

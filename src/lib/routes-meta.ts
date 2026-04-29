@@ -18,6 +18,6 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   activity: { title: 'Activity', segment: 'activity' },
   reports: { title: 'Reports', segment: 'reports' },
   'site-builder': { title: 'Site builder', segment: 'site-builder' },
-  'client-portal': { title: 'Client Portal', segment: 'client-portal' },
+  'client-portal': { title: 'Your project', segment: 'client-portal' },
   settings: { title: 'Settings', segment: 'settings' },
 };

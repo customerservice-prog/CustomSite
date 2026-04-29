@@ -43,9 +43,18 @@ export function saveBuilderWorkflow(projectId: string, state: BuilderWorkflowSta
   }
 }
 
+function notifyBuilderWorkflowUpdated(projectId: string) {
+  try {
+    window.dispatchEvent(new CustomEvent('customsite-builder-workflow', { detail: { projectId } }));
+  } catch {
+    /* */
+  }
+}
+
 export function appendChangelog(projectId: string, message: string, prev: BuilderWorkflowState): BuilderWorkflowState {
   const entry: ChangelogEntry = { at: new Date().toISOString(), message };
   const next = { ...prev, changelog: [...prev.changelog, entry].slice(-80) };
   saveBuilderWorkflow(projectId, next);
+  notifyBuilderWorkflowUpdated(projectId);
   return next;
 }
