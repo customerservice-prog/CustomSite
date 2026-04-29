@@ -65,7 +65,7 @@ function isAuthSessionFailure(error: string, code?: string): boolean {
 /** User-facing copy for start-from-template / blank-code failures. */
 function formatSiteSeedModalMessage(kind: 'template' | 'blank', result: { error: string; code?: string }): string {
   if (isAuthSessionFailure(result.error, result.code)) {
-    return `${result.error} Sign in again from your agency login on the same host as this app (for example your hosted client-portal URL with the agency flag your team uses), then return to Site builder. Your session token may have expired.`;
+    return `${result.error} The app will try to refresh your session when a refresh token is saved. If this keeps appearing, sign in again from your agency login on this same host, then reopen Site builder.`;
   }
   const prefix = kind === 'template' ? 'Template start failed.' : 'Blank start failed.';
   return `${prefix} ${result.error} Create the project in Admin (or add it in Supabase) if it only exists in the local demo.`;
