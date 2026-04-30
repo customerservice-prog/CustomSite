@@ -116,6 +116,11 @@ app.use('/api/admin', siteBuilderRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api', configPublicRoutes);
 
+/** Stub for legacy or future clients that POST to a same-origin broadcast relay. Realtime uses Supabase channels in-app. */
+app.all('/api/broadcast', (req, res) => {
+  res.json({ ok: true, relay: false, message: 'Broadcast relay not implemented on this server.' });
+});
+
 app.use(previewSiteMiddleware);
 
 function buildSitemapXml(hostname) {

@@ -37,7 +37,7 @@ export function EntityDrawer({
         aria-label="Close drawer"
         onClick={onClose}
       />
-      <div className="drawer-panel-animate relative flex h-full w-full max-w-[420px] border-l border-slate-200/80 bg-white shadow-2xl shadow-slate-900/10">
+      <div className="drawer-panel-animate relative flex h-full w-full max-w-[420px] flex-col border-l border-slate-200/80 bg-white shadow-2xl shadow-slate-900/10">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-6">
           <div className="min-w-0">
             <h2 id="entity-drawer-title" className="truncate text-lg font-semibold tracking-tight text-slate-900">

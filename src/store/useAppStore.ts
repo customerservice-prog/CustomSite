@@ -1141,7 +1141,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       type: 'project_phase_changed',
       entityKind: 'project',
       entityId: projectId,
-      title: `“${p.name}” lifecycle ${prev} → ${next}`,
+      title: `“${p.name}” ${LIFECYCLE_LABELS[prev]} → ${LIFECYCLE_LABELS[next]}`,
       metadata: { clientId: p.clientId, projectId, from: prev, to: next },
     });
     if (next === 'launch') {

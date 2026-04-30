@@ -31,6 +31,7 @@ import { TimeTrackingPage } from '@/pages/time-tracking-page';
 import { CalendarPage } from '@/pages/calendar-page';
 import { ReportsPage } from '@/pages/reports-page';
 import { RbyanBrainPage } from '@/pages/rbyan-brain-page';
+import { NotFoundPage } from '@/pages/not-found-page';
 
 export const router = createHashRouter([
   {
@@ -78,6 +79,7 @@ export const router = createHashRouter([
         ],
       },
       { path: 'settings', element: <SettingsPage /> },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ]);

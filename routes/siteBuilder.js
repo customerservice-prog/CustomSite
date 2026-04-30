@@ -13,6 +13,27 @@ const router = express.Router();
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
+/** Matches `src/lib/data/demo-ids.ts` — auto-create DB row so `site_files` FK succeeds for seeded local demo. */
+const DEMO_BUILDER_PROJECT_ID = '00000000-0000-4000-8000-000000000002';
+
+async function ensureDemoProjectRow(supabase, projectId, clientUserId) {
+  if (projectId !== DEMO_BUILDER_PROJECT_ID || !clientUserId) return false;
+  const { error } = await supabase.from('projects').upsert(
+    {
+      id: projectId,
+      client_id: clientUserId,
+      name: 'E-Commerce Site (Tables & Chairs)',
+      status: 'discovery',
+    },
+    { onConflict: 'id' }
+  );
+  if (error) {
+    console.error('ensureDemoProjectRow', error);
+    return false;
+  }
+  return true;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_BYTES },
@@ -171,6 +192,20 @@ router.put('/projects/:projectId/site/file', async (req, res) => {
         .insert(insertRow)
         .select()
         .single());
+    }
+    if (
+      error &&
+      !existing &&
+      /site_files_project_id_fkey|foreign key constraint/i.test(String(error.message || ''))
+    ) {
+      const fixed = await ensureDemoProjectRow(supabase, projectId, req.profile?.id);
+      if (fixed) {
+        ({ data, error } = await supabase
+          .from('site_files')
+          .insert(insertRow)
+          .select()
+          .single());
+      }
     }
     if (error && /content_encoding/.test(String(error.message))) {
       const rowPlain = { content: text, updated_at: now };

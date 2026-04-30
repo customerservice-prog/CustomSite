@@ -57,3 +57,11 @@ export function crumbsFromMatches(matches: UIMatch[]): Crumb[] {
 
   return [...base, { label: meta.title }];
 }
+
+/** Browser tab title from the same trail as the header breadcrumbs. */
+export function documentTitleFromMatches(matches: UIMatch[]): string {
+  const crumbs = crumbsFromMatches(matches);
+  const last = crumbs[crumbs.length - 1];
+  const leaf = (last?.label ?? 'CustomSite').trim() || 'CustomSite';
+  return `${leaf} — CustomSite`;
+}

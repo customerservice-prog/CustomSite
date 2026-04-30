@@ -39,6 +39,21 @@ function humanizeError(err: unknown): string {
   return 'Something went wrong — your edits are still here. Try again shortly.';
 }
 
+function humanizeSiteApiSaveError(apiError: string | undefined): string {
+  const m = (apiError || '').trim();
+  if (!m) return humanizeError(new Error('unknown'));
+  if (/foreign key|site_files_project_id_fkey|violates foreign key/i.test(m)) {
+    return 'Cloud save failed: this project is not in the database yet (common with demo IDs). Your files are saved in this browser only — run the demo seed SQL or create the project in Supabase, then save again.';
+  }
+  if (/network|failed to fetch|load failed/i.test(m)) {
+    return 'Could not reach the server — your work is saved in this browser only.';
+  }
+  if (/401|403|session|unauth|invalid session/i.test(m)) {
+    return 'Session expired — sign in again. Your work is saved in this browser only.';
+  }
+  return `Cloud save failed: ${m}`;
+}
+
 function escapePreviewErr(msg: string): string {
   return msg
     .replace(/&/g, '&amp;')
@@ -307,8 +322,8 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
         [projectId]: { ...row, saveStatus: 'saving', saveError: null, lastSavedAt: now },
       },
     }));
-    void saveProjectSite(siteToSave)
-      .then(() => {
+    void saveProjectSite(siteToSave).then((result) => {
+      if (result.apiOk) {
         if (withSnapshot) {
           get().appendSnapshot(projectId, 'Manual save', ['Saved from Site Builder'], snapshotFiles);
         }
@@ -322,20 +337,20 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
             },
           };
         });
-      })
-      .catch((e) => {
-        const saveError = humanizeError(e);
-        set((s) => {
-          const r = get().byProjectId[projectId];
-          if (!r) return s;
-          return {
-            byProjectId: {
-              ...s.byProjectId,
-              [projectId]: { ...r, saveStatus: 'error', saveError },
-            },
-          };
-        });
+        return;
+      }
+      const saveError = humanizeSiteApiSaveError(result.apiError);
+      set((s) => {
+        const r = get().byProjectId[projectId];
+        if (!r) return s;
+        return {
+          byProjectId: {
+            ...s.byProjectId,
+            [projectId]: { ...r, saveStatus: 'error', saveError },
+          },
+        };
       });
+    });
   },
 
   applyRbyanOutput(projectId, files, meta) {
@@ -366,14 +381,16 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
         },
       },
     }));
-    void saveProjectSite(site).catch(() => {
+    void saveProjectSite(site).then((result) => {
+      if (result.apiOk) return;
+      const saveError = humanizeSiteApiSaveError(result.apiError);
       set((st) => {
         const r = get().byProjectId[projectId];
         if (!r) return st;
         return {
           byProjectId: {
             ...st.byProjectId,
-            [projectId]: { ...r, saveStatus: 'error', saveError: humanizeError(new Error('network')) },
+            [projectId]: { ...r, saveStatus: 'error', saveError },
           },
         };
       });

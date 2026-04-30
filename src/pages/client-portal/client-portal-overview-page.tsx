@@ -181,7 +181,7 @@ export function ClientPortalOverviewPage() {
             title="Preview of your website"
             srcDoc={previewHtml}
             className="h-[min(640px,72vh)] w-full bg-white"
-            sandbox="allow-same-origin allow-popups"
+            sandbox="allow-scripts allow-popups"
           />
         </div>
 
@@ -271,7 +271,7 @@ export function ClientPortalOverviewPage() {
               title="Full preview"
               srcDoc={previewHtml}
               className="h-full w-full bg-white"
-              sandbox="allow-same-origin allow-popups"
+              sandbox="allow-scripts allow-popups"
             />
           </div>
         </div>

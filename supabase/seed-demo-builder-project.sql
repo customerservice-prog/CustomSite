@@ -1,9 +1,13 @@
 -- Optional: create the demo project row so Site builder API can insert into `site_files`.
--- IDs must match `src/lib/data/demo-ids.ts` (DEMO_CLIENT_ID / DEMO_PROJECT_ID).
+-- Project id must match `src/lib/data/demo-ids.ts` DEMO_PROJECT_ID.
+-- Note: `public.projects.client_id` references `public.users(id)` (auth user), not the in-app CRM client id.
 --
 -- 1. Sign in once so `auth.users` + `public.users` exist for your account.
 -- 2. Copy your `public.users.id` (same as auth user id) from Supabase Table Editor.
 -- 3. Replace YOUR_USER_UUID below and run this in the SQL editor.
+--
+-- The hosted API also auto-upserts this row on first site file save when you are signed in as admin
+-- (see `ensureDemoProjectRow` in `routes/siteBuilder.js`).
 
 -- insert into public.projects (id, client_id, name, status)
 -- values (

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, Copy, ExternalLink, Eye, Loader2, Maximize2, Plus, Rocket, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 import { useProjects } from '@/store/hooks';
 import type { ProjectSite } from '@/lib/site-builder/project-site-model';
 import { newFile } from '@/lib/site-builder/project-site-model';
@@ -80,6 +81,14 @@ export function SiteBuilderFoundationPage() {
   const [previewIframeKey, setPreviewIframeKey] = useState(0);
   const [previewDebugLines, setPreviewDebugLines] = useState<string[]>([]);
   const [fullscreenPreviewOpen, setFullscreenPreviewOpen] = useState(false);
+  const [publishSetupOpen, setPublishSetupOpen] = useState(false);
+
+  const modKey = useMemo(() => {
+    if (typeof navigator === 'undefined') return 'Ctrl';
+    const ua = navigator.userAgent || '';
+    const p = navigator.platform || '';
+    return /Mac|iPhone|iPod|iPad/i.test(p) || /Mac OS/.test(ua) ? '⌘' : 'Ctrl';
+  }, []);
 
   const unsaved = draftContent !== savedContent;
 
@@ -642,7 +651,9 @@ export function SiteBuilderFoundationPage() {
               <Copy className="h-3 w-3" aria-hidden />
               Copy site
             </Button>
-            <span className="ml-auto hidden text-[9px] text-zinc-600 sm:inline">⌘S save · ⌘⇧P page · ⌘⇧S section · ⌘/ AI</span>
+            <span className="ml-auto hidden text-[9px] text-zinc-600 sm:inline">
+              {modKey === '⌘' ? `${modKey}S save · ${modKey}⇧P page · ${modKey}⇧S section · ${modKey}/ AI` : `${modKey}+S save · ${modKey}+Shift+P page · ${modKey}+Shift+S section · ${modKey}+/ AI`}
+            </span>
           </div>
         ) : null}
         {showQuickPageBar && hasFiles ? (
@@ -810,6 +821,29 @@ export function SiteBuilderFoundationPage() {
           </p>
         </div>
       ) : null}
+
+      <Modal open={publishSetupOpen} title="Publish setup" onClose={() => setPublishSetupOpen(false)}>
+        <div className="space-y-3 text-sm text-slate-600">
+          <p>
+            Connect hosting, domains, and your live URL from the project workspace. Your editor stays open until you choose
+            to leave.
+          </p>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setPublishSetupOpen(false)}>
+              Stay in builder
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setPublishSetupOpen(false);
+                navigate(`/projects/${projectId}`);
+              }}
+            >
+              Open project settings
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

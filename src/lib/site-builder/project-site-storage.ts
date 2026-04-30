@@ -55,35 +55,56 @@ async function tryLoadFromApi(projectId: string): Promise<ProjectSite | null> {
   return { projectId, files };
 }
 
-async function tryPushToApi(site: ProjectSite): Promise<void> {
+async function tryPushToApi(site: ProjectSite): Promise<{ ok: true } | { ok: false; error: string }> {
   for (const f of site.files) {
-    await adminFetchJson(`/api/admin/projects/${encodeURIComponent(site.projectId)}/site/file`, {
+    const r = await adminFetchJson<unknown>(`/api/admin/projects/${encodeURIComponent(site.projectId)}/site/file`, {
       method: 'PUT',
       json: { path: f.name, content: f.content, content_encoding: 'utf8' },
     });
+    if (!r.ok) {
+      return { ok: false, error: r.error || `Could not save “${f.name}”` };
+    }
   }
+  return { ok: true };
 }
 
-/** Load site files: prefer local cache; if empty, try API once and mirror to local. */
+/**
+ * Load site files: when the API has files, treat that as authoritative and mirror to local.
+ * If the API is empty or unreachable, fall back to local cache so offline edits are not wiped.
+ */
 export async function getProjectSite(projectId: string): Promise<ProjectSite> {
-  const cached = readLocal(projectId);
-  if (cached && cached.files.length > 0) {
-    return cached;
-  }
-
   const fromApi = await tryLoadFromApi(projectId);
   if (fromApi && fromApi.files.length > 0) {
     writeLocal(fromApi);
     return fromApi;
   }
 
+  const cached = readLocal(projectId);
+  if (cached && cached.files.length > 0) {
+    return cached;
+  }
+
   return { projectId, files: [] };
 }
 
-/** Persist site bundle to localStorage; best-effort sync to API (never throws). */
-export async function saveProjectSite(site: ProjectSite): Promise<void> {
+export type SaveProjectSiteResult = {
+  /** Always written to localStorage before the API attempt. */
+  localSaved: true;
+  apiOk: boolean;
+  apiError?: string;
+};
+
+/** Persist site bundle to localStorage, then sync each file to the API. Never throws. */
+export async function saveProjectSite(site: ProjectSite): Promise<SaveProjectSiteResult> {
   writeLocal(site);
-  void tryPushToApi(site).catch(() => {
-    /* offline / auth — local copy is canonical for builder */
-  });
+  try {
+    const api = await tryPushToApi(site);
+    if (!api.ok) {
+      return { localSaved: true, apiOk: false, apiError: api.error };
+    }
+    return { localSaved: true, apiOk: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { localSaved: true, apiOk: false, apiError: msg };
+  }
 }

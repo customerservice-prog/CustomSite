@@ -72,6 +72,13 @@ export function CreateEntityModals() {
     return projects.filter((p) => p.clientId === invoiceForm.clientId);
   }, [projects, invoiceForm.clientId]);
 
+  const canCreateProject = useMemo(
+    () =>
+      Boolean(projectForm.clientId) &&
+      (Boolean(projectForm.templateId) || projectForm.name.trim().length > 0),
+    [projectForm.clientId, projectForm.templateId, projectForm.name]
+  );
+
   useEffect(() => {
     if (activeModal === 'create-project' && selectedClientId) {
       setProjectForm((f) => ({ ...f, clientId: selectedClientId }));
@@ -153,6 +160,9 @@ export function CreateEntityModals() {
                 </option>
               ))}
             </Select>
+            {!projectForm.clientId ? (
+              <p className="mt-1 text-xs text-amber-800">Required — pick which client this project belongs to.</p>
+            ) : null}
           </Field>
           <Field label="Package sold (optional)">
             <Select
@@ -249,9 +259,10 @@ export function CreateEntityModals() {
             </Button>
             <Button
               type="button"
+              disabled={!canCreateProject}
+              title={!canCreateProject ? 'Choose a client and a template or project name' : undefined}
               onClick={() => {
-                if (!projectForm.clientId) return;
-                if (!projectForm.templateId && !projectForm.name.trim()) return;
+                if (!canCreateProject) return;
                 const tmpl = projectForm.templateId ? getProjectTemplate(projectForm.templateId) : undefined;
                 const pid = addProject({
                   name: projectForm.name,

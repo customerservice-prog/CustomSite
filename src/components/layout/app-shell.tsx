@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Outlet, useLocation, useMatch, useMatches } from 'react-router-dom';
 import { TopHeader } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -6,7 +7,7 @@ import { ToastStack } from '@/components/ui/toast-stack';
 import { CreateEntityModals } from '@/components/system/create-entity-modals';
 import { WorkspaceModals } from '@/components/system/workspace-modals';
 import { PageContainer } from '@/components/design-system/page-container';
-import { crumbsFromMatches } from '@/lib/breadcrumbs';
+import { crumbsFromMatches, documentTitleFromMatches } from '@/lib/breadcrumbs';
 import { DemoDatasetBanner } from '@/components/layout/demo-dataset-banner';
 import { WorkflowGlobalHotkeys } from '@/components/workflow/workflow-global-hotkeys';
 import { BuildHelperDock } from '@/components/build-helper/build-helper-dock';
@@ -21,6 +22,10 @@ export function AppShell() {
   const matches = useMatches();
   const crumbs = crumbsFromMatches(matches);
   const { pathname } = useLocation();
+
+  useEffect(() => {
+    document.title = documentTitleFromMatches(matches);
+  }, [matches]);
   const siteBuilderFull = useMatch({ path: '/projects/:projectId/site', end: true });
   const rbyanBrainFull = useMatch({ path: '/rbyan', end: true });
   const clientPortalExperience = pathname === '/client-portal' || pathname.startsWith('/client-portal/');

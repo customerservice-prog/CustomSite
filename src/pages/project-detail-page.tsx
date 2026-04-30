@@ -617,7 +617,7 @@ export function ProjectDetailPage() {
                   title="Live conversion preview"
                   srcDoc={homePreviewHtml}
                   className="h-[min(520px,62vh)] w-full bg-white"
-                  sandbox="allow-same-origin allow-popups"
+                  sandbox="allow-scripts allow-popups"
                 />
               </div>
               <p className="mt-2 text-[10px] text-white/55">Same preview the client sees in their portal.</p>

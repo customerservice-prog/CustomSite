@@ -354,7 +354,7 @@ export function RbyanBrainPage() {
     if (!v || !projectId) return;
     const site: ProjectSite = { projectId, files: rbyanFilesToProjectFiles(projectId, v.files) };
     useProjectSiteWorkspaceStore.getState().setSiteImmediate(projectId, site);
-    await saveProjectSite(site);
+    const saveResult = await saveProjectSite(site);
     void refreshWorkspace();
     setPreviewVersionId(null);
     setStagingFiles(null);
@@ -368,7 +368,11 @@ export function RbyanBrainPage() {
       source: 'mock',
     });
     setPreviewNonce((n) => n + 1);
-    toast(`Restored “${v.label}”.`, 'success');
+    if (!saveResult.apiOk) {
+      toast(`Restored locally. Cloud sync failed: ${saveResult.apiError ?? 'Unknown error'}`, 'warning');
+    } else {
+      toast(`Restored “${v.label}”.`, 'success');
+    }
   };
 
   return (
