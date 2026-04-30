@@ -97,7 +97,12 @@ type Store = {
   refreshVersions: (projectId: string) => void;
   appendSnapshot: (projectId: string, label: string, plan: string[], files: RbyanVersionEntry['files']) => void;
   /** UI shows saved immediately; persistence runs in background. */
-  optimisticPersist: (projectId: string, opts?: { snapshot?: boolean }) => void;
+  optimisticPersist: (
+    projectId: string,
+    opts?: { snapshot?: boolean; snapshotLabel?: string; snapshotPlan?: string[] }
+  ) => void;
+  /** Restore files from a saved version entry (local history). */
+  revertWorkspaceToVersion: (projectId: string, versionId: string) => { ok: true } | { ok: false; error: string };
   /** Merge Rbyan output into the shared site + version list + background save. */
   applyRbyanOutput: (
     projectId: string,
@@ -385,6 +390,8 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
     const withSnapshot = opts?.snapshot !== false;
     const siteToSave = get().byProjectId[projectId]!.site;
     const snapshotFiles = siteFilesToVersionPayload(siteToSave);
+    const snapLabel = opts?.snapshotLabel;
+    const snapPlan = opts?.snapshotPlan;
     set((s) => ({
       byProjectId: {
         ...s.byProjectId,
@@ -407,10 +414,16 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
           });
           return;
         }
+        if (withSnapshot) {
+          const label =
+            snapLabel ??
+            (result.apiOk ? 'Manual save — saved to server' : 'Manual save — local only (server failed)');
+          const plan =
+            snapPlan ??
+            (result.apiOk ? ['Server API accepted the write'] : ['Server API failed', result.apiError || 'unknown']);
+          get().appendSnapshot(projectId, label, plan, snapshotFiles);
+        }
         if (result.apiOk) {
-          if (withSnapshot) {
-            get().appendSnapshot(projectId, 'Manual save', ['Saved from Site Builder'], snapshotFiles);
-          }
           set((s) => {
             const r = get().byProjectId[projectId];
             if (!r) return s;
@@ -454,6 +467,13 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
     get().ensureRow(projectId);
     const prev = get().byProjectId[projectId];
     if (!prev) return;
+    appendRbyanVersion(projectId, {
+      id: `pre-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      label: 'Before AI apply',
+      plan: ['Automatic restore point before Bryan the Brain output'],
+      files: siteFilesToVersionPayload(prev.site) as RbyanGeneratedFile[],
+    });
     const site: ProjectSite = { projectId, files: rbyanFilesToProjectFiles(projectId, files) };
     const previewHtml = recomputePreview(site);
     appendRbyanVersion(projectId, {
@@ -541,5 +561,19 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
           };
         });
       });
+  },
+
+  revertWorkspaceToVersion(projectId, versionId) {
+    const list = listRbyanVersions(projectId);
+    const v = list.find((x) => x.id === versionId);
+    if (!v) return { ok: false, error: 'That version was not found.' };
+    const site: ProjectSite = { projectId, files: rbyanFilesToProjectFiles(projectId, v.files) };
+    get().setSiteImmediate(projectId, site);
+    get().optimisticPersist(projectId, {
+      snapshot: true,
+      snapshotLabel: `Restored: ${v.label}`,
+      snapshotPlan: ['revert', versionId],
+    });
+    return { ok: true };
   },
 }));

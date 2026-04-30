@@ -64,6 +64,7 @@ export function SiteBuilderFoundationPage() {
   const importSiteBundleFromJson = useProjectSiteWorkspaceStore((s) => s.importSiteBundleFromJson);
   const recordPersistResult = useProjectSiteWorkspaceStore((s) => s.recordPersistResult);
   const flushPreview = useProjectSiteWorkspaceStore((s) => s.flushPreview);
+  const revertWorkspaceToVersion = useProjectSiteWorkspaceStore((s) => s.revertWorkspaceToVersion);
 
   const site: ProjectSite = row?.site ?? { projectId: projectId || '', files: [] };
   const previewHtml = row?.previewHtml ?? '';
@@ -74,6 +75,7 @@ export function SiteBuilderFoundationPage() {
   const lastSavedAt = row?.lastSavedAt ?? null;
   const builderSurface = row?.builderSurface ?? 'code';
   const rbyanBusy = row?.rbyanBusy ?? false;
+  const versions = row?.versions ?? [];
 
   const [activeFileId, setActiveFileId] = useState('index.html');
   const [draftContent, setDraftContent] = useState('');
@@ -97,6 +99,7 @@ export function SiteBuilderFoundationPage() {
   const [importBundleOpen, setImportBundleOpen] = useState(false);
   const [importPaste, setImportPaste] = useState('');
   const [previewPulse, setPreviewPulse] = useState(false);
+  const [serverReachable, setServerReachable] = useState<boolean | null>(null);
 
   const modKey = useMemo(() => {
     if (typeof navigator === 'undefined') return 'Ctrl';
@@ -184,6 +187,21 @@ export function SiteBuilderFoundationPage() {
   }, [projectId, hydrate]);
 
   useEffect(() => {
+    let cancelled = false;
+    setServerReachable(null);
+    fetch('/api/config/public', { credentials: 'same-origin' })
+      .then((res) => {
+        if (!cancelled) setServerReachable(res.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setServerReachable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
     if (!projectId || !row?.hydrated || didInitEditor.current) return;
     const s = useProjectSiteWorkspaceStore.getState().byProjectId[projectId]?.site;
     if (!s?.files.length) return;
@@ -257,6 +275,24 @@ export function SiteBuilderFoundationPage() {
     setSavedContent(draftContent);
     optimisticPersist(projectId, { snapshot: true });
   }, [projectId, activeFileId, draftContent, patchSiteFile, optimisticPersist]);
+
+  const handleRevertVersion = useCallback(
+    (versionId: string) => {
+      if (!projectId) return;
+      const result = revertWorkspaceToVersion(projectId, versionId);
+      if (!result.ok) {
+        toast(result.error, 'error');
+        return;
+      }
+      const latest = useProjectSiteWorkspaceStore.getState().byProjectId[projectId]?.site;
+      if (!latest?.files.length) return;
+      const pick = latest.files.some((f) => f.name === activeFileId) ? activeFileId : 'index.html';
+      applyFileToEditor(latest, pick);
+      flushPreview(projectId);
+      toast('Workspace restored from snapshot.', 'success');
+    },
+    [projectId, revertWorkspaceToVersion, toast, activeFileId, applyFileToEditor, flushPreview]
+  );
 
   const openPublishPanel = useCallback(() => {
     saveCurrentToSite();
@@ -621,9 +657,9 @@ export function SiteBuilderFoundationPage() {
           <div className="flex-1" />
           {saveStatus === 'saved' && !unsaved ? (
             <span className="text-[10px] font-medium text-emerald-400/90">
-              Saved
+              Saved to server
               {lastSavedAt != null ? (
-                <span className="ml-1 font-normal text-zinc-500" title="Synced to the server and mirrored in this browser">
+                <span className="ml-1 font-normal text-zinc-500" title="Server API accepted the last write">
                   · {new Date(lastSavedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                 </span>
               ) : null}
@@ -900,6 +936,10 @@ export function SiteBuilderFoundationPage() {
               previewHtml={previewHtml}
               missingCoreFiles={missingCoreFiles}
               onClearEvents={() => setPreviewDebugEvents([])}
+              serverReachable={serverReachable}
+              rbyanBusy={rbyanBusy}
+              versions={versions}
+              onRevertVersion={handleRevertVersion}
               expanded={builderDebugExpanded}
               onExpandedChange={setBuilderDebugExpanded}
             />
@@ -950,6 +990,10 @@ export function SiteBuilderFoundationPage() {
               previewHtml={previewHtml}
               missingCoreFiles={missingCoreFiles}
               onClearEvents={() => setPreviewDebugEvents([])}
+              serverReachable={serverReachable}
+              rbyanBusy={rbyanBusy}
+              versions={versions}
+              onRevertVersion={handleRevertVersion}
               expanded={builderDebugExpanded}
               onExpandedChange={setBuilderDebugExpanded}
             />
@@ -986,8 +1030,8 @@ export function SiteBuilderFoundationPage() {
                 <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Builder save</p>
                 <p className="mt-1.5 text-sm text-zinc-200">
                   {saveStatus === 'saving' && 'Saving to browser and cloud…'}
-                  {saveStatus === 'saved' && 'Files synced to the server.'}
-                  {saveStatus === 'saved_local_only' && 'Saved in this browser only — cloud sync failed (see message below).'}
+                  {saveStatus === 'saved' && 'Saved to server — the API reported success.'}
+                  {saveStatus === 'saved_local_only' && 'Local only — cloud save failed (see message below).'}
                   {saveStatus === 'error' && 'Save error — check the message below.'}
                   {saveStatus === 'idle' && 'Save status will update after you edit or save.'}
                 </p>

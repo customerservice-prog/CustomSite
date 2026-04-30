@@ -22,6 +22,35 @@ export const PREVIEW_ISOLATION_SCRIPT = `
       }
     } catch (e) {}
   }
+  function runSandboxProbes() {
+    function postProbe(name, outcome) {
+      post('sandbox-probe-' + name, outcome);
+    }
+    try {
+      void parent.localStorage.length;
+      postProbe('parent-localStorage', 'leaked:readable');
+    } catch (e) {
+      postProbe('parent-localStorage', 'blocked:' + ((e && e.name) || 'Error'));
+    }
+    try {
+      var pn = parent.document && parent.document.documentElement && parent.document.documentElement.tagName;
+      postProbe('parent-document', 'leaked:' + String(pn || '?'));
+    } catch (e2) {
+      postProbe('parent-document', 'blocked:' + ((e2 && e2.name) || 'Error'));
+    }
+    try {
+      var ph = String(parent.location.href).slice(0, 240);
+      postProbe('parent-location-href', 'leaked:' + ph);
+    } catch (e3) {
+      postProbe('parent-location-href', 'blocked:' + ((e3 && e3.name) || 'Error'));
+    }
+    try {
+      window.top.location = '/customsite-preview-sandbox-test';
+      postProbe('top-location-assign', 'leaked:no-throw');
+    } catch (e4) {
+      postProbe('top-location-assign', 'blocked:' + ((e4 && e4.name) || 'Error'));
+    }
+  }
   function showBlockedNavToast(href) {
     try {
       console.warn('Blocked preview navigation:', href);
@@ -54,7 +83,11 @@ export const PREVIEW_ISOLATION_SCRIPT = `
       blockNav(e, 'blocked-target', tgt + ' ' + href.slice(0, 120), true);
       return;
     }
-    if (!href || low === '#' || low.startsWith('#')) return;
+    if (!href) return;
+    if (low === '#' || low === '#/' || (low.charAt(0) === '#' && low.length <= 120)) {
+      blockNav(e, 'blocked-hash-href', href.slice(0, 200), true);
+      return;
+    }
     if (low.indexOf('javascript:') === 0) {
       blockNav(e, 'blocked-javascript-href', href.slice(0, 120), true);
       return;
@@ -137,6 +170,7 @@ export const PREVIEW_ISOLATION_SCRIPT = `
     },
     true
   );
+  runSandboxProbes();
 })();
 <\/script>
 `.trim();

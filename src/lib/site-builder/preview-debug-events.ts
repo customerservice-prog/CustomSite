@@ -42,11 +42,22 @@ export function categorizePreviewMessageType(type: string): PreviewDebugCategory
     t === 'blocked-javascript-href' ||
     t === 'blocked-protocol-relative' ||
     t === 'blocked-root-path' ||
-    t === 'blocked-relative-nav'
+    t === 'blocked-relative-nav' ||
+    t === 'blocked-hash-href'
   ) {
     return 'blocked';
   }
   return 'iframe';
+}
+
+const SANDBOX_PROBE_PREFIX = 'sandbox-probe-';
+
+/** From preview postMessage events: any `leaked:` outcome means the iframe sandbox is broken. */
+export function deriveSandboxStatus(events: PreviewDebugEvent[]): 'pending' | 'safe' | 'leaked' {
+  const probes = events.filter((e) => e.type.startsWith(SANDBOX_PROBE_PREFIX));
+  if (probes.some((e) => e.detail.startsWith('leaked'))) return 'leaked';
+  if (probes.length >= 4 && probes.every((e) => e.detail.startsWith('blocked'))) return 'safe';
+  return 'pending';
 }
 
 /** Short heading for each postMessage `type` in the debug UI */
@@ -76,7 +87,14 @@ export function previewEventTypeLabel(type: string): string {
       return 'Open URL failed';
     case 'blocked-form':
       return 'Form submit blocked';
+    case 'blocked-hash-href':
+      return 'Hash / empty fragment link';
+    case 'workspace-load':
+      return 'Workspace load';
+    case 'workspace-save':
+      return 'Workspace save';
     default:
+      if (type.startsWith('sandbox-probe-')) return type.replace(SANDBOX_PROBE_PREFIX, 'Sandbox: ');
       return type || 'Event';
   }
 }
