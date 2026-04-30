@@ -4,7 +4,7 @@ export const SPEED_SECTION_SNIPPET = `
 <section class="speed-inserted" data-speed-section id="speed-section-latest" style="margin:0;padding:clamp(2.5rem,5vw,4rem) 1.5rem;background:linear-gradient(180deg,#fafafa,#f4f4f5);border-top:1px solid #e4e4e7">
   <div style="max-width:48rem;margin:0 auto">
     <h2 style="margin:0 0 0.75rem;font-size:clamp(1.35rem,2.5vw,1.75rem);letter-spacing:-0.02em;color:#18181b">New section</h2>
-    <p style="margin:0 0 1.25rem;color:#52525b;line-height:1.65;font-size:0.95rem">Replace this placeholder with your copy — or ask Rbyan to refine it.</p>
+    <p style="margin:0 0 1.25rem;color:#52525b;line-height:1.65;font-size:0.95rem">Replace this placeholder with your copy — or ask Bryan the Brain to refine it.</p>
     <a href="#cta" style="display:inline-flex;align-items:center;border-radius:0.5rem;background:#7c3aed;color:#fff;font-weight:600;font-size:0.875rem;padding:0.55rem 1rem;text-decoration:none">Primary action</a>
   </div>
 </section>`.trim();

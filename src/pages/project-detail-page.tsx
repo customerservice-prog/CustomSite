@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { DetailPageLayout } from '@/components/layout/templates/detail-page-layout';
 import { Tabs } from '@/components/ui/tabs';
@@ -35,7 +35,9 @@ import { formatCurrency } from '@/lib/format-display';
 import { liveBuildNextLines } from '@/lib/live-build-status';
 import { buildProjectLiveActivityFeed } from '@/lib/project-live-feed';
 import { microProgressForPage } from '@/lib/site-production/page-micro-progress';
+import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
 import { siteProductionBundleKey, useSiteProductionStore } from '@/store/useSiteProductionStore';
+import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
 import type { Project, ProjectLifecycleStage } from '@/lib/types/entities';
 import { useShell } from '@/context/shell-context';
 import { useProject, useProjectActivities } from '@/store/hooks';
@@ -121,6 +123,23 @@ export function ProjectDetailPage() {
 
   const ensurePagesForProject = useSiteProductionStore((s) => s.ensurePagesForProject);
   const sectionsByBundle = useSiteProductionStore((s) => s.sectionsByBundle);
+  const hydrateWorkspaceSite = useProjectSiteWorkspaceStore((s) => s.hydrate);
+  const flushWorkspacePreview = useProjectSiteWorkspaceStore((s) => s.flushPreview);
+
+  const openWorkspacePreviewInNewTab = useCallback(async () => {
+    if (!project?.id) return;
+    await hydrateWorkspaceSite(project.id);
+    const row = useProjectSiteWorkspaceStore.getState().byProjectId[project.id];
+    if (!row?.site?.files?.length) {
+      toast('Add site files in the builder first—we opened the workspace for you.', 'info');
+      navigate(`/projects/${project.id}/site`);
+      return;
+    }
+    flushWorkspacePreview(project.id);
+    const site = useProjectSiteWorkspaceStore.getState().byProjectId[project.id]!.site;
+    const w = openClientSitePreviewTab(site);
+    if (!w) toast('Allow popups to open the preview tab.', 'error');
+  }, [project?.id, hydrateWorkspaceSite, flushWorkspacePreview, navigate, toast]);
 
   useEffect(() => {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
@@ -549,6 +568,17 @@ export function ProjectDetailPage() {
               <div className="flex flex-wrap gap-2 border-t border-slate-200/60 pt-5">
                 <Button type="button" onClick={() => navigate(`/projects/${project.id}/site`)}>
                   {CONVERSION_WORKSPACE_LABEL}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="text-xs"
+                  onClick={() => navigate(`/projects/${project.id}/site?fullscreen=1`)}
+                >
+                  Full-screen preview
+                </Button>
+                <Button type="button" variant="secondary" className="text-xs" onClick={() => void openWorkspacePreviewInNewTab()}>
+                  Preview in new tab
                 </Button>
                 <Link
                   to={`/rbyan?project=${encodeURIComponent(project.id)}`}

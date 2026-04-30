@@ -4,7 +4,7 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   pipeline: { title: 'Pipeline', segment: 'pipeline' },
   clients: { title: 'Clients', segment: 'clients' },
   projects: { title: 'Projects', segment: 'projects' },
-  rbyan: { title: 'Rbyan the Brain', segment: 'rbyan' },
+  rbyan: { title: 'Bryan the Brain', segment: 'rbyan' },
   tasks: { title: 'Tasks', segment: 'tasks' },
   calendar: { title: 'Calendar', segment: 'calendar' },
   invoices: { title: 'Invoices', segment: 'invoices' },

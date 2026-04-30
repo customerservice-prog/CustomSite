@@ -39,11 +39,20 @@ function humanizeError(err: unknown): string {
   return 'Something went wrong — your edits are still here. Try again shortly.';
 }
 
+function escapePreviewErr(msg: string): string {
+  return msg
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function recomputePreview(site: ProjectSite): string {
   try {
     return composePreviewDocument(site);
-  } catch {
-    return '<!DOCTYPE html><html lang="en"><body><p>Preview unavailable.</p></body></html>';
+  } catch (err) {
+    const m = err instanceof Error ? err.message : String(err);
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/></head><body style="font-family:system-ui;padding:1rem"><p><strong>Preview could not compile.</strong></p><pre style="white-space:pre-wrap;word-break:break-word">${escapePreviewErr(m)}</pre></body></html>`;
   }
 }
 
@@ -290,14 +299,15 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
     get().flushPreview(projectId);
     const now = Date.now();
     const withSnapshot = opts?.snapshot !== false;
-    const snapshotFiles = siteFilesToVersionPayload(get().byProjectId[projectId]!.site);
+    const siteToSave = get().byProjectId[projectId]!.site;
+    const snapshotFiles = siteFilesToVersionPayload(siteToSave);
     set((s) => ({
       byProjectId: {
         ...s.byProjectId,
         [projectId]: { ...row, saveStatus: 'saving', saveError: null, lastSavedAt: now },
       },
     }));
-    void saveProjectSite(row.site)
+    void saveProjectSite(siteToSave)
       .then(() => {
         if (withSnapshot) {
           get().appendSnapshot(projectId, 'Manual save', ['Saved from Site Builder'], snapshotFiles);

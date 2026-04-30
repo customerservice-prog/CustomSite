@@ -32,7 +32,7 @@ const RICH_INDEX_HTML = `<!DOCTYPE html>
       <div style="max-width:42rem">
         <p style="margin:0 0 0.5rem;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7c3aed">Welcome</p>
         <h1 style="margin:0 0 1rem;font-size:clamp(2rem,4vw,2.75rem);line-height:1.1;letter-spacing:-0.03em;color:#0f172a">Ship a premium client site — fast.</h1>
-        <p style="margin:0 0 1.5rem;font-size:1.05rem;line-height:1.6;color:#475569">Starter layout with hero, proof strip, and CTA. Edit code or open Rbyan to iterate.</p>
+        <p style="margin:0 0 1.5rem;font-size:1.05rem;line-height:1.6;color:#475569">Starter layout with hero, proof strip, and CTA. Edit code or open Bryan the Brain to iterate.</p>
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
           <a href="#cta" style="display:inline-flex;align-items:center;border-radius:0.5rem;background:#7c3aed;color:#fff;font-weight:600;padding:0.65rem 1.25rem;text-decoration:none">Primary CTA</a>
           <a href="#proof" style="display:inline-flex;align-items:center;border-radius:0.5rem;border:1px solid #c4b5fd;color:#5b21b6;font-weight:600;padding:0.65rem 1.25rem;text-decoration:none">Learn more</a>

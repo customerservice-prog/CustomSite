@@ -21,7 +21,7 @@ function resolveProjectId(pathname: string, search: string): string | null {
   return firstClientSiteProjectId();
 }
 
-/** Global shortcuts: command palette, AI/code toggle, quick page, insert section, Rbyan submit, save. */
+/** Global shortcuts: command palette, AI/code toggle, quick page, insert section, Bryan the Brain submit, save. */
 export function WorkflowGlobalHotkeys() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,7 +91,7 @@ export function WorkflowGlobalHotkeys() {
 
       if (e.key === 'Enter' && location.pathname.startsWith('/rbyan')) {
         if (!inTextField || tag !== 'TEXTAREA') return;
-        if (target?.getAttribute('aria-label') !== 'Message Rbyan') return;
+        if (target?.getAttribute('aria-label') !== 'Message Bryan the Brain') return;
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('rbyan-submit-prompt'));
         return;

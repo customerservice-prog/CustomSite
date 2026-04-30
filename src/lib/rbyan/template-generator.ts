@@ -38,7 +38,7 @@ function packToTemplateResult(p: {
 /**
  * Returns a full file set for a template archetype. Mock implementation;
  * later this can call an API and still return the same shape.
- * All packs prepend the shared Rbyan design system (`design-system.ts`) inside `styles.css`.
+ * All packs prepend the shared Bryan the Brain design system (`design-system.ts`) inside `styles.css`.
  */
 export function generateSiteTemplate(type: SiteTemplateType, ctx: TemplateContext) {
   const hint = (ctx.promptHint ?? '').toLowerCase();

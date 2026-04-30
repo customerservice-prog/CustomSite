@@ -61,7 +61,7 @@ export function CommandMenu() {
       },
       {
         id: 'open-rbyan',
-        label: 'Open Rbyan (AI)',
+        label: 'Open Bryan the Brain (AI)',
         hint: 'Co-build with AI',
         icon: Sparkles,
         run: () => {
@@ -71,7 +71,7 @@ export function CommandMenu() {
       },
       {
         id: 'toggle-mode',
-        label: rbyMatch ? 'Switch to code (Site Builder)' : 'Switch to AI (Rbyan)',
+        label: rbyMatch ? 'Switch to code (Site Builder)' : 'Switch to AI (Bryan the Brain)',
         hint: '⌘/',
         icon: rbyMatch ? Code2 : Sparkles,
         run: () => {

@@ -81,7 +81,7 @@ const FAQ_SECTION = `
 </section>`;
 
 const INJECTED_CSS = `
-/* Rbyan injected sections (aligns with design-system tokens when present) */
+/* Bryan the Brain injected sections (aligns with design-system tokens when present) */
 .rbyan-injected { padding: var(--rby-section-y, clamp(3rem, 7vw, 5rem)) var(--rby-space-3, 1.5rem); }
 .pricing-inner, .testimonials-inner, .faq-inner { max-width: 75rem; margin: 0 auto; }
 .pricing { background: var(--rby-bg, #fafaf9); border-top: 1px solid var(--rby-border, #e4e4e7); }
@@ -173,7 +173,7 @@ export function strategyAddSection(prompt: string, files: RbyanGeneratedFile[]):
     const next = injectBeforeCtaOrFooter(html, PRICING_SECTION);
     if (!next) return null;
     html = next;
-    if (!css.includes('Rbyan injected sections')) css += INJECTED_CSS;
+    if (!css.includes('Bryan the Brain injected sections')) css += INJECTED_CSS;
     plan.push('Inserted a responsive pricing grid with three tiers and CTAs wired to your existing CTA anchor.');
     versionName = 'Added pricing section';
   } else if (/testimonial|reviews?|social proof/i.test(p)) {
@@ -181,7 +181,7 @@ export function strategyAddSection(prompt: string, files: RbyanGeneratedFile[]):
     const next = injectBeforeCtaOrFooter(html, EXTRA_TESTIMONIALS);
     if (!next) return null;
     html = next;
-    if (!css.includes('Rbyan injected sections')) css += INJECTED_CSS;
+    if (!css.includes('Bryan the Brain injected sections')) css += INJECTED_CSS;
     plan.push('Appended an additional testimonials band before the CTA without removing existing content.');
     versionName = 'Added testimonials section';
   } else if (/faq|questions/i.test(p)) {
@@ -189,7 +189,7 @@ export function strategyAddSection(prompt: string, files: RbyanGeneratedFile[]):
     const next = injectBeforeCtaOrFooter(html, FAQ_SECTION);
     if (!next) return null;
     html = next;
-    if (!css.includes('Rbyan injected sections')) css += INJECTED_CSS;
+    if (!css.includes('Bryan the Brain injected sections')) css += INJECTED_CSS;
     plan.push('Added an FAQ section with scannable Q/A pairs ahead of conversion.');
     versionName = 'Added FAQ section';
   } else {
@@ -221,7 +221,7 @@ export function strategyModifyStyle(prompt: string, files: RbyanGeneratedFile[])
   const p = prompt.toLowerCase();
   let css = g.css.content;
   const plan: string[] = [];
-  const prefix: string[] = ['/* Rbyan style pass */'];
+  const prefix: string[] = ['/* Bryan the Brain style pass */'];
 
   if (/\bpremium|luxury|high[\s-]end|darker|dark|moody/i.test(p)) {
     prefix.push(

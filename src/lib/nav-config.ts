@@ -40,7 +40,7 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Build & deliver',
     items: [
       { label: 'Projects', to: '/projects', icon: FolderKanban },
-      { label: 'Rbyan the Brain', to: '/rbyan', icon: Sparkles },
+      { label: 'Bryan the Brain', to: '/rbyan', icon: Sparkles },
       { label: 'Site builder', to: '/site-builder', icon: Wand2 },
       { label: 'Clients', to: '/clients', icon: Users },
       { label: 'Messages', to: '/messages', icon: MessageSquare, badgeFromStore: 'unread-messages' },

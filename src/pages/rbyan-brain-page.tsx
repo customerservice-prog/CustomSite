@@ -299,7 +299,7 @@ export function RbyanBrainPage() {
         setPreviewNonce((n) => n + 1);
       } catch {
         if (pushedUndo) setUndoStack((u) => u.slice(0, -1));
-        toast('Rbyan could not finish that request. Try again.', 'error');
+        toast('Bryan the Brain could not finish that request. Try again.', 'error');
         setBuildSteps([]);
       } finally {
         setGenerating(false);
@@ -331,7 +331,7 @@ export function RbyanBrainPage() {
       const st = useProjectSiteWorkspaceStore.getState();
       const cur = st.byProjectId[projectId]?.site;
       if (cur && cur.files.length > 0) {
-        st.appendSnapshot(projectId, 'Before Rbyan apply', ['Snapshot before applying AI output.'], siteFilesToRbyan(cur));
+        st.appendSnapshot(projectId, 'Before Bryan the Brain apply', ['Snapshot before applying AI output.'], siteFilesToRbyan(cur));
       }
       st.applyRbyanOutput(projectId, result.files, {
         label: result.versionLabel,
@@ -378,10 +378,10 @@ export function RbyanBrainPage() {
           <div>
             <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-white md:text-2xl">
               <Sparkles className="h-6 w-6 text-violet-400" aria-hidden />
-              Rbyan the Brain
+              Bryan the Brain
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              Co-build with Rbyan: pick a section focus, watch the preview update step by step on full builds, and undo when you want to back up one turn.
+              Co-build with Bryan the Brain: pick a section focus, watch the preview update step by step on full builds, and undo when you want to back up one turn.
             </p>
           </div>
           {projectId ? (
@@ -457,7 +457,7 @@ export function RbyanBrainPage() {
                 <span className="font-medium text-zinc-200">{workspaceRow?.site.files.length ?? 0}</span>
               </p>
               <p>
-                <span className="text-zinc-500">Rbyan versions</span>{' '}
+                <span className="text-zinc-500">Bryan versions</span>{' '}
                 <span className="font-medium text-zinc-200">{versions.length}</span>
               </p>
               <p>
@@ -527,7 +527,7 @@ export function RbyanBrainPage() {
                 key={msg.id}
                 className={cn('rounded-xl px-3 py-2 text-sm leading-relaxed', msg.role === 'user' ? 'ml-8 bg-violet-600/25 text-violet-50' : 'mr-8 bg-zinc-800/80 text-zinc-200')}
               >
-                {msg.role === 'assistant' && <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-400">Rbyan</p>}
+                {msg.role === 'assistant' && <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-400">Bryan</p>}
                 <p className="whitespace-pre-wrap">{msg.content}</p>
                 {msg.result ? (
                   <div className="mt-2 border-t border-white/10 pt-2 text-[11px] text-zinc-400">
@@ -631,7 +631,7 @@ export function RbyanBrainPage() {
               <div className="mr-8 space-y-2 rounded-xl bg-zinc-800/80 px-3 py-3 text-sm text-zinc-300">
                 <div className="flex items-center gap-2 text-zinc-400">
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-400" aria-hidden />
-                  <span>Rbyan is building your site…</span>
+                  <span>Bryan the Brain is building your site…</span>
                 </div>
                 {buildSteps.length > 0 ? (
                   <ul className="space-y-1.5 border-t border-white/5 pt-2 text-[11px] text-zinc-400">
@@ -716,7 +716,7 @@ export function RbyanBrainPage() {
                 placeholder={
                   rbyanSession.currentSection
                     ? `Changes apply to “${rbyanSession.currentSection}” when possible…`
-                    : 'Tell Rbyan what to build or change…'
+                    : 'Tell Bryan the Brain what to build or change…'
                 }
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -728,7 +728,7 @@ export function RbyanBrainPage() {
                   }
                 }}
                 rows={2}
-                aria-label="Message Rbyan"
+                aria-label="Message Bryan the Brain"
               />
               <Button
                 type="button"
@@ -755,10 +755,17 @@ export function RbyanBrainPage() {
                 </p>
                 {generating ? (
                   <p className="shrink-0 border-b border-violet-500/20 bg-violet-950/40 px-2 py-1.5 text-[11px] text-violet-200">
-                    Rbyan is building your site—watch sections appear in the preview.
+                    Bryan the Brain is building your site—watch sections appear in the preview.
                   </p>
                 ) : null}
-                <iframe title="Rbyan preview" srcDoc={previewDoc} className="min-h-[200px] flex-1 bg-white" sandbox="allow-same-origin allow-scripts" />
+                <iframe
+                  title="Bryan the Brain preview"
+                  srcDoc={previewDoc}
+                  className="h-full min-h-[200px] w-full flex-1 border-0 bg-white"
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  sandbox="allow-scripts"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <p className="mb-1 text-[10px] font-semibold uppercase text-zinc-500">Generated files</p>
               <ul className="max-h-28 space-y-1 overflow-y-auto text-[11px] text-zinc-400">

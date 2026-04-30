@@ -1,5 +1,5 @@
 /**
- * Rbyan shared design system — prepended to every generated `styles.css`.
+ * Bryan the Brain shared design system — prepended to every generated `styles.css`.
  * 8px-based spacing, type scale, buttons, cards, containers, responsive rules.
  */
 
@@ -7,7 +7,7 @@
 export const RBYAN_CONTAINER_MAX = '75rem'; /* 1200px */
 
 export function getRbyanDesignSystemBase(): string {
-  return `/* ——— Rbyan design system ——— */
+  return `/* ——— Bryan the Brain design system ——— */
 :root {
   --rby-primary: #4f46e5;
   --rby-primary-hover: #4338ca;

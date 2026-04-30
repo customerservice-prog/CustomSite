@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Copy, Eye, Loader2, Plus, Rocket, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronLeft, Copy, ExternalLink, Eye, Loader2, Maximize2, Plus, Rocket, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjects } from '@/store/hooks';
@@ -16,8 +16,11 @@ import {
 } from '@/lib/site-builder/quick-html-insert';
 import { buildSectionByTemplateId } from '@/lib/site-templates/section-catalog';
 import type { SectionTemplateRow } from '@/lib/site-templates/section-catalog';
+import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
 import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
 import { SectionLibraryPopover } from '@/components/site-builder/section-library-popover';
+import { SiteBuilderPreviewDebugPanel } from '@/components/site-builder/site-builder-preview-debug-panel';
+import { SiteBuilderPreviewErrorBoundary } from '@/components/site-builder/site-builder-preview-error-boundary';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +52,7 @@ export function SiteBuilderFoundationPage() {
   const setBuilderSurface = useProjectSiteWorkspaceStore((s) => s.setBuilderSurface);
   const appendSnapshot = useProjectSiteWorkspaceStore((s) => s.appendSnapshot);
   const copySiteBundle = useProjectSiteWorkspaceStore((s) => s.copySiteBundleForDuplicate);
+  const flushPreview = useProjectSiteWorkspaceStore((s) => s.flushPreview);
 
   const site: ProjectSite = row?.site ?? { projectId: projectId || '', files: [] };
   const previewHtml = row?.previewHtml ?? '';
@@ -56,6 +60,7 @@ export function SiteBuilderFoundationPage() {
   const loadError = row?.loadError ?? null;
   const saveStatus = row?.saveStatus ?? 'idle';
   const saveError = row?.saveError ?? null;
+  const lastSavedAt = row?.lastSavedAt ?? null;
   const builderSurface = row?.builderSurface ?? 'code';
   const rbyanBusy = row?.rbyanBusy ?? false;
 
@@ -65,15 +70,27 @@ export function SiteBuilderFoundationPage() {
   const [booting, setBooting] = useState(false);
   const didInitEditor = useRef(false);
   const autoSeedRef = useRef(false);
+  const prevLoadErrRef = useRef<string | null>(null);
+  const prevSaveErrRef = useRef<string | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
+  const previewFrameRef = useRef<HTMLIFrameElement>(null);
+  const fullscreenFrameRef = useRef<HTMLIFrameElement>(null);
   const [showQuickPageBar, setShowQuickPageBar] = useState(false);
   const [newPageSlug, setNewPageSlug] = useState('');
+  const [previewIframeKey, setPreviewIframeKey] = useState(0);
+  const [previewDebugLines, setPreviewDebugLines] = useState<string[]>([]);
+  const [fullscreenPreviewOpen, setFullscreenPreviewOpen] = useState(false);
 
   const unsaved = draftContent !== savedContent;
 
   const fileTabs = useMemo(() => {
     const extra = site.files.map((f) => f.name).filter((n) => !BASE_FILES.includes(n as (typeof BASE_FILES)[number]));
     return [...BASE_FILES, ...extra];
+  }, [site.files]);
+
+  const missingCoreFiles = useMemo(() => {
+    if (site.files.length === 0) return [];
+    return BASE_FILES.filter((n) => !site.files.some((f) => f.name === n));
   }, [site.files]);
 
   const applyFileToEditor = useCallback(
@@ -91,7 +108,33 @@ export function SiteBuilderFoundationPage() {
   useEffect(() => {
     didInitEditor.current = false;
     autoSeedRef.current = false;
+    prevLoadErrRef.current = null;
+    prevSaveErrRef.current = null;
   }, [projectId]);
+
+  useEffect(() => {
+    if (!loadError || loadError === prevLoadErrRef.current) return;
+    prevLoadErrRef.current = loadError;
+    const ts = new Date().toLocaleTimeString();
+    setPreviewDebugLines((p) => [...p.slice(-38), `[${ts}] [workspace] Load: ${loadError}`]);
+  }, [loadError]);
+
+  useEffect(() => {
+    if (!saveError || saveError === prevSaveErrRef.current) return;
+    prevSaveErrRef.current = saveError;
+    const ts = new Date().toLocaleTimeString();
+    setPreviewDebugLines((p) => [...p.slice(-38), `[${ts}] [workspace] Save: ${saveError}`]);
+  }, [saveError]);
+
+  useEffect(() => {
+    if (!unsaved || site.files.length === 0) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [unsaved, site.files.length]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -179,6 +222,93 @@ export function SiteBuilderFoundationPage() {
     return () => window.removeEventListener('site-builder-save', save);
   }, [saveCurrentToSite]);
 
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      const d = e.data as { source?: string; type?: string; detail?: string };
+      if (d?.source !== 'site-builder-preview') return;
+      const t = d.type ?? 'message';
+      const detail = (d.detail ?? '').trim();
+      const ts = new Date().toLocaleTimeString();
+      const line =
+        t === 'blocked-root-path'
+          ? `[${ts}] Preview blocked navigation to ${detail || '…'}`
+          : `[${ts}] ${t}${detail ? `: ${detail}` : ''}`;
+      setPreviewDebugLines((prev) => [...prev.slice(-39), line]);
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const resetPreview = useCallback(() => {
+    setPreviewIframeKey((k) => k + 1);
+    setPreviewDebugLines([]);
+  }, []);
+
+  useEffect(() => {
+    const el = previewFrameRef.current;
+    if (!el) return;
+    el.srcdoc = previewHtml;
+  }, [previewHtml, previewIframeKey]);
+
+  useEffect(() => {
+    if (!fullscreenPreviewOpen) return;
+    const el = fullscreenFrameRef.current;
+    if (!el) return;
+    el.srcdoc = previewHtml;
+  }, [fullscreenPreviewOpen, previewHtml, previewIframeKey]);
+
+  useEffect(() => {
+    if (!fullscreenPreviewOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreenPreviewOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreenPreviewOpen]);
+
+  useEffect(() => {
+    if (searchParams.get('fullscreen') !== '1') return;
+    if (!projectId || !row?.hydrated || site.files.length === 0) return;
+    patchSiteFile(projectId, activeFileId, draftContent);
+    flushPreview(projectId);
+    setFullscreenPreviewOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('fullscreen');
+    setSearchParams(next, { replace: true });
+  }, [
+    searchParams,
+    setSearchParams,
+    projectId,
+    row?.hydrated,
+    site.files.length,
+    activeFileId,
+    draftContent,
+    patchSiteFile,
+    flushPreview,
+  ]);
+
+  const syncDraftToStoreAndPreview = useCallback(() => {
+    if (!projectId) return;
+    patchSiteFile(projectId, activeFileId, draftContent);
+    flushPreview(projectId);
+  }, [projectId, activeFileId, draftContent, patchSiteFile, flushPreview]);
+
+  const openFullscreenPreview = useCallback(() => {
+    if (!projectId || site.files.length === 0) return;
+    syncDraftToStoreAndPreview();
+    setFullscreenPreviewOpen(true);
+  }, [projectId, site.files.length, syncDraftToStoreAndPreview]);
+
+  const openPreviewInNewTab = useCallback(() => {
+    if (!projectId || site.files.length === 0) return;
+    syncDraftToStoreAndPreview();
+    const s = useProjectSiteWorkspaceStore.getState().byProjectId[projectId]?.site;
+    if (!s?.files.length) return;
+    const entry = activeFileId.toLowerCase().endsWith('.html') ? activeFileId : 'index.html';
+    const w = openClientSitePreviewTab(s, { entryFile: entry });
+    if (!w) toast('Allow popups for this app to open the preview tab.', 'error');
+  }, [projectId, site.files.length, syncDraftToStoreAndPreview, activeFileId, toast]);
+
   const scrollPreviewIntoView = useCallback(() => {
     previewWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, []);
@@ -241,10 +371,11 @@ export function SiteBuilderFoundationPage() {
     async (name: string) => {
       if (name === activeFileId) return;
       if (unsaved) persistDraftQuiet();
+      if (projectId) flushPreview(projectId);
       const latest = useProjectSiteWorkspaceStore.getState().byProjectId[projectId]?.site;
       if (latest) applyFileToEditor(latest, name);
     },
-    [activeFileId, unsaved, persistDraftQuiet, projectId, applyFileToEditor]
+    [activeFileId, unsaved, persistDraftQuiet, projectId, applyFileToEditor, flushPreview]
   );
 
   const onStartBlank = useCallback(async () => {
@@ -383,7 +514,14 @@ export function SiteBuilderFoundationPage() {
           </div>
           <div className="flex-1" />
           {saveStatus === 'saved' && !unsaved ? (
-            <span className="text-[10px] font-medium text-emerald-400/90">Saved</span>
+            <span className="text-[10px] font-medium text-emerald-400/90">
+              Saved
+              {lastSavedAt != null ? (
+                <span className="ml-1 font-normal text-zinc-500" title="Last bundle written to local storage (API sync best-effort)">
+                  · {new Date(lastSavedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                </span>
+              ) : null}
+            </span>
           ) : null}
           {loadError ? <span className="max-w-[200px] truncate text-[10px] text-amber-400">{loadError}</span> : null}
           {saveStatus === 'saving' ? (
@@ -400,7 +538,7 @@ export function SiteBuilderFoundationPage() {
           {rbyanBusy ? (
             <span className="flex items-center gap-1 text-[10px] text-violet-300">
               <Sparkles className="h-3 w-3" aria-hidden />
-              Rbyan working…
+              Bryan the Brain is working…
             </span>
           ) : null}
           {hasFiles ? (
@@ -453,6 +591,26 @@ export function SiteBuilderFoundationPage() {
             >
               <Eye className="h-3.5 w-3.5" aria-hidden />
               Preview
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 gap-1 border-white/10 bg-white/10 px-2 text-[10px] text-white hover:bg-white/15"
+              title="Full-screen preview (Esc to close)"
+              onClick={() => openFullscreenPreview()}
+            >
+              <Maximize2 className="h-3.5 w-3.5" aria-hidden />
+              Full screen
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 gap-1 border-white/10 bg-white/10 px-2 text-[10px] text-white hover:bg-white/15"
+              title="Open composed HTML in a new tab (inlined CSS/JS)"
+              onClick={() => openPreviewInNewTab()}
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              New tab
             </Button>
             {liveUrl ? (
               <a
@@ -573,16 +731,85 @@ export function SiteBuilderFoundationPage() {
             ref={previewWrapRef}
             className="flex min-h-[280px] shrink-0 flex-col p-2 lg:min-h-0 lg:w-[min(50%,560px)] lg:border-l lg:border-white/10"
           >
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Preview</p>
-            <iframe
-              title="Site preview"
-              srcDoc={previewHtml}
-              className="min-h-0 flex-1 rounded-md border border-white/10 bg-white"
-              sandbox="allow-same-origin allow-scripts"
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Preview</p>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-7 shrink-0 px-2 text-[10px] text-zinc-400 hover:text-zinc-100"
+                onClick={resetPreview}
+              >
+                Reset preview
+              </Button>
+            </div>
+            <SiteBuilderPreviewErrorBoundary
+              key={previewIframeKey}
+              onError={(msg) =>
+                setPreviewDebugLines((prev) => [...prev.slice(-39), `[react] ${msg}`])
+              }
+            >
+              <iframe
+                id="preview"
+                ref={previewFrameRef}
+                title="Site preview"
+                className="box-border min-h-[200px] w-full min-w-0 flex-1 rounded-md bg-white"
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+              />
+            </SiteBuilderPreviewErrorBoundary>
+            <SiteBuilderPreviewDebugPanel
+              lines={previewDebugLines}
+              loadError={loadError}
+              saveError={saveError}
+              saveStatus={saveStatus}
+              unsaved={unsaved}
+              lastSavedAt={lastSavedAt}
+              previewHtml={previewHtml}
+              missingCoreFiles={missingCoreFiles}
+              onClear={() => setPreviewDebugLines([])}
             />
           </aside>
         </div>
       )}
+
+      {fullscreenPreviewOpen ? (
+        <div
+          className="fixed inset-0 z-[200] flex flex-col bg-zinc-950/98 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full-screen site preview"
+        >
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+            <p className="truncate text-sm font-semibold text-white">{project?.name ?? 'Site'} — preview</p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-8 gap-1 border-white/15 bg-white/10 px-2 text-xs text-white hover:bg-white/15"
+                onClick={() => openPreviewInNewTab()}
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                New tab
+              </Button>
+              <Button type="button" className="h-8 px-3 text-xs font-semibold" onClick={() => setFullscreenPreviewOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+          <iframe
+            ref={fullscreenFrameRef}
+            title="Full-screen site preview"
+            className="min-h-0 w-full flex-1 bg-white"
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            sandbox="allow-scripts"
+            referrerPolicy="no-referrer"
+          />
+          <p className="shrink-0 border-t border-white/10 px-3 py-1.5 text-center text-[10px] text-zinc-500">
+            Press Esc to exit · Same isolated preview as the builder
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

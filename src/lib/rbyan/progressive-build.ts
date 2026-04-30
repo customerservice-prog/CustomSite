@@ -29,7 +29,7 @@ export function sliceIndexHtmlForProgress(fullHtml: string, sectionCount: number
     const n = Math.max(1, Math.min(chunks.length, sectionCount + 1));
     const inner = chunks.slice(0, n).join('');
     if (includeFooter) return bodyOpen + inner + bodyTail;
-    return `${bodyOpen}${inner}<div class="rby-build-banner" style="margin:0;padding:1.25rem 1.5rem;font-family:system-ui,sans-serif;font-size:0.8rem;color:#71717a;border-top:1px solid rgba(0,0,0,0.08)">Rbyan is building your site…</div></body></html>`;
+    return `${bodyOpen}${inner}<div class="rby-build-banner" style="margin:0;padding:1.25rem 1.5rem;font-family:system-ui,sans-serif;font-size:0.8rem;color:#71717a;border-top:1px solid rgba(0,0,0,0.08)">Bryan the Brain is building your site…</div></body></html>`;
   }
 
   const beforeMainInner = mainM[1];
@@ -47,7 +47,7 @@ export function sliceIndexHtmlForProgress(fullHtml: string, sectionCount: number
   }
 
   const banner =
-    '<div class="rby-build-banner" style="margin:0;padding:1.25rem 1.5rem;font-family:system-ui,sans-serif;font-size:0.8rem;color:#71717a;border-top:1px solid rgba(0,0,0,0.08)">Rbyan is building your site…</div>';
+    '<div class="rby-build-banner" style="margin:0;padding:1.25rem 1.5rem;font-family:system-ui,sans-serif;font-size:0.8rem;color:#71717a;border-top:1px solid rgba(0,0,0,0.08)">Bryan the Brain is building your site…</div>';
   return `${bodyOpen}${beforeMainInner}${inner}</main>${banner}</body></html>`;
 }
 
@@ -67,7 +67,7 @@ export function getProgressivePreviewFiles(
   const html = sliceIndexHtmlForProgress(ix.content, n, includeFooter);
 
   const cssThreshold = Math.ceil(totalSteps * 0.55);
-  const useCss = stepIndex >= cssThreshold ? css.content : `/* Rbyan: styles loading… */\n${css.content}`;
+  const useCss = stepIndex >= cssThreshold ? css.content : `/* Bryan the Brain: styles loading… */\n${css.content}`;
 
   const useJs =
     stepIndex >= totalSteps
