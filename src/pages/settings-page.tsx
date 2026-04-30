@@ -100,22 +100,33 @@ export function SettingsPage() {
   const [tab, setTab] = useState<string>(TABS[0].id);
   const [saved, setSaved] = useState<SettingsForm>(() => ({ ...SETTINGS_INITIAL }));
   const [form, setForm] = useState<SettingsForm>(() => ({ ...SETTINGS_INITIAL }));
+  const [saveFlash, setSaveFlash] = useState(false);
 
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved), [form, saved]);
 
   function save() {
+    if (!dirty) {
+      toast('No changes to save.', 'info');
+      return;
+    }
     setSaved({ ...form });
     toast('Settings saved.', 'success');
+    setSaveFlash(true);
+    window.setTimeout(() => setSaveFlash(false), 2200);
   }
 
   return (
-    <div className="space-y-8">
+    <div id="settings-page-root" className="space-y-8">
       <PageHeader
         title="Settings"
         description="Defaults for billing, brand, team, portal, and security — save when you change something."
         actions={
-          <Button type="button" onClick={save} disabled={!dirty}>
-            Save changes
+          <Button
+            type="button"
+            onClick={save}
+            className={saveFlash ? 'bg-emerald-600 hover:bg-emerald-600' : undefined}
+          >
+            {saveFlash ? 'Saved' : 'Save changes'}
           </Button>
         }
       />
@@ -309,7 +320,25 @@ export function SettingsPage() {
                   type="button"
                   variant="secondary"
                   className="mt-4"
-                  onClick={() => toast(`${name} connection started — finish OAuth in the popup.`, 'info')}
+                  onClick={() => {
+                    toast(`${name}: preparing sign-in…`, 'info');
+                    window.setTimeout(() => {
+                      const demoUrl =
+                        name === 'Calendly'
+                          ? 'https://calendly.com/oauth/connect'
+                          : name === 'Google Workspace'
+                            ? 'https://accounts.google.com/o/oauth2/v2/auth'
+                            : name === 'QuickBooks'
+                              ? 'https://appcenter.intuit.com/connect/oauth2'
+                              : 'https://example.com/oauth-demo';
+                      const w = window.open(demoUrl, `${name}-oauth`, 'noopener,noreferrer,width=520,height=720');
+                      if (!w) {
+                        toast('Popup was blocked — allow popups for this site, then try Connect again.', 'error');
+                        return;
+                      }
+                      toast(`${name}: finish sign-in in the new window.`, 'success');
+                    }, 0);
+                  }}
                 >
                   Connect
                 </Button>
@@ -334,8 +363,12 @@ export function SettingsPage() {
         )}
 
         <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
-          <Button type="button" onClick={save} disabled={!dirty}>
-            Save changes
+          <Button
+            type="button"
+            onClick={save}
+            className={saveFlash ? 'bg-emerald-600 hover:bg-emerald-600' : undefined}
+          >
+            {saveFlash ? 'Saved' : 'Save changes'}
           </Button>
         </div>
       </SettingsLayout>

@@ -1,6 +1,6 @@
 import type { ProjectSite } from '@/lib/site-builder/project-site-model';
 import { newFile } from '@/lib/site-builder/project-site-model';
-import { saveProjectSite } from '@/lib/site-builder/project-site-storage';
+import { saveProjectSite, type SaveProjectSiteResult } from '@/lib/site-builder/project-site-storage';
 
 const INDEX_HTML = `<!DOCTYPE html>
 <html>
@@ -81,7 +81,10 @@ export type StarterSiteOptions = {
   rich?: boolean;
 };
 
-export async function createStarterFiles(projectId: string, opts?: StarterSiteOptions): Promise<ProjectSite> {
+export async function createStarterFiles(
+  projectId: string,
+  opts?: StarterSiteOptions
+): Promise<{ site: ProjectSite; save: SaveProjectSiteResult }> {
   const rich = Boolean(opts?.rich);
   const site: ProjectSite = {
     projectId,
@@ -91,6 +94,6 @@ export async function createStarterFiles(projectId: string, opts?: StarterSiteOp
       newFile('script.js', SCRIPT_JS),
     ],
   };
-  await saveProjectSite(site);
-  return site;
+  const save = await saveProjectSite(site);
+  return { site, save };
 }

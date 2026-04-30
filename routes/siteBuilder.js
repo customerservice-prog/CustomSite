@@ -13,22 +13,31 @@ const router = express.Router();
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
-/** Matches `src/lib/data/demo-ids.ts` — auto-create DB row so `site_files` FK succeeds for seeded local demo. */
+/** Matches `src/lib/data/demo-ids.ts` — friendly default name for seeded demo project id. */
 const DEMO_BUILDER_PROJECT_ID = '00000000-0000-4000-8000-000000000002';
 
-async function ensureDemoProjectRow(supabase, projectId, clientUserId) {
-  if (projectId !== DEMO_BUILDER_PROJECT_ID || !clientUserId) return false;
-  const { error } = await supabase.from('projects').upsert(
-    {
-      id: projectId,
-      client_id: clientUserId,
-      name: 'E-Commerce Site (Tables & Chairs)',
-      status: 'discovery',
-    },
-    { onConflict: 'id' }
-  );
+/**
+ * When `site_files` insert fails FK (no `projects` row), create a minimal project owned by the signed-in admin.
+ * Fixes demo UUIDs and any localStorage-only project id that never hit the DB.
+ */
+async function ensureProjectRowForSiteFiles(supabase, projectId, ownerUserId) {
+  if (!projectId || !ownerUserId) return false;
+  const { data: row, error: selErr } = await supabase.from('projects').select('id').eq('id', projectId).maybeSingle();
+  if (selErr) {
+    console.error('ensureProjectRowForSiteFiles select', selErr);
+    return false;
+  }
+  if (row?.id) return true;
+  const name =
+    projectId === DEMO_BUILDER_PROJECT_ID ? 'E-Commerce Site (Tables & Chairs)' : 'Website project';
+  const { error } = await supabase.from('projects').insert({
+    id: projectId,
+    client_id: ownerUserId,
+    name,
+    status: 'discovery',
+  });
   if (error) {
-    console.error('ensureDemoProjectRow', error);
+    console.error('ensureProjectRowForSiteFiles insert', error);
     return false;
   }
   return true;
@@ -198,7 +207,7 @@ router.put('/projects/:projectId/site/file', async (req, res) => {
       !existing &&
       /site_files_project_id_fkey|foreign key constraint/i.test(String(error.message || ''))
     ) {
-      const fixed = await ensureDemoProjectRow(supabase, projectId, req.profile?.id);
+      const fixed = await ensureProjectRowForSiteFiles(supabase, projectId, req.profile?.id);
       if (fixed) {
         ({ data, error } = await supabase
           .from('site_files')

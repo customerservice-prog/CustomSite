@@ -13,7 +13,7 @@ import {
 import { Button, buttonClassName } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { FEEDBACK_MESSAGE, GOAL_OPTIONS, PAGE_OPTIONS, SITE_TYPE_OPTIONS } from '@/lib/build-helper/constants';
-import { BUILD_STEPS, countCompleted } from '@/lib/build-helper/build-steps';
+import { BUILD_STEPS, countCompleted, MANUAL_STEP_IDS, type ManualStepId } from '@/lib/build-helper/build-steps';
 import {
   buildRbyanPrefillPrompt,
   RBYAN_PREFILL_STORAGE_KEY,
@@ -210,14 +210,32 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
                   active && !done ? 'ring-1 ring-indigo-300' : ''
                 )}
               >
-                <span
+                <button
+                  type="button"
                   className={cn(
-                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px]',
+                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] outline-none transition hover:ring-2 hover:ring-indigo-300/50 focus-visible:ring-2 focus-visible:ring-indigo-400',
                     done ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'
                   )}
+                  aria-label={done ? `${s.title} completed` : `Mark ${s.title}`}
+                  disabled={done}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (done) return;
+                    if (MANUAL_STEP_IDS.includes(s.id as ManualStepId)) {
+                      markManualStep(s.id as ManualStepId);
+                      toast(`Marked “${s.title}” complete.`, 'success');
+                      return;
+                    }
+                    if (s.id === 'plan') {
+                      toast(
+                        'Plan site: in Current step, pick site type, goal, and pages — then Save site plan. Earlier steps must be done first.',
+                        'info'
+                      );
+                    }
+                  }}
                 >
-                  {done ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : ''}
-                </span>
+                  {done ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : null}
+                </button>
                 <span className={cn('font-medium', active && 'text-indigo-900')}>{s.title}</span>
               </li>
             );

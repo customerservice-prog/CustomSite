@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { DetailPageLayout } from '@/components/layout/templates/detail-page-layout';
@@ -86,9 +86,12 @@ function milestoneRowsForProject(project: Project) {
   ];
 }
 
+const PROJECT_MAIN_TABS = new Set(['timeline', 'tasks', 'files', 'messages', 'contracts', 'budget', 'activity']);
+
 export function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useShell();
   const project = useProject(projectId);
   const projectActivities = useProjectActivities(projectId);
@@ -153,7 +156,7 @@ export function ProjectDetailPage() {
       return {
         title: 'Project blocked',
         body: `${blocked.title} needs client input.`,
-        href: `/projects/${projectId}`,
+        href: `/projects/${projectId}?tab=tasks`,
         tone: 'danger' as const,
       };
     }
@@ -190,15 +193,16 @@ export function ProjectDetailPage() {
       return {
         title: 'Milestone due soon',
         body: `Complete “${nextMilestone.label}” and update the client.`,
-        href: `/projects/${projectId}`,
+        href: `/projects/${projectId}?tab=timeline`,
         tone: 'info' as const,
       };
     }
     return {
       title: 'Needs approval',
       body: 'Move the project to the next phase when stakeholders sign off.',
-      href: `/projects/${projectId}`,
+      href: `/projects/${projectId}?tab=timeline`,
       tone: 'neutral' as const,
+      primaryAction: 'advance_lifecycle' as const,
     };
   }, [projectId, project, projectTasks, projectContracts, projectInvoices, client?.name, store]);
 
@@ -242,6 +246,10 @@ export function ProjectDetailPage() {
   const atRisk = pct >= 88 || blockedCount > 0 || unreadProjectThreads > 0;
   const threadQuietH = hoursSinceLastProjectThreadActivity(store, project.id);
   const ph = projectHealthLevel(store, project.id);
+  const tabParam = searchParams.get('tab');
+  const tabsActiveId =
+    tabParam && PROJECT_MAIN_TABS.has(tabParam) ? tabParam : 'timeline';
+
   const stalledSite =
     project.deliveryFocus === 'client_site' &&
     project.waitingOn !== 'client' &&
@@ -352,9 +360,23 @@ export function ProjectDetailPage() {
               <>
                 <p className="mt-2 text-sm font-bold text-slate-900">{nextAction.title}</p>
                 <p className="mt-1 text-xs text-slate-600">{nextAction.body}</p>
-                <Link to={nextAction.href} className="mt-3 inline-block text-xs font-semibold text-violet-700 transition-colors hover:text-violet-900">
-                  {nextAction.tone === 'danger' ? 'Resolve now →' : 'Take action →'}
-                </Link>
+                {'primaryAction' in nextAction && nextAction.primaryAction === 'advance_lifecycle' ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="mt-3 h-auto p-0 text-xs font-semibold text-violet-700 hover:bg-transparent hover:text-violet-900"
+                    onClick={() => projectId && advanceProjectLifecycle(projectId)}
+                  >
+                    Take action →
+                  </Button>
+                ) : (
+                  <Link
+                    to={nextAction.href}
+                    className="mt-3 inline-block text-xs font-semibold text-violet-700 transition-colors hover:text-violet-900"
+                  >
+                    {nextAction.tone === 'danger' ? 'Resolve now →' : 'Take action →'}
+                  </Link>
+                )}
               </>
             ) : (
               <p className="mt-2 text-sm text-slate-600">Nothing urgent on this project right now.</p>
@@ -617,7 +639,7 @@ export function ProjectDetailPage() {
                   title="Live conversion preview"
                   srcDoc={homePreviewHtml}
                   className="h-[min(520px,62vh)] w-full bg-white"
-                  sandbox="allow-scripts allow-popups"
+                  sandbox="allow-scripts"
                 />
               </div>
               <p className="mt-2 text-[10px] text-white/55">Same preview the client sees in their portal.</p>
@@ -760,7 +782,11 @@ export function ProjectDetailPage() {
       </Card>
 
       <Tabs
-        defaultId="timeline"
+        activeId={tabsActiveId}
+        onActiveChange={(id) => {
+          if (id === 'timeline') setSearchParams({}, { replace: true });
+          else setSearchParams({ tab: id }, { replace: true });
+        }}
         tabs={[
           {
             id: 'timeline',
@@ -884,7 +910,14 @@ export function ProjectDetailPage() {
                     Files you attach here land on this client and this project — use Files to upload with the right
                     project selected.
                   </p>
-                  <Link to="/files" className={`${buttonClassName('primary', 'mt-4 inline-flex')}`}>
+                  <Link
+                    to={
+                      project.clientId
+                        ? `/files?project=${encodeURIComponent(project.id)}&client=${encodeURIComponent(project.clientId)}`
+                        : `/files?project=${encodeURIComponent(project.id)}`
+                    }
+                    className={`${buttonClassName('primary', 'mt-4 inline-flex')}`}
+                  >
                     Go to Files
                   </Link>
                 </Card>

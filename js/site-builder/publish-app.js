@@ -46,17 +46,45 @@ function statusForPath(path) {
   return { label: 'Draft', cls: 'draft' };
 }
 
-function setPreviewFrame() {
+function escapeHtmlAttr(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function fetchPreviewHtml(url) {
+  const t = getToken();
+  const headers = {};
+  if (t) headers.Authorization = `Bearer ${t}`;
+  const r = await fetch(url, { headers, credentials: 'same-origin' });
+  if (!r.ok) {
+    const err = await r.text().catch(() => r.statusText);
+    throw new Error(String(err || r.statusText || 'Preview request failed').slice(0, 400));
+  }
+  return r.text();
+}
+
+async function setPreviewFrame() {
   const fr = document.getElementById('pdFrame');
   const sz = document.getElementById('pdFrameSizer');
   if (!fr || !sz) return;
-  if (previewMode === 'mirror') {
-    const p = selectedPath || 'index.html';
-    fr.src = `/${encodeURI(p)}?pdMirror=1&t=${Date.now()}`;
-  } else if (projectId) {
-    fr.src = `/preview/${projectId}/${encodeURI(selectedPath)}?t=${Date.now()}`;
-  } else {
-    return;
+  fr.removeAttribute('src');
+  try {
+    let url;
+    if (previewMode === 'mirror') {
+      const p = selectedPath || 'index.html';
+      url = `/${encodeURI(p)}?pdMirror=1&t=${Date.now()}`;
+    } else if (projectId) {
+      url = `/preview/${projectId}/${encodeURI(selectedPath)}?t=${Date.now()}`;
+    } else {
+      return;
+    }
+    const html = await fetchPreviewHtml(url);
+    fr.srcdoc = html;
+  } catch (e) {
+    const msg = escapeHtmlAttr(e && e.message ? e.message : 'Preview failed');
+    fr.srcdoc = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Preview error</title></head><body style="font-family:system-ui;padding:1rem"><p><strong>Preview could not load.</strong></p><p>${msg}</p></body></html>`;
   }
   if (previewWidth === '100%') {
     sz.style.maxWidth = '100%';
@@ -92,7 +120,7 @@ function renderFileList() {
       selectedPath = path;
       document.querySelectorAll('.pd-row').forEach((r) => r.classList.remove('is-on'));
       row.classList.add('is-on');
-      setPreviewFrame();
+      void setPreviewFrame();
     });
     box.appendChild(row);
   }
@@ -125,7 +153,7 @@ async function loadFiles() {
   renderFileList();
   const prefer = files.some((f) => f.path === 'index.html') ? 'index.html' : files[0]?.path || 'index.html';
   selectedPath = prefer;
-  setPreviewFrame();
+  void setPreviewFrame();
 }
 
 async function onProject(id) {
@@ -220,7 +248,7 @@ function main() {
       document.querySelectorAll('#pdPreviewBar .pd-dv button[data-pd]').forEach((b) => {
         b.classList.toggle('is-on', b === btn);
       });
-      setPreviewFrame();
+      void setPreviewFrame();
     });
   });
   void loadProjects().catch((e) => {

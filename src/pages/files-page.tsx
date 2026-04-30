@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { FolderOpen, Link2, Plus, Search, Upload } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { TablePageLayout } from '@/components/layout/templates/table-page-layout';
@@ -33,6 +33,7 @@ function extIcon(name: string) {
 
 export function FilesPage() {
   const { toast } = useShell();
+  const [searchParams] = useSearchParams();
   const files = useFiles();
   const clients = useClients();
   const projects = useProjects();
@@ -48,6 +49,13 @@ export function FilesPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [drawerFileId, setDrawerFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const p = searchParams.get('project');
+    const c = searchParams.get('client');
+    if (p) setProjectId(p);
+    if (c) setClientId(c);
+  }, [searchParams]);
 
   const drawerFile = useAppStore((s) => (drawerFileId ? s.files[drawerFileId] : undefined));
   const drawerActivities = useAppStore(

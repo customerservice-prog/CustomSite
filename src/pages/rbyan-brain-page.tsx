@@ -368,7 +368,9 @@ export function RbyanBrainPage() {
       source: 'mock',
     });
     setPreviewNonce((n) => n + 1);
-    if (!saveResult.apiOk) {
+    if (!saveResult.localSaved) {
+      toast(saveResult.apiError ?? 'Could not save to browser storage.', 'error');
+    } else if (!saveResult.apiOk) {
       toast(`Restored locally. Cloud sync failed: ${saveResult.apiError ?? 'Unknown error'}`, 'warning');
     } else {
       toast(`Restored “${v.label}”.`, 'success');
@@ -663,7 +665,7 @@ export function RbyanBrainPage() {
                   key={label}
                   type="button"
                   disabled={generating || !projectContext}
-                  className="rounded-full border border-violet-500/25 bg-violet-500/10 px-2.5 py-1 text-[10px] font-medium text-violet-100 transition hover:bg-violet-500/25 disabled:opacity-40"
+                  className="rounded-full border border-white/15 bg-zinc-800/90 px-2.5 py-1 text-[10px] font-medium text-zinc-100 shadow-sm transition hover:border-violet-400/40 hover:bg-zinc-700/90 disabled:cursor-not-allowed disabled:opacity-45"
                   onClick={() => void sendPrompt(prompt)}
                 >
                   {label}
@@ -706,9 +708,16 @@ export function RbyanBrainPage() {
               <Button
                 type="button"
                 variant="secondary"
-                className="h-8 shrink-0 gap-1 border-white/10 bg-white/10 px-2.5 text-[11px] text-white hover:bg-white/15"
+                className="h-8 shrink-0 gap-1 border-white/10 bg-white/10 px-2.5 text-[11px] text-white hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-35"
                 disabled={generating || undoStack.length === 0}
-                onClick={undoLast}
+                title={undoStack.length === 0 ? 'Nothing to undo yet' : 'Undo last generation'}
+                onClick={() => {
+                  if (undoStack.length === 0) {
+                    toast('Nothing to undo yet.', 'info');
+                    return;
+                  }
+                  undoLast();
+                }}
               >
                 <Undo2 className="h-3.5 w-3.5" aria-hidden />
                 Undo

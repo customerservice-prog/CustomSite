@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import type { ProjectSite, ProjectSiteFile } from '@/lib/site-builder/project-site-model';
-import { newFile } from '@/lib/site-builder/project-site-model';
+import { inferFileType, newFile } from '@/lib/site-builder/project-site-model';
 import { composePreviewDocument } from '@/lib/site-builder/compose-preview-document';
-import { getProjectSite, saveProjectSite } from '@/lib/site-builder/project-site-storage';
+import { getProjectSite, saveProjectSite, type SaveProjectSiteResult } from '@/lib/site-builder/project-site-storage';
 import type { RbyanGeneratedFile, RbyanVersionEntry } from '@/lib/rbyan/types';
 import { rbyanFilesToProjectFiles } from '@/lib/rbyan/types';
 import { appendRbyanVersion, listRbyanVersions } from '@/lib/rbyan/version-history';
@@ -16,7 +16,7 @@ export type ProjectSiteWorkspaceRow = {
   previewHtml: string;
   previewNonce: number;
   lastSavedAt: number | null;
-  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  saveStatus: 'idle' | 'saving' | 'saved' | 'saved_local_only' | 'error';
   saveError: string | null;
   loadStatus: 'idle' | 'loading' | 'ready' | 'error';
   loadError: string | null;
@@ -43,7 +43,7 @@ function humanizeSiteApiSaveError(apiError: string | undefined): string {
   const m = (apiError || '').trim();
   if (!m) return humanizeError(new Error('unknown'));
   if (/foreign key|site_files_project_id_fkey|violates foreign key/i.test(m)) {
-    return 'Cloud save failed: this project is not in the database yet (common with demo IDs). Your files are saved in this browser only — run the demo seed SQL or create the project in Supabase, then save again.';
+    return 'Cloud save failed: project row could not be created in the database (check Supabase logs / permissions). Your files are still in this browser only.';
   }
   if (/network|failed to fetch|load failed/i.test(m)) {
     return 'Could not reach the server — your work is saved in this browser only.';
@@ -107,6 +107,10 @@ type Store = {
   requestQuickAddPage: () => void;
   /** JSON bundle for duplicating a site into another project or doc. */
   copySiteBundleForDuplicate: (projectId: string) => Promise<boolean>;
+  /** Paste JSON from Copy site — replaces workspace files for this project. */
+  importSiteBundleFromJson: (projectId: string, json: string) => { ok: true } | { ok: false; error: string };
+  /** Align save badge after external persist (e.g. starter seed `saveProjectSite`). */
+  recordPersistResult: (projectId: string, result: SaveProjectSiteResult) => void;
 };
 
 function emptyRow(projectId: string): ProjectSiteWorkspaceRow {
@@ -139,6 +143,47 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
     set((s) => ({ quickAddPageNonce: s.quickAddPageNonce + 1 }));
   },
 
+  recordPersistResult(projectId, result) {
+    const row = get().byProjectId[projectId];
+    if (!row) return;
+    if (!result.localSaved) {
+      const saveError = result.apiError || 'Could not save locally.';
+      set((s) => ({
+        byProjectId: {
+          ...s.byProjectId,
+          [projectId]: { ...row, saveStatus: 'error', saveError },
+        },
+      }));
+      return;
+    }
+    if (result.apiOk) {
+      set((s) => ({
+        byProjectId: {
+          ...s.byProjectId,
+          [projectId]: {
+            ...row,
+            saveStatus: 'saved',
+            saveError: null,
+            lastSavedAt: Date.now(),
+          },
+        },
+      }));
+      return;
+    }
+    const saveError = humanizeSiteApiSaveError(result.apiError);
+    set((s) => ({
+      byProjectId: {
+        ...s.byProjectId,
+        [projectId]: {
+          ...row,
+          saveStatus: 'saved_local_only',
+          saveError,
+          lastSavedAt: Date.now(),
+        },
+      },
+    }));
+  },
+
   async copySiteBundleForDuplicate(projectId) {
     const row = get().byProjectId[projectId];
     if (!row?.site.files.length) return false;
@@ -148,6 +193,31 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
       return true;
     } catch {
       return false;
+    }
+  },
+
+  importSiteBundleFromJson(projectId, json) {
+    try {
+      const data = JSON.parse(json) as { files?: unknown[] };
+      if (!data?.files?.length) {
+        return { ok: false, error: 'Expected JSON with a non-empty "files" array (same shape as Copy site).' };
+      }
+      const files: ProjectSiteFile[] = [];
+      for (let i = 0; i < data.files.length; i++) {
+        const raw = data.files[i] as Partial<ProjectSiteFile>;
+        const name = String(raw?.name ?? '').trim() || `file-${i + 1}`;
+        const content = String(raw?.content ?? '');
+        const type =
+          raw?.type === 'html' || raw?.type === 'css' || raw?.type === 'js' ? raw.type : inferFileType(name);
+        const updatedAt = typeof raw?.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString();
+        const id = typeof raw?.id === 'string' && raw.id.trim() ? raw.id.trim() : name;
+        files.push({ id, name, content, type, updatedAt });
+      }
+      const site: ProjectSite = { projectId, files };
+      get().setSiteImmediate(projectId, site);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Invalid JSON — paste the exact output from Copy site.' };
     }
   },
 
@@ -312,45 +382,72 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
     const row = get().byProjectId[projectId];
     if (!row) return;
     get().flushPreview(projectId);
-    const now = Date.now();
     const withSnapshot = opts?.snapshot !== false;
     const siteToSave = get().byProjectId[projectId]!.site;
     const snapshotFiles = siteFilesToVersionPayload(siteToSave);
     set((s) => ({
       byProjectId: {
         ...s.byProjectId,
-        [projectId]: { ...row, saveStatus: 'saving', saveError: null, lastSavedAt: now },
+        [projectId]: { ...row, saveStatus: 'saving', saveError: null },
       },
     }));
-    void saveProjectSite(siteToSave).then((result) => {
-      if (result.apiOk) {
-        if (withSnapshot) {
-          get().appendSnapshot(projectId, 'Manual save', ['Saved from Site Builder'], snapshotFiles);
+    void saveProjectSite(siteToSave)
+      .then((result) => {
+        if (!result.localSaved) {
+          const saveError = result.apiError || 'Could not save locally.';
+          set((s) => {
+            const r = get().byProjectId[projectId];
+            if (!r) return s;
+            return {
+              byProjectId: {
+                ...s.byProjectId,
+                [projectId]: { ...r, saveStatus: 'error', saveError },
+              },
+            };
+          });
+          return;
         }
+        if (result.apiOk) {
+          if (withSnapshot) {
+            get().appendSnapshot(projectId, 'Manual save', ['Saved from Site Builder'], snapshotFiles);
+          }
+          set((s) => {
+            const r = get().byProjectId[projectId];
+            if (!r) return s;
+            return {
+              byProjectId: {
+                ...s.byProjectId,
+                [projectId]: { ...r, saveStatus: 'saved', saveError: null, lastSavedAt: Date.now() },
+              },
+            };
+          });
+          return;
+        }
+        const saveError = humanizeSiteApiSaveError(result.apiError);
         set((s) => {
           const r = get().byProjectId[projectId];
           if (!r) return s;
           return {
             byProjectId: {
               ...s.byProjectId,
-              [projectId]: { ...r, saveStatus: 'saved', saveError: null },
+              [projectId]: { ...r, saveStatus: 'saved_local_only', saveError, lastSavedAt: Date.now() },
             },
           };
         });
-        return;
-      }
-      const saveError = humanizeSiteApiSaveError(result.apiError);
-      set((s) => {
-        const r = get().byProjectId[projectId];
-        if (!r) return s;
-        return {
-          byProjectId: {
-            ...s.byProjectId,
-            [projectId]: { ...r, saveStatus: 'error', saveError },
-          },
-        };
+      })
+      .catch((err) => {
+        const saveError = humanizeError(err);
+        set((s) => {
+          const r = get().byProjectId[projectId];
+          if (!r) return s;
+          return {
+            byProjectId: {
+              ...s.byProjectId,
+              [projectId]: { ...r, saveStatus: 'error', saveError },
+            },
+          };
+        });
       });
-    });
   },
 
   applyRbyanOutput(projectId, files, meta) {
@@ -374,26 +471,75 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
           site,
           previewHtml,
           previewNonce: prev.previewNonce + 1,
-          lastSavedAt: Date.now(),
-          saveStatus: 'saved',
+          saveStatus: 'saving',
           saveError: null,
           versions: listRbyanVersions(projectId),
         },
       },
     }));
-    void saveProjectSite(site).then((result) => {
-      if (result.apiOk) return;
-      const saveError = humanizeSiteApiSaveError(result.apiError);
-      set((st) => {
-        const r = get().byProjectId[projectId];
-        if (!r) return st;
-        return {
-          byProjectId: {
-            ...st.byProjectId,
-            [projectId]: { ...r, saveStatus: 'error', saveError },
-          },
-        };
+    void saveProjectSite(site)
+      .then((result) => {
+        if (!result.localSaved) {
+          const saveError = result.apiError || 'Could not save locally.';
+          set((st) => {
+            const r = get().byProjectId[projectId];
+            if (!r) return st;
+            return {
+              byProjectId: {
+                ...st.byProjectId,
+                [projectId]: { ...r, saveStatus: 'error', saveError },
+              },
+            };
+          });
+          return;
+        }
+        if (result.apiOk) {
+          set((st) => {
+            const r = get().byProjectId[projectId];
+            if (!r) return st;
+            return {
+              byProjectId: {
+                ...st.byProjectId,
+                [projectId]: {
+                  ...r,
+                  saveStatus: 'saved',
+                  saveError: null,
+                  lastSavedAt: Date.now(),
+                },
+              },
+            };
+          });
+          return;
+        }
+        const saveError = humanizeSiteApiSaveError(result.apiError);
+        set((st) => {
+          const r = get().byProjectId[projectId];
+          if (!r) return st;
+          return {
+            byProjectId: {
+              ...st.byProjectId,
+              [projectId]: {
+                ...r,
+                saveStatus: 'saved_local_only',
+                saveError,
+                lastSavedAt: Date.now(),
+              },
+            },
+          };
+        });
+      })
+      .catch((err) => {
+        const saveError = humanizeError(err);
+        set((st) => {
+          const r = get().byProjectId[projectId];
+          if (!r) return st;
+          return {
+            byProjectId: {
+              ...st.byProjectId,
+              [projectId]: { ...r, saveStatus: 'error', saveError },
+            },
+          };
+        });
       });
-    });
   },
 }));

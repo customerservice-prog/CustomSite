@@ -166,8 +166,16 @@ function setAppliedTemplateSections(tpl) {
 function scrollTemplateSectionInPreview(tpl, label) {
   const ifr = document.getElementById('sbPreviewFrame');
   if (!ifr) return;
-  const doc = ifr.contentDocument || (ifr.contentWindow && ifr.contentWindow.document);
-  if (!doc) return;
+  let doc = null;
+  try {
+    doc = ifr.contentDocument || (ifr.contentWindow && ifr.contentWindow.document);
+  } catch {
+    doc = null;
+  }
+  if (!doc) {
+    toast('Section scroll is unavailable in locked-down preview (sandbox).', 'info');
+    return;
+  }
   const L = (label || '').toLowerCase();
   let el = null;
   if (L.includes('nav')) el = doc.querySelector('header, nav, [role="navigation"], .nav, .navbar') || null;
@@ -394,22 +402,25 @@ function setPreviewUrlText() {
   if (purl) purl.href = u ? `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(u)}` : '#';
 }
 
-function refreshPreview() {
+async function refreshPreview() {
   const ifr = document.getElementById('sbPreviewFrame');
   if (!projectId) return;
   if (activePath && isImageFile(activePath)) return;
   if (ifr) {
-    ifr.src = `/preview/${projectId}/index.html?t=${Date.now()}`;
-    ifr.onload = () => {
-      try {
-        const doc = ifr.contentDocument;
-        if (doc && vibeCustomCss.trim()) {
-          injectVibeInPreviewDocument(doc);
-        }
-      } catch (e) {
-        /* */
-      }
-    };
+    ifr.removeAttribute('src');
+    try {
+      const t = getToken();
+      const headers = {};
+      if (t) headers.Authorization = `Bearer ${t}`;
+      const url = `/preview/${projectId}/index.html?t=${Date.now()}`;
+      const r = await fetch(url, { headers, credentials: 'same-origin' });
+      if (!r.ok) throw new Error('Preview request failed');
+      let html = await r.text();
+      html = injectVibeIntoHtmlString(html);
+      ifr.srcdoc = html;
+    } catch (e) {
+      toast((e && e.message) || 'Preview failed', 'error');
+    }
   }
   setPreviewUrlText();
 }
@@ -464,19 +475,14 @@ function htmlWithPreviewBase(raw) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8" />${tag}</head><body>\n${str}\n</body></html>`;
 }
 
-function injectVibeInPreviewDocument(doc) {
-  if (!doc || !vibeCustomCss.trim()) return;
-  try {
-    let el = doc.getElementById('sb-vibe-override');
-    if (!el) {
-      el = doc.createElement('style');
-      el.id = 'sb-vibe-override';
-      (doc.head || doc.documentElement).appendChild(el);
-    }
-    el.textContent = vibeCustomCss;
-  } catch (e) {
-    /* */
-  }
+/** Inject vibe CSS into HTML string (used with srcdoc — parent cannot access sandboxed iframe DOM). */
+function injectVibeIntoHtmlString(html) {
+  if (!vibeCustomCss.trim()) return String(html);
+  const tag = `<style id="sb-vibe-override">\n${String(vibeCustomCss).replace(/<\/style/gi, '<\\/style')}\n</style>`;
+  const str = String(html);
+  if (/<\/head>/i.test(str)) return str.replace(/<\/head>/i, `${tag}\n</head>`);
+  if (/<head[^>]*>/i.test(str)) return str.replace(/<head([^>]*)>/i, `<head$1>\n${tag}\n`);
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/>${tag}</head><body>\n${str}\n</body></html>`;
 }
 
 /**
@@ -608,16 +614,13 @@ function liveWritePreview() {
   const ifr = document.getElementById('sbPreviewFrame');
   if (!ifr || !ed || !activePath) return;
   if (!activePath.toLowerCase().endsWith('.html')) return;
-  const html = htmlWithPreviewBase(getHtmlSourceForPreview());
+  let html = htmlWithPreviewBase(getHtmlSourceForPreview());
+  html = injectVibeIntoHtmlString(html);
   try {
-    const doc = ifr.contentDocument || (ifr.contentWindow && ifr.contentWindow.document);
-    if (!doc) return;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    injectVibeInPreviewDocument(doc);
+    ifr.removeAttribute('src');
+    ifr.srcdoc = html;
   } catch (e) {
-    /* cross-origin or blocked */
+    /* */
   }
 }
 
@@ -1028,7 +1031,7 @@ async function saveCurrent() {
     lastSavedAt = Date.now();
     updateBuilderStatusBar();
     toast('Saved', 'success');
-    refreshPreview();
+    void refreshPreview();
   } catch (e) {
     if (isLikelyConnectionError(e)) {
       showBanner(connectionHint(e));
@@ -1230,7 +1233,7 @@ async function onProjectPicked(id) {
   } else {
     void activatePath(null, false);
   }
-  refreshPreview();
+  void refreshPreview();
   updateBuilderStatusBar();
 }
 
@@ -1363,7 +1366,7 @@ async function runTemplateInitFromMode(tpl) {
     await loadFileList();
     await activatePath('index.html', true);
     setAppliedTemplateSections(tpl);
-    refreshPreview();
+    void refreshPreview();
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -1408,7 +1411,7 @@ async function appendSectionToIndex(html) {
   }
   toast('Section added to index.html', 'success');
   await loadFileList();
-  refreshPreview();
+  void refreshPreview();
   scheduleLivePreview();
 }
 
@@ -1672,7 +1675,7 @@ async function runDeploy(kind) {
       }
     }
     await loadBuilderMeta();
-    refreshPreview();
+    void refreshPreview();
     toast('Deploy step finished (see log)', r.ok && !r.error ? 'success' : 'error');
   } catch (e) {
     log.textContent += e.message;
@@ -1705,6 +1708,11 @@ async function main() {
   }
   monacoI = monaco;
   ed = editor;
+  const sbFrame = document.getElementById('sbPreviewFrame');
+  if (sbFrame) {
+    sbFrame.setAttribute('sandbox', 'allow-scripts');
+    sbFrame.setAttribute('referrerpolicy', 'no-referrer');
+  }
   ed.onDidChangeModelContent(() => {
     if (htmlEditMode === 'visual') return;
     if (activePath) {
@@ -1787,7 +1795,7 @@ async function main() {
       toast('Starter created', 'success');
       await loadFileList();
       void activatePath('index.html', true);
-      refreshPreview();
+      void refreshPreview();
     } catch (e) {
       toast(e.message, 'error');
     }
@@ -1861,13 +1869,18 @@ async function main() {
   document.getElementById('sbViewSource')?.addEventListener('click', () => {
     const ifr = document.getElementById('sbPreviewFrame');
     let html = '';
-    try {
-      const d = ifr && ifr.contentDocument;
-      if (d && d.documentElement) {
-        html = d.documentElement.outerHTML;
+    if (ifr && typeof ifr.srcdoc === 'string' && ifr.srcdoc.trim()) {
+      html = ifr.srcdoc;
+    }
+    if (!html) {
+      try {
+        const d = ifr && ifr.contentDocument;
+        if (d && d.documentElement) {
+          html = d.documentElement.outerHTML;
+        }
+      } catch {
+        html = '';
       }
-    } catch {
-      html = '';
     }
     if (!html && ed) {
       html =

@@ -4,6 +4,7 @@ import { ChevronLeft, Copy, ExternalLink, Eye, Loader2, Maximize2, Plus, Rocket,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
+import { Textarea } from '@/components/ui/textarea';
 import { useProjects } from '@/store/hooks';
 import type { ProjectSite } from '@/lib/site-builder/project-site-model';
 import { newFile } from '@/lib/site-builder/project-site-model';
@@ -18,6 +19,7 @@ import {
 import { buildSectionByTemplateId } from '@/lib/site-templates/section-catalog';
 import type { SectionTemplateRow } from '@/lib/site-templates/section-catalog';
 import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
+import { createPreviewDebugEvent, type PreviewDebugEvent } from '@/lib/site-builder/preview-debug-events';
 import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
 import { SectionLibraryPopover } from '@/components/site-builder/section-library-popover';
 import { SiteBuilderPreviewDebugPanel } from '@/components/site-builder/site-builder-preview-debug-panel';
@@ -26,6 +28,12 @@ import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 
 const BASE_FILES = ['index.html', 'styles.css', 'script.js'] as const;
+
+const CLIENT_SITE_STATUS_LABEL: Record<'draft' | 'review' | 'live', string> = {
+  draft: 'Draft — not on production URL yet',
+  review: 'Review — QA or stakeholder sign-off',
+  live: 'Live — production URL in use',
+};
 
 export function SiteBuilderFoundationPage() {
   const { toast } = useShell();
@@ -53,6 +61,8 @@ export function SiteBuilderFoundationPage() {
   const setBuilderSurface = useProjectSiteWorkspaceStore((s) => s.setBuilderSurface);
   const appendSnapshot = useProjectSiteWorkspaceStore((s) => s.appendSnapshot);
   const copySiteBundle = useProjectSiteWorkspaceStore((s) => s.copySiteBundleForDuplicate);
+  const importSiteBundleFromJson = useProjectSiteWorkspaceStore((s) => s.importSiteBundleFromJson);
+  const recordPersistResult = useProjectSiteWorkspaceStore((s) => s.recordPersistResult);
   const flushPreview = useProjectSiteWorkspaceStore((s) => s.flushPreview);
 
   const site: ProjectSite = row?.site ?? { projectId: projectId || '', files: [] };
@@ -73,15 +83,20 @@ export function SiteBuilderFoundationPage() {
   const autoSeedRef = useRef(false);
   const prevLoadErrRef = useRef<string | null>(null);
   const prevSaveErrRef = useRef<string | null>(null);
+  const saveCloudToastSigRef = useRef<string | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
   const fullscreenFrameRef = useRef<HTMLIFrameElement>(null);
   const [showQuickPageBar, setShowQuickPageBar] = useState(false);
   const [newPageSlug, setNewPageSlug] = useState('');
   const [previewIframeKey, setPreviewIframeKey] = useState(0);
-  const [previewDebugLines, setPreviewDebugLines] = useState<string[]>([]);
+  const [previewDebugEvents, setPreviewDebugEvents] = useState<PreviewDebugEvent[]>([]);
+  const [builderDebugExpanded, setBuilderDebugExpanded] = useState(false);
   const [fullscreenPreviewOpen, setFullscreenPreviewOpen] = useState(false);
-  const [publishSetupOpen, setPublishSetupOpen] = useState(false);
+  const [publishPanelOpen, setPublishPanelOpen] = useState(false);
+  const [importBundleOpen, setImportBundleOpen] = useState(false);
+  const [importPaste, setImportPaste] = useState('');
+  const [previewPulse, setPreviewPulse] = useState(false);
 
   const modKey = useMemo(() => {
     if (typeof navigator === 'undefined') return 'Ctrl';
@@ -114,6 +129,26 @@ export function SiteBuilderFoundationPage() {
     [projectId, setActiveFileStore]
   );
 
+  const onImportBundle = useCallback(() => {
+    if (!projectId) return;
+    const r = importSiteBundleFromJson(projectId, importPaste);
+    if (!r.ok) {
+      toast(r.error, 'error');
+      return;
+    }
+    const s = useProjectSiteWorkspaceStore.getState().byProjectId[projectId]?.site;
+    if (!s?.files.length) {
+      toast('Import produced no files.', 'error');
+      return;
+    }
+    const pick = s.files.some((f) => f.name === 'index.html') ? 'index.html' : s.files[0]!.name;
+    applyFileToEditor(s, pick);
+    setImportBundleOpen(false);
+    setImportPaste('');
+    toast('Site files imported from bundle.', 'success');
+    optimisticPersist(projectId, { snapshot: true });
+  }, [projectId, importPaste, importSiteBundleFromJson, toast, applyFileToEditor, optimisticPersist]);
+
   useEffect(() => {
     didInitEditor.current = false;
     autoSeedRef.current = false;
@@ -124,15 +159,13 @@ export function SiteBuilderFoundationPage() {
   useEffect(() => {
     if (!loadError || loadError === prevLoadErrRef.current) return;
     prevLoadErrRef.current = loadError;
-    const ts = new Date().toLocaleTimeString();
-    setPreviewDebugLines((p) => [...p.slice(-38), `[${ts}] [workspace] Load: ${loadError}`]);
+    setPreviewDebugEvents((p) => [...p.slice(-119), createPreviewDebugEvent('workspace-load', loadError)]);
   }, [loadError]);
 
   useEffect(() => {
     if (!saveError || saveError === prevSaveErrRef.current) return;
     prevSaveErrRef.current = saveError;
-    const ts = new Date().toLocaleTimeString();
-    setPreviewDebugLines((p) => [...p.slice(-38), `[${ts}] [workspace] Save: ${saveError}`]);
+    setPreviewDebugEvents((p) => [...p.slice(-119), createPreviewDebugEvent('workspace-save', saveError)]);
   }, [saveError]);
 
   useEffect(() => {
@@ -225,6 +258,37 @@ export function SiteBuilderFoundationPage() {
     optimisticPersist(projectId, { snapshot: true });
   }, [projectId, activeFileId, draftContent, patchSiteFile, optimisticPersist]);
 
+  const openPublishPanel = useCallback(() => {
+    saveCurrentToSite();
+    setPublishPanelOpen(true);
+  }, [saveCurrentToSite]);
+
+  const openProjectWorkspaceNewTab = useCallback(() => {
+    if (!projectId) return;
+    const u = new URL(window.location.href);
+    u.hash = `#/projects/${projectId}`;
+    const w = window.open(u.toString(), '_blank', 'noopener,noreferrer');
+    if (!w) toast('Allow popups to open the project workspace.', 'error');
+  }, [projectId, toast]);
+
+  const openPublishDashboardNewTab = useCallback(() => {
+    if (!projectId) return;
+    const w = window.open(`/site-builder.html?project=${encodeURIComponent(projectId)}`, '_blank', 'noopener,noreferrer');
+    if (!w) toast('Allow popups to open the publish dashboard.', 'error');
+  }, [projectId, toast]);
+
+  const copyPublishUrl = useCallback(
+    async (label: string, text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast(`${label} copied`, 'success');
+      } catch {
+        toast('Could not copy — select the URL and copy manually.', 'error');
+      }
+    },
+    [toast]
+  );
+
   useEffect(() => {
     const save = () => saveCurrentToSite();
     window.addEventListener('site-builder-save', save);
@@ -237,12 +301,8 @@ export function SiteBuilderFoundationPage() {
       if (d?.source !== 'site-builder-preview') return;
       const t = d.type ?? 'message';
       const detail = (d.detail ?? '').trim();
-      const ts = new Date().toLocaleTimeString();
-      const line =
-        t === 'blocked-root-path'
-          ? `[${ts}] Preview blocked navigation to ${detail || '…'}`
-          : `[${ts}] ${t}${detail ? `: ${detail}` : ''}`;
-      setPreviewDebugLines((prev) => [...prev.slice(-39), line]);
+      const ev = createPreviewDebugEvent(t, detail);
+      setPreviewDebugEvents((prev) => [...prev.slice(-119), ev]);
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
@@ -250,7 +310,7 @@ export function SiteBuilderFoundationPage() {
 
   const resetPreview = useCallback(() => {
     setPreviewIframeKey((k) => k + 1);
-    setPreviewDebugLines([]);
+    setPreviewDebugEvents([]);
   }, []);
 
   useEffect(() => {
@@ -274,6 +334,15 @@ export function SiteBuilderFoundationPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [fullscreenPreviewOpen]);
+
+  useEffect(() => {
+    if (!publishPanelOpen || fullscreenPreviewOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPublishPanelOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [publishPanelOpen, fullscreenPreviewOpen]);
 
   useEffect(() => {
     if (searchParams.get('fullscreen') !== '1') return;
@@ -319,8 +388,23 @@ export function SiteBuilderFoundationPage() {
   }, [projectId, site.files.length, syncDraftToStoreAndPreview, activeFileId, toast]);
 
   const scrollPreviewIntoView = useCallback(() => {
-    previewWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, []);
+    const el = previewWrapRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    });
+    const shell = document.querySelector('main.flex-1.overflow-y-auto, main.min-h-0.flex-1.overflow-y-auto');
+    if (shell) {
+      const er = el.getBoundingClientRect();
+      const sr = shell.getBoundingClientRect();
+      const delta = er.top - sr.top - Math.max(24, (sr.height - er.height) / 3);
+      if (Math.abs(delta) > 12) shell.scrollBy({ top: delta, behavior: 'smooth' });
+    }
+    setPreviewPulse(true);
+    window.setTimeout(() => setPreviewPulse(false), 1400);
+    toast('Preview brought into view.', 'info');
+  }, [toast]);
 
   const patchIndexHtml = useCallback(
     (mutate: (html: string) => string) => {
@@ -392,8 +476,9 @@ export function SiteBuilderFoundationPage() {
     setBooting(true);
     try {
       const rich = project?.deliveryFocus === 'client_site';
-      const next = await createStarterFiles(projectId, { rich });
+      const { site: next, save } = await createStarterFiles(projectId, { rich });
       setSiteImmediate(projectId, next);
+      recordPersistResult(projectId, save);
       appendSnapshot(
         projectId,
         rich ? 'Rich starter site' : 'Starter shell',
@@ -404,7 +489,7 @@ export function SiteBuilderFoundationPage() {
     } finally {
       setBooting(false);
     }
-  }, [projectId, project?.deliveryFocus, setSiteImmediate, appendSnapshot, applyFileToEditor]);
+  }, [projectId, project?.deliveryFocus, setSiteImmediate, appendSnapshot, applyFileToEditor, recordPersistResult]);
 
   useEffect(() => {
     if (!projectId || !row?.hydrated || autoSeedRef.current) return;
@@ -412,12 +497,13 @@ export function SiteBuilderFoundationPage() {
     if (project?.deliveryFocus !== 'client_site') return;
     autoSeedRef.current = true;
     void (async () => {
-      const next = await createStarterFiles(projectId, { rich: true });
+      const { site: next, save } = await createStarterFiles(projectId, { rich: true });
       setSiteImmediate(projectId, next);
+      recordPersistResult(projectId, save);
       appendSnapshot(projectId, 'Auto-seeded homepage', ['Created when opening an empty client site project'], siteFilesToVersionPayload(next));
       applyFileToEditor(next, 'index.html');
     })();
-  }, [projectId, row?.hydrated, site.files.length, project?.deliveryFocus, setSiteImmediate, appendSnapshot, applyFileToEditor]);
+  }, [projectId, row?.hydrated, site.files.length, project?.deliveryFocus, setSiteImmediate, appendSnapshot, applyFileToEditor, recordPersistResult]);
 
   const addHtmlPage = useCallback(() => {
     const raw = newPageSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
@@ -491,8 +577,13 @@ export function SiteBuilderFoundationPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             to={`/projects/${projectId}`}
+            onClick={(e) => {
+              if (unsaved && !window.confirm('You have unsaved edits in the editor. Leave the site builder?')) {
+                e.preventDefault();
+              }
+            }}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-white/5 hover:text-white"
-            aria-label="Back to project"
+            aria-label="Back to project overview"
           >
             <ChevronLeft className="h-4 w-4" />
           </Link>
@@ -502,7 +593,13 @@ export function SiteBuilderFoundationPage() {
           <div className="flex shrink-0 items-center rounded-lg border border-white/10 p-0.5">
             <Link
               to={`/rbyan?project=${encodeURIComponent(projectId)}`}
-              onClick={() => setBuilderSurface(projectId, 'ai')}
+              onClick={(e) => {
+                if (unsaved && !window.confirm('You have unsaved edits. Open Bryan the Brain? (Your work is auto-saved locally when you leave.)')) {
+                  e.preventDefault();
+                  return;
+                }
+                setBuilderSurface(projectId, 'ai');
+              }}
               className={cn(
                 'rounded-md px-2.5 py-1 text-[10px] font-semibold transition',
                 builderSurface === 'ai' ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
@@ -526,7 +623,20 @@ export function SiteBuilderFoundationPage() {
             <span className="text-[10px] font-medium text-emerald-400/90">
               Saved
               {lastSavedAt != null ? (
-                <span className="ml-1 font-normal text-zinc-500" title="Last bundle written to local storage (API sync best-effort)">
+                <span className="ml-1 font-normal text-zinc-500" title="Synced to the server and mirrored in this browser">
+                  · {new Date(lastSavedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+          {saveStatus === 'saved_local_only' && !unsaved ? (
+            <span
+              className="max-w-[min(280px,46vw)] truncate text-[10px] font-medium text-amber-400/95"
+              title={saveError ?? 'Cloud sync failed; see toast'}
+            >
+              Saved in this browser only
+              {lastSavedAt != null ? (
+                <span className="ml-1 font-normal text-zinc-500">
                   · {new Date(lastSavedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                 </span>
               ) : null}
@@ -621,27 +731,21 @@ export function SiteBuilderFoundationPage() {
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               New tab
             </Button>
-            {liveUrl ? (
-              <a
-                href={liveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-600/20 px-2 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-600/30"
-              >
-                <Rocket className="h-3 w-3" aria-hidden />
-                Publish
-              </a>
-            ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                className="h-7 gap-1 border-white/10 bg-white/10 px-2 text-[10px] text-zinc-400"
-                onClick={() => navigate(`/projects/${projectId}`)}
-              >
-                <Rocket className="h-3 w-3" aria-hidden />
-                Publish setup
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="secondary"
+              className={cn(
+                'h-7 gap-1 border px-2 text-[10px] font-semibold',
+                liveUrl
+                  ? 'border-emerald-500/40 bg-emerald-600/20 text-emerald-200 hover:bg-emerald-600/30'
+                  : 'border-white/10 bg-white/10 text-zinc-200 hover:bg-white/15'
+              )}
+              title="Hosting, live URL, and deploy — without leaving the builder"
+              onClick={() => openPublishPanel()}
+            >
+              <Rocket className="h-3 w-3" aria-hidden />
+              Publish
+            </Button>
             <Button
               type="button"
               variant="secondary"
@@ -650,6 +754,15 @@ export function SiteBuilderFoundationPage() {
             >
               <Copy className="h-3 w-3" aria-hidden />
               Copy site
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 gap-1 border-white/10 bg-white/10 px-2 text-[10px] text-white hover:bg-white/15"
+              title="Paste JSON from Copy site"
+              onClick={() => setImportBundleOpen(true)}
+            >
+              Import site
             </Button>
             <span className="ml-auto hidden text-[9px] text-zinc-600 sm:inline">
               {modKey === '⌘' ? `${modKey}S save · ${modKey}⇧P page · ${modKey}⇧S section · ${modKey}/ AI` : `${modKey}+S save · ${modKey}+Shift+P page · ${modKey}+Shift+S section · ${modKey}+/ AI`}
@@ -699,7 +812,8 @@ export function SiteBuilderFoundationPage() {
           </Button>
         </div>
       ) : (
-        <div className={cn('flex min-h-0 flex-1 flex-col lg:flex-row', loading && 'pointer-events-none opacity-60')}>
+        <div className={cn('flex min-h-0 flex-1 flex-col', loading && 'pointer-events-none opacity-60')}>
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <aside className="shrink-0 border-b border-white/10 p-2 lg:w-52 lg:border-b-0 lg:border-r">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Files</p>
             <ul className="space-y-0.5">
@@ -739,8 +853,12 @@ export function SiteBuilderFoundationPage() {
             />
           </section>
           <aside
+            id="site-builder-preview-anchor"
             ref={previewWrapRef}
-            className="flex min-h-[280px] shrink-0 flex-col p-2 lg:min-h-0 lg:w-[min(50%,560px)] lg:border-l lg:border-white/10"
+            className={cn(
+              'flex min-h-[280px] shrink-0 flex-col p-2 transition-shadow duration-300 lg:min-h-0 lg:w-[min(50%,560px)] lg:border-l lg:border-white/10',
+              previewPulse && 'ring-2 ring-violet-500/60 ring-offset-2 ring-offset-zinc-950'
+            )}
           >
             <div className="mb-1 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Preview</p>
@@ -756,7 +874,7 @@ export function SiteBuilderFoundationPage() {
             <SiteBuilderPreviewErrorBoundary
               key={previewIframeKey}
               onError={(msg) =>
-                setPreviewDebugLines((prev) => [...prev.slice(-39), `[react] ${msg}`])
+                setPreviewDebugEvents((prev) => [...prev.slice(-119), createPreviewDebugEvent('react-preview-boundary', msg)])
               }
             >
               <iframe
@@ -769,8 +887,11 @@ export function SiteBuilderFoundationPage() {
                 referrerPolicy="no-referrer"
               />
             </SiteBuilderPreviewErrorBoundary>
+          </aside>
+          </div>
+          {!fullscreenPreviewOpen ? (
             <SiteBuilderPreviewDebugPanel
-              lines={previewDebugLines}
+              events={previewDebugEvents}
               loadError={loadError}
               saveError={saveError}
               saveStatus={saveStatus}
@@ -778,9 +899,11 @@ export function SiteBuilderFoundationPage() {
               lastSavedAt={lastSavedAt}
               previewHtml={previewHtml}
               missingCoreFiles={missingCoreFiles}
-              onClear={() => setPreviewDebugLines([])}
+              onClearEvents={() => setPreviewDebugEvents([])}
+              expanded={builderDebugExpanded}
+              onExpandedChange={setBuilderDebugExpanded}
             />
-          </aside>
+          ) : null}
         </div>
       )}
 
@@ -816,30 +939,140 @@ export function SiteBuilderFoundationPage() {
             sandbox="allow-scripts"
             referrerPolicy="no-referrer"
           />
+          {hasFiles ? (
+            <SiteBuilderPreviewDebugPanel
+              events={previewDebugEvents}
+              loadError={loadError}
+              saveError={saveError}
+              saveStatus={saveStatus}
+              unsaved={unsaved}
+              lastSavedAt={lastSavedAt}
+              previewHtml={previewHtml}
+              missingCoreFiles={missingCoreFiles}
+              onClearEvents={() => setPreviewDebugEvents([])}
+              expanded={builderDebugExpanded}
+              onExpandedChange={setBuilderDebugExpanded}
+            />
+          ) : null}
           <p className="shrink-0 border-t border-white/10 px-3 py-1.5 text-center text-[10px] text-zinc-500">
             Press Esc to exit · Same isolated preview as the builder
           </p>
         </div>
       ) : null}
 
-      <Modal open={publishSetupOpen} title="Publish setup" onClose={() => setPublishSetupOpen(false)}>
+      {publishPanelOpen ? (
+        <div className="fixed inset-0 z-[190] flex justify-end" role="dialog" aria-modal="true" aria-labelledby="publish-panel-title">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/55 backdrop-blur-[1px]"
+            aria-label="Close publish panel"
+            onClick={() => setPublishPanelOpen(false)}
+          />
+          <aside className="drawer-panel-animate relative flex h-full w-full max-w-md flex-col border-l border-white/10 bg-zinc-950 shadow-2xl shadow-black/40">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
+              <h2 id="publish-panel-title" className="text-sm font-semibold tracking-tight text-white">
+                Publish & hosting
+              </h2>
+              <Button type="button" variant="secondary" className="h-8 border-white/15 bg-white/10 px-3 text-xs text-white" onClick={() => setPublishPanelOpen(false)}>
+                Close
+              </Button>
+            </div>
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4 text-[13px] leading-relaxed text-zinc-300">
+              <p className="text-xs text-zinc-500">
+                You stay in the site builder. Use new tabs for workspace and deploy tools so this editor and preview stay open.
+              </p>
+
+              <section className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Builder save</p>
+                <p className="mt-1.5 text-sm text-zinc-200">
+                  {saveStatus === 'saving' && 'Saving to browser and cloud…'}
+                  {saveStatus === 'saved' && 'Files synced to the server.'}
+                  {saveStatus === 'saved_local_only' && 'Saved in this browser only — cloud sync failed (see message below).'}
+                  {saveStatus === 'error' && 'Save error — check the message below.'}
+                  {saveStatus === 'idle' && 'Save status will update after you edit or save.'}
+                </p>
+                {saveError ? <p className="mt-2 text-xs text-amber-200/95">{saveError}</p> : null}
+                {lastSavedAt != null && saveStatus !== 'idle' ? (
+                  <p className="mt-1 text-[11px] text-zinc-500">Last cloud/local write: {new Date(lastSavedAt).toLocaleString()}</p>
+                ) : null}
+              </section>
+
+              <section className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Live site</p>
+                {liveUrl ? (
+                  <div className="mt-2 space-y-2">
+                    <a
+                      href={liveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 break-all text-sm font-semibold text-emerald-300 underline-offset-2 hover:text-emerald-200 hover:underline"
+                    >
+                      {liveUrl}
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    </a>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="h-8 border-white/15 bg-white/10 text-xs text-white"
+                        onClick={() => void copyPublishUrl('Live URL', liveUrl)}
+                      >
+                        <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                        Copy URL
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-zinc-400">No production URL on this project yet. Set it from the project workspace.</p>
+                )}
+              </section>
+
+              <section className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Program status</p>
+                <p className="mt-2 text-sm text-zinc-200">
+                  {project?.siteStatus ? CLIENT_SITE_STATUS_LABEL[project.siteStatus] : 'Site phase not set on this project.'}
+                </p>
+                {project?.lastSiteUpdateLabel ? (
+                  <p className="mt-1.5 text-xs text-zinc-500">Last update: {project.lastSiteUpdateLabel}</p>
+                ) : null}
+              </section>
+
+              <section className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Open in new tab</p>
+                <div className="flex flex-col gap-2">
+                  <Button type="button" className="h-9 justify-start text-left text-xs" onClick={() => openProjectWorkspaceNewTab()}>
+                    Project workspace (hosting, URL, notes)
+                    <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                  </Button>
+                  <Button type="button" variant="secondary" className="h-9 justify-start border-white/15 bg-white/10 text-left text-xs text-white" onClick={() => openPublishDashboardNewTab()}>
+                    Legacy publish dashboard (deploy / preview URL)
+                    <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                  </Button>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+      ) : null}
+
+      <Modal open={importBundleOpen} onClose={() => setImportBundleOpen(false)} title="Import site bundle">
         <div className="space-y-3 text-sm text-slate-600">
-          <p>
-            Connect hosting, domains, and your live URL from the project workspace. Your editor stays open until you choose
-            to leave.
+          <p className="text-xs leading-relaxed">
+            Paste the JSON copied with <strong>Copy site</strong>. This replaces all files in this project&apos;s workspace for this browser.
           </p>
-          <div className="flex flex-wrap justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setPublishSetupOpen(false)}>
-              Stay in builder
+          <Textarea
+            value={importPaste}
+            onChange={(e) => setImportPaste(e.target.value)}
+            placeholder='{"projectId":"…","files":[…]}'
+            className="min-h-[180px] font-mono text-xs"
+            spellCheck={false}
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setImportBundleOpen(false)}>
+              Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                setPublishSetupOpen(false);
-                navigate(`/projects/${projectId}`);
-              }}
-            >
-              Open project settings
+            <Button type="button" onClick={() => void onImportBundle()}>
+              Replace files
             </Button>
           </div>
         </div>

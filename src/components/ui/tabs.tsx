@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface TabDef {
@@ -7,10 +7,32 @@ export interface TabDef {
   content: ReactNode;
 }
 
-export function Tabs({ tabs, defaultId }: { tabs: TabDef[]; defaultId?: string }) {
-  const [active, setActive] = useState(defaultId ?? tabs[0]?.id ?? '');
-  const panel = tabs.find((t) => t.id === active);
+type TabsProps = {
+  tabs: TabDef[];
+  /** Uncontrolled default when `activeId` is not passed. */
+  defaultId?: string;
+  /** Controlled active tab — pair with `onActiveChange` for URL-driven tabs. */
+  activeId?: string;
+  onActiveChange?: (id: string) => void;
+};
 
+export function Tabs({ tabs, defaultId, activeId, onActiveChange }: TabsProps) {
+  const fallbackId = defaultId ?? tabs[0]?.id ?? '';
+  const [internal, setInternal] = useState(fallbackId);
+  const controlled = activeId !== undefined;
+
+  const active = useMemo(() => {
+    if (!controlled) return internal;
+    if (activeId && tabs.some((t) => t.id === activeId)) return activeId;
+    return fallbackId;
+  }, [activeId, controlled, fallbackId, internal, tabs]);
+
+  const setActive = (id: string) => {
+    onActiveChange?.(id);
+    if (!controlled) setInternal(id);
+  };
+
+  const panel = tabs.find((t) => t.id === active);
   return (
     <div>
       <div className="flex flex-wrap gap-0.5 rounded-xl bg-slate-100/70 p-1 ring-1 ring-slate-900/[0.05]">

@@ -7,6 +7,8 @@ import { Avatar } from '@/components/ui/avatar';
 import { Dropdown, DropdownChevronTrigger, DropdownItem } from '@/components/ui/dropdown';
 import { IconButton } from '@/components/ui/icon-button';
 import type { Crumb } from '@/components/layout/breadcrumbs';
+import { useAuthSession } from '@/context/auth-session-context';
+import { clearAdminTokens } from '@/lib/admin-api';
 import { useAppStore } from '@/store/useAppStore';
 import { useBuildHelperStore } from '@/store/use-build-helper-store';
 import { useUnreadNotificationCount, useNotifications } from '@/store/hooks';
@@ -48,6 +50,7 @@ function SearchField({
 export function TopHeader({ breadcrumbs }: TopHeaderProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { supabaseBrowser } = useAuthSession();
   const onStudioPulse = pathname === '/dashboard' || pathname === '/' || pathname === '';
   const setCommandOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const openModal = useAppStore((s) => s.openModal);
@@ -173,6 +176,19 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
     >
       <DropdownItem onClick={() => navigate('/settings')}>Settings</DropdownItem>
       <DropdownItem onClick={() => navigate('/dashboard')}>Studio Pulse</DropdownItem>
+      <DropdownItem
+        onClick={async () => {
+          try {
+            await supabaseBrowser?.auth.signOut();
+          } catch {
+            /* ignore */
+          }
+          clearAdminTokens();
+          window.location.reload();
+        }}
+      >
+        Sign out
+      </DropdownItem>
     </Dropdown>
   );
 
@@ -194,11 +210,13 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
         </button>
       }
     >
-      <div className="border-b border-gray-100 px-3 py-2">
-        <button type="button" className="text-xs font-medium text-purple-600" onClick={markAllRead}>
-          Mark all read
-        </button>
-      </div>
+      {notifications.length > 0 ? (
+        <div className="border-b border-gray-100 px-3 py-2">
+          <button type="button" className="text-xs font-medium text-purple-600" onClick={markAllRead}>
+            Mark all read
+          </button>
+        </div>
+      ) : null}
       <div className="max-h-64 overflow-y-auto py-1">
         {notifications.length === 0 ? (
           <p className="px-3 py-3 text-center text-sm text-gray-500">No notifications.</p>

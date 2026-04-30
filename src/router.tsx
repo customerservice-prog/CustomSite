@@ -32,6 +32,7 @@ import { CalendarPage } from '@/pages/calendar-page';
 import { ReportsPage } from '@/pages/reports-page';
 import { RbyanBrainPage } from '@/pages/rbyan-brain-page';
 import { NotFoundPage } from '@/pages/not-found-page';
+import { RouterErrorFallback } from '@/components/layout/router-error-fallback';
 
 export const router = createHashRouter([
   {
@@ -40,6 +41,13 @@ export const router = createHashRouter([
       <ShellProvider>
         <AuthSessionProvider>
           <AppShell />
+        </AuthSessionProvider>
+      </ShellProvider>
+    ),
+    errorElement: (
+      <ShellProvider>
+        <AuthSessionProvider>
+          <RouterErrorFallback />
         </AuthSessionProvider>
       </ShellProvider>
     ),

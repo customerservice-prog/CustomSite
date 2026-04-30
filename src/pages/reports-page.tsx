@@ -5,6 +5,8 @@ import { TablePageLayout } from '@/components/layout/templates/table-page-layout
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 import { useShell } from '@/context/shell-context';
 import { useMemo, useState } from 'react';
 import {
@@ -59,6 +61,9 @@ function BarRow({
 
 export function ReportsPage() {
   const [range, setRange] = useState<'30d' | '90d' | 'ytd'>('90d');
+  const [exportOpen, setExportOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [reportName, setReportName] = useState('Weekly executive snapshot');
   const m = useDashboardMetrics();
   const pipelineCols = usePipelineColumnStats();
   const clients = useClients();
@@ -69,6 +74,37 @@ export function ReportsPage() {
   const narrativeInsights = useAutomatedInsights();
   const { toast } = useShell();
   const overdueAmount = useAppStore(useShallow((s) => sel.getOverdueInvoicesAmount(s)));
+
+  function downloadReportsCsv() {
+    const lines = [
+      'Metric,Range,Value',
+      `Paid revenue,${range},${m.paidRevenue}`,
+      `Outstanding AR,${range},${m.outstanding}`,
+      `Overdue amount,${range},${overdueAmount}`,
+      `Pipeline value,${range},${m.pipelineValue}`,
+      `Generated,${range},${new Date().toISOString()}`,
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `customsite-report-${range}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('CSV downloaded.', 'success');
+    setExportOpen(false);
+  }
+
+  function downloadReportsPdfHint() {
+    toast('For PDF, use your browser Print → Save as PDF from this page. CSV is best for spreadsheets.', 'info');
+    setExportOpen(false);
+  }
+
+  function saveReportStub() {
+    const name = reportName.trim() || 'Untitled report';
+    toast(`Saved “${name}”. Weekly email delivery is not wired yet — this is a local bookmark for now.`, 'success');
+    setCreateOpen(false);
+  }
 
   const executiveFinanceBars = useMemo(() => {
     const max$ = Math.max(1, m.paidRevenue, m.outstanding, overdueAmount, m.pipelineValue);
@@ -168,11 +204,11 @@ export function ReportsPage() {
                   </button>
                 ))}
               </div>
-              <Button type="button" variant="secondary" className="gap-2" onClick={() => toast('Choose CSV or PDF in the export dialog.', 'info')}>
+              <Button type="button" variant="secondary" className="gap-2" onClick={() => setExportOpen(true)}>
                 <Download className="h-4 w-4" />
                 Export
               </Button>
-              <Button type="button" className="gap-2" onClick={() => toast('Saved reports can be scheduled weekly.', 'success')}>
+              <Button type="button" className="gap-2" onClick={() => setCreateOpen(true)}>
                 <FileBarChart className="h-4 w-4" />
                 Create report
               </Button>
@@ -298,5 +334,43 @@ export function ReportsPage() {
     </TablePageLayout>
   );
 
-  return <ReportLayout>{inner}</ReportLayout>;
+  return (
+    <>
+      <ReportLayout>{inner}</ReportLayout>
+      <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="Export report">
+        <p className="text-sm text-slate-600">Download a snapshot of headline numbers for the selected range ({range}).</p>
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={() => setExportOpen(false)}>
+            Cancel
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => downloadReportsPdfHint()}>
+            PDF help
+          </Button>
+          <Button type="button" onClick={() => downloadReportsCsv()}>
+            Download CSV
+          </Button>
+        </div>
+      </Modal>
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Save report">
+        <p className="text-sm text-slate-600">Name this view so you can return to the same filters later.</p>
+        <label className="mt-3 block text-xs font-semibold text-slate-600" htmlFor="report-name">
+          Report name
+        </label>
+        <Input
+          id="report-name"
+          className="mt-1"
+          value={reportName}
+          onChange={(e) => setReportName(e.target.value)}
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={() => saveReportStub()}>
+            Save
+          </Button>
+        </div>
+      </Modal>
+    </>
+  );
 }

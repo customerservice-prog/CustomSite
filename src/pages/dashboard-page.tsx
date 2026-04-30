@@ -353,7 +353,7 @@ export function DashboardPage() {
         </Card>
       </section>
 
-      <section className="flex flex-wrap gap-2 pt-1">
+      <section className="flex flex-wrap gap-2 pb-24 pt-1 max-sm:pb-28">
         <Button type="button" variant="secondary" className="gap-2" onClick={() => navigate('/invoices')}>
           <Receipt className="h-4 w-4" /> Invoices
         </Button>

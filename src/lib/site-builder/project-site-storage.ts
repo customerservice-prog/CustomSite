@@ -25,11 +25,12 @@ function readLocal(projectId: string): ProjectSite | null {
   }
 }
 
-function writeLocal(site: ProjectSite) {
+function writeLocal(site: ProjectSite): boolean {
   try {
     localStorage.setItem(storageKey(site.projectId), JSON.stringify(site));
+    return true;
   } catch {
-    /* quota */
+    return false;
   }
 }
 
@@ -88,15 +89,22 @@ export async function getProjectSite(projectId: string): Promise<ProjectSite> {
 }
 
 export type SaveProjectSiteResult = {
-  /** Always written to localStorage before the API attempt. */
-  localSaved: true;
+  /** Browser storage write (local copy for the builder). */
+  localSaved: boolean;
   apiOk: boolean;
   apiError?: string;
 };
 
 /** Persist site bundle to localStorage, then sync each file to the API. Never throws. */
 export async function saveProjectSite(site: ProjectSite): Promise<SaveProjectSiteResult> {
-  writeLocal(site);
+  const localSaved = writeLocal(site);
+  if (!localSaved) {
+    return {
+      localSaved: false,
+      apiOk: false,
+      apiError: 'Could not write to browser storage (quota full or private mode).',
+    };
+  }
   try {
     const api = await tryPushToApi(site);
     if (!api.ok) {
