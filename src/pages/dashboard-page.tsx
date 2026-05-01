@@ -30,6 +30,7 @@ import type { CommandStackRow } from '@/lib/studio-pulse-command-stack';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 import { daysSinceIso } from '@/lib/days-since';
+import { BuildHelperNudgeCard } from '@/components/dashboard/build-helper-nudge-card';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -372,6 +373,7 @@ export function DashboardPage() {
           <DollarSign className="h-4 w-4" /> New invoice
         </Button>
       </section>
+      <BuildHelperNudgeCard />
     </div>
   );
 }

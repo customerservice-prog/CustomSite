@@ -19,7 +19,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useClients, useProjects, useTasks } from '@/store/hooks';
 import * as sel from '@/store/selectors';
 import { DataRowMenu } from '@/components/workspace/data-row-menu';
-import type { Task } from '@/lib/types/entities';
+import type { Task, TaskPriority } from '@/lib/types/entities';
 import { TASK_BUCKET_LABEL, TASK_BUCKET_ORDER, taskDueBucket } from '@/lib/operating-layer';
 import { RecommendedNextAction, type NextActionItem } from '@/components/workspace/recommended-next-action';
 import { EntityDrawer } from '@/components/ui/entity-drawer';
@@ -36,6 +36,7 @@ export function TasksPage() {
   const users = useAppStore(useShallow((s) => s.users));
   const openModal = useAppStore((s) => s.openModal);
   const completeTask = useAppStore((s) => s.completeTask);
+  const updateTask = useAppStore((s) => s.updateTask);
   const dueTodayCount = useAppStore((s) => sel.getTasksDueToday(s).length);
   const blockedCount = useAppStore((s) => sel.getBlockedTasks(s).length);
 
@@ -169,7 +170,7 @@ export function TasksPage() {
         <div className="space-y-4">
           <PageHeader
             title="Tasks"
-            description="Work items by project, assignee, and due date. Blocked and due-today tasks surface first."
+            description="What's blocked or overdue — assigned work shouldn't disappear without a reason. Use priority and assignee so the team knows what to pull first."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('create-task')}>
                 <Plus className="h-4 w-4" />
@@ -275,6 +276,7 @@ export function TasksPage() {
                 </button>
               </TableHeadCell>
               <TableHeadCell>Client</TableHeadCell>
+              <TableHeadCell>Priority</TableHeadCell>
               <TableHeadCell>
                 <button
                   type="button"
@@ -305,7 +307,7 @@ export function TasksPage() {
               return (
                 <Fragment key={bucket}>
                   <TableRow className="bg-slate-100/95 hover:bg-slate-100/95">
-                    <TableCell colSpan={9} className="py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    <TableCell colSpan={10} className="py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
                       {TASK_BUCKET_LABEL[bucket]}
                     </TableCell>
                   </TableRow>
@@ -361,6 +363,18 @@ export function TasksPage() {
                           ) : (
                             '—'
                           )}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Select
+                            value={(t.priority ?? 'medium') as TaskPriority}
+                            onChange={(e) => updateTask(t.id, { priority: e.target.value as TaskPriority })}
+                            className="h-8 min-w-[6.5rem] py-0 text-xs"
+                            aria-label={`Priority for ${t.title}`}
+                          >
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                          </Select>
                         </TableCell>
                         <TableCell>
                           <Badge variant={taskStatusBadgeVariant(t.status)}>{t.status}</Badge>
@@ -422,8 +436,8 @@ export function TasksPage() {
                   Mark complete
                 </Button>
               )}
-              <Button type="button" variant="secondary" onClick={() => toast('Assignment updated for this task.', 'success')}>
-                Reassign
+              <Button type="button" variant="secondary" onClick={() => setDrawerTaskId(null)}>
+                Close
               </Button>
             </div>
           ) : null
@@ -440,11 +454,30 @@ export function TasksPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Owner</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">
-                  {drawerTask.assigneeId ? assigneeForDrawer?.name ?? '—' : 'Unassigned — pick an owner'}
-                </p>
-                {drawerTask.assigneeId ? <p className="text-sm text-slate-600">{assigneeForDrawer?.email ?? ''}</p> : null}
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Assigned to</p>
+                <Select
+                  className="mt-2"
+                  value={drawerTask.assigneeId || ''}
+                  onChange={(e) => updateTask(drawerTask.id, { assigneeId: e.target.value })}
+                  aria-label="Assignee"
+                >
+                  <option value="">Unassigned</option>
+                  <option value="u1">Jordan Blake</option>
+                  <option value="u2">Alex Chen</option>
+                  <option value="u3">Riley Morgan</option>
+                </Select>
+                {drawerTask.assigneeId ? <p className="mt-2 text-xs text-slate-600">{assigneeForDrawer?.email ?? ''}</p> : null}
+                <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Priority</p>
+                <Select
+                  className="mt-1"
+                  value={(drawerTask.priority ?? 'medium') as TaskPriority}
+                  onChange={(e) => updateTask(drawerTask.id, { priority: e.target.value as TaskPriority })}
+                  aria-label="Priority"
+                >
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </Select>
                 {drawerTask.status === 'Blocked' && drawerTask.blockerReason ? (
                   <p className="mt-3 text-xs font-semibold text-red-800">{drawerTask.blockerReason}</p>
                 ) : null}

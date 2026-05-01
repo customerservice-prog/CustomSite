@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { History } from 'lucide-react';
+import { Download, History } from 'lucide-react';
 import { TablePageLayout } from '@/components/layout/templates/table-page-layout';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Card } from '@/components/ui/card';
-import { buttonClassName } from '@/components/ui/button';
+import { Button, buttonClassName } from '@/components/ui/button';
 import { useAppStore } from '@/store/useAppStore';
+import { useShell } from '@/context/shell-context';
 import { useActivitiesFeed } from '@/store/hooks';
 import * as sel from '@/store/selectors';
 import type { Activity } from '@/lib/types/entities';
@@ -66,6 +67,23 @@ export function ActivityPage() {
     [activities, filter]
   );
 
+  function exportCsv() {
+    const rows = filtered.map((a) => {
+      const actor = useAppStore.getState().users[a.actorUserId]?.name ?? 'Team';
+      return [a.timeLabel, a.type, `"${a.title.replace(/"/g, '""')}"`, actor].join(',');
+    });
+    const blob = new Blob([['Time', 'Type', 'Title', 'Actor'].join(','), '\n', rows.join('\n')].join(''), {
+      type: 'text/csv;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `customsite-activity-${filter}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Exported visible activity as CSV.', 'success');
+  }
+
   return (
     <TablePageLayout
       header={
@@ -74,9 +92,10 @@ export function ActivityPage() {
             title="Activity"
             description="Operational trail across clients, billing, and delivery — filter to focus, then open related records."
             actions={
-              <Link to="/dashboard" className={buttonClassName('secondary')}>
-                Studio Pulse
-              </Link>
+              <Button type="button" variant="secondary" className="gap-2" onClick={exportCsv} disabled={filtered.length === 0}>
+                <Download className="h-4 w-4" aria-hidden />
+                Export CSV
+              </Button>
             }
           />
         </div>

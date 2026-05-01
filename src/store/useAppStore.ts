@@ -18,6 +18,8 @@ import type {
   SiteBuildArchetypeId,
   Task,
   TaskChecklistItem,
+  TaskPriority,
+  User,
 } from '@/lib/types/entities';
 import type { ClientStatus, PipelineStage, ProjectStatus } from '@/lib/statuses';
 import { PIPELINE_STAGES } from '@/lib/statuses';
@@ -129,12 +131,15 @@ export interface AppStore extends RootState {
       title: string;
       due: string;
       assigneeId?: string;
+      priority?: TaskPriority;
       description?: string;
       checklist?: TaskChecklistItem[];
       lifecycleStage?: ProjectLifecycleStage;
     },
     options?: { silent?: boolean }
   ) => string;
+  updateTask: (taskId: string, patch: Partial<Pick<Task, 'title' | 'due' | 'assigneeId' | 'priority' | 'description'>>) => void;
+  updateUserProfile: (userId: string, patch: Partial<Pick<User, 'name' | 'email' | 'avatarUrl' | 'timezone'>>) => void;
   addFile: (input: {
     name: string;
     projectId: string;
@@ -191,7 +196,15 @@ export interface AppStore extends RootState {
     title: string;
     value: number;
   }) => string;
-  addDeadline: (input: { title: string; when: string; type: DeadlineSeed['type'] }) => void;
+  addDeadline: (input: {
+    title: string;
+    when: string;
+    type: DeadlineSeed['type'];
+    clientId?: string | null;
+    projectId?: string | null;
+    linkedInvoiceId?: string | null;
+    linkedTaskId?: string | null;
+  }) => void;
 }
 
 const boot = createBootstrapEntities();
@@ -507,6 +520,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       title: input.title.trim(),
       status: 'Todo',
       due: input.due.trim(),
+      priority: input.priority ?? 'medium',
       assigneeId,
       description: input.description?.trim() || undefined,
       checklist: input.checklist,
@@ -524,6 +538,35 @@ export const useAppStore = create<AppStore>((set, get) => ({
     });
     if (!silent) get().toast('Task added', 'success');
     return id;
+  },
+
+  updateTask: (taskId, patch) => {
+    const t = get().tasks[taskId];
+    if (!t) return;
+    const now = isoNow();
+    set((s) => ({
+      tasks: {
+        ...s.tasks,
+        [taskId]: {
+          ...t,
+          ...patch,
+          title: patch.title !== undefined ? patch.title.trim() : t.title,
+          due: patch.due !== undefined ? patch.due.trim() : t.due,
+          updatedAt: now,
+        },
+      },
+    }));
+  },
+
+  updateUserProfile: (userId, patch) => {
+    const u = get().users[userId];
+    if (!u) return;
+    set((s) => ({
+      users: {
+        ...s.users,
+        [userId]: { ...u, ...patch },
+      },
+    }));
   },
 
   addFile: (input) => {
@@ -1398,7 +1441,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
   addDeadline: (input) => {
     const id = newId('dl');
     set((s) => ({
-      deadlines: [...s.deadlines, { id, title: input.title.trim(), when: input.when.trim(), type: input.type }],
+      deadlines: [
+        ...s.deadlines,
+        {
+          id,
+          title: input.title.trim(),
+          when: input.when.trim(),
+          type: input.type,
+          clientId: input.clientId ?? null,
+          projectId: input.projectId ?? null,
+          linkedInvoiceId: input.linkedInvoiceId ?? null,
+          linkedTaskId: input.linkedTaskId ?? null,
+        },
+      ],
     }));
     get().toast('Calendar event added.', 'success');
   },

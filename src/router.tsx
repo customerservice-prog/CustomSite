@@ -12,6 +12,7 @@ import { InvoicesPage } from '@/pages/invoices-page';
 import { InvoiceDetailPage } from '@/pages/invoice-detail-page';
 import { MessagesPage } from '@/pages/messages-page';
 import { SettingsPage } from '@/pages/settings-page';
+import { AccountPage } from '@/pages/account-page';
 import { SiteBuilderFoundationPage } from '@/pages/site-builder-foundation-page';
 import { SiteBuilderRedirectPage } from '@/pages/site-builder-redirect-page';
 import { ClientPortalLayout } from '@/components/client-portal/client-portal-layout';
@@ -66,6 +67,7 @@ export const router = createHashRouter([
       { path: 'invoices/:invoiceId', element: <InvoiceDetailPage /> },
       { path: 'payments', element: <PaymentsPage /> },
       { path: 'time-tracking', element: <TimeTrackingPage /> },
+      { path: 'billable-hours', element: <Navigate to="/time-tracking" replace /> },
       { path: 'expenses', element: <ExpensesPage /> },
       { path: 'messages', element: <MessagesPage /> },
       { path: 'contracts', element: <ContractsPage /> },
@@ -89,6 +91,7 @@ export const router = createHashRouter([
       },
       { path: 'client-preview', element: <Navigate to="/client-portal" replace /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'account', element: <AccountPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

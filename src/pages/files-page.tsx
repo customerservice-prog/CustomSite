@@ -42,9 +42,11 @@ export function FilesPage() {
   const [q, setQ] = useState('');
   const [folder, setFolder] = useState<string>('all');
   const [vis, setVis] = useState<'all' | AgencyFile['visibility']>('all');
+  const [filterClientId, setFilterClientId] = useState('');
+  const [filterProjectId, setFilterProjectId] = useState('');
   const [name, setName] = useState('');
-  const [clientId, setClientId] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const [uploadClientId, setUploadClientId] = useState('');
+  const [uploadProjectId, setUploadProjectId] = useState('');
   const [visibility, setVisibility] = useState<AgencyFile['visibility']>('Internal');
   const [showUpload, setShowUpload] = useState(false);
   const [drawerFileId, setDrawerFileId] = useState<string | null>(null);
@@ -53,9 +55,17 @@ export function FilesPage() {
   useEffect(() => {
     const p = searchParams.get('project');
     const c = searchParams.get('client');
-    if (p) setProjectId(p);
-    if (c) setClientId(c);
-  }, [searchParams]);
+    if (c) {
+      setFilterClientId(c);
+      setUploadClientId(c);
+    }
+    if (p) {
+      setFilterProjectId(p);
+      setUploadProjectId(p);
+      const proj = projects.find((x) => x.id === p);
+      if (proj && !c) setFilterClientId(proj.clientId);
+    }
+  }, [searchParams, projects]);
 
   const drawerFile = useAppStore((s) => (drawerFileId ? s.files[drawerFileId] : undefined));
   const drawerActivities = useAppStore(
@@ -81,21 +91,28 @@ export function FilesPage() {
         (f.folder ?? '').toLowerCase().includes(q.toLowerCase());
       const fd = folder === 'all' || (f.folder ?? 'General') === folder;
       const v = vis === 'all' || f.visibility === vis;
-      return match && fd && v;
+      const byClient = !filterClientId || f.clientId === filterClientId;
+      const byProject = !filterProjectId || f.projectId === filterProjectId;
+      return match && fd && v && byClient && byProject;
     });
-  }, [files, q, folder, vis]);
+  }, [files, q, folder, vis, filterClientId, filterProjectId]);
 
-  const projectsForClient = useMemo(() => {
-    if (!clientId) return projects;
-    return projects.filter((p) => p.clientId === clientId);
-  }, [projects, clientId]);
+  const projectsForUploadClient = useMemo(() => {
+    if (!uploadClientId) return projects;
+    return projects.filter((p) => p.clientId === uploadClientId);
+  }, [projects, uploadClientId]);
+
+  const projectsForFilterClient = useMemo(() => {
+    if (!filterClientId) return projects;
+    return projects.filter((p) => p.clientId === filterClientId);
+  }, [projects, filterClientId]);
 
   function submitUpload() {
-    if (!name.trim() || !clientId || !projectId) return;
+    if (!name.trim() || !uploadClientId || !uploadProjectId) return;
     addFile({
       name: name.trim(),
-      clientId,
-      projectId,
+      clientId: uploadClientId,
+      projectId: uploadProjectId,
       visibility,
       size: '—',
       folder: 'General',
@@ -154,8 +171,8 @@ export function FilesPage() {
             onChange={(e) => onPickLocalFile(e.target.files)}
           />
           <PageHeader
-            title="Client vs internal"
-            description="Control what clients see and what stays internal."
+            title="Files"
+            description="Upload and organize assets, contracts, and deliverables. Mark files client-visible to share them in the portal."
             actions={
               <Button
                 type="button"
@@ -198,10 +215,10 @@ export function FilesPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="File name" aria-label="File name" />
             <Select
-              value={clientId}
+              value={uploadClientId}
               onChange={(e) => {
-                setClientId(e.target.value);
-                setProjectId('');
+                setUploadClientId(e.target.value);
+                setUploadProjectId('');
               }}
               aria-label="Client"
             >
@@ -212,9 +229,9 @@ export function FilesPage() {
                 </option>
               ))}
             </Select>
-            <Select value={projectId} onChange={(e) => setProjectId(e.target.value)} aria-label="Project" disabled={!clientId}>
+            <Select value={uploadProjectId} onChange={(e) => setUploadProjectId(e.target.value)} aria-label="Project" disabled={!uploadClientId}>
               <option value="">Project…</option>
-              {projectsForClient.map((p) => (
+              {projectsForUploadClient.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -226,7 +243,7 @@ export function FilesPage() {
             </Select>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" onClick={submitUpload} disabled={!name.trim() || !clientId || !projectId}>
+            <Button type="button" onClick={submitUpload} disabled={!name.trim() || !uploadClientId || !uploadProjectId}>
               Save to library
             </Button>
             <Button type="button" variant="secondary" onClick={() => setShowUpload(false)}>
@@ -259,6 +276,35 @@ export function FilesPage() {
             <option value="all">All visibility</option>
             <option value="Internal">Internal</option>
             <option value="Client-visible">Client-visible</option>
+          </Select>
+          <Select
+            value={filterClientId}
+            onChange={(e) => {
+              setFilterClientId(e.target.value);
+              setFilterProjectId('');
+            }}
+            className="w-44 shrink-0 lg:w-52"
+            aria-label="Filter by client"
+          >
+            <option value="">All clients</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.company}
+              </option>
+            ))}
+          </Select>
+          <Select
+            value={filterProjectId}
+            onChange={(e) => setFilterProjectId(e.target.value)}
+            className="w-44 shrink-0 lg:w-52"
+            aria-label="Filter by project"
+          >
+            <option value="">All projects</option>
+            {(filterClientId ? projectsForFilterClient : projects).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
           </Select>
         </TableToolbarSection>
       </TableToolbar>

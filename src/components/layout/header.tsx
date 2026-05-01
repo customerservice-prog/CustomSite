@@ -1,5 +1,18 @@
 import { useMemo } from 'react';
-import { Bell, ChevronDown, Globe, LayoutDashboard, ListChecks, MoreHorizontal, Plus, Search } from 'lucide-react';
+import {
+  Bell,
+  BookOpen,
+  ChevronDown,
+  ExternalLink,
+  Keyboard,
+  LayoutDashboard,
+  LifeBuoy,
+  ListChecks,
+  Megaphone,
+  MoreHorizontal,
+  Plus,
+  Search,
+} from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { MobileNavTrigger } from '@/components/layout/sidebar';
@@ -178,7 +191,8 @@ export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHead
         </button>
       }
     >
-      <DropdownItem onClick={() => navigate('/settings')}>Settings</DropdownItem>
+      <DropdownItem onClick={() => navigate('/account')}>My profile</DropdownItem>
+      <DropdownItem onClick={() => navigate('/settings')}>Agency settings</DropdownItem>
       <DropdownItem onClick={() => navigate('/dashboard')}>Studio Pulse</DropdownItem>
       <DropdownItem
         onClick={async () => {
@@ -204,7 +218,7 @@ export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHead
           type="button"
           className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
           aria-label="Notifications"
-          title="Notifications — urgent items appear first"
+          title="Notifications — invoice events, messages, and signatures"
         >
           <Bell className="h-6 w-6" />
           {unread > 0 && (
@@ -224,7 +238,10 @@ export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHead
       ) : null}
       <div className="max-h-64 overflow-y-auto py-1">
         {notifications.length === 0 ? (
-          <p className="px-3 py-3 text-center text-sm text-gray-500">No notifications.</p>
+          <div className="px-3 py-3 text-sm text-gray-600">
+            <p>You&apos;re all caught up. Invoice events, message replies, and contract signatures will appear here.</p>
+            <p className="mt-2 text-xs text-gray-500">Shown in-app as your team works; pair with email in notification settings.</p>
+          </div>
         ) : (
           <>
             <NotificationSection label="Urgent" items={groupedNotifications.urgent} maxItems={5} />
@@ -232,6 +249,11 @@ export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHead
             <NotificationSection label="Recent" items={groupedNotifications.recent} maxItems={6} />
           </>
         )}
+      </div>
+      <div className="border-t border-gray-100 py-1">
+        <DropdownItem onClick={() => navigate('/settings?tab=notifications')}>
+          <span className="text-xs font-medium text-purple-700">Notification settings →</span>
+        </DropdownItem>
       </div>
     </Dropdown>
   );

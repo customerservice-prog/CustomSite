@@ -46,7 +46,7 @@ type Actions = {
 export type BuildHelperStore = BuildHelperStoreState & Actions;
 
 const initial: BuildHelperStoreState = {
-  enabled: false,
+  enabled: true,
   panelCollapsed: false,
   activeProjectId: null,
   activeClientId: null,
@@ -139,6 +139,19 @@ export const useBuildHelperStore = create<BuildHelperStore>()(
     }),
     {
       name: BUILD_HELPER_STORAGE_KEY,
+      version: 1,
+      migrate: (persistedState, fromVersion) => {
+        if (fromVersion === 0) {
+          const p = (persistedState ?? {}) as Partial<BuildHelperStoreState>;
+          return {
+            ...initial,
+            ...p,
+            enabled: true,
+            panelCollapsed: false,
+          };
+        }
+        return persistedState as BuildHelperStoreState;
+      },
       partialize: (s) => ({
         enabled: s.enabled,
         panelCollapsed: s.panelCollapsed,
@@ -165,7 +178,6 @@ export function migrateLegacyBuildHelperStorageOnce(): void {
     const st = parsed?.state;
     if (!st || typeof st !== 'object') return;
 
-    const enabled = Boolean(st.enabled);
     const panelCollapsed = Boolean(st.panelCollapsed);
     const plansByProjectId = st.plansByProjectId as Record<string, { siteType?: string; pages?: string[]; goal?: string }> | undefined;
     const perProject = st.perProject as Record<string, { feedbackSent?: boolean; wrapUpMarked?: boolean }> | undefined;
@@ -185,7 +197,7 @@ export function migrateLegacyBuildHelperStorageOnce(): void {
 
     const migrated: BuildHelperStoreState = {
       ...initial,
-      enabled,
+      enabled: true,
       panelCollapsed,
       activeProjectId: firstPid || null,
       activeClientId: null,

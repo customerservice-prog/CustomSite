@@ -9,7 +9,7 @@ import { useClients, useInvoices, useProjects } from '@/store/hooks';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { PROJECT_TEMPLATES, getProjectTemplate } from '@/lib/project-templates';
 import { SERVICE_PACKAGES } from '@/lib/service-offer';
-import type { ServicePackageId, SiteBuildArchetypeId } from '@/lib/types/entities';
+import type { ServicePackageId, SiteBuildArchetypeId, TaskPriority } from '@/lib/types/entities';
 import { SITE_BUILD_ARCHETYPE_OPTIONS } from '@/lib/site-builder/archetypes';
 
 export function CreateEntityModals() {
@@ -63,6 +63,7 @@ export function CreateEntityModals() {
     description: '',
     due: 'Tomorrow',
     assigneeId: 'u1' as string,
+    priority: 'medium' as TaskPriority,
   });
 
   const clientOptions = useMemo(() => clients.map((c) => ({ id: c.id, label: `${c.name} · ${c.company}` })), [clients]);
@@ -100,25 +101,50 @@ export function CreateEntityModals() {
     return (
       <Modal open={true} title="Create client" onClose={closeModal}>
         <div className="space-y-3">
-          <Field label="Name">
-            <Input value={clientForm.name} onChange={(e) => setClientForm((f) => ({ ...f, name: e.target.value }))} />
+          <Field label="Name" requiredHint>
+            <Input
+              value={clientForm.name}
+              onChange={(e) => setClientForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Jane Smith (contact person)"
+              autoComplete="name"
+            />
           </Field>
-          <Field label="Company">
-            <Input value={clientForm.company} onChange={(e) => setClientForm((f) => ({ ...f, company: e.target.value }))} />
+          <Field label="Company" requiredHint>
+            <Input
+              value={clientForm.company}
+              onChange={(e) => setClientForm((f) => ({ ...f, company: e.target.value }))}
+              placeholder="e.g. EventFurnish Co."
+              autoComplete="organization"
+            />
           </Field>
-          <Field label="Email">
-            <Input type="email" value={clientForm.email} onChange={(e) => setClientForm((f) => ({ ...f, email: e.target.value }))} />
+          <Field label="Email" requiredHint>
+            <Input
+              type="email"
+              value={clientForm.email}
+              onChange={(e) => setClientForm((f) => ({ ...f, email: e.target.value }))}
+              placeholder="jane@eventfurnish.com"
+              autoComplete="email"
+            />
           </Field>
           <Field label="Phone">
-            <Input value={clientForm.phone} onChange={(e) => setClientForm((f) => ({ ...f, phone: e.target.value }))} />
+            <Input
+              value={clientForm.phone}
+              onChange={(e) => setClientForm((f) => ({ ...f, phone: e.target.value }))}
+              placeholder="(315) 555-0100"
+              autoComplete="tel"
+            />
           </Field>
-          <Field label="Owner">
+          <Field label="Account owner" requiredHint>
             <Select value={clientForm.ownerId} onChange={(e) => setClientForm((f) => ({ ...f, ownerId: e.target.value }))}>
               <option value="u1">Jordan Blake</option>
               <option value="u2">Alex Chen</option>
               <option value="u3">Riley Morgan</option>
             </Select>
           </Field>
+          <p className="text-[11px] leading-relaxed text-slate-500">
+            <span className="text-red-600">*</span> Required fields. You can add address, notes, and billing details from the client profile after
+            creating.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={closeModal}>
               Cancel
@@ -434,6 +460,16 @@ export function CreateEntityModals() {
               <option value="u3">Riley Morgan</option>
             </Select>
           </Field>
+          <Field label="Priority">
+            <Select
+              value={taskForm.priority}
+              onChange={(e) => setTaskForm((f) => ({ ...f, priority: e.target.value as TaskPriority }))}
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
+          </Field>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={closeModal}>
               Cancel
@@ -448,9 +484,10 @@ export function CreateEntityModals() {
                   description: taskForm.description.trim() || undefined,
                   due: taskForm.due,
                   assigneeId: taskForm.assigneeId,
+                  priority: taskForm.priority,
                 });
                 const projId = taskForm.projectId;
-                setTaskForm({ projectId: '', title: '', description: '', due: 'Tomorrow', assigneeId: currentUserId });
+                setTaskForm({ projectId: '', title: '', description: '', due: 'Tomorrow', assigneeId: currentUserId, priority: 'medium' });
                 closeModal();
                 if (tid) navigate(`/projects/${projId}`);
               }}
@@ -466,10 +503,13 @@ export function CreateEntityModals() {
   return null;
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, requiredHint }: { label: string; children: ReactNode; requiredHint?: boolean }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-semibold text-slate-600">{label}</label>
+      <label className="mb-1 block text-xs font-semibold text-slate-600">
+        {label}
+        {requiredHint ? <span className="ml-0.5 text-red-600">*</span> : null}
+      </label>
       {children}
     </div>
   );

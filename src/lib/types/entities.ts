@@ -16,8 +16,12 @@ export type User = {
   email: string;
   role: UserRole;
   avatarUrl?: string;
+  /** IANA zone id for reminders — demo UI only until backend sync. */
+  timezone?: string;
   createdAt: string;
 };
+
+export type TaskPriority = 'high' | 'medium' | 'low';
 
 export type Workspace = {
   id: string;
@@ -145,6 +149,7 @@ export type Task = {
   title: string;
   status: TaskStatus;
   due: string;
+  priority?: TaskPriority;
   /** Empty when nobody owns it yet — common in real shops. */
   assigneeId: string;
   /** Shown when status is Blocked — why delivery stopped. */

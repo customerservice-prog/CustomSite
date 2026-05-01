@@ -59,12 +59,18 @@ export function CalendarPage() {
     });
 
     deadlines.forEach((d) => {
+      let href: string | undefined;
+      if (d.linkedInvoiceId) href = `/invoices/${d.linkedInvoiceId}`;
+      else if (d.linkedTaskId) href = '/tasks';
+      else if (d.projectId) href = `/projects/${d.projectId}`;
+      else if (d.clientId) href = `/clients/${d.clientId}`;
       rows.push({
         id: `dl-${d.id}`,
         title: d.title,
         date: d.when,
         time: null,
         kind: d.type,
+        href,
       });
     });
 

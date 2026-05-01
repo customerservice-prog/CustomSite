@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useAppStore } from '@/store/useAppStore';
-import { useClients, useInvoices, useProjects } from '@/store/hooks';
+import { useClients, useInvoices, useProjects, useTasks } from '@/store/hooks';
+import type { DeadlineSeed } from '@/lib/data/deadlines';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -27,6 +28,7 @@ export function WorkspaceModals() {
   const clients = useClients();
   const projects = useProjects();
   const invoices = useInvoices();
+  const tasks = useTasks();
 
   const [payInvoiceId, setPayInvoiceId] = useState('');
   const [payAmount, setPayAmount] = useState('');
@@ -44,7 +46,11 @@ export function WorkspaceModals() {
 
   const [evTitle, setEvTitle] = useState('');
   const [evWhen, setEvWhen] = useState('');
-  const [evType, setEvType] = useState<'meeting' | 'task' | 'invoice' | 'contract'>('meeting');
+  const [evCategory, setEvCategory] = useState<'meeting' | 'milestone' | 'invoice_due' | 'deadline'>('meeting');
+  const [evClientId, setEvClientId] = useState('');
+  const [evProjectId, setEvProjectId] = useState('');
+  const [evInvoiceId, setEvInvoiceId] = useState('');
+  const [evTaskId, setEvTaskId] = useState('');
 
   const [inviteEmail, setInviteEmail] = useState('');
 
@@ -61,6 +67,21 @@ export function WorkspaceModals() {
     if (!ctClientId) return projects;
     return projects.filter((p) => p.clientId === ctClientId);
   }, [projects, ctClientId]);
+
+  const evProjects = useMemo(() => {
+    if (!evClientId) return projects;
+    return projects.filter((p) => p.clientId === evClientId);
+  }, [projects, evClientId]);
+
+  const evInvoices = useMemo(() => {
+    if (!evClientId) return invoices;
+    return invoices.filter((i) => i.clientId === evClientId);
+  }, [invoices, evClientId]);
+
+  const evTasks = useMemo(() => {
+    if (!evProjectId) return tasks;
+    return tasks.filter((t) => t.projectId === evProjectId);
+  }, [tasks, evProjectId]);
 
   if (!activeModal || ['create-client', 'create-project', 'create-invoice', 'create-task'].includes(activeModal)) {
     return null;
@@ -245,6 +266,12 @@ export function WorkspaceModals() {
   }
 
   if (activeModal === 'calendar-event') {
+    const categoryToType: Record<typeof evCategory, DeadlineSeed['type']> = {
+      meeting: 'meeting',
+      milestone: 'milestone',
+      invoice_due: 'invoice',
+      deadline: 'task',
+    };
     return (
       <Modal open title="New calendar event" onClose={closeModal}>
         <div className="space-y-3">
@@ -254,14 +281,71 @@ export function WorkspaceModals() {
           <Field label="When">
             <Input value={evWhen} onChange={(e) => setEvWhen(e.target.value)} placeholder="Apr 30, 2026 or Tomorrow" />
           </Field>
-          <Field label="Type">
-            <Select value={evType} onChange={(e) => setEvType(e.target.value as typeof evType)}>
+          <Field label="Event type">
+            <Select value={evCategory} onChange={(e) => setEvCategory(e.target.value as typeof evCategory)}>
               <option value="meeting">Meeting</option>
-              <option value="task">Task</option>
-              <option value="invoice">Invoice</option>
-              <option value="contract">Contract</option>
+              <option value="milestone">Milestone</option>
+              <option value="invoice_due">Invoice due</option>
+              <option value="deadline">Deadline / task</option>
             </Select>
           </Field>
+          <Field label="Client (optional)">
+            <Select
+              value={evClientId}
+              onChange={(e) => {
+                const v = e.target.value;
+                setEvClientId(v);
+                setEvProjectId('');
+                setEvInvoiceId('');
+              }}
+            >
+              <option value="">—</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Project (optional)">
+            <Select
+              value={evProjectId}
+              onChange={(e) => {
+                setEvProjectId(e.target.value);
+                setEvTaskId('');
+              }}
+            >
+              <option value="">—</option>
+              {evProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Link invoice (optional)">
+            <Select value={evInvoiceId} onChange={(e) => setEvInvoiceId(e.target.value)} disabled={!evClientId}>
+              <option value="">—</option>
+              {evInvoices.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.number} · ${i.amount.toLocaleString()}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Link task (optional)">
+            <Select value={evTaskId} onChange={(e) => setEvTaskId(e.target.value)} disabled={!evProjectId}>
+              <option value="">—</option>
+              {evTasks.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <p className="text-[11px] leading-relaxed text-slate-500">
+            Linked records open from the calendar when you click an event. Dates should include year when possible so they appear in the grid.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={closeModal}>
               Cancel
@@ -273,9 +357,21 @@ export function WorkspaceModals() {
                   toast('Title and when are required.', 'error');
                   return;
                 }
-                addDeadline({ title: evTitle.trim(), when: evWhen.trim(), type: evType });
+                addDeadline({
+                  title: evTitle.trim(),
+                  when: evWhen.trim(),
+                  type: categoryToType[evCategory],
+                  clientId: evClientId || null,
+                  projectId: evProjectId || null,
+                  linkedInvoiceId: evInvoiceId || null,
+                  linkedTaskId: evTaskId || null,
+                });
                 setEvTitle('');
                 setEvWhen('');
+                setEvClientId('');
+                setEvProjectId('');
+                setEvInvoiceId('');
+                setEvTaskId('');
                 closeModal();
               }}
             >

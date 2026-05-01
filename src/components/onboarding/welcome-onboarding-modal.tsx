@@ -35,6 +35,9 @@ export function WelcomeOnboardingModal({ open, onComplete }: Props) {
           <p className="text-[13px] text-slate-500">
             Tip: use <span className="font-semibold text-slate-700">Quick create</span> in the top bar to add a client, project, invoice, or task without hunting through pages.
           </p>
+          <p className="text-[13px] text-slate-500">
+            <span className="font-semibold text-slate-700">Build Helper</span> (header or Settings) walks new teammates through their first client site with a right-side checklist.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" onClick={() => setStep(1)}>
               Next →

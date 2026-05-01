@@ -21,4 +21,5 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   'site-builder': { title: 'Site builder', segment: 'site-builder' },
   'client-portal': { title: 'Client portal', segment: 'client-portal' },
   settings: { title: 'Settings', segment: 'settings' },
+  account: { title: 'My profile', segment: 'account' },
 };

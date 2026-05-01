@@ -1,4 +1,4 @@
-import type { ProjectLifecycleStage, Task, TaskChecklistItem } from '@/lib/types/entities';
+import type { ProjectLifecycleStage, Task, TaskChecklistItem, TaskPriority } from '@/lib/types/entities';
 
 export type TemplateTaskBlueprint = {
   title: string;
@@ -251,12 +251,13 @@ export function instantiateTemplateTasks(
 ): Task[] {
   const def = getProjectTemplate(templateId);
   if (!def) return [];
-  return def.tasks.map((row) => ({
+  return def.tasks.map((row, i) => ({
     id: newTaskId(),
     projectId,
     title: row.title,
     status: 'Todo' as const,
     due: row.due,
+    priority: (i % 5 === 0 ? 'high' : i % 3 === 0 ? 'low' : 'medium') as TaskPriority,
     assigneeId: ownerId,
     description: row.description,
     checklist: chk(row.checklistLabels),

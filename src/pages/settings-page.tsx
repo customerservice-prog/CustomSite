@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/page-header';
 import { SettingsLayout } from '@/components/layout/templates/settings-layout';
 import { Card } from '@/components/ui/card';
@@ -10,6 +11,9 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 import { useBuildHelperStore } from '@/store/use-build-helper-store';
+import { useAppStore } from '@/store/useAppStore';
+import { Modal } from '@/components/ui/modal';
+import type { User, UserRole } from '@/lib/types/entities';
 
 const TABS = [
   { id: 'general', label: 'General' },
@@ -92,12 +96,52 @@ function ToggleRow({
   );
 }
 
+function roleLabel(role: UserRole): string {
+  if (role === 'admin') return 'Admin';
+  if (role === 'member') return 'Editor';
+  return 'Viewer';
+}
+
+function seatLabel(u: User): string {
+  if (u.id === 'u1') return 'Owner';
+  return roleLabel(u.role);
+}
+
 export function SettingsPage() {
   const { toast } = useShell();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const users = useAppStore((s) => Object.values(s.users));
+  const teamMembers = useMemo(() => users.filter((u) => u.role !== 'client'), [users]);
   const buildHelperEnabled = useBuildHelperStore((s) => s.enabled);
   const setBuildHelperEnabled = useBuildHelperStore((s) => s.setEnabled);
   const setHelperPanelCollapsed = useBuildHelperStore((s) => s.setPanelCollapsed);
   const [tab, setTab] = useState<string>(TABS[0].id);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<UserRole>('member');
+  const [pendingInvites, setPendingInvites] = useState<{ id: string; email: string; role: UserRole }[]>([]);
+
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && TABS.some((x) => x.id === t)) setTab(t);
+  }, [searchParams]);
+
+  function setTabAndUrl(next: string) {
+    setTab(next);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (next === 'general') p.delete('tab');
+      else p.set('tab', next);
+      return p;
+    });
+  }
+
+  const weeklyInviteLink = useMemo(() => {
+    const week = Math.floor(Date.now() / (7 * 86400000));
+    const token = `cs-${week.toString(36)}-${Math.floor(Date.now() / 86400000).toString(36)}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}${typeof window !== 'undefined' ? window.location.pathname : ''}#/join?token=${token}`;
+  }, []);
   const [saved, setSaved] = useState<SettingsForm>(() => ({ ...SETTINGS_INITIAL }));
   const [form, setForm] = useState<SettingsForm>(() => ({ ...SETTINGS_INITIAL }));
   const [saveFlash, setSaveFlash] = useState(false);
@@ -131,9 +175,31 @@ export function SettingsPage() {
         }
       />
 
-      <SettingsLayout tabs={[...TABS]} activeTab={tab} onTabChange={setTab}>
+      <SettingsLayout tabs={[...TABS]} activeTab={tab} onTabChange={setTabAndUrl}>
         {tab === 'general' && (
           <div className="space-y-6">
+            <Card
+              className={`border p-5 shadow-sm ${buildHelperEnabled ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/50'}`}
+            >
+              <p className="text-sm font-bold text-slate-900">Build Helper — guided first client build</p>
+              <p className="mt-1 text-sm text-slate-600">
+                {buildHelperEnabled
+                  ? 'The right-side checklist is on. Collapse it anytime from the header or here.'
+                  : 'Build Helper is off — turn it on for a step-by-step checklist your whole team can follow (no extra popups).'}
+              </p>
+              <div className="mt-4 border-t border-slate-200/60 pt-4">
+                <ToggleRow
+                  label="Enable Build Helper"
+                  description="Right-side checklist for onboarding new team members."
+                  on={buildHelperEnabled}
+                  onToggle={() => {
+                    const next = !buildHelperEnabled;
+                    setBuildHelperEnabled(next);
+                    if (next) setHelperPanelCollapsed(false);
+                  }}
+                />
+              </div>
+            </Card>
             <SectionHeader title="Agency profile" description="Legal name and defaults shown on invoices and contracts." />
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -168,16 +234,6 @@ export function SettingsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               />
             </div>
-            <ToggleRow
-              label="Enable Build Helper"
-              description="Step-by-step guidance for your first client build. Right-side checklist; no popups when off."
-              on={buildHelperEnabled}
-              onToggle={() => {
-                const next = !buildHelperEnabled;
-                setBuildHelperEnabled(next);
-                if (next) setHelperPanelCollapsed(false);
-              }}
-            />
           </div>
         )}
 
@@ -218,8 +274,57 @@ export function SettingsPage() {
 
         {tab === 'team' && (
           <div className="space-y-6">
-            <SectionHeader title="Members" description="Roles, seats, and audit visibility." />
-            <Card className="p-4 text-sm text-slate-600">
+            <SectionHeader title="Team" description="Invite employees, assign roles, and copy the current join link." />
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={() => setInviteOpen(true)}>
+                + Invite team member
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(weeklyInviteLink).then(
+                    () => toast('Invite link copied — rotates weekly.', 'success'),
+                    () => toast(weeklyInviteLink, 'info')
+                  );
+                }}
+              >
+                Copy invite link
+              </Button>
+            </div>
+            <Card className="overflow-hidden p-0 shadow-sm ring-1 ring-slate-900/[0.04]">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50/80 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Role</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {teamMembers.map((u: User) => (
+                    <tr key={u.id}>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{u.name}</td>
+                      <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                      <td className="px-4 py-3 text-slate-700">{seatLabel(u)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+            {pendingInvites.length > 0 ? (
+              <Card className="p-4 text-sm text-slate-700">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Pending invites</p>
+                <ul className="mt-2 space-y-1">
+                  {pendingInvites.map((p) => (
+                    <li key={p.id}>
+                      {p.email} · {roleLabel(p.role)}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null}
+            <Card className="p-4 text-xs text-slate-500">
               Invite links rotate weekly. SCIM directory sync is available on Enterprise.
             </Card>
             <div>
@@ -236,6 +341,57 @@ export function SettingsPage() {
                 <option value="u3">Riley Morgan</option>
               </Select>
             </div>
+            {inviteOpen ? (
+              <Modal open title="Invite team member" onClose={() => setInviteOpen(false)}>
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="inv-email">
+                      Email
+                    </label>
+                    <Input
+                      id="inv-email"
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="teammate@agency.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="inv-role">
+                      Role
+                    </label>
+                    <Select id="inv-role" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as UserRole)}>
+                      <option value="admin">Admin</option>
+                      <option value="member">Editor</option>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button type="button" variant="secondary" onClick={() => setInviteOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!inviteEmail.includes('@')) {
+                          toast('Enter a valid email.', 'error');
+                          return;
+                        }
+                        setPendingInvites((prev) => [
+                          ...prev,
+                          { id: `inv-${Date.now()}`, email: inviteEmail.trim(), role: inviteRole },
+                        ]);
+                        toast('Invite queued — connect email delivery to send in production.', 'success');
+                        setInviteEmail('');
+                        setInviteRole('member');
+                        setInviteOpen(false);
+                      }}
+                    >
+                      Send invite
+                    </Button>
+                  </div>
+                </div>
+              </Modal>
+            ) : null}
           </div>
         )}
 
