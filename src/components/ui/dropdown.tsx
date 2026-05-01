@@ -84,9 +84,12 @@ export function DropdownItem({
   );
 }
 
-export function DropdownChevronTrigger({ label }: { label: string }) {
+export function DropdownChevronTrigger({ label, title }: { label: string; title?: string }) {
   return (
-    <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50">
+    <span
+      title={title ?? label}
+      className="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50"
+    >
       {label}
       <ChevronDown className="h-4 w-4 text-gray-500" aria-hidden />
     </span>

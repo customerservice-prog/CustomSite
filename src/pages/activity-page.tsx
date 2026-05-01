@@ -10,7 +10,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { useActivitiesFeed } from '@/store/hooks';
 import * as sel from '@/store/selectors';
 import type { Activity } from '@/lib/types/entities';
-import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 import { cn } from '@/lib/utils';
 
 const ACTIVITY_FILTERS = [
@@ -80,15 +79,6 @@ export function ActivityPage() {
               </Link>
             }
           />
-          <PageMomentumStrip title="What to do next">
-            <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/tasks">Tasks</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/messages">Messages</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/invoices">Invoices</MomentumChip>
-          </PageMomentumStrip>
         </div>
       }
     >

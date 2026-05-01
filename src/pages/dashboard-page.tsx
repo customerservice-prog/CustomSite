@@ -109,10 +109,9 @@ export function DashboardPage() {
           description={
             <>
               <p className="font-medium leading-relaxed text-slate-800">
-                What needs your attention right now: cash you haven&apos;t collected, clients waiting on a reply, builds that stalled,
-                contracts unsigned, and dates that will burn you.
+                Your attention right now: unpaid cash, clients waiting on you, builds in progress, unsigned contracts, and dates that will burn you — each row opens the exact record to fix.
               </p>
-              <p className="mt-2 text-[13px] leading-relaxed text-slate-500">Tap an action — each row opens the exact record to fix.</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-slate-500">Tap any row to jump straight to that record.</p>
             </>
           }
           actions={

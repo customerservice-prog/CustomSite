@@ -49,7 +49,7 @@ export const BUILD_STEPS: BuildStepDef[] = [
   },
   {
     id: 'rbyan',
-    title: 'Generate with Bryan the Brain',
+    title: 'Generate with AI Builder',
     check: (_st, projectSite) => projectSite.filesLength > 0,
   },
   {

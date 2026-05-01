@@ -14,7 +14,10 @@ function pathActive(pathname: string, to: string) {
     return pathname === '/site-builder' || /^\/projects\/[^/]+\/site\/?$/.test(pathname);
   }
   if (to === '/rbyan') {
-    return pathname === '/rbyan' || pathname.startsWith('/rbyan/');
+    return pathname === '/rbyan' || pathname.startsWith('/rbyan/') || pathname === '/ai-builder';
+  }
+  if (to === '/client-portal') {
+    return pathname === '/client-portal' || pathname.startsWith('/client-portal/');
   }
   return pathname === to || pathname.startsWith(`${to}/`);
 }
@@ -23,12 +26,15 @@ export function SidebarNavLink({
   to,
   icon: Icon,
   label,
+  navTitle,
   badge,
   onNavigate,
 }: {
   to: string;
   icon: LucideIcon;
   label: string;
+  /** Tooltip + accessible name override (e.g. AI Builder subtitle). */
+  navTitle?: string;
   badge?: number;
   onNavigate?: () => void;
 }) {
@@ -41,6 +47,8 @@ export function SidebarNavLink({
       ref={ref}
       to={to}
       end={to === '/dashboard'}
+      title={navTitle ?? label}
+      aria-label={navTitle ? `${label}: ${navTitle}` : label}
       onClick={() => onNavigate?.()}
       className={({ isActive }) =>
         cn(

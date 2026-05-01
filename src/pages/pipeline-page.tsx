@@ -13,7 +13,6 @@ import { Modal } from '@/components/ui/modal';
 import { PIPELINE_STAGES } from '@/lib/statuses';
 import { useAppStore } from '@/store/useAppStore';
 import { useLeads } from '@/store/hooks';
-import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 import { useShallow } from 'zustand/shallow';
 
 export function PipelinePage() {
@@ -66,7 +65,7 @@ export function PipelinePage() {
           <div className="space-y-4">
             <PageHeader
               title="Pipeline"
-              description="Qualify opportunities, move stages with confidence, and convert wins without losing context."
+              description="Sales leads by stage. Drag cards forward, convert wins to clients, and keep context on every deal."
               actions={
                 <Button type="button" className="gap-2" onClick={() => setModalOpen(true)}>
                   <Plus className="h-4 w-4" />
@@ -74,15 +73,6 @@ export function PipelinePage() {
                 </Button>
               }
             />
-            <PageMomentumStrip>
-              <MomentumChip to="/dashboard">Studio pulse</MomentumChip>
-              <MomentumSep />
-              <MomentumChip to="/clients">Clients</MomentumChip>
-              <MomentumSep />
-              <MomentumChip to="/projects">Projects</MomentumChip>
-              <MomentumSep />
-              <MomentumChip to="/messages">Messages</MomentumChip>
-            </PageMomentumStrip>
           </div>
         }
         toolbar={

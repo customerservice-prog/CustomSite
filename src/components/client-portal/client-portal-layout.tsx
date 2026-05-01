@@ -16,7 +16,7 @@ export function ClientPortalLayout() {
       <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-stone-50/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-800/80">Your project</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-800/80">Client portal</p>
             <h1 className="truncate text-lg font-semibold tracking-tight text-stone-900">
               {ctx ? ctx.client.company : 'Welcome'}
             </h1>

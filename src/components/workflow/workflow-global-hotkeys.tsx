@@ -21,16 +21,28 @@ function resolveProjectId(pathname: string, search: string): string | null {
   return firstClientSiteProjectId();
 }
 
-/** Global shortcuts: command palette, AI/code toggle, quick page, insert section, Bryan the Brain submit, save. */
+/** Global shortcuts: command palette, AI/code toggle, quick page, insert section, AI Builder submit, save. */
 export function WorkflowGlobalHotkeys() {
   const navigate = useNavigate();
   const location = useLocation();
   const setCommandOpen = useAppStore((s) => s.setCommandPaletteOpen);
+  const openModal = useAppStore((s) => s.openModal);
   const projects = useAppStore(useShallow((s) => s.projects));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName ?? '';
+      const inTextField = tag === 'INPUT' || tag === 'TEXTAREA' || Boolean(target?.isContentEditable);
+
+      if (mod && e.shiftKey && (e.key === 'n' || e.key === 'N')) {
+        if (inTextField) return;
+        e.preventDefault();
+        openModal('create-project');
+        return;
+      }
+
       if (!mod) return;
 
       if (e.key === 'k' || e.key === 'K') {
@@ -39,10 +51,6 @@ export function WorkflowGlobalHotkeys() {
         setCommandOpen(true);
         return;
       }
-
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName ?? '';
-      const inTextField = tag === 'INPUT' || tag === 'TEXTAREA' || Boolean(target?.isContentEditable);
 
       if (e.key === '/' || e.key === '?') {
         if (e.shiftKey) return;
@@ -91,7 +99,7 @@ export function WorkflowGlobalHotkeys() {
 
       if (e.key === 'Enter' && location.pathname.startsWith('/rbyan')) {
         if (!inTextField || tag !== 'TEXTAREA') return;
-        if (target?.getAttribute('aria-label') !== 'Message Bryan the Brain') return;
+        if (target?.getAttribute('aria-label') !== 'Send message to AI Builder') return;
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('rbyan-submit-prompt'));
         return;
@@ -105,7 +113,7 @@ export function WorkflowGlobalHotkeys() {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [navigate, location.pathname, location.search, setCommandOpen, projects]);
+  }, [navigate, location.pathname, location.search, setCommandOpen, openModal, projects]);
 
   return null;
 }

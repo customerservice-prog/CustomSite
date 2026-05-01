@@ -14,7 +14,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useExpenses, useProjects } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { useShallow } from 'zustand/shallow';
-import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 
 export function ExpensesPage() {
   const rows = useExpenses();
@@ -80,15 +79,6 @@ export function ExpensesPage() {
                 </Button>
               }
             />
-            <PageMomentumStrip title="What to do next">
-              <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
-              <MomentumSep />
-              <MomentumChip to="/projects">Projects</MomentumChip>
-              <MomentumSep />
-              <MomentumChip to="/invoices">Invoices</MomentumChip>
-              <MomentumSep />
-              <MomentumChip to="/payments">Payments</MomentumChip>
-            </PageMomentumStrip>
           </div>
         }
       >

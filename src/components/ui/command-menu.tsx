@@ -61,8 +61,8 @@ export function CommandMenu() {
       },
       {
         id: 'open-rbyan',
-        label: 'Open Bryan the Brain (AI)',
-        hint: 'Co-build with AI',
+        label: 'Open AI Builder',
+        hint: 'Describe changes; preview updates',
         icon: Sparkles,
         run: () => {
           navigate(`/rbyan?project=${encodeURIComponent(pid)}`);
@@ -71,7 +71,7 @@ export function CommandMenu() {
       },
       {
         id: 'toggle-mode',
-        label: rbyMatch ? 'Switch to code (Site Builder)' : 'Switch to AI (Bryan the Brain)',
+        label: rbyMatch ? 'Switch to code (Site Builder)' : 'Switch to AI Builder',
         hint: '⌘/',
         icon: rbyMatch ? Code2 : Sparkles,
         run: () => {
@@ -154,7 +154,14 @@ export function CommandMenu() {
 
   const commands = useMemo<Cmd[]>(
     () => [
-      ...siteCommands,
+      {
+        id: 'pinned-ai-builder',
+        label: 'Open AI Builder',
+        hint: 'Bryan the Brain · ⌘/ Ctrl+/',
+        icon: Sparkles,
+        run: () => navigate('/rbyan'),
+      } satisfies Cmd,
+      ...siteCommands.filter((c) => c.id !== 'open-rbyan'),
       { id: 'dash', label: 'Studio Pulse', hint: 'Command center', icon: LayoutDashboard, run: () => navigate('/dashboard') },
       { id: 'pipe', label: 'Pipeline', hint: 'Leads and deals', icon: Workflow, run: () => navigate('/pipeline') },
       { id: 'cli', label: 'Clients', hint: 'Accounts', icon: Users, run: () => navigate('/clients') },

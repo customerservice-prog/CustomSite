@@ -22,7 +22,6 @@ import { DataRowMenu } from '@/components/workspace/data-row-menu';
 import type { Task } from '@/lib/types/entities';
 import { TASK_BUCKET_LABEL, TASK_BUCKET_ORDER, taskDueBucket } from '@/lib/operating-layer';
 import { RecommendedNextAction, type NextActionItem } from '@/components/workspace/recommended-next-action';
-import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 import { EntityDrawer } from '@/components/ui/entity-drawer';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
@@ -169,8 +168,8 @@ export function TasksPage() {
       header={
         <div className="space-y-4">
           <PageHeader
-            title="What is blocked or due?"
-            description="Blocked rows carry the reason — unassigned work is a decision, not a style choice."
+            title="Tasks"
+            description="Work items by project, assignee, and due date. Blocked and due-today tasks surface first."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('create-task')}>
                 <Plus className="h-4 w-4" />
@@ -179,15 +178,6 @@ export function TasksPage() {
             }
           />
           <RecommendedNextAction items={taskNextActions} />
-          <PageMomentumStrip>
-            <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/projects">Projects</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/invoices">Invoices</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/messages">Messages</MomentumChip>
-          </PageMomentumStrip>
         </div>
       }
       toolbar={

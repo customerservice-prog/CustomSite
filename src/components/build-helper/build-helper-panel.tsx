@@ -29,7 +29,7 @@ const STEP_HINT: Record<string, string> = {
   client: 'Add the business you are building for.',
   project: 'Create a website project for this client.',
   plan: 'Decide site type, pages, and conversion goal.',
-    rbyan: 'Generate the first version with Bryan the Brain.',
+    rbyan: 'Generate the first version with AI Builder.',
   edit: 'Review and customize files in Site Builder.',
   qa: 'Preview desktop/tablet/mobile and verify behavior.',
   feedback: 'Share preview link and collect client notes.',
@@ -356,7 +356,7 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
               <div className="flex flex-wrap gap-2">
                 <Button type="button" className="h-9 px-3 text-xs" onClick={openRbyan}>
                   <Sparkles className="mr-1 h-3.5 w-3.5" />
-                  Open Bryan the Brain
+                  Open AI Builder
                 </Button>
                 <Link
                   className={cn(
@@ -365,7 +365,7 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
                   )}
                   to={activeProjectId ? `/rbyan?project=${encodeURIComponent(activeProjectId)}` : '#'}
                 >
-                  Bryan the Brain (no prefill)
+                  AI Builder (no prefill)
                 </Link>
               </div>
             ) : null}

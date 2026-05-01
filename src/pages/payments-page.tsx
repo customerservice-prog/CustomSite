@@ -84,7 +84,7 @@ export function PaymentsPage() {
         <div className="space-y-4">
           <PageHeader
             title="Payments"
-            description="Match what hit the bank to invoices, payouts, and client records."
+            description="Record and reconcile money movement: tie deposits to invoices and keep client balances correct."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('record-payment')}>
                 <Plus className="h-4 w-4" />
@@ -102,9 +102,11 @@ export function PaymentsPage() {
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{formatCurrency(summary.collectedMonth)}</p>
         </Card>
         <Card className="p-4 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Pending settlement</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-amber-900">{formatCurrency(summary.pendingSettle)}</p>
-          <p className="mt-1 text-xs text-slate-500">{summary.pendingCount} in flight</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Pending settlement</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-slate-800">{formatCurrency(summary.pendingSettle)}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {summary.pendingCount} in flight — normal until your processor confirms; not failed payments.
+          </p>
         </Card>
         <Card className="p-4 shadow-sm ring-1 ring-slate-900/[0.04]">
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Failed</p>

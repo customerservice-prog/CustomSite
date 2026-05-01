@@ -299,7 +299,7 @@ export function RbyanBrainPage() {
         setPreviewNonce((n) => n + 1);
       } catch {
         if (pushedUndo) setUndoStack((u) => u.slice(0, -1));
-        toast('Bryan the Brain could not finish that request. Try again.', 'error');
+        toast('AI Builder could not finish that request. Try again.', 'error');
         setBuildSteps([]);
       } finally {
         setGenerating(false);
@@ -331,7 +331,7 @@ export function RbyanBrainPage() {
       const st = useProjectSiteWorkspaceStore.getState();
       const cur = st.byProjectId[projectId]?.site;
       if (cur && cur.files.length > 0) {
-        st.appendSnapshot(projectId, 'Before Bryan the Brain apply', ['Snapshot before applying AI output.'], siteFilesToRbyan(cur));
+        st.appendSnapshot(projectId, 'Before AI Builder apply', ['Snapshot before applying AI output.'], siteFilesToRbyan(cur));
       }
       st.applyRbyanOutput(projectId, result.files, {
         label: result.versionLabel,
@@ -387,8 +387,15 @@ export function RbyanBrainPage() {
               Bryan the Brain
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              Co-build with Bryan the Brain: pick a section focus, watch the preview update step by step on full builds, and undo when you want to back up one turn.
+              Select a client and project below, then describe what you want to build or change. Bryan will write or update the code live in the preview.
             </p>
+            <ol className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-zinc-500">
+              <li className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-zinc-300">
+                Step 1 · Choose client &amp; project
+              </li>
+              <li className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">Step 2 · Type your prompt</li>
+              <li className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">Step 3 · Watch it build</li>
+            </ol>
           </div>
           {projectId ? (
             <Link
@@ -463,7 +470,7 @@ export function RbyanBrainPage() {
                 <span className="font-medium text-zinc-200">{workspaceRow?.site.files.length ?? 0}</span>
               </p>
               <p>
-                <span className="text-zinc-500">Bryan versions</span>{' '}
+                <span className="text-zinc-500">Saved versions</span>{' '}
                 <span className="font-medium text-zinc-200">{versions.length}</span>
               </p>
               <p>
@@ -533,7 +540,7 @@ export function RbyanBrainPage() {
                 key={msg.id}
                 className={cn('rounded-xl px-3 py-2 text-sm leading-relaxed', msg.role === 'user' ? 'ml-8 bg-violet-600/25 text-violet-50' : 'mr-8 bg-zinc-800/80 text-zinc-200')}
               >
-                {msg.role === 'assistant' && <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-400">Bryan</p>}
+                {msg.role === 'assistant' && <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-400">AI</p>}
                 <p className="whitespace-pre-wrap">{msg.content}</p>
                 {msg.result ? (
                   <div className="mt-2 border-t border-white/10 pt-2 text-[11px] text-zinc-400">
@@ -637,7 +644,7 @@ export function RbyanBrainPage() {
               <div className="mr-8 space-y-2 rounded-xl bg-zinc-800/80 px-3 py-3 text-sm text-zinc-300">
                 <div className="flex items-center gap-2 text-zinc-400">
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-400" aria-hidden />
-                  <span>Bryan the Brain is building your site…</span>
+                  <span>AI Builder is updating your site…</span>
                 </div>
                 {buildSteps.length > 0 ? (
                   <ul className="space-y-1.5 border-t border-white/5 pt-2 text-[11px] text-zinc-400">
@@ -729,7 +736,7 @@ export function RbyanBrainPage() {
                 placeholder={
                   rbyanSession.currentSection
                     ? `Changes apply to “${rbyanSession.currentSection}” when possible…`
-                    : 'Tell Bryan the Brain what to build or change…'
+                    : 'Describe what to build or change…'
                 }
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -741,7 +748,7 @@ export function RbyanBrainPage() {
                   }
                 }}
                 rows={2}
-                aria-label="Message Bryan the Brain"
+                aria-label="Send message to AI Builder"
               />
               <Button
                 type="button"
@@ -768,11 +775,11 @@ export function RbyanBrainPage() {
                 </p>
                 {generating ? (
                   <p className="shrink-0 border-b border-violet-500/20 bg-violet-950/40 px-2 py-1.5 text-[11px] text-violet-200">
-                    Bryan the Brain is building your site—watch sections appear in the preview.
+                    AI Builder is updating your site — watch sections appear in the preview.
                   </p>
                 ) : null}
                 <iframe
-                  title="Bryan the Brain preview"
+                  title="AI Builder preview"
                   srcDoc={previewDoc}
                   className="h-full min-h-[200px] w-full flex-1 border-0 bg-white"
                   style={{ width: '100%', height: '100%', border: 'none' }}

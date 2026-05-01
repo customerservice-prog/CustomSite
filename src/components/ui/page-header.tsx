@@ -17,7 +17,7 @@ export function PageHeader({
       <div className="min-w-0 space-y-2">
         <h1 className="text-3xl font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-4xl">{title}</h1>
         {description != null && description !== '' && (
-          <div className="max-w-2xl text-[13px] leading-relaxed text-slate-500">
+          <div className="max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
             {typeof description === 'string' ? <p>{description}</p> : description}
           </div>
         )}

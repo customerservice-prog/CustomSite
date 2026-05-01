@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Receipt,
   Settings,
-  ShieldCheck,
   Sparkles,
   Users,
   Wallet,
@@ -24,7 +23,9 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   to: string;
-  badgeFromStore?: 'unread-messages' | 'pending-contracts';
+  /** Native tooltip — especially for AI Builder subtitle. */
+  navTitle?: string;
+  badgeFromStore?: 'unread-messages' | 'pending-contracts' | 'open-invoices';
 }
 
 /** Single home item — rendered above grouped nav (always visible). */
@@ -39,12 +40,12 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Build & deliver',
     items: [
       { label: 'Projects', to: '/projects', icon: FolderKanban },
-      { label: 'Bryan the Brain', to: '/rbyan', icon: Sparkles },
+      { label: 'AI Builder', to: '/rbyan', icon: Sparkles, navTitle: 'Prompt-driven site builder (Bryan the Brain)' },
       { label: 'Site builder', to: '/site-builder', icon: Wand2 },
       { label: 'Clients', to: '/clients', icon: Users },
       { label: 'Messages', to: '/messages', icon: MessageSquare, badgeFromStore: 'unread-messages' },
       { label: 'Files', to: '/files', icon: Files },
-      { label: 'Invoices', to: '/invoices', icon: Receipt },
+      { label: 'Invoices', to: '/invoices', icon: Receipt, badgeFromStore: 'open-invoices' },
     ],
   },
   {
@@ -68,7 +69,6 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { label: 'Contracts', to: '/contracts', icon: FileSignature, badgeFromStore: 'pending-contracts' },
       { label: 'Reports', to: '/reports', icon: BarChart3 },
-      { label: 'Client preview', to: '/client-portal', icon: ShieldCheck },
       { label: 'Settings', to: '/settings', icon: Settings },
     ],
   },

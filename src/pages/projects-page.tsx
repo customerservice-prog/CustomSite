@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils';
 import { useProjects, useClients } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
-import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 import { DetailDrawer } from '@/components/design-system/detail-drawer';
 import { ActionMenu } from '@/components/design-system/action-menu';
 import { formatCurrency } from '@/lib/format-display';
@@ -159,8 +158,8 @@ export function ProjectsPage() {
       header={
         <div className="space-y-4">
           <PageHeader
-            title="What will miss if you ignore it?"
-            description="Blocked and at-risk float to the top — healthy work should not compete for attention."
+            title="Projects"
+            description="Unhealthy work shouldn't compete for attention — this is where you see every client build at once, with blocked and at-risk rows sorted to the top."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('create-project')}>
                 <Plus className="h-4 w-4" />
@@ -202,17 +201,6 @@ export function ProjectsPage() {
             </div>
           </Card>
           <RecommendedNextAction items={projectNextActions} />
-          <PageMomentumStrip>
-            <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/tasks">Tasks</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/invoices">Invoices</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/clients">Clients</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/messages">Messages</MomentumChip>
-          </PageMomentumStrip>
         </div>
       }
       toolbar={

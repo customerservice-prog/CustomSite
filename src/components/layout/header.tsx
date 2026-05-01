@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 
 interface TopHeaderProps {
   breadcrumbs: Crumb[];
+  /** Pulse Quick create until first-run welcome is dismissed. */
+  highlightQuickCreate?: boolean;
 }
 
 function SearchField({
@@ -39,6 +41,7 @@ function SearchField({
         placeholder="Search clients, projects, sites…"
         className="h-10 w-full cursor-pointer rounded-lg border border-gray-200 bg-gray-50/80 py-0 pl-10 pr-3 text-sm text-gray-900 placeholder:text-gray-400 transition hover:border-gray-300 hover:bg-white lg:pr-14"
         aria-label="Search agency"
+        title="Click to open search (⌘K / Ctrl+K)"
       />
       <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[10px] font-medium text-gray-500 lg:inline">
         ⌘K
@@ -47,7 +50,7 @@ function SearchField({
   );
 }
 
-export function TopHeader({ breadcrumbs }: TopHeaderProps) {
+export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHeaderProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { supabaseBrowser } = useAuthSession();
@@ -168,6 +171,7 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
           type="button"
           className="flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white py-1 pl-1 pr-2 transition hover:border-gray-300 hover:bg-gray-50"
           aria-label="Account"
+          title="Account — settings and sign out"
         >
           <Avatar name={currentUser?.name ?? 'You'} size="sm" />
           <ChevronDown className="hidden h-4 w-4 text-gray-500 sm:block" />
@@ -198,10 +202,11 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
       trigger={
         <button
           type="button"
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
           aria-label="Notifications"
+          title="Notifications — urgent items appear first"
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-6 w-6" />
           {unread > 0 && (
             <span className="absolute right-1 top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-purple-600 px-0.5 text-[9px] font-bold text-white">
               {unread > 9 ? '9+' : unread}
@@ -235,8 +240,13 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
     <Dropdown
       align="right"
       trigger={
-        <IconButton aria-label="More" type="button" className="h-10 w-10 border border-gray-200 bg-white">
-          <MoreHorizontal className="h-5 w-5 text-gray-600" />
+        <IconButton
+          aria-label="More"
+          title="More options — search and open marketing site"
+          type="button"
+          className="h-11 w-11 border border-gray-200 bg-white"
+        >
+          <MoreHorizontal className="h-6 w-6 text-gray-600" />
         </IconButton>
       }
     >
@@ -274,14 +284,15 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
             <>
               <Link
                 to="/dashboard"
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-purple-700 transition hover:border-purple-200 hover:bg-purple-50 xl:hidden"
-                title="Studio Pulse"
-                aria-label="Studio Pulse"
+                className="flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 bg-white text-purple-700 transition hover:border-purple-200 hover:bg-purple-50 xl:hidden"
+                title="Dashboard — Studio Pulse home"
+                aria-label="Dashboard — Studio Pulse home"
               >
-                <LayoutDashboard className="h-5 w-5 shrink-0" />
+                <LayoutDashboard className="h-6 w-6 shrink-0" />
               </Link>
               <Link
                 to="/dashboard"
+                title="Studio Pulse — open dashboard"
                 className="hidden items-center gap-1.5 rounded-lg bg-purple-600 px-2.5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-purple-700 xl:inline-flex"
               >
                 <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden />
@@ -289,11 +300,25 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
               </Link>
             </>
           )}
-          <IconButton type="button" aria-label="Search" onClick={openCommand} className="lg:hidden">
-            <Search className="h-5 w-5 text-gray-600" />
+          <IconButton
+            type="button"
+            aria-label="Search"
+            title="Search — opens command palette (⌘K / Ctrl+K)"
+            onClick={openCommand}
+            className="lg:hidden"
+          >
+            <Search className="h-6 w-6 text-gray-600" />
           </IconButton>
-          <div className="hidden sm:block">
-            <Dropdown align="right" trigger={<DropdownChevronTrigger label="Quick create" />}>
+          <div
+            className={cn(
+              'hidden rounded-lg sm:block',
+              highlightQuickCreate && 'animate-pulse ring-2 ring-purple-400/70 ring-offset-2 ring-offset-white'
+            )}
+          >
+            <Dropdown
+              align="right"
+              trigger={<DropdownChevronTrigger label="Quick create" title="Quick create — client, project, invoice, task… (Ctrl+Shift+N)" />}
+            >
               {quickCreateItems}
             </Dropdown>
           </div>
@@ -301,8 +326,16 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
             align="right"
             className="sm:hidden"
             trigger={
-              <IconButton aria-label="Quick create" type="button" className="h-10 w-10 border border-gray-200 bg-white">
-                <Plus className="h-5 w-5 text-gray-700" />
+              <IconButton
+                aria-label="Quick create"
+                title="Quick create — new client, project, invoice…"
+                type="button"
+                className={cn(
+                  'h-11 w-11 border border-gray-200 bg-white',
+                  highlightQuickCreate && 'ring-2 ring-purple-400/70 ring-offset-2 ring-offset-white'
+                )}
+              >
+                <Plus className="h-6 w-6 text-gray-700" />
               </IconButton>
             }
           >
@@ -321,10 +354,10 @@ export function TopHeader({ breadcrumbs }: TopHeaderProps) {
                 ? 'border-indigo-200 bg-indigo-50 text-indigo-900'
                 : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
             )}
-            title="Build Helper — checklist for your first client site"
+            title="Build Helper — onboarding checklist for your first client site"
             aria-pressed={buildHelperEnabled}
           >
-            <ListChecks className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden />
+            <ListChecks className="h-6 w-6 shrink-0" aria-hidden />
             <span className="hidden xl:inline">Build Helper</span>
           </button>
           {notificationsMenu}

@@ -52,7 +52,7 @@ export function crumbsFromMatches(matches: UIMatch[]): Crumb[] {
   if (meta.segment === 'client-portal') {
     const sub = segments[1];
     const subLabels: Record<string, string> = { messages: 'Messages', files: 'Files', invoices: 'Invoices' };
-    return [...base, { label: 'Your project', to: '/client-portal' }, ...(sub ? [{ label: subLabels[sub] ?? 'Page' }] : [])];
+    return [...base, { label: 'Client portal', to: '/client-portal' }, ...(sub ? [{ label: subLabels[sub] ?? 'Page' }] : [])];
   }
 
   return [...base, { label: meta.title }];

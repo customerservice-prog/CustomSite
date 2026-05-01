@@ -231,6 +231,11 @@ export function getDraftInvoiceCount(state: RootState): number {
   return invoicesList(state).filter((i) => i.status === 'Draft').length;
 }
 
+/** Invoices that still need collection or follow-up (not closed). */
+export function getOpenInvoiceCount(state: RootState): number {
+  return invoicesList(state).filter((i) => i.status !== 'Paid' && i.status !== 'Void').length;
+}
+
 export function getAttentionItemCount(state: RootState): number {
   return (
     getOverdueInvoices(state).length +

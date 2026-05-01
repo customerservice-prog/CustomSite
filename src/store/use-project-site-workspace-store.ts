@@ -471,7 +471,7 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
       id: `pre-${Date.now()}`,
       createdAt: new Date().toISOString(),
       label: 'Before AI apply',
-      plan: ['Automatic restore point before Bryan the Brain output'],
+      plan: ['Automatic restore point before AI Builder output'],
       files: siteFilesToVersionPayload(prev.site) as RbyanGeneratedFile[],
     });
     const site: ProjectSite = { projectId, files: rbyanFilesToProjectFiles(projectId, files) };

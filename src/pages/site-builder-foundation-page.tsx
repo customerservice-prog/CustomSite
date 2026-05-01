@@ -1,14 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Copy, ExternalLink, Eye, Loader2, Maximize2, Plus, Rocket, Sparkles, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import {
+  ChevronLeft,
+  Code2,
+  Copy,
+  ExternalLink,
+  Eye,
+  LayoutTemplate,
+  Loader2,
+  Maximize2,
+  Plus,
+  Rocket,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
+import { Button, buttonClassName } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
-import { useProjects } from '@/store/hooks';
+import { useClients, useProjects } from '@/store/hooks';
 import type { ProjectSite } from '@/lib/site-builder/project-site-model';
 import { newFile } from '@/lib/site-builder/project-site-model';
 import { createStarterFiles } from '@/lib/site-builder/create-starter-files';
+import { saveProjectSite } from '@/lib/site-builder/project-site-storage';
+import {
+  buildSiteFromStarterTemplate,
+  SITE_STARTER_TEMPLATE_LIST,
+  type SiteStarterTemplateId,
+} from '@/lib/site-builder/site-starter-templates';
 import { projectSiteArchetype } from '@/lib/site-builder/archetypes';
 import {
   duplicateLastSection,
@@ -41,6 +60,7 @@ export function SiteBuilderFoundationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams<{ projectId?: string }>();
   const projects = useProjects();
+  const clients = useClients();
   const siteProjects = useMemo(
     () => projects.filter((p) => p.deliveryFocus === 'client_site').sort((a, b) => a.name.localeCompare(b.name)),
     [projects]
@@ -50,6 +70,12 @@ export function SiteBuilderFoundationPage() {
   const projectQueryValid = Boolean(paramProject && siteProjects.some((p) => p.id === paramProject));
   const projectId = projectQueryValid ? paramProject : '';
   const project = siteProjects.find((p) => p.id === projectId);
+
+  const clientDisplayName = useMemo(() => {
+    if (!project) return 'this project';
+    const c = clients.find((x) => x.id === project.clientId);
+    return c?.company || c?.name || project.name;
+  }, [clients, project]);
 
   const row = useProjectSiteWorkspaceStore((s) => (projectId ? s.byProjectId[projectId] : undefined));
   const quickAddPageNonce = useProjectSiteWorkspaceStore((s) => s.quickAddPageNonce);
@@ -82,7 +108,6 @@ export function SiteBuilderFoundationPage() {
   const [savedContent, setSavedContent] = useState('');
   const [booting, setBooting] = useState(false);
   const didInitEditor = useRef(false);
-  const autoSeedRef = useRef(false);
   const prevLoadErrRef = useRef<string | null>(null);
   const prevSaveErrRef = useRef<string | null>(null);
   const saveCloudToastSigRef = useRef<string | null>(null);
@@ -100,6 +125,8 @@ export function SiteBuilderFoundationPage() {
   const [importPaste, setImportPaste] = useState('');
   const [previewPulse, setPreviewPulse] = useState(false);
   const [serverReachable, setServerReachable] = useState<boolean | null>(null);
+  const [starterTemplatesOpen, setStarterTemplatesOpen] = useState(false);
+  const [visualEditorMode, setVisualEditorMode] = useState(false);
 
   const modKey = useMemo(() => {
     if (typeof navigator === 'undefined') return 'Ctrl';
@@ -154,7 +181,6 @@ export function SiteBuilderFoundationPage() {
 
   useEffect(() => {
     didInitEditor.current = false;
-    autoSeedRef.current = false;
     prevLoadErrRef.current = null;
     prevSaveErrRef.current = null;
   }, [projectId]);
@@ -527,19 +553,69 @@ export function SiteBuilderFoundationPage() {
     }
   }, [projectId, project?.deliveryFocus, setSiteImmediate, appendSnapshot, applyFileToEditor, recordPersistResult]);
 
-  useEffect(() => {
-    if (!projectId || !row?.hydrated || autoSeedRef.current) return;
-    if (site.files.length > 0) return;
-    if (project?.deliveryFocus !== 'client_site') return;
-    autoSeedRef.current = true;
-    void (async () => {
-      const { site: next, save } = await createStarterFiles(projectId, { rich: true });
+  const onStartBlankMinimal = useCallback(async () => {
+    if (!projectId) return;
+    setBooting(true);
+    try {
+      const { site: next, save } = await createStarterFiles(projectId, { rich: false });
       setSiteImmediate(projectId, next);
       recordPersistResult(projectId, save);
-      appendSnapshot(projectId, 'Auto-seeded homepage', ['Created when opening an empty client site project'], siteFilesToVersionPayload(next));
+      appendSnapshot(
+        projectId,
+        'Blank canvas',
+        ['Minimal HTML/CSS/JS shell from Site Builder'],
+        siteFilesToVersionPayload(next)
+      );
       applyFileToEditor(next, 'index.html');
-    })();
-  }, [projectId, row?.hydrated, site.files.length, project?.deliveryFocus, setSiteImmediate, appendSnapshot, applyFileToEditor, recordPersistResult]);
+    } finally {
+      setBooting(false);
+    }
+  }, [projectId, setSiteImmediate, appendSnapshot, applyFileToEditor, recordPersistResult]);
+
+  const applyStarterTemplate = useCallback(
+    async (tid: SiteStarterTemplateId) => {
+      if (!projectId) return;
+      setBooting(true);
+      try {
+        const next = buildSiteFromStarterTemplate(projectId, tid);
+        setSiteImmediate(projectId, next);
+        const save = await saveProjectSite(next);
+        recordPersistResult(projectId, save);
+        const label = SITE_STARTER_TEMPLATE_LIST.find((t) => t.id === tid)?.title ?? tid;
+        appendSnapshot(projectId, `Template: ${label}`, ['Starter template from Site Builder'], siteFilesToVersionPayload(next));
+        applyFileToEditor(next, 'index.html');
+        setStarterTemplatesOpen(false);
+        toast('Starter template applied. Switch to Code to edit files, or use Build with AI.', 'success');
+      } catch {
+        toast('Could not apply that template.', 'error');
+      } finally {
+        setBooting(false);
+      }
+    },
+    [projectId, setSiteImmediate, recordPersistResult, appendSnapshot, applyFileToEditor, toast]
+  );
+
+  const setVisualModePersist = useCallback(
+    (v: boolean) => {
+      setVisualEditorMode(v);
+      if (!projectId) return;
+      try {
+        localStorage.setItem(`customsite_site_builder_visual_${projectId}`, v ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+    },
+    [projectId]
+  );
+
+  useEffect(() => {
+    if (!projectId) return;
+    try {
+      setVisualEditorMode(localStorage.getItem(`customsite_site_builder_visual_${projectId}`) === '1');
+    } catch {
+      setVisualEditorMode(false);
+    }
+  }, [projectId]);
 
   const addHtmlPage = useCallback(() => {
     const raw = newPageSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
@@ -630,7 +706,7 @@ export function SiteBuilderFoundationPage() {
             <Link
               to={`/rbyan?project=${encodeURIComponent(projectId)}`}
               onClick={(e) => {
-                if (unsaved && !window.confirm('You have unsaved edits. Open Bryan the Brain? (Your work is auto-saved locally when you leave.)')) {
+                if (unsaved && !window.confirm('You have unsaved edits. Open AI Builder? (Your work is auto-saved locally when you leave.)')) {
                   e.preventDefault();
                   return;
                 }
@@ -654,6 +730,35 @@ export function SiteBuilderFoundationPage() {
               Edit code
             </button>
           </div>
+          {hasFiles ? (
+            <div
+              className="flex shrink-0 items-center rounded-lg border border-white/10 p-0.5"
+              title="Visual: preview only for non-coders. Code: full editor for developers."
+            >
+              <button
+                type="button"
+                onClick={() => setVisualModePersist(true)}
+                className={cn(
+                  'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition',
+                  visualEditorMode ? 'bg-emerald-600/50 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                )}
+              >
+                <LayoutTemplate className="h-3 w-3 shrink-0" aria-hidden />
+                Visual
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisualModePersist(false)}
+                className={cn(
+                  'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition',
+                  !visualEditorMode ? 'bg-white/15 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                )}
+              >
+                <Code2 className="h-3 w-3 shrink-0" aria-hidden />
+                Code
+              </button>
+            </div>
+          ) : null}
           <div className="flex-1" />
           {saveStatus === 'saved' && !unsaved ? (
             <span className="text-[10px] font-medium text-emerald-400/90">
@@ -693,7 +798,7 @@ export function SiteBuilderFoundationPage() {
           {rbyanBusy ? (
             <span className="flex items-center gap-1 text-[10px] text-violet-300">
               <Sparkles className="h-3 w-3" aria-hidden />
-              Bryan the Brain is working…
+              AI Builder is working…
             </span>
           ) : null}
           {hasFiles ? (
@@ -840,62 +945,146 @@ export function SiteBuilderFoundationPage() {
       ) : null}
 
       {!hasFiles ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <p className="max-w-md text-sm text-zinc-400">No site files yet. Start with the default HTML, CSS, and JS shell.</p>
-          <Button type="button" className="h-11 px-6 text-sm font-semibold" disabled={booting} onClick={() => void onStartBlank()}>
-            {booting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {booting ? 'Creating…' : 'Start from blank code'}
-          </Button>
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-3 py-8 sm:px-6">
+          <div className="w-full max-w-5xl space-y-4 text-left">
+            <div className="flex flex-wrap items-center gap-2 text-violet-300">
+              <Rocket className="h-5 w-5 shrink-0" aria-hidden />
+              <h2 className="text-lg font-bold tracking-tight text-white sm:text-xl">Let&apos;s build {clientDisplayName}&apos;s site</h2>
+            </div>
+            <p className="text-sm text-zinc-400">No files yet — pick how you want to start:</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="flex flex-col rounded-2xl border-2 border-violet-500/50 bg-gradient-to-b from-violet-600/25 to-violet-950/40 p-4 shadow-lg shadow-violet-950/30 ring-1 ring-violet-400/20">
+                <Sparkles className="h-6 w-6 text-violet-200" aria-hidden />
+                <p className="mt-2 text-sm font-bold text-white">Build with AI</p>
+                <p className="mt-2 flex-1 text-xs leading-relaxed text-zinc-300">
+                  Describe your site in plain language and let Bryan draft or refine pages while you watch the preview.
+                </p>
+                <Link
+                  to={`/rbyan?project=${encodeURIComponent(projectId)}`}
+                  className={buttonClassName('primary', 'mt-4 inline-flex h-11 w-full items-center justify-center text-sm')}
+                  onClick={() => setBuilderSurface(projectId, 'ai')}
+                >
+                  Start with AI
+                </Link>
+              </div>
+              <div className="flex flex-col rounded-2xl border border-white/10 bg-zinc-900/60 p-4 ring-1 ring-white/5">
+                <LayoutTemplate className="h-6 w-6 text-zinc-300" aria-hidden />
+                <p className="mt-2 text-sm font-bold text-white">Start from a template</p>
+                <p className="mt-2 flex-1 text-xs leading-relaxed text-zinc-400">
+                  Pick a ready-made layout (restaurant, portfolio, store, and more). Customize copy and colors in Code or AI Builder.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-4 h-11 border-white/15 bg-white/10 text-sm font-semibold text-white hover:bg-white/15"
+                  onClick={() => setStarterTemplatesOpen((o) => !o)}
+                >
+                  {starterTemplatesOpen ? 'Hide templates' : 'See templates'}
+                </Button>
+              </div>
+              <div className="flex flex-col rounded-2xl border border-white/10 bg-zinc-900/60 p-4 ring-1 ring-white/5">
+                <Code2 className="h-6 w-6 text-zinc-300" aria-hidden />
+                <p className="mt-2 text-sm font-bold text-white">Start from blank code</p>
+                <p className="mt-2 flex-1 text-xs leading-relaxed text-zinc-400">
+                  Opens a minimal HTML, CSS, and JS shell. Full control for developers who want to wire everything by hand.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-4 h-11 border-white/15 bg-white/10 text-sm font-semibold text-white hover:bg-white/15"
+                  disabled={booting}
+                  onClick={() => void onStartBlankMinimal()}
+                >
+                  {booting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Blank canvas
+                </Button>
+              </div>
+            </div>
+            {starterTemplatesOpen ? (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {SITE_STARTER_TEMPLATE_LIST.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    disabled={booting}
+                    onClick={() => void applyStarterTemplate(t.id)}
+                    className="rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-left text-xs text-zinc-300 transition hover:border-violet-500/40 hover:bg-violet-950/30"
+                  >
+                    <span className="font-semibold text-white">{t.title}</span>
+                    <span className="mt-1 block text-[11px] leading-snug text-zinc-500">{t.blurb}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : (
         <div className={cn('flex min-h-0 flex-1 flex-col', loading && 'pointer-events-none opacity-60')}>
-          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <aside className="shrink-0 border-b border-white/10 p-2 lg:w-52 lg:border-b-0 lg:border-r">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Files</p>
-            <ul className="space-y-0.5">
-              {fileTabs.map((name) => {
-                const exists = site.files.some((f) => f.name === name);
-                const active = activeFileId === name;
-                return (
-                  <li key={name}>
-                    <button
-                      type="button"
-                      disabled={!exists}
-                      onClick={() => void selectFile(name)}
-                      className={cn(
-                        'w-full truncate rounded px-2 py-1.5 text-left text-xs transition-colors',
-                        active ? 'bg-white/10 font-semibold text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200',
-                        !exists && 'cursor-not-allowed opacity-40'
-                      )}
-                    >
-                      {name}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </aside>
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-white/10 p-2 lg:border-b-0">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <span className="font-mono text-[11px] text-zinc-500">{activeFileId}</span>
-              {unsaved ? <span className="text-[10px] font-medium text-amber-400">Editing…</span> : null}
-            </div>
-            <textarea
-              className="min-h-[min(52vh,480px)] w-full flex-1 resize-y rounded-md border border-white/10 bg-zinc-900 p-3 font-mono text-sm leading-relaxed text-zinc-100 focus:border-violet-500/50 focus:outline-none focus:ring-1 focus:ring-violet-500/30"
-              spellCheck={false}
-              value={draftContent}
-              onChange={(e) => setDraftContent(e.target.value)}
-              aria-label={`Editor: ${activeFileId}`}
-            />
-          </section>
-          <aside
-            id="site-builder-preview-anchor"
-            ref={previewWrapRef}
-            className={cn(
-              'flex min-h-[280px] shrink-0 flex-col p-2 transition-shadow duration-300 lg:min-h-0 lg:w-[min(50%,560px)] lg:border-l lg:border-white/10',
-              previewPulse && 'ring-2 ring-violet-500/60 ring-offset-2 ring-offset-zinc-950'
+          <div className={cn('flex min-h-0 flex-1 flex-col', !visualEditorMode && 'lg:flex-row')}>
+            {!visualEditorMode ? (
+              <>
+                <aside className="shrink-0 border-b border-white/10 p-2 lg:w-52 lg:border-b-0 lg:border-r">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Files</p>
+                  <ul className="space-y-0.5">
+                    {fileTabs.map((name) => {
+                      const exists = site.files.some((f) => f.name === name);
+                      const active = activeFileId === name;
+                      return (
+                        <li key={name}>
+                          <button
+                            type="button"
+                            disabled={!exists}
+                            onClick={() => void selectFile(name)}
+                            className={cn(
+                              'w-full truncate rounded px-2 py-1.5 text-left text-xs transition-colors',
+                              active ? 'bg-white/10 font-semibold text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200',
+                              !exists && 'cursor-not-allowed opacity-40'
+                            )}
+                          >
+                            {name}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </aside>
+                <section className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-white/10 p-2 lg:border-b-0">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] text-zinc-500">{activeFileId}</span>
+                    {unsaved ? <span className="text-[10px] font-medium text-amber-400">Editing…</span> : null}
+                  </div>
+                  <textarea
+                    className="min-h-[min(52vh,480px)] w-full flex-1 resize-y rounded-md border border-white/10 bg-zinc-900 p-3 font-mono text-sm leading-relaxed text-zinc-100 focus:border-violet-500/50 focus:outline-none focus:ring-1 focus:ring-violet-500/30"
+                    spellCheck={false}
+                    value={draftContent}
+                    onChange={(e) => setDraftContent(e.target.value)}
+                    aria-label={`Editor: ${activeFileId}`}
+                  />
+                </section>
+              </>
+            ) : (
+              <div className="shrink-0 border-b border-white/10 bg-zinc-900/80 px-3 py-2.5 text-xs leading-relaxed text-zinc-400">
+                <p className="font-medium text-zinc-200">Visual mode</p>
+                <p className="mt-1">
+                  Preview only — switch to <span className="text-zinc-300">Code</span> to edit files, or open{' '}
+                  <Link to={`/rbyan?project=${encodeURIComponent(projectId)}`} className="text-violet-300 underline hover:text-violet-200">
+                    AI Builder
+                  </Link>{' '}
+                  to describe changes in plain language.
+                </p>
+              </div>
             )}
-          >
+            <aside
+              id="site-builder-preview-anchor"
+              ref={previewWrapRef}
+              className={cn(
+                'flex min-h-[280px] shrink-0 flex-col p-2 transition-shadow duration-300 lg:min-h-0 lg:border-white/10',
+                visualEditorMode
+                  ? 'min-h-[min(60vh,560px)] flex-1 border-b lg:border-b-0 lg:border-l-0'
+                  : 'lg:w-[min(50%,560px)] lg:border-l',
+                previewPulse && 'ring-2 ring-violet-500/60 ring-offset-2 ring-offset-zinc-950'
+              )}
+            >
             <div className="mb-1 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Preview</p>
               <Button

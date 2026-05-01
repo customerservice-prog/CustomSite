@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 import { useClients } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { EmptyState } from '@/components/ui/empty-state';
-import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 
 export function ClientsPage() {
   const clients = useClients();
@@ -42,7 +41,7 @@ export function ClientsPage() {
         <div className="space-y-4">
           <PageHeader
             title="Clients"
-            description="Every account in one place — health, ownership, and open balances across projects and billing."
+            description="Contact info, project ownership, and open balances across every build — open a row for the full client record."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('create-client')}>
                 <Plus className="h-4 w-4" />
@@ -50,17 +49,6 @@ export function ClientsPage() {
               </Button>
             }
           />
-          <PageMomentumStrip>
-            <MomentumChip to="/dashboard">Studio pulse</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/pipeline">Pipeline</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/projects">Projects</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/invoices">Invoices</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/messages">Messages</MomentumChip>
-          </PageMomentumStrip>
         </div>
       }
       toolbar={

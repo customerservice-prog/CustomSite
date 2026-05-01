@@ -75,6 +75,7 @@ export const router = createHashRouter([
       { path: 'activity', element: <ActivityPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'rbyan', element: <RbyanBrainPage /> },
+      { path: 'ai-builder', element: <Navigate to="/rbyan" replace /> },
       { path: 'site-builder', element: <SiteBuilderRedirectPage /> },
       {
         path: 'client-portal',
@@ -86,6 +87,7 @@ export const router = createHashRouter([
           { path: 'invoices', element: <ClientPortalInvoicesPage /> },
         ],
       },
+      { path: 'client-preview', element: <Navigate to="/client-portal" replace /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

@@ -4,7 +4,7 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   pipeline: { title: 'Pipeline', segment: 'pipeline' },
   clients: { title: 'Clients', segment: 'clients' },
   projects: { title: 'Projects', segment: 'projects' },
-  rbyan: { title: 'Bryan the Brain', segment: 'rbyan' },
+  rbyan: { title: 'AI Builder', segment: 'rbyan' },
   tasks: { title: 'Tasks', segment: 'tasks' },
   calendar: { title: 'Calendar', segment: 'calendar' },
   invoices: { title: 'Invoices', segment: 'invoices' },
@@ -19,6 +19,6 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   activity: { title: 'Activity', segment: 'activity' },
   reports: { title: 'Reports', segment: 'reports' },
   'site-builder': { title: 'Site builder', segment: 'site-builder' },
-  'client-portal': { title: 'Your project', segment: 'client-portal' },
+  'client-portal': { title: 'Client portal', segment: 'client-portal' },
   settings: { title: 'Settings', segment: 'settings' },
 };

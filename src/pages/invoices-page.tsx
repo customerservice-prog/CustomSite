@@ -14,7 +14,6 @@ import { invoiceStatusBadgeVariant, type InvoiceStatus } from '@/lib/statuses';
 import { cn } from '@/lib/utils';
 import { useInvoices, useClients, useProjects } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
-import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 import { EntityDrawer } from '@/components/ui/entity-drawer';
 import { DataRowMenu } from '@/components/workspace/data-row-menu';
 import * as sel from '@/store/selectors';
@@ -227,8 +226,8 @@ export function InvoicesPage() {
       header={
         <div className="space-y-3">
           <PageHeader
-            title="What needs collecting?"
-            description="Overdue first — then drafts and open balances. Paid is reference, not the job."
+            title="Invoices"
+            description="Open balances first — paid invoices are reference, not the job. Create, send, and chase what's owed."
             actions={
               <Button type="button" className="gap-2" onClick={() => openModal('create-invoice')}>
                 <Plus className="h-4 w-4" />
@@ -269,15 +268,6 @@ export function InvoicesPage() {
             </Card>
           )}
           <RecommendedNextAction items={invoiceNextActions} />
-          <PageMomentumStrip>
-            <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/payments">Payments</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/projects">Projects</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/messages">Messages</MomentumChip>
-          </PageMomentumStrip>
         </div>
       }
       toolbar={

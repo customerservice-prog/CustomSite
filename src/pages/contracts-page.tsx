@@ -15,7 +15,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useShell } from '@/context/shell-context';
 import { useClients, useContracts, useProjects } from '@/store/hooks';
 import { DataRowMenu } from '@/components/workspace/data-row-menu';
-import { MomentumChip, MomentumSep, PageMomentumStrip } from '@/components/workspace/page-momentum-strip';
 import { EntityDrawer } from '@/components/ui/entity-drawer';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
@@ -111,13 +110,6 @@ export function ContractsPage() {
             </Card>
           </div>
           <RecommendedNextAction items={contractNextActions} />
-          <PageMomentumStrip title="Where to go next">
-            <MomentumChip to="/dashboard">Studio Pulse</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/projects">Projects</MomentumChip>
-            <MomentumSep />
-            <MomentumChip to="/invoices">Invoices</MomentumChip>
-          </PageMomentumStrip>
         </div>
       }
     >
