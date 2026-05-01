@@ -264,7 +264,7 @@ export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHead
       trigger={
         <IconButton
           aria-label="More"
-          title="More options — search and open marketing site"
+          title="More — help, shortcuts, feedback, marketing site"
           type="button"
           className="h-11 w-11 border border-gray-200 bg-white"
         >
@@ -272,14 +272,29 @@ export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHead
         </IconButton>
       }
     >
+      <DropdownItem onClick={() => window.open('https://github.com/customerservice-prog/CustomSite', '_blank', 'noopener,noreferrer')}>
+        <span className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 shrink-0" /> Help &amp; docs
+        </span>
+      </DropdownItem>
       <DropdownItem onClick={() => setCommandOpen(true)}>
         <span className="flex items-center gap-2">
-          <Search className="h-4 w-4" /> Search
+          <Keyboard className="h-4 w-4 shrink-0" /> Keyboard shortcuts <span className="text-gray-400">(⌘K)</span>
+        </span>
+      </DropdownItem>
+      <DropdownItem onClick={() => navigate('/activity')}>
+        <span className="flex items-center gap-2">
+          <Megaphone className="h-4 w-4 shrink-0" /> What&apos;s new / activity
+        </span>
+      </DropdownItem>
+      <DropdownItem onClick={() => window.open('mailto:hello@customsite.online?subject=CustomSite%20feedback', '_blank', 'noopener,noreferrer')}>
+        <span className="flex items-center gap-2">
+          <LifeBuoy className="h-4 w-4 shrink-0" /> Give feedback
         </span>
       </DropdownItem>
       <DropdownItem onClick={() => window.open('/index.html', '_blank', 'noopener')}>
         <span className="flex items-center gap-2">
-          <Globe className="h-4 w-4" /> View site
+          <ExternalLink className="h-4 w-4 shrink-0" /> View public marketing site
         </span>
       </DropdownItem>
     </Dropdown>
