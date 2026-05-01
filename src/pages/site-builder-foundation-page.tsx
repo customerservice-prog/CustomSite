@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useClients, useProjects } from '@/store/hooks';
 import type { ProjectSite } from '@/lib/site-builder/project-site-model';
 import { newFile } from '@/lib/site-builder/project-site-model';
-import { createStarterFiles } from '@/lib/site-builder/create-starter-files';
+import { createStarterFiles, type StarterSiteContext } from '@/lib/site-builder/create-starter-files';
 import { saveProjectSite } from '@/lib/site-builder/project-site-storage';
 import {
   buildSiteFromStarterTemplate,
@@ -76,6 +76,15 @@ export function SiteBuilderFoundationPage() {
     const c = clients.find((x) => x.id === project.clientId);
     return c?.company || c?.name || project.name;
   }, [clients, project]);
+
+  const starterSiteContext = useMemo<StarterSiteContext>(() => {
+    if (!project) return {};
+    return {
+      brandName: clientDisplayName,
+      projectTitle: project.name,
+      siteBuildArchetype: project.siteBuildArchetype ?? undefined,
+    };
+  }, [project, clientDisplayName]);
 
   const row = useProjectSiteWorkspaceStore((s) => (projectId ? s.byProjectId[projectId] : undefined));
   const quickAddPageNonce = useProjectSiteWorkspaceStore((s) => s.quickAddPageNonce);
@@ -538,7 +547,7 @@ export function SiteBuilderFoundationPage() {
     setBooting(true);
     try {
       const rich = project?.deliveryFocus === 'client_site';
-      const { site: next, save } = await createStarterFiles(projectId, { rich });
+      const { site: next, save } = await createStarterFiles(projectId, { rich, context: starterSiteContext });
       setSiteImmediate(projectId, next);
       recordPersistResult(projectId, save);
       appendSnapshot(
@@ -551,13 +560,24 @@ export function SiteBuilderFoundationPage() {
     } finally {
       setBooting(false);
     }
-  }, [projectId, project?.deliveryFocus, setSiteImmediate, appendSnapshot, applyFileToEditor, recordPersistResult]);
+  }, [
+    projectId,
+    project?.deliveryFocus,
+    starterSiteContext,
+    setSiteImmediate,
+    appendSnapshot,
+    applyFileToEditor,
+    recordPersistResult,
+  ]);
 
   const onStartBlankMinimal = useCallback(async () => {
     if (!projectId) return;
     setBooting(true);
     try {
-      const { site: next, save } = await createStarterFiles(projectId, { rich: false });
+      const { site: next, save } = await createStarterFiles(projectId, {
+        rich: false,
+        context: starterSiteContext,
+      });
       setSiteImmediate(projectId, next);
       recordPersistResult(projectId, save);
       appendSnapshot(
@@ -570,7 +590,7 @@ export function SiteBuilderFoundationPage() {
     } finally {
       setBooting(false);
     }
-  }, [projectId, setSiteImmediate, appendSnapshot, applyFileToEditor, recordPersistResult]);
+  }, [projectId, starterSiteContext, setSiteImmediate, appendSnapshot, applyFileToEditor, recordPersistResult]);
 
   const applyStarterTemplate = useCallback(
     async (tid: SiteStarterTemplateId) => {

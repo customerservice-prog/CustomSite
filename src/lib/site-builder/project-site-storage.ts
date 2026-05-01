@@ -34,6 +34,24 @@ function writeLocal(site: ProjectSite): boolean {
   }
 }
 
+function mergeApiSiteWithLocal(api: ProjectSite, local: ProjectSite | null): ProjectSite {
+  if (!local?.files?.length) return api;
+  const byName = new Map(local.files.map((f) => [f.name, f]));
+  const merged = api.files.map((af) => {
+    const loc = byName.get(af.name);
+    if (!loc) return af;
+    const aLen = (af.content || '').trim().length;
+    const lLen = (loc.content || '').trim().length;
+    if (lLen > aLen) {
+      return { ...af, content: loc.content, updatedAt: loc.updatedAt };
+    }
+    return af;
+  });
+  const apiNames = new Set(api.files.map((f) => f.name));
+  const extras = local.files.filter((f) => !apiNames.has(f.name));
+  return { projectId: api.projectId, files: [...merged, ...extras] };
+}
+
 async function tryLoadFromApi(projectId: string): Promise<ProjectSite | null> {
   const list = await adminFetchJson<{ files?: { path: string }[] }>(
     `/api/admin/projects/${encodeURIComponent(projectId)}/site`
@@ -70,17 +88,19 @@ async function tryPushToApi(site: ProjectSite): Promise<{ ok: true } | { ok: fal
 }
 
 /**
- * Load site files: when the API has files, treat that as authoritative and mirror to local.
- * If the API is empty or unreachable, fall back to local cache so offline edits are not wiped.
+ * Load site files: merge API with localStorage so a partial/empty API response
+ * does not wipe files that were saved locally or lose longer in-browser edits.
  */
 export async function getProjectSite(projectId: string): Promise<ProjectSite> {
+  const cached = readLocal(projectId);
   const fromApi = await tryLoadFromApi(projectId);
+
   if (fromApi && fromApi.files.length > 0) {
-    writeLocal(fromApi);
-    return fromApi;
+    const merged = mergeApiSiteWithLocal(fromApi, cached);
+    writeLocal(merged);
+    return merged;
   }
 
-  const cached = readLocal(projectId);
   if (cached && cached.files.length > 0) {
     return cached;
   }

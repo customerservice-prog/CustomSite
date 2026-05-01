@@ -4,6 +4,8 @@ import { mergeDesignIntoCss } from '@/lib/rbyan/generate-design';
 import type { RbyanCopyPack } from '@/lib/rbyan/generate-copy';
 import type { RbyanDesignPack } from '@/lib/rbyan/generate-design';
 import { generateSiteTemplate, type SiteTemplateType } from '@/lib/rbyan/template-generator';
+import { dedupeConsecutiveHeroSections } from '@/lib/rbyan/dedupe-hero-sections';
+import { normalizeGeneratedText } from '@/lib/rbyan/sanitize-generated-text';
 import type { RbyanGeneratedFile, RbyanProjectContext } from '@/lib/rbyan/types';
 
 function archetypeToTemplate(plan: RbyanBuildPlan): { type: SiteTemplateType; hint: string } {
@@ -38,10 +40,14 @@ export function buildSiteFromPlan(
 
   const files = tpl.files.map((f) => {
     if (f.name === 'index.html') {
-      return { ...f, content: applyCopyToHtml(f.content, copy, plan.siteArchetype) };
+      const html = dedupeConsecutiveHeroSections(applyCopyToHtml(f.content, copy, plan.siteArchetype));
+      return { ...f, content: normalizeGeneratedText(html) };
     }
     if (f.name === 'styles.css') {
-      return { ...f, content: mergeDesignIntoCss(f.content, design) };
+      return { ...f, content: normalizeGeneratedText(mergeDesignIntoCss(f.content, design)) };
+    }
+    if (f.name === 'script.js') {
+      return { ...f, content: normalizeGeneratedText(f.content) };
     }
     return { ...f };
   });

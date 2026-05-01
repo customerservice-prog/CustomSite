@@ -11,6 +11,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 import { useBuildHelperStore } from '@/store/use-build-helper-store';
+import { useShallow } from 'zustand/shallow';
 import { useAppStore } from '@/store/useAppStore';
 import { Modal } from '@/components/ui/modal';
 import type { User, UserRole } from '@/lib/types/entities';
@@ -110,7 +111,7 @@ function seatLabel(u: User): string {
 export function SettingsPage() {
   const { toast } = useShell();
   const [searchParams, setSearchParams] = useSearchParams();
-  const users = useAppStore((s) => Object.values(s.users));
+  const users = useAppStore(useShallow((s) => Object.values(s.users)));
   const teamMembers = useMemo(() => users.filter((u) => u.role !== 'client'), [users]);
   const buildHelperEnabled = useBuildHelperStore((s) => s.enabled);
   const setBuildHelperEnabled = useBuildHelperStore((s) => s.setEnabled);
