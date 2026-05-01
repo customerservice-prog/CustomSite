@@ -141,16 +141,21 @@ export const useBuildHelperStore = create<BuildHelperStore>()(
       name: BUILD_HELPER_STORAGE_KEY,
       version: 1,
       migrate: (persistedState, fromVersion) => {
-        if (fromVersion === 0) {
-          const p = (persistedState ?? {}) as Partial<BuildHelperStoreState>;
-          return {
-            ...initial,
-            ...p,
-            enabled: true,
-            panelCollapsed: false,
-          };
+        try {
+          if (fromVersion === 0) {
+            const p = (persistedState ?? {}) as Partial<BuildHelperStoreState>;
+            return {
+              ...initial,
+              ...p,
+              enabled: true,
+              panelCollapsed: false,
+            };
+          }
+          return (persistedState ?? initial) as BuildHelperStoreState;
+        } catch (e) {
+          console.warn('[build-helper] persist migrate failed, using defaults', e);
+          return initial;
         }
-        return persistedState as BuildHelperStoreState;
       },
       partialize: (s) => ({
         enabled: s.enabled,
@@ -206,7 +211,7 @@ export function migrateLegacyBuildHelperStorageOnce(): void {
       currentStep: 'client',
     };
 
-    localStorage.setItem(nextKey, JSON.stringify({ state: migrated, version: 0 }));
+    localStorage.setItem(nextKey, JSON.stringify({ state: migrated, version: 1 }));
     localStorage.removeItem('cs-build-helper-v1');
     useBuildHelperStore.setState(migrated);
   } catch {

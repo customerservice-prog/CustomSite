@@ -11,3 +11,5 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "node server.js"
+# If opening your Railway URL shows the marketing site (or a blank page) but the studio lives at /admin.html,
+# add variable in the Railway dashboard: ADMIN_HTML_AT_ROOT=1  (redirects / and /index.html → /admin.html).

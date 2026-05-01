@@ -28,6 +28,11 @@ const PORT = Number.parseInt(String(process.env.PORT || '3000'), 10) || 3000;
 /** Bind all interfaces so http://127.0.0.1:PORT and http://localhost:PORT work; required on Railway/Docker. */
 const BIND_HOST = process.env.BIND_HOST || '0.0.0.0';
 
+/** Set `ADMIN_HTML_AT_ROOT=1` on Railway (etc.) so `/` opens the React admin at `/admin.html` instead of marketing `index.html`. */
+function shouldRedirectRootToAdminHtml() {
+  return /^1|true|yes$/i.test(String(process.env.ADMIN_HTML_AT_ROOT || '').trim());
+}
+
 // Railway, Render, etc. set X-Forwarded-* — needed for correct https:// host in preview URLs
 app.set('trust proxy', 1);
 
@@ -193,6 +198,10 @@ app.get('/robots.txt', (req, res) => {
 app.get('/index.html', (req, res) => {
   const i = req.url.indexOf('?');
   const q = i >= 0 ? req.url.slice(i) : '';
+  if (shouldRedirectRootToAdminHtml()) {
+    res.redirect(302, '/admin.html' + q);
+    return;
+  }
   res.redirect(301, '/' + q);
 });
 
@@ -268,6 +277,14 @@ function adminMissingBundleHelpHtml() {
 
 app.get('/admin', (_req, res) => {
   res.redirect(302, '/admin.html');
+});
+
+/** With `ADMIN_HTML_AT_ROOT=1`, serve the admin SPA at `/` (still use `/#/…` for in-app routes). */
+app.get('/', (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (!shouldRedirectRootToAdminHtml()) return next();
+  const q = String(req.url || '').includes('?') ? String(req.url).slice(String(req.url).indexOf('?')) : '';
+  res.redirect(302, '/admin.html' + q);
 });
 
 app.get('/admin.html', (req, res, next) => {
