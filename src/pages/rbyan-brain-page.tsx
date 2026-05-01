@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Check, ChevronRight, ExternalLink, Loader2, Send, Sparkles, Undo2 } from 'lucide-react';
+import { Check, ChevronRight, ExternalLink, Loader2, Plus, Send, Sparkles, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { useClients, useProjects } from '@/store/hooks';
@@ -23,6 +23,7 @@ import {
 } from '@/lib/rbyan/progressive-build';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/store/useAppStore';
 import { RBYAN_PREFILL_STORAGE_KEY } from '@/store/use-build-helper-store';
 
 type ChatMsg = {
@@ -85,6 +86,8 @@ function cloneGenerateResult(r: RbyanGenerateResult): RbyanGenerateResult {
 
 export function RbyanBrainPage() {
   const { toast } = useShell();
+  const pendingNewClientId = useAppStore((s) => s.pendingNewClientId);
+  const openModal = useAppStore((s) => s.openModal);
   const [searchParams] = useSearchParams();
   const clients = useClients();
   const projects = useProjects();
@@ -119,6 +122,13 @@ export function RbyanBrainPage() {
     () => projects.filter((p) => p.deliveryFocus === 'client_site' && (!clientId || p.clientId === clientId)),
     [projects, clientId]
   );
+
+  useEffect(() => {
+    if (!pendingNewClientId) return;
+    setClientId(pendingNewClientId);
+    setProjectId('');
+    useAppStore.setState({ pendingNewClientId: null });
+  }, [pendingNewClientId]);
 
   const activeProject = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
   const activeClient = useMemo(() => clients.find((c) => c.id === clientId), [clients, clientId]);
@@ -414,23 +424,33 @@ export function RbyanBrainPage() {
         <aside className="border-b border-white/10 p-4 lg:col-span-3 lg:border-b-0 lg:border-r">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Context</p>
           <label className="mb-1 block text-[11px] text-zinc-400">Client</label>
-          <Select
-            aria-label="Select client"
-            className="mb-3 h-9 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
-            value={clientId}
-            onChange={(e) => {
-              setClientId(e.target.value);
-              setProjectId('');
-            }}
-          >
-            <option value="">Choose client…</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.company ? ` · ${c.company}` : ''}
-              </option>
-            ))}
-          </Select>
+          <div className="mb-3 flex flex-wrap items-stretch gap-2">
+            <Select
+              aria-label="Select client"
+              className="h-9 min-w-0 flex-1 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+              value={clientId}
+              onChange={(e) => {
+                setClientId(e.target.value);
+                setProjectId('');
+              }}
+            >
+              <option value="">Choose client…</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.company ? ` · ${c.company}` : ''}
+                </option>
+              ))}
+            </Select>
+            <button
+              type="button"
+              onClick={() => openModal('create-client', { pickContext: true })}
+              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-zinc-600 bg-zinc-800 px-2.5 text-[11px] font-semibold text-zinc-100 transition hover:bg-zinc-700"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              New
+            </button>
+          </div>
           <label className="mb-1 block text-[11px] text-zinc-400">Project</label>
           <Select
             aria-label="Select project"

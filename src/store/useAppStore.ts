@@ -27,7 +27,7 @@ import { computeClientBalance, computeClientLifetimeValue } from '@/lib/domain-s
 import { createBootstrapEntities, sortActivityIds } from '@/lib/data';
 import { nextInvoiceNumber } from '@/lib/data/invoices';
 import { formatRelativeShort } from '@/lib/format-relative';
-import type { ActiveModal, RootState, ToastItem } from '@/store/root-state';
+import type { ActiveModal, OpenModalOptions, RootState, ToastItem } from '@/store/root-state';
 import { newId, isoNow } from '@/store/ids';
 import { planAutonomousActions } from '@/lib/autonomous-operator-cycle';
 import type { OperatorEvent } from '@/store/operator-state';
@@ -212,19 +212,31 @@ const boot = createBootstrapEntities();
 export const useAppStore = create<AppStore>((set, get) => ({
   ...boot,
   currentUserId: 'u1',
+  pendingNewClientId: null,
   ui: {
     mobileSidebarOpen: false,
     commandPaletteOpen: false,
     activeModal: null,
     selectedClientId: null,
     selectedProjectId: null,
+    resumeModalAfterClientCreate: null,
+    pickContextAfterClientCreate: false,
   },
   hydration: { status: 'ready' },
   toasts: [],
 
   setMobileSidebarOpen: (open) => set((s) => ({ ui: { ...s.ui, mobileSidebarOpen: open } })),
   setCommandPaletteOpen: (open) => set((s) => ({ ui: { ...s.ui, commandPaletteOpen: open } })),
-  openModal: (modal) => set((s) => ({ ui: { ...s.ui, activeModal: modal } })),
+  openModal: (modal, options) =>
+    set((s) => ({
+      ui: {
+        ...s.ui,
+        activeModal: modal,
+        resumeModalAfterClientCreate:
+          modal === 'create-client' ? (options?.resumeModal ?? null) : null,
+        pickContextAfterClientCreate: modal === 'create-client' ? Boolean(options?.pickContext) : false,
+      },
+    })),
   closeModal: () =>
     set((s) => ({
       ui: {
@@ -232,6 +244,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         activeModal: null,
         selectedClientId: null,
         selectedProjectId: null,
+        resumeModalAfterClientCreate: null,
+        pickContextAfterClientCreate: false,
       },
     })),
   setSelectedClientId: (id) => set((s) => ({ ui: { ...s.ui, selectedClientId: id } })),

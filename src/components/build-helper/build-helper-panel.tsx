@@ -6,6 +6,7 @@ import {
   ClipboardCopy,
   ExternalLink,
   ListChecks,
+  Plus,
   RotateCcw,
   Sparkles,
   X,
@@ -91,6 +92,15 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
     }
   }, [sitePlan]);
 
+  useEffect(() => {
+    if (!pendingNewClientId) return;
+    setActiveClientId(pendingNewClientId);
+    setSelectedClientId(pendingNewClientId);
+    setActiveProjectId(null);
+    setSelectedProjectId(null);
+    useAppStore.setState({ pendingNewClientId: null });
+  }, [pendingNewClientId, setActiveClientId, setSelectedClientId, setActiveProjectId, setSelectedProjectId]);
+
   if (!enabled) return null;
 
   const activeClient = activeClientId ? clientsById[activeClientId] : undefined;
@@ -154,24 +164,35 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
         <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Context</p>
           <label className="mb-1 block text-[11px] font-medium text-slate-600">Client</label>
-          <Select
-            className="mb-2 w-full text-sm"
-            value={activeClientId ?? ''}
-            onChange={(e) => {
-              const id = e.target.value || null;
-              setActiveClientId(id);
-              setSelectedClientId(id);
-              setActiveProjectId(null);
-              setSelectedProjectId(null);
-            }}
-          >
-            <option value="">Select client…</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.company} — {c.name}
-              </option>
-            ))}
-          </Select>
+          <div className="mb-2 flex flex-wrap items-stretch gap-2">
+            <Select
+              className="min-w-0 flex-1 text-sm"
+              value={activeClientId ?? ''}
+              onChange={(e) => {
+                const id = e.target.value || null;
+                setActiveClientId(id);
+                setSelectedClientId(id);
+                setActiveProjectId(null);
+                setSelectedProjectId(null);
+              }}
+            >
+              <option value="">Select client…</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company} — {c.name}
+                </option>
+              ))}
+            </Select>
+            <button
+              type="button"
+              onClick={() => openModal('create-client', { pickContext: true })}
+              className={buttonClassName('secondary', 'h-9 shrink-0 gap-1 px-2.5 text-xs')}
+              title="Add a new client"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              New
+            </button>
+          </div>
           <label className="mb-1 block text-[11px] font-medium text-slate-600">Project</label>
           <Select
             className="w-full text-sm"
@@ -259,7 +280,11 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
                 <Button type="button" variant="secondary" className="h-9 px-3 text-xs" onClick={() => navigate('/clients')}>
                   Clients
                 </Button>
-                <Button type="button" className="h-9 px-3 text-xs" onClick={() => openModal('create-client')}>
+                <Button
+                  type="button"
+                  className="h-9 px-3 text-xs"
+                  onClick={() => openModal('create-client', { pickContext: true })}
+                >
                   Add client
                 </Button>
               </div>

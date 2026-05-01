@@ -33,6 +33,15 @@ export type ActiveModal =
   | 'invite-client'
   | null;
 
+/** When opening Create client from another modal, reopen this modal after success. */
+export type ResumeModalAfterClientCreate = 'create-project' | 'create-invoice';
+
+export type OpenModalOptions = {
+  resumeModal?: ResumeModalAfterClientCreate;
+  /** After success, set `pendingNewClientId` and close modals (AI Builder / Build Helper pickers). */
+  pickContext?: boolean;
+};
+
 export interface RootState {
   workspace: Workspace;
   users: EntityMap<User>;
@@ -53,12 +62,16 @@ export interface RootState {
   notificationIds: string[];
   deadlines: DeadlineSeed[];
   currentUserId: string;
+  /** Consumed by pages that pick a client in context (e.g. AI Builder); cleared after apply. */
+  pendingNewClientId: string | null;
   ui: {
     mobileSidebarOpen: boolean;
     commandPaletteOpen: boolean;
     activeModal: ActiveModal;
     selectedClientId: string | null;
     selectedProjectId: string | null;
+    resumeModalAfterClientCreate: ResumeModalAfterClientCreate | null;
+    pickContextAfterClientCreate: boolean;
   };
   hydration: {
     status: 'idle' | 'loading' | 'ready' | 'error';

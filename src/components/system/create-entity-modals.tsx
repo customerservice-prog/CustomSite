@@ -12,12 +12,16 @@ import { SERVICE_PACKAGES } from '@/lib/service-offer';
 import type { ServicePackageId, SiteBuildArchetypeId, TaskPriority } from '@/lib/types/entities';
 import { SITE_BUILD_ARCHETYPE_OPTIONS } from '@/lib/site-builder/archetypes';
 
+const CS_RESUME_CREATE_PROJECT_DRAFT = 'cs_resume_create_project_draft';
+const CS_RESUME_CREATE_INVOICE_DRAFT = 'cs_resume_create_invoice_draft';
+
 export function CreateEntityModals() {
   const navigate = useNavigate();
   const activeModal = useAppStore((s) => s.ui.activeModal);
   const selectedClientId = useAppStore((s) => s.ui.selectedClientId);
   const selectedProjectId = useAppStore((s) => s.ui.selectedProjectId);
   const closeModal = useAppStore((s) => s.closeModal);
+  const openModal = useAppStore((s) => s.openModal);
   const addClient = useAppStore((s) => s.addClient);
   const addProject = useAppStore((s) => s.addProject);
   const addInvoice = useAppStore((s) => s.addInvoice);
@@ -81,8 +85,59 @@ export function CreateEntityModals() {
   );
 
   useEffect(() => {
-    if (activeModal === 'create-project' && selectedClientId) {
+    if (activeModal !== 'create-project') return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(CS_RESUME_CREATE_PROJECT_DRAFT);
+    } catch {
+      /* */
+    }
+    if (raw) {
+      try {
+        const draft = JSON.parse(raw) as Partial<typeof projectForm>;
+        setProjectForm((f) => ({
+          ...f,
+          ...draft,
+          clientId: selectedClientId ?? draft.clientId ?? f.clientId,
+        }));
+      } catch {
+        /* */
+      }
+      try {
+        sessionStorage.removeItem(CS_RESUME_CREATE_PROJECT_DRAFT);
+      } catch {
+        /* */
+      }
+      return;
+    }
+    if (selectedClientId) {
       setProjectForm((f) => ({ ...f, clientId: selectedClientId }));
+    }
+  }, [activeModal, selectedClientId]);
+
+  useEffect(() => {
+    if (activeModal !== 'create-invoice') return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(CS_RESUME_CREATE_INVOICE_DRAFT);
+    } catch {
+      /* */
+    }
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as Partial<typeof invoiceForm>;
+      setInvoiceForm((f) => ({
+        ...f,
+        ...draft,
+        clientId: selectedClientId ?? draft.clientId ?? f.clientId,
+      }));
+    } catch {
+      /* */
+    }
+    try {
+      sessionStorage.removeItem(CS_RESUME_CREATE_INVOICE_DRAFT);
+    } catch {
+      /* */
     }
   }, [activeModal, selectedClientId]);
 
@@ -97,9 +152,79 @@ export function CreateEntityModals() {
     }
   }, [activeModal, selectedProjectId, projects]);
 
+  function dismissCreateClientModal() {
+    const resume = useAppStore.getState().ui.resumeModalAfterClientCreate;
+    if (resume === 'create-project') {
+      try {
+        sessionStorage.removeItem(CS_RESUME_CREATE_PROJECT_DRAFT);
+      } catch {
+        /* */
+      }
+    }
+    if (resume === 'create-invoice') {
+      try {
+        sessionStorage.removeItem(CS_RESUME_CREATE_INVOICE_DRAFT);
+      } catch {
+        /* */
+      }
+    }
+    closeModal();
+  }
+
+  function finishCreateClient(newId: string) {
+    const { resumeModalAfterClientCreate: resume, pickContextAfterClientCreate: pick } = useAppStore.getState().ui;
+    setClientForm({ name: '', company: '', email: '', phone: '', ownerId: currentUserId });
+
+    if (resume === 'create-project') {
+      useAppStore.setState((s) => ({
+        ui: {
+          ...s.ui,
+          activeModal: 'create-project',
+          selectedClientId: newId,
+          selectedProjectId: null,
+          resumeModalAfterClientCreate: null,
+          pickContextAfterClientCreate: false,
+        },
+      }));
+      toast('Client added. Finish creating the project.', 'success');
+      return;
+    }
+    if (resume === 'create-invoice') {
+      useAppStore.setState((s) => ({
+        ui: {
+          ...s.ui,
+          activeModal: 'create-invoice',
+          selectedClientId: newId,
+          selectedProjectId: null,
+          resumeModalAfterClientCreate: null,
+          pickContextAfterClientCreate: false,
+        },
+      }));
+      toast('Client added. Finish creating the invoice.', 'success');
+      return;
+    }
+    if (pick) {
+      useAppStore.setState((s) => ({
+        pendingNewClientId: newId,
+        ui: {
+          ...s.ui,
+          activeModal: null,
+          selectedClientId: null,
+          selectedProjectId: null,
+          resumeModalAfterClientCreate: null,
+          pickContextAfterClientCreate: false,
+        },
+      }));
+      toast('Client added and selected for this context.', 'success');
+      return;
+    }
+    closeModal();
+    navigate(`/clients/${newId}`);
+  }
+
   if (activeModal === 'create-client') {
     return (
-      <Modal open={true} title="Create client" onClose={closeModal}>
+      <Modal open={true} title="Create client" onClose={dismissCreateClientModal}>
         <div className="space-y-3">
           <Field label="Name" requiredHint>
             <Input
@@ -146,23 +271,26 @@ export function CreateEntityModals() {
             creating.
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={closeModal}>
+            <Button type="button" variant="secondary" onClick={dismissCreateClientModal}>
               Cancel
             </Button>
             <Button
               type="button"
               onClick={() => {
                 if (!clientForm.name.trim() || !clientForm.company.trim() || !clientForm.email.trim()) return;
-                const newId = addClient({
-                  name: clientForm.name,
-                  company: clientForm.company,
-                  email: clientForm.email,
-                  phone: clientForm.phone,
-                  ownerId: clientForm.ownerId,
-                });
-                setClientForm({ name: '', company: '', email: '', phone: '', ownerId: currentUserId });
-                closeModal();
-                if (newId) navigate(`/clients/${newId}`);
+                const ui = useAppStore.getState().ui;
+                const silentToast = Boolean(ui.resumeModalAfterClientCreate || ui.pickContextAfterClientCreate);
+                const newId = addClient(
+                  {
+                    name: clientForm.name,
+                    company: clientForm.company,
+                    email: clientForm.email,
+                    phone: clientForm.phone,
+                    ownerId: clientForm.ownerId,
+                  },
+                  { silent: silentToast }
+                );
+                if (newId) finishCreateClient(newId);
               }}
             >
               Create
@@ -178,14 +306,35 @@ export function CreateEntityModals() {
       <Modal open={true} title="Create project" onClose={closeModal}>
         <div className="space-y-3">
           <Field label="Client">
-            <Select value={projectForm.clientId} onChange={(e) => setProjectForm((f) => ({ ...f, clientId: e.target.value }))}>
-              <option value="">Select client…</option>
-              {clientOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                className="min-w-0 flex-1"
+                value={projectForm.clientId}
+                onChange={(e) => setProjectForm((f) => ({ ...f, clientId: e.target.value }))}
+              >
+                <option value="">Select client…</option>
+                {clientOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0 whitespace-nowrap text-xs"
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem(CS_RESUME_CREATE_PROJECT_DRAFT, JSON.stringify(projectForm));
+                  } catch {
+                    /* */
+                  }
+                  openModal('create-client', { resumeModal: 'create-project' });
+                }}
+              >
+                New client
+              </Button>
+            </div>
             {!projectForm.clientId ? (
               <p className="mt-1 text-xs text-amber-800">Required — pick which client this project belongs to.</p>
             ) : null}
@@ -336,21 +485,39 @@ export function CreateEntityModals() {
       <Modal open={true} title="Create invoice" onClose={closeModal}>
         <div className="space-y-3">
           <Field label="Client">
-            <Select
-              value={invoiceForm.clientId}
-              onChange={(e) => {
-                const cid = e.target.value;
-                const avg = cid ? averagePaidForClient(cid) : 2500;
-                setInvoiceForm((f) => ({ ...f, clientId: cid, projectId: '', amount: String(avg) }));
-              }}
-            >
-              <option value="">Select client…</option>
-              {clientOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                className="min-w-0 flex-1"
+                value={invoiceForm.clientId}
+                onChange={(e) => {
+                  const cid = e.target.value;
+                  const avg = cid ? averagePaidForClient(cid) : 2500;
+                  setInvoiceForm((f) => ({ ...f, clientId: cid, projectId: '', amount: String(avg) }));
+                }}
+              >
+                <option value="">Select client…</option>
+                {clientOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0 whitespace-nowrap text-xs"
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem(CS_RESUME_CREATE_INVOICE_DRAFT, JSON.stringify(invoiceForm));
+                  } catch {
+                    /* */
+                  }
+                  openModal('create-client', { resumeModal: 'create-invoice' });
+                }}
+              >
+                New client
+              </Button>
+            </div>
           </Field>
           <Field label="Project (optional)">
             <Select
