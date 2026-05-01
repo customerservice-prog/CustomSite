@@ -65,6 +65,7 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
   const setSelectedClientId = useAppStore((s) => s.setSelectedClientId);
   const setSelectedProjectId = useAppStore((s) => s.setSelectedProjectId);
   const openModal = useAppStore((s) => s.openModal);
+  const pendingNewClientId = useAppStore((s) => s.pendingNewClientId);
 
   const clientProjects = useMemo(
     () => projects.filter((p) => p.deliveryFocus === 'client_site' && p.clientId === activeClientId),
