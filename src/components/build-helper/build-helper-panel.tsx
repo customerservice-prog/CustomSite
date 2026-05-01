@@ -138,6 +138,9 @@ export function BuildHelperPanel({ onClose }: { onClose: () => void }) {
             <h2 className="text-sm font-semibold text-slate-900">Build Helper</h2>
           </div>
           <p className="mt-0.5 text-[11px] leading-snug text-slate-500">Step-by-step guidance for your first client build.</p>
+          <p className="mt-1 text-[10px] leading-snug text-slate-400">
+            Optional checklist — skip any step you have already done elsewhere. Quality comes from client context + prompts in AI Builder, not from checking every box.
+          </p>
           <p className="mt-2 text-[11px] font-medium text-indigo-700">
             {completed} of {total} complete
           </p>

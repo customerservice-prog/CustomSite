@@ -27,10 +27,19 @@ export type RbyanCopyPack = {
 export type CopyContext = {
   brand: string;
   projectName: string;
+  industryNiche?: string;
+  businessSummary?: string;
+  voice?: string;
+  visualStyle?: string;
 };
 
 function shortBrand(brand: string) {
   return brand.split(/\s+/)[0] ?? brand;
+}
+
+function ctxTail(ctx: CopyContext): string {
+  const bits = [ctx.businessSummary?.trim(), ctx.voice?.trim() ? `Voice: ${ctx.voice.trim()}` : ''].filter(Boolean);
+  return bits.length ? ` ${bits.join(' — ')}` : '';
 }
 
 /** Step 5: benefit-led copy derived from the build plan (mock writer; LLM can replace). */
@@ -100,6 +109,77 @@ export function generateCopy(plan: RbyanBuildPlan, ctx: CopyContext): RbyanCopyP
   }
 
   if (plan.siteArchetype === 'service_local') {
+    const sig = `${ctx.industryNiche || ''} ${ctx.businessSummary || ''}`.toLowerCase();
+    if (/restaurant|cafe|bakery|dining|chef|menu|wine\s+bar|kitchen/i.test(sig)) {
+      return {
+        heroHeadline: `${sb} — reservations, menus, and nights worth repeating.`,
+        heroSub: `Seasonal menus, warm hospitality, and a dining room that feels intentional—not rushed.${ctxTail(ctx)}`,
+        ctaPrimary: 'Reserve a table',
+        ctaSecondary: 'View menu',
+        trustLabel: 'Guests & critics',
+        trustNames: ['Neighborhood favorite', 'Press pick', 'Chef-led', 'Local ingredients'],
+        categoryTitle: 'What we serve',
+        categoryLead: 'Three reasons locals choose this room for date night, family dinner, and small celebrations.',
+        categories: [
+          { title: 'Dinner', body: 'Plated courses, wine pairings, and pacing that respects your evening.', link: 'See times' },
+          { title: 'Lunch & brunch', body: 'Lighter plates, midday classics, and weekend brunch with daylight.', link: 'See times' },
+          { title: 'Private dining', body: 'Semi-private tables and buyouts for milestones and client dinners.', link: 'Inquire' },
+        ],
+        bundlesTitle: 'Popular experiences',
+        bundles: [
+          { title: 'Chef’s tasting', price: 'Priced nightly', bullets: ['Seasonal set menu', 'Optional wine flight', 'Reservation required'], featured: true, badge: 'Signature' },
+          { title: 'Weekend brunch', price: 'Walk-ins OK', bullets: ['Daytime menu', 'Pastries', 'Cocktails'] },
+          { title: 'Events', price: 'Custom', bullets: ['Rehearsal dinners', 'Corporate hosts', 'Custom menus'] },
+        ],
+        testimonialsTitle: 'Word of mouth',
+        testimonialsLead: 'Short quotes from neighbors who keep coming back.',
+        testimonials: [
+          { quote: 'The room feels special without being fussy—exactly our go-to for out-of-town guests.', name: 'Jordan Lee', role: 'Regular guest' },
+          { quote: 'They accommodated dietary needs without making it a thing. Service was sharp.', name: 'Priya N.', role: 'Private dinner host' },
+        ],
+        ctaTitle: 'Book your next table',
+        ctaBody: 'Tell us party size, date, and occasion—we’ll confirm availability quickly.',
+        ctaEmailLabel: `Email ${sb}`,
+        heroPanelKicker: 'Tonight',
+        heroPanelTitle: 'Seasonal feature',
+        heroPanelBody: 'Ask about the chef’s counter and pairing options.',
+      };
+    }
+    if (/book|appointment|scheduling|salon|spa|clinic|dental|therapy|fitness/i.test(sig)) {
+      return {
+        heroHeadline: `Easier bookings for ${sb}.`,
+        heroSub: `Clear availability, reminders that actually help, and a calm intake flow—so clients show up prepared.${ctxTail(ctx)}`,
+        ctaPrimary: 'Book now',
+        ctaSecondary: 'See services',
+        trustLabel: 'Why clients choose us',
+        trustNames: ['Licensed pros', 'Same-week slots', 'Transparent pricing'],
+        categoryTitle: 'Services',
+        categoryLead: 'Pick what you need—each path ends with a confirmed time on the calendar.',
+        categories: [
+          { title: 'First visit', body: 'Intake, expectations, and what to bring—no guesswork.', link: 'Start here' },
+          { title: 'Returning clients', body: 'Rebook faster with saved preferences and shorter forms.', link: 'Rebook' },
+          { title: 'Groups', body: 'Back-to-back appointments for teams and families when available.', link: 'Ask us' },
+        ],
+        bundlesTitle: 'Plans & packages',
+        bundles: [
+          { title: 'Single session', price: 'From $95', bullets: ['60 minutes', 'Personalized plan', 'Follow-up notes'], featured: true, badge: 'Popular' },
+          { title: 'Bundle (3)', price: 'Save 10%', bullets: ['Priority scheduling', 'Progress check-ins'] },
+          { title: 'Membership', price: 'Ask', bullets: ['Monthly cadence', 'VIP reminders'] },
+        ],
+        testimonialsTitle: 'Recent clients',
+        testimonialsLead: 'Outcomes-first feedback from people who value their time.',
+        testimonials: [
+          { quote: 'Booking took under a minute and reminders were actually useful.', name: 'Alex M.', role: 'Client' },
+          { quote: 'Professional, on time, and the online forms weren’t painful.', name: 'Samira K.', role: 'Client' },
+        ],
+        ctaTitle: 'Ready to schedule?',
+        ctaBody: 'Pick a time that works—we’ll confirm by email or text.',
+        ctaEmailLabel: 'Contact',
+        heroPanelKicker: 'Openings',
+        heroPanelTitle: 'This week',
+        heroPanelBody: 'Peak slots fill fast—grab a time that fits your calendar.',
+      };
+    }
     return {
       heroHeadline: 'Storm-ready roofs. Clean crews. Honest quotes.',
       heroSub: 'Residential and commercial replacement with same-week assessments, insurance-friendly documentation, and workmanship you can stand behind.',
@@ -179,6 +259,75 @@ export function generateCopy(plan: RbyanBuildPlan, ctx: CopyContext): RbyanCopyP
   }
 
   if (plan.siteArchetype === 'landing') {
+    const sig = `${ctx.industryNiche || ''} ${ctx.businessSummary || ''} ${plan.goal}`.toLowerCase();
+    if (/nonprofit|charity|foundation|donate|volunteer|mission|501|fundraising/i.test(sig)) {
+      return {
+        heroHeadline: `${sb} — community-powered impact you can see.`,
+        heroSub: `Transparent programs, volunteer pathways, and donation flows that respect your supporters’ time.${ctxTail(ctx)}`,
+        ctaPrimary: 'Donate',
+        ctaSecondary: 'Volunteer',
+        trustLabel: 'Partners & grants',
+        trustNames: ['City arts council', 'Regional foundation', 'Corporate match', 'Neighborhood coalition'],
+        categoryTitle: 'Where your gift goes',
+        categoryLead: 'Three program areas your contribution fuels—reported clearly, updated often.',
+        categories: [
+          { title: 'Programs', body: 'Direct services, materials, and staffing hours for the community.', link: 'Learn more' },
+          { title: 'Advocacy', body: 'Policy education and coalition building with measurable milestones.', link: 'Learn more' },
+          { title: 'Youth', body: 'Mentorship, workshops, and safe spaces with trained facilitators.', link: 'Learn more' },
+        ],
+        bundlesTitle: 'Ways to support',
+        bundles: [
+          { title: 'Monthly donor', price: '$25+', bullets: ['Impact digest', 'Early invites', 'Tax receipt'], featured: true, badge: 'Steady' },
+          { title: 'Corporate sponsor', price: 'Custom', bullets: ['Co-branded events', 'Volunteer days'] },
+          { title: 'In-kind', price: '—', bullets: ['Equipment', 'Meals', 'Pro bono hours'] },
+        ],
+        testimonialsTitle: 'Stories from the field',
+        testimonialsLead: 'Short voices from people your mission serves.',
+        testimonials: [
+          { quote: 'They showed up when others didn’t—and stayed for the long work.', name: 'Riley P.', role: 'Program participant' },
+        ],
+        ctaTitle: 'Join this season’s campaign',
+        ctaBody: 'Monthly or one-time—either way, you’ll see where every dollar lands.',
+        ctaEmailLabel: `Contact ${sb}`,
+        heroPanelKicker: 'Urgent need',
+        heroPanelTitle: 'Matching window',
+        heroPanelBody: 'Double your gift while sponsor funds last.',
+      };
+    }
+    if (/saas|software|platform|api|trial|signup|b2b|dashboard|integration|automation/i.test(sig)) {
+      return {
+        heroHeadline: `Ship faster with ${projectName}`,
+        heroSub: `Fewer handoffs, clearer metrics, and onboarding that gets teams to “aha” without a services project.${ctxTail(ctx)}`,
+        ctaPrimary: 'Start free trial',
+        ctaSecondary: 'Book a demo',
+        trustLabel: 'Teams shipping with us',
+        trustNames: ['SOC2-ready', 'SSO', 'Audit logs', 'EU hosting'],
+        categoryTitle: 'Why teams switch',
+        categoryLead: 'Three differences evaluators actually test in a pilot—not slide deck promises.',
+        categories: [
+          { title: 'Integrations', body: 'Webhooks, REST, and native connectors your eng team expects.', link: 'View docs' },
+          { title: 'Governance', body: 'Roles, approvals, and export trails for regulated workflows.', link: 'Security' },
+          { title: 'Time-to-value', body: 'Templates and guided setup so week-one usage isn’t an empty dashboard.', link: 'Playbooks' },
+        ],
+        bundlesTitle: 'Plans',
+        bundles: [
+          { title: 'Team', price: 'From $149/mo', bullets: ['10 seats', 'Standard support', 'Core integrations'], featured: true, badge: 'Most picked' },
+          { title: 'Business', price: 'Custom', bullets: ['SLA', 'Success manager', 'SCIM'] },
+          { title: 'Enterprise', price: 'Talk to us', bullets: ['VPC', 'Custom contracts', 'Dedicated support'] },
+        ],
+        testimonialsTitle: 'Proof from production',
+        testimonialsLead: 'Operators who care about reliability and clarity.',
+        testimonials: [
+          { quote: 'We replaced three tools and cut onboarding time in half.', name: 'Nina Park', role: 'VP Ops, Alloy' },
+        ],
+        ctaTitle: 'See a live workspace',
+        ctaBody: 'Share your stack—we’ll map a realistic pilot in one call.',
+        ctaEmailLabel: 'Talk to sales',
+        heroPanelKicker: 'New',
+        heroPanelTitle: 'Guided rollout',
+        heroPanelBody: 'Implementation templates included on Business+.',
+      };
+    }
     return {
       heroHeadline: 'Launch a landing page that actually converts',
       heroSub: 'One scroll, one story, one action—built for speed tests, paid traffic, and handoff to your dev team.',

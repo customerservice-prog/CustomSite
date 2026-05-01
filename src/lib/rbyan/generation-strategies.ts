@@ -17,6 +17,7 @@ import { buildAssistantNarrative } from '@/lib/rbyan/response-message';
 import { buildSuggestionChips } from '@/lib/rbyan/suggestions';
 import { applyCtaCopyOnly, applyCopyToHtml, sharpenCtaCopy } from '@/lib/rbyan/apply-copy-to-html';
 import { scopeDesignPackToSection } from '@/lib/rbyan/section-scope';
+import { appendProjectContextToPrompt } from '@/lib/rbyan/rbyan-prompt-boost';
 
 function getIndexCssJs(files: RbyanGeneratedFile[]) {
   const ix = files.find((f) => f.name === 'index.html');
@@ -449,13 +450,14 @@ export function runGenerationPipeline(args: {
   focusedSection?: string | null;
 }): PipelineResult {
   const { prompt, mode, projectContext, existingFiles, sessionMemory, focusedSection } = args;
-  const p = prompt.toLowerCase();
+  const workingPrompt = appendProjectContextToPrompt(prompt, projectContext);
+  const p = workingPrompt.toLowerCase();
   const has = Boolean(existingFiles?.length);
-  let classification = classifyPrompt(prompt, { hasExistingSite: has, mode });
+  let classification = classifyPrompt(workingPrompt, { hasExistingSite: has, mode });
   const brand = projectContext.clientCompany?.trim() || projectContext.projectName || 'Your brand';
 
   if (classification === 'unknown' && has) {
-    if (strategyAddSection(prompt, existingFiles!)) {
+    if (strategyAddSection(workingPrompt, existingFiles!)) {
       classification = 'add-section';
     } else if (/\b(copy|text|headline|wording|cta|description|messaging|tone)\b/i.test(p)) {
       classification = 'improve-copy';
@@ -465,7 +467,7 @@ export function runGenerationPipeline(args: {
   }
 
   if (classification === 'build-site' || !has) {
-    const b = strategyBuildSite(prompt, projectContext, sessionMemory);
+    const b = strategyBuildSite(workingPrompt, projectContext, sessionMemory);
     const html = b.files.find((f) => f.name === 'index.html')?.content ?? '';
     return {
       classification: 'build-site',
@@ -493,7 +495,7 @@ export function runGenerationPipeline(args: {
   }
 
   if (classification === 'add-section') {
-    const out = strategyAddSection(prompt, existingFiles!);
+    const out = strategyAddSection(workingPrompt, existingFiles!);
     if (out) {
       const updatedFiles = diffUpdated(existingFiles!, out.files);
       const html = out.files.find((f) => f.name === 'index.html')?.content ?? '';
@@ -515,7 +517,7 @@ export function runGenerationPipeline(args: {
         sessionMemory: carrySession(sessionMemory, { lastPrompt: prompt }),
       };
     }
-    const fallback = strategyModifyStyle(prompt, existingFiles!);
+    const fallback = strategyModifyStyle(workingPrompt, existingFiles!);
     if (fallback) {
       const updatedFiles = diffUpdated(existingFiles!, fallback.files);
       return {
@@ -542,9 +544,16 @@ export function runGenerationPipeline(args: {
   if (classification === 'modify-style') {
     const g = getIndexCssJs(existingFiles!);
     if (sessionMemory?.lastPlan && g) {
-      const plan = mergeModifierIntoPlan(sessionMemory.lastPlan, prompt);
-      const copy = generateCopy(plan, { brand, projectName: projectContext.projectName });
-      const designRaw = generateDesign(plan);
+      const plan = mergeModifierIntoPlan(sessionMemory.lastPlan, workingPrompt);
+      const copy = generateCopy(plan, {
+        brand,
+        projectName: projectContext.projectName,
+        industryNiche: projectContext.industryNiche ?? undefined,
+        businessSummary: projectContext.brandKit?.businessSummary,
+        voice: projectContext.brandKit?.voice,
+        visualStyle: projectContext.brandKit?.visualStyle,
+      });
+      const designRaw = generateDesign(plan, projectContext.brandKit ?? null);
       const design = scopeDesignPackToSection(designRaw, focusedSection);
       const heroStyleOnly = Boolean(focusedSection && /hero/i.test(focusedSection));
       const html = heroStyleOnly
@@ -582,7 +591,7 @@ export function runGenerationPipeline(args: {
         sessionMemory: { lastPlan: plan, lastCopy: copy, lastDesign: design, lastPrompt: prompt },
       };
     }
-    const out = strategyModifyStyle(prompt, existingFiles!);
+    const out = strategyModifyStyle(workingPrompt, existingFiles!);
     if (out) {
       const updatedFiles = diffUpdated(existingFiles!, out.files);
       return {
@@ -641,7 +650,7 @@ export function runGenerationPipeline(args: {
 
     const heroFocus = Boolean(focusedSection && /hero/i.test(focusedSection));
     if (heroFocus && g) {
-      const heroOut = strategyImproveCopyHeroOnly(prompt, existingFiles!);
+      const heroOut = strategyImproveCopyHeroOnly(workingPrompt, existingFiles!);
       if (heroOut) {
         const updatedFiles = diffUpdated(existingFiles!, heroOut.files);
         const html = heroOut.files.find((f) => f.name === 'index.html')?.content ?? '';
@@ -666,7 +675,7 @@ export function runGenerationPipeline(args: {
       }
     }
 
-    const out = strategyImproveCopy(prompt, existingFiles!);
+    const out = strategyImproveCopy(workingPrompt, existingFiles!);
     if (out) {
       const updatedFiles = diffUpdated(existingFiles!, out.files);
       const html = out.files.find((f) => f.name === 'index.html')?.content ?? '';
@@ -690,7 +699,7 @@ export function runGenerationPipeline(args: {
     }
   }
 
-  const out = strategyModifyStyle(prompt, existingFiles!);
+  const out = strategyModifyStyle(workingPrompt, existingFiles!);
   if (out) {
     const updatedFiles = diffUpdated(existingFiles!, out.files);
     return {
@@ -712,7 +721,7 @@ export function runGenerationPipeline(args: {
     };
   }
 
-  const rebuild = strategyBuildSite(prompt, projectContext, sessionMemory);
+  const rebuild = strategyBuildSite(workingPrompt, projectContext, sessionMemory);
   const html = rebuild.files.find((f) => f.name === 'index.html')?.content ?? '';
   return {
     classification: 'build-site',

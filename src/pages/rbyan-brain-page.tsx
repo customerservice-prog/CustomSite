@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Check, ChevronRight, ExternalLink, Loader2, Plus, Send, Sparkles, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useClients, useProjects } from '@/store/hooks';
 import type { ProjectSite } from '@/lib/site-builder/project-site-model';
 import { saveProjectSite } from '@/lib/site-builder/project-site-storage';
@@ -10,6 +12,7 @@ import { composePreviewDocument } from '@/lib/site-builder/compose-preview-docum
 import { generateSiteWithRbyan } from '@/lib/rbyan/generate-site-with-rbyan';
 import {
   rbyanFilesToProjectFiles,
+  type RbyanBrandKit,
   type RbyanGenerateResult,
   type RbyanGeneratedFile,
   type RbyanProjectContext,
@@ -25,6 +28,8 @@ import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
 import { RBYAN_PREFILL_STORAGE_KEY } from '@/store/use-build-helper-store';
+
+const RBYAN_BRAND_STORAGE = (projectId: string) => `cs_rbyan_brand:${projectId}`;
 
 type ChatMsg = {
   id: string;
@@ -50,11 +55,31 @@ type UndoSnapshot = {
 type BuildStepUi = { label: string; done: boolean };
 
 const RBYAN_QUICK_PROMPTS: { label: string; prompt: string }[] = [
-  { label: 'Improve design', prompt: 'Improve the visual design, spacing, and typography to feel more polished and modern.' },
-  { label: 'Add pricing', prompt: 'Add a clear pricing section with three tiers and strong CTAs.' },
-  { label: 'Add testimonials', prompt: 'Add a testimonials section with quotes and client names.' },
-  { label: 'Optimize mobile', prompt: 'Optimize layout and typography for mobile screens and touch targets.' },
-  { label: 'More premium', prompt: 'Make the site feel more premium and high-end with refined copy and visuals.' },
+  {
+    label: 'Tighten hero',
+    prompt:
+      'Rewrite only the hero headline and supporting line to state a single outcome, name the audience, and remove generic filler. Keep the rest of the page unchanged.',
+  },
+  {
+    label: 'Pricing + compare',
+    prompt:
+      'Add a pricing section with three tiers: name + price + 4 bullets each + primary CTA per tier. Include a short comparison note explaining who each tier is for.',
+  },
+  {
+    label: 'Proof block',
+    prompt:
+      'Add a testimonials section with three quotes (realistic roles), each tied to a measurable outcome. Include a one-line “as seen in / trusted by” strip above the quotes.',
+  },
+  {
+    label: 'Mobile pass',
+    prompt:
+      'Improve mobile layout only: increase tap targets to at least 44px, fix cramped hero spacing, and ensure nav/CTA do not overlap content between 360–430px width.',
+  },
+  {
+    label: 'Dark luxe',
+    prompt:
+      'Shift the visual system toward dark-mode luxury: deeper background, softer borders, restrained accent glow on primary buttons, and slightly larger display headings—without changing section order.',
+  },
 ];
 
 function siteFilesToRbyan(site: ProjectSite): RbyanGeneratedFile[] {
@@ -118,6 +143,14 @@ export function RbyanBrainPage() {
   const [buildSteps, setBuildSteps] = useState<BuildStepUi[]>([]);
   const [undoStack, setUndoStack] = useState<UndoSnapshot[]>([]);
 
+  const [industryNiche, setIndustryNiche] = useState('');
+  const [bizSummary, setBizSummary] = useState('');
+  const [brandPrimary, setBrandPrimary] = useState('');
+  const [brandAccent, setBrandAccent] = useState('');
+  const [fontVibe, setFontVibe] = useState('');
+  const [voice, setVoice] = useState('');
+  const [visualStyle, setVisualStyle] = useState('');
+
   const clientProjects = useMemo(
     () => projects.filter((p) => p.deliveryFocus === 'client_site' && (!clientId || p.clientId === clientId)),
     [projects, clientId]
@@ -133,16 +166,107 @@ export function RbyanBrainPage() {
   const activeProject = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
   const activeClient = useMemo(() => clients.find((c) => c.id === clientId), [clients, clientId]);
 
+  useEffect(() => {
+    if (!projectId) {
+      setIndustryNiche('');
+      setBizSummary('');
+      setBrandPrimary('');
+      setBrandAccent('');
+      setFontVibe('');
+      setVoice('');
+      setVisualStyle('');
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(RBYAN_BRAND_STORAGE(projectId));
+      if (!raw) {
+        setIndustryNiche('');
+        setBizSummary('');
+        setBrandPrimary('');
+        setBrandAccent('');
+        setFontVibe('');
+        setVoice('');
+        setVisualStyle('');
+        return;
+      }
+      const j = JSON.parse(raw) as Record<string, string>;
+      setIndustryNiche(j.industryNiche ?? '');
+      setBizSummary(j.bizSummary ?? '');
+      setBrandPrimary(j.brandPrimary ?? '');
+      setBrandAccent(j.brandAccent ?? '');
+      setFontVibe(j.fontVibe ?? '');
+      setVoice(j.voice ?? '');
+      setVisualStyle(j.visualStyle ?? '');
+    } catch {
+      /* */
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    const id = window.setTimeout(() => {
+      try {
+        sessionStorage.setItem(
+          RBYAN_BRAND_STORAGE(projectId),
+          JSON.stringify({
+            industryNiche,
+            bizSummary,
+            brandPrimary,
+            brandAccent,
+            fontVibe,
+            voice,
+            visualStyle,
+          })
+        );
+      } catch {
+        /* */
+      }
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [projectId, industryNiche, bizSummary, brandPrimary, brandAccent, fontVibe, voice, visualStyle]);
+
   const projectContext: RbyanProjectContext | null = useMemo(() => {
     if (!projectId || !activeProject) return null;
+    const companyRow = clients.find((c) => c.id === activeProject.clientId);
+    const kit: RbyanBrandKit = {
+      primaryHex: brandPrimary.trim() || undefined,
+      accentHex: brandAccent.trim() || undefined,
+      fontVibe: fontVibe.trim() || undefined,
+      voice: voice.trim() || undefined,
+      visualStyle: visualStyle.trim() || undefined,
+      businessSummary: bizSummary.trim() || undefined,
+    };
+    const hasBrand = Boolean(
+      kit.primaryHex ||
+        kit.accentHex ||
+        kit.fontVibe ||
+        kit.voice ||
+        kit.visualStyle ||
+        kit.businessSummary
+    );
     return {
       projectId,
       projectName: activeProject.name,
       clientId: activeProject.clientId,
-      clientCompany: clients.find((c) => c.id === activeProject.clientId)?.company ?? null,
+      clientCompany: companyRow?.company ?? null,
+      clientContactName: companyRow?.name ?? null,
+      industryNiche: industryNiche.trim() || null,
       deliveryFocus: activeProject.deliveryFocus,
+      siteBuildArchetype: activeProject.siteBuildArchetype ?? null,
+      brandKit: hasBrand ? kit : null,
     };
-  }, [projectId, activeProject, clients]);
+  }, [
+    projectId,
+    activeProject,
+    clients,
+    industryNiche,
+    bizSummary,
+    brandPrimary,
+    brandAccent,
+    fontVibe,
+    voice,
+    visualStyle,
+  ]);
 
   const hydrate = useProjectSiteWorkspaceStore((s) => s.hydrate);
   const workspaceRow = useProjectSiteWorkspaceStore((s) => (projectId ? s.byProjectId[projectId] : undefined));
@@ -212,6 +336,7 @@ export function RbyanBrainPage() {
   }, [projectId, lastResult, previewVersionId, versions, previewNonce, stagingFiles, workspaceRow]);
 
   const previewDoc = useMemo(() => composePreviewDocument(previewSite), [previewSite]);
+  const hasPreviewableSite = previewSite.files.length > 0;
 
   const undoLast = useCallback(() => {
     setUndoStack((stack) => {
@@ -397,7 +522,7 @@ export function RbyanBrainPage() {
               Bryan the Brain
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              Select a client and project below, then describe what you want to build or change. Bryan will write or update the code live in the preview.
+              Select a client and project, add business &amp; brand notes in the sidebar, then prompt. The mock engine uses that context to vary structure, copy, and colors—swap in a real model later without changing your workflow.
             </p>
             <ol className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-zinc-500">
               <li className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-zinc-300">
@@ -466,6 +591,72 @@ export function RbyanBrainPage() {
               </option>
             ))}
           </Select>
+          {projectId ? (
+            <div className="mb-4 rounded-lg border border-violet-500/25 bg-violet-950/25 p-3">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-300/90">Business &amp; brand</p>
+              <p className="mb-2 text-[10px] leading-snug text-zinc-500">
+                Used on every generation pass (saved per project in this browser).
+              </p>
+              <label className="mb-0.5 block text-[10px] text-zinc-400">Industry / niche</label>
+              <Input
+                className="mb-2 h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                value={industryNiche}
+                onChange={(e) => setIndustryNiche(e.target.value)}
+                placeholder="e.g. Neighborhood Italian bistro"
+              />
+              <label className="mb-0.5 block text-[10px] text-zinc-400">Offer &amp; audience</label>
+              <Textarea
+                className="mb-2 min-h-[52px] resize-y border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                value={bizSummary}
+                onChange={(e) => setBizSummary(e.target.value)}
+                placeholder="What they sell, who it’s for, geography, proof…"
+                rows={2}
+              />
+              <div className="mb-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-0.5 block text-[10px] text-zinc-400">Primary hex</label>
+                  <Input
+                    className="h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                    value={brandPrimary}
+                    onChange={(e) => setBrandPrimary(e.target.value)}
+                    placeholder="#4f46e5"
+                    spellCheck={false}
+                  />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[10px] text-zinc-400">Accent hex</label>
+                  <Input
+                    className="h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                    value={brandAccent}
+                    onChange={(e) => setBrandAccent(e.target.value)}
+                    placeholder="#7c3aed"
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+              <label className="mb-0.5 block text-[10px] text-zinc-400">Voice</label>
+              <Input
+                className="mb-2 h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                value={voice}
+                onChange={(e) => setVoice(e.target.value)}
+                placeholder="e.g. warm, expert, no jargon"
+              />
+              <label className="mb-0.5 block text-[10px] text-zinc-400">Visual style</label>
+              <Input
+                className="mb-2 h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                value={visualStyle}
+                onChange={(e) => setVisualStyle(e.target.value)}
+                placeholder="e.g. bold minimal, editorial serif"
+              />
+              <label className="mb-0.5 block text-[10px] text-zinc-400">Typography direction</label>
+              <Input
+                className="h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                value={fontVibe}
+                onChange={(e) => setFontVibe(e.target.value)}
+                placeholder="e.g. geometric sans + subtle serif for H1"
+              />
+            </div>
+          ) : null}
           {activeProject ? (
             <div className="mt-4 space-y-2 rounded-lg border border-white/10 bg-black/30 p-3 text-[11px] text-zinc-400">
               {activeClient ? (
@@ -699,6 +890,9 @@ export function RbyanBrainPage() {
                 </button>
               ))}
             </div>
+            <p className="mb-2 text-[10px] leading-relaxed text-zinc-500">
+              <span className="font-semibold text-zinc-400">Focus:</span> After the first build, choose a section to steer hero-only copy tweaks and scoped style passes. Use Whole page for full regenerations or broad layout changes.
+            </p>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                 <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Focus</span>
@@ -786,7 +980,7 @@ export function RbyanBrainPage() {
         {/* RIGHT — output */}
         <aside className="flex min-h-[280px] flex-col p-4 lg:col-span-4 lg:min-h-0">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Output</p>
-          {lastResult || previewVersionId ? (
+          {hasPreviewableSite || previewVersionId ? (
             <>
               <div className="mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/40">
                 <p className="shrink-0 border-b border-white/5 px-2 py-1.5 text-[10px] text-zinc-500">
@@ -809,7 +1003,7 @@ export function RbyanBrainPage() {
               </div>
               <p className="mb-1 text-[10px] font-semibold uppercase text-zinc-500">Generated files</p>
               <ul className="max-h-28 space-y-1 overflow-y-auto text-[11px] text-zinc-400">
-                {(previewVersionId ? versions.find((v) => v.id === previewVersionId)?.files : lastResult?.files)?.map((f) => (
+                {previewSite.files.map((f) => (
                   <li key={f.name} className="truncate font-mono text-zinc-300">
                     {f.name} <span className="text-zinc-600">({f.type})</span>
                   </li>
@@ -827,7 +1021,16 @@ export function RbyanBrainPage() {
             </>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-zinc-900/30 p-6 text-center text-sm text-zinc-500">
-              Generated preview and file list appear here after your first prompt.
+              {projectId ? (
+                <>
+                  <p className="font-medium text-zinc-400">Preview appears here when your project has site files or after the first AI pass.</p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    If this project already has HTML in Site Builder, you should see a live iframe as soon as files load. While a prompt runs, the preview updates step-by-step.
+                  </p>
+                </>
+              ) : (
+                <p>Choose a project to enable preview and generation.</p>
+              )}
             </div>
           )}
         </aside>

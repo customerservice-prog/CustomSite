@@ -1,4 +1,9 @@
 import type { RbyanBuildPlan } from '@/lib/rbyan/build-plan';
+import type { RbyanBrandKit } from '@/lib/rbyan/types';
+
+function isHex6(v: string | undefined): v is string {
+  return Boolean(v && /^#[0-9A-Fa-f]{6}$/.test(v.trim()));
+}
 
 export type RbyanDesignPack = {
   themeLabel: string;
@@ -25,7 +30,7 @@ export function wrapDesignLayer(inner: string): string {
 }
 
 /** Step 6: layout + token decisions from the plan (mock; LLM can output tokens). */
-export function generateDesign(plan: RbyanBuildPlan): RbyanDesignPack {
+export function generateDesign(plan: RbyanBuildPlan, brandKit?: RbyanBrandKit | null): RbyanDesignPack {
   const { spacing, typography, theme } = plan.style;
   const airy = spacing === 'large';
   const tight = spacing === 'compact';
@@ -36,10 +41,13 @@ export function generateDesign(plan: RbyanBuildPlan): RbyanDesignPack {
   const gap = airy ? 'var(--rby-space-5)' : tight ? 'var(--rby-space-3)' : 'var(--rby-space-4)';
   const h1Scale = boldType ? 'clamp(2.5rem, 5.5vw, 4rem)' : 'clamp(2.1rem, 4.5vw, 3.35rem)';
 
+  const primaryOverride = isHex6(brandKit?.primaryHex) ? brandKit!.primaryHex!.trim() : null;
+  const accentOverride = isHex6(brandKit?.accentHex) ? brandKit!.accentHex!.trim() : primaryOverride;
+
   const palette = dark
     ? `:root {
-  --rby-primary: #6366f1;
-  --rby-accent: #a78bfa;
+  --rby-primary: ${primaryOverride ?? '#6366f1'};
+  --rby-accent: ${accentOverride ?? '#a78bfa'};
   --rby-bg: #0c0b10;
   --rby-bg-elevated: #14141a;
   --rby-text: #fafafa;
@@ -47,8 +55,8 @@ export function generateDesign(plan: RbyanBuildPlan): RbyanDesignPack {
   --rby-border: rgba(255,255,255,0.1);
 }`
     : `:root {
-  --rby-primary: #4f46e5;
-  --rby-accent: #7c3aed;
+  --rby-primary: ${primaryOverride ?? '#4f46e5'};
+  --rby-accent: ${accentOverride ?? '#7c3aed'};
   --rby-bg: #fafaf9;
   --rby-bg-elevated: #ffffff;
   --rby-text: #18181b;
@@ -65,6 +73,11 @@ ${dark ? `body { background: var(--rby-bg) !important; color: var(--rby-text) !i
 .rby-lead { color: var(--rby-text-muted) !important; }
 .site-footer { background: #050506 !important; }` : ''}
 ${typography === 'editorial' ? `h1, h2 { font-family: var(--rby-font-serif) !important; }` : ''}
+${
+  brandKit?.fontVibe?.trim()
+    ? `/* Brand font direction: ${brandKit.fontVibe.replace(/[*]/g, '')} — tune stacks in Site Builder for production */\nbody { font-feature-settings: "kern" 1, "liga" 1; }\n`
+    : ''
+}
 `;
 
   const layoutStyle: RbyanDesignPack['layoutStyle'] =

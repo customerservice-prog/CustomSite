@@ -1,7 +1,18 @@
 import { newFile, type ProjectSiteFile } from '@/lib/site-builder/project-site-model';
+import type { SiteBuildArchetypeId } from '@/lib/types/entities';
 import type { RbyanBuildPlan } from '@/lib/rbyan/build-plan';
 import type { RbyanCopyPack } from '@/lib/rbyan/generate-copy';
 import type { RbyanDesignPack } from '@/lib/rbyan/generate-design';
+
+/** Optional brand direction from AI Builder UI (stored per project in session). */
+export type RbyanBrandKit = {
+  primaryHex?: string;
+  accentHex?: string;
+  fontVibe?: string;
+  voice?: string;
+  visualStyle?: string;
+  businessSummary?: string;
+};
 
 export type RbyanGeneratedFile = {
   name: string;
@@ -14,8 +25,15 @@ export type RbyanProjectContext = {
   projectName: string;
   clientId: string;
   clientCompany?: string | null;
+  /** Primary contact — pairs with company for voice. */
+  clientContactName?: string | null;
+  /** Short niche line from AI Builder (e.g. “Neighborhood Italian bistro”). */
+  industryNiche?: string | null;
   /** e.g. client_site */
   deliveryFocus?: string | null;
+  /** From project record when set at project creation. */
+  siteBuildArchetype?: SiteBuildArchetypeId | null;
+  brandKit?: RbyanBrandKit | null;
 };
 
 /** Prompt routing for the generation pipeline (mock rules today; API can reuse). */

@@ -237,6 +237,13 @@ function SITE_TYPE_LABEL(id: string): string {
     ecommerce: 'e-commerce',
     landing: 'landing page',
     portfolio: 'portfolio / agency',
+    restaurant: 'restaurant / hospitality',
+    nonprofit: 'nonprofit / community',
+    saas: 'SaaS / software product',
+    booking: 'bookings / appointments',
+    events: 'events / venue',
+    education: 'education / courses',
+    health: 'health & wellness',
   };
   return m[id] || id;
 }

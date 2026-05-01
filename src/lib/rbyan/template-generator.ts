@@ -83,6 +83,15 @@ export function inferTemplateTypeFromPrompt(prompt: string): SiteTemplateType {
   if (/roof|gutter|shingle|plumb|hvac|contractor|inspection|repair\s+service|local\s+service/i.test(p)) {
     return 'service';
   }
+  if (/restaurant|cafe|bakery|food\s+truck|salon|spa|clinic|dental|book\s+online|appointment|fitness\s+studio/i.test(p)) {
+    return 'service';
+  }
+  if (/nonprofit|charity|foundation|donate|volunteer|501|fundraising/i.test(p)) {
+    return 'landing';
+  }
+  if (/saas|b2b|software|platform|api|signup|trial|dashboard|automation/i.test(p)) {
+    return 'landing';
+  }
   if (/agency|portfolio|studio|creative\s+agency|branding\s+studio/i.test(p)) {
     return 'agency';
   }

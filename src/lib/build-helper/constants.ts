@@ -3,6 +3,13 @@ export const SITE_TYPE_OPTIONS = [
   { id: 'ecommerce', label: 'E-commerce' },
   { id: 'landing', label: 'Landing page' },
   { id: 'portfolio', label: 'Portfolio / agency' },
+  { id: 'restaurant', label: 'Restaurant / hospitality' },
+  { id: 'nonprofit', label: 'Nonprofit / community' },
+  { id: 'saas', label: 'SaaS / software product' },
+  { id: 'booking', label: 'Bookings / appointments' },
+  { id: 'events', label: 'Events / venue' },
+  { id: 'education', label: 'Education / courses' },
+  { id: 'health', label: 'Health & wellness' },
 ] as const;
 
 export const PAGE_OPTIONS = ['Home', 'Services', 'About', 'Contact', 'Shop', 'Pricing'] as const;

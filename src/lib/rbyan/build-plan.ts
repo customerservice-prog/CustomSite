@@ -26,10 +26,15 @@ export type RbyanBuildPlan = {
 const DEFAULT_SECTIONS = ['Hero', 'Trust', 'Categories', 'Bundles', 'Testimonials', 'CTA', 'Footer'] as const;
 
 function detectArchetype(p: string): RbyanSiteArchetype {
-  if (/roof|gutter|shingle|hvac|plumb|contractor|inspection|local service/i.test(p)) return 'service_local';
-  if (/agency|portfolio|studio|creative agency|branding studio/i.test(p)) return 'agency';
-  if (/landing|single page|one page|lead magnet/i.test(p)) return 'landing';
-  if (/furniture|rental|event|chair|table|gala|wedding|venue/i.test(p)) return 'event_rental';
+  const t = p.toLowerCase();
+  if (/nonprofit|charity|foundation|501\s*c|donate|volunteer|mission-driven|fundraising/i.test(t)) return 'landing';
+  if (/saas|b2b\s+software|cloud\s+platform|api\s+product|developer\s+tool|web\s*app|subscription\s+software/i.test(t)) return 'landing';
+  if (/roof|gutter|shingle|hvac|plumb|contractor|inspection|local service/i.test(t)) return 'service_local';
+  if (/restaurant|cafe|bakery|food\s+truck|brewpub|wine\s+bar|chef|dining room/i.test(t)) return 'service_local';
+  if (/book\s+online|appointment|scheduling|salon|spa|clinic|dental|therapy|fitness\s+studio/i.test(t)) return 'service_local';
+  if (/agency|portfolio|studio|creative agency|branding studio/i.test(t)) return 'agency';
+  if (/landing|single page|one page|lead magnet/i.test(t)) return 'landing';
+  if (/furniture|rental|event|chair|table|gala|wedding|venue/i.test(t)) return 'event_rental';
   return 'ecommerce_general';
 }
 
@@ -95,6 +100,8 @@ export type CreateBuildPlanOptions = {
   previousPlan?: RbyanBuildPlan | null;
   brandHint?: string;
   projectName?: string;
+  /** Merged into routing signals with the user prompt (AI Builder niche field). */
+  industryNiche?: string | null;
 };
 
 /**
@@ -103,16 +110,18 @@ export type CreateBuildPlanOptions = {
 export function createBuildPlan(prompt: string, opts: CreateBuildPlanOptions = {}): RbyanBuildPlan {
   const trimmed = prompt.trim();
   const p = trimmed.toLowerCase();
+  const niche = (opts.industryNiche ?? '').toLowerCase().trim();
+  const combined = `${p} ${niche}`.replace(/\s+/g, ' ').trim();
 
   if (opts.previousPlan && !/^(build|create|design|generate|make)\b/i.test(trimmed) && trimmed.length < 420) {
     return mergeModifierIntoPlan(opts.previousPlan, trimmed);
   }
 
-  const archetype = detectArchetype(p);
-  const tone = baseTone(p);
-  const spacing = baseSpacing(p);
-  const typography = baseTypography(p);
-  const theme = baseTheme(p);
+  const archetype = detectArchetype(combined);
+  const tone = baseTone(combined);
+  const spacing = baseSpacing(combined);
+  const typography = baseTypography(combined);
+  const theme = baseTheme(combined);
 
   let goal = 'Professional marketing homepage';
   let audience = 'Business buyers and site visitors';
@@ -127,16 +136,32 @@ export function createBuildPlan(prompt: string, opts: CreateBuildPlanOptions = {
       audience = 'Online shoppers comparing quality and delivery';
       break;
     case 'service_local':
-      goal = 'Local service lead generation';
-      audience = 'Homeowners and property managers in your service area';
+      if (/restaurant|cafe|bakery|food|dining|chef|wine\s+bar/i.test(combined)) {
+        goal = 'Restaurant & hospitality presence';
+        audience = 'Guests choosing where to dine, reserve, or order';
+      } else if (/book|appointment|scheduling|salon|spa|clinic|dental|therapy|fitness/i.test(combined)) {
+        goal = 'Appointment-first local service';
+        audience = 'Clients booking time online with confidence';
+      } else {
+        goal = 'Local service lead generation';
+        audience = 'Homeowners and property managers in your service area';
+      }
       break;
     case 'agency':
       goal = 'Creative agency positioning';
       audience = 'Marketing leaders hiring design and product partners';
       break;
     case 'landing':
-      goal = 'Single-offer landing conversion';
-      audience = 'Cold traffic and retargeting visitors';
+      if (/nonprofit|charity|foundation|donate|volunteer|mission|501/i.test(combined)) {
+        goal = 'Nonprofit storytelling & conversion';
+        audience = 'Donors, volunteers, and community partners';
+      } else if (/saas|software|platform|api|trial|signup|b2b|dashboard|integration/i.test(combined)) {
+        goal = 'SaaS product marketing';
+        audience = 'Buyers evaluating features, onboarding, and security';
+      } else {
+        goal = 'Single-offer landing conversion';
+        audience = 'Cold traffic and retargeting visitors';
+      }
       break;
     default:
       break;
