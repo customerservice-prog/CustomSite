@@ -17,7 +17,10 @@ export function BuildHelperProgressSync() {
   }, []);
 
   useEffect(() => {
-    const run = () => {
+    let running = false;
+    let pending = false;
+
+    const runOnce = () => {
       const bh = useBuildHelperStore.getState();
       const app = useAppStore.getState();
       const ws = useProjectSiteWorkspaceStore.getState();
@@ -60,10 +63,27 @@ export function BuildHelperProgressSync() {
       fresh.applyReconciledProgress(completedSteps, currentStep);
     };
 
-    const unsubA = useAppStore.subscribe(run);
-    const unsubW = useProjectSiteWorkspaceStore.subscribe(run);
-    const unsubB = useBuildHelperStore.subscribe(run);
-    run();
+    const safeRun = () => {
+      if (running) {
+        pending = true;
+        return;
+      }
+      running = true;
+      try {
+        runOnce();
+      } finally {
+        running = false;
+        if (pending) {
+          pending = false;
+          queueMicrotask(safeRun);
+        }
+      }
+    };
+
+    const unsubA = useAppStore.subscribe(safeRun);
+    const unsubW = useProjectSiteWorkspaceStore.subscribe(safeRun);
+    const unsubB = useBuildHelperStore.subscribe(safeRun);
+    safeRun();
     return () => {
       unsubA();
       unsubW();

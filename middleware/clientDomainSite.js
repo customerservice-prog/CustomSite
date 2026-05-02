@@ -10,6 +10,7 @@ const {
   customDomainLookupVariants,
 } = require('../lib/customsitePlatformHosts');
 const { injectSiteSettingsIntoHtml } = require('../lib/siteHeadInjector');
+const { applyClientHtmlVideoModalGuard } = require('../lib/clientSiteVideoModalGuard');
 const {
   applyClientSiteTechnicalSeo,
   filePathToUrlPath,
@@ -112,14 +113,32 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
       ? { projectId: hit.projectId, siteSettings: hit.siteSettings, launchedAt: hit.launchedAt, projectName: hit.projectName }
       : null;
   }
-  const variants = customDomainLookupVariants(hostKey);
+  const nh = normalizeCustomDomainHost(hostKey);
+  /** Match DB values pasted as URLs or with stray whitespace/trailing slashes. */
+  let variantSet = [];
+  if (nh) {
+    const apex = /^www\./i.test(nh) ? nh.slice(4) : nh;
+    const hostLike = apex && /^[\w.-]+$/.test(apex)
+      ? [apex, `www.${apex}`]
+      : [nh];
+    const urlWrapped = apex && /^[\w.-]+$/.test(apex)
+      ? [`https://${apex}`, `https://${apex}/`, `http://${apex}`, `http://${apex}/`]
+      : [];
+    variantSet = [...new Set([...customDomainLookupVariants(hostKey), ...hostLike, ...urlWrapped].filter(Boolean))];
+  } else {
+    variantSet = customDomainLookupVariants(hostKey);
+  }
   let { data: rows, error } = await supabase
     .from('projects')
     .select('id, site_settings, custom_domain, launched_at, name')
-    .in('custom_domain', variants)
-    .limit(5);
+    .in('custom_domain', variantSet)
+    .limit(10);
   if (error && /site_settings/.test(String(error.message))) {
-    ({ data: rows, error } = await supabase.from('projects').select('id, custom_domain, launched_at, name').in('custom_domain', variants).limit(5));
+    ({ data: rows, error } = await supabase
+      .from('projects')
+      .select('id, custom_domain, launched_at, name')
+      .in('custom_domain', variantSet)
+      .limit(10));
   }
   if (error) {
     console.error('[clientDomainSite] project lookup', error.message);
@@ -134,14 +153,16 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
   }
   let row0 = rows && rows[0];
   if (!row0) {
-    const want = normalizeCustomDomainHost(hostKey);
-    if (want) {
+    const want = nh || normalizeCustomDomainHost(hostKey);
+    /** LIKE metachars — strip so filter stays narrow + safe */
+    const lit = want ? want.replace(/[%_\\]/g, '') : '';
+    if (lit && lit.length >= 3 && /^[\w.-]+$/i.test(lit)) {
       const { data: loose, error: e2 } = await supabase
         .from('projects')
         .select('id, site_settings, custom_domain, launched_at, name')
         .not('custom_domain', 'is', null)
-        .ilike('custom_domain', `%${want}%`)
-        .limit(40);
+        .ilike('custom_domain', `%${lit}%`)
+        .limit(24);
       if (!e2 && loose && loose.length) {
         row0 = loose.find((r) => normalizeCustomDomainHost(r.custom_domain) === want);
       }
@@ -224,12 +245,13 @@ function buildBody(row, filePath, req, siteSettings, projectName) {
   const withBase = injectLiveBaseHref(raw, baseHref);
   const withSettings = injectSiteSettingsIntoHtml(withBase, filePath, siteSettings);
   const canonOrigin = origin ? origin.replace(/\/$/, '') : `https://${stripPort(req.get('x-forwarded-host') || req.get('host') || 'localhost')}`;
-  return applyClientSiteTechnicalSeo(withSettings, {
+  const afterSeo = applyClientSiteTechnicalSeo(withSettings, {
     filePath,
     siteSettings,
     siteName: projectName || 'Site',
     canonicalOrigin: canonOrigin,
   });
+  return applyClientHtmlVideoModalGuard(String(afterSeo));
 }
 
 async function handleClientDomain(req, res) {

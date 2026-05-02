@@ -186,7 +186,10 @@ router.get('/projects/:projectId/site/file', async (req, res) => {
 router.put('/projects/:projectId/site/file', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { path: rawPath, content, content_encoding: encIn } = req.body || {};
+    const body = req.body || {};
+    /** Accept path in JSON body (builder) or query string (mistaken clients). */
+    const rawPath = body.path !== undefined && body.path !== null && body.path !== '' ? body.path : req.query.path;
+    const { content, content_encoding: encIn } = body;
     const filePath = normalizePath(rawPath);
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
     const encoding = encIn === 'base64' ? 'base64' : 'utf8';
