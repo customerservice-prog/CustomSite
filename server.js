@@ -22,6 +22,8 @@ const { router: paymentsRoutes, handleWebhook } = require('./routes/payments');
 const configPublicRoutes = require('./routes/configPublic');
 const { isSupabaseConfigured } = require('./lib/supabase');
 const { isDevAuthEnabled } = require('./lib/devAuth');
+const { isPlatformHostname } = require('./lib/customsitePlatformHosts');
+const clientDomainSiteMiddleware = require('./middleware/clientDomainSite');
 
 const app = express();
 const PORT = Number.parseInt(String(process.env.PORT || '3000'), 10) || 3000;
@@ -194,8 +196,11 @@ app.get('/robots.txt', (req, res) => {
   res.send(buildRobotsTxt(req.hostname));
 });
 
-/** One canonical home URL: avoid /index.html vs / duplicate content. */
-app.get('/index.html', (req, res) => {
+/** One canonical home URL: avoid /index.html vs / duplicate content (platform hosts only). */
+app.get('/index.html', (req, res, next) => {
+  if (!isPlatformHostname(String(req.hostname || '').toLowerCase())) {
+    return next();
+  }
   const i = req.url.indexOf('?');
   const q = i >= 0 ? req.url.slice(i) : '';
   if (shouldRedirectRootToAdminHtml()) {
@@ -255,6 +260,9 @@ app.use(async (req, res, next) => {
   return next();
 });
 
+/** Client-owned domains → `site_files` for matching `projects.custom_domain` (after LOCAL_SEO, before marketing static). */
+app.use(clientDomainSiteMiddleware);
+
 /** React admin SPA (Vite build → dist-admin/). Dev: `npm run admin:dev` → open /admin-spa.html on Vite port. */
 const ADMIN_SPA_HTML = path.resolve(__dirname, 'dist-admin', 'admin-spa.html');
 
@@ -283,6 +291,7 @@ app.get('/admin', (_req, res) => {
 app.get('/', (req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   if (!shouldRedirectRootToAdminHtml()) return next();
+  if (!isPlatformHostname(String(req.hostname || '').toLowerCase())) return next();
   const q = String(req.url || '').includes('?') ? String(req.url).slice(String(req.url).indexOf('?')) : '';
   res.redirect(302, '/admin.html' + q);
 });
