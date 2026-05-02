@@ -7,6 +7,11 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { extractYoutubeId, fetchYoutubeOembed, probeYoutubeAvailability } = require('../lib/youtubeUtils');
 const { probeYoutubeMqThumbnail } = require('../lib/youtubeMqThumbnailProbe');
 const { replaceYoutubeIdAcrossSiteHtmlFiles } = require('../lib/projectVideosHtmlSync');
+const {
+  loadProjectWithClientLabel,
+  gateLiveDestructive,
+  CONFIRM_VALUE,
+} = require('../lib/destructiveOperationGuards');
 
 const STORAGE_BUCKET = String(process.env.CUSTOMSITE_STORAGE_BUCKET || 'project-assets').trim() || 'project-assets';
 
@@ -401,6 +406,20 @@ adminRouter.delete('/projects/:projectId/videos/:videoId', async (req, res) => {
     if (!isSupabaseConfigured()) return res.status(503).json({ error: 'Supabase not configured' });
     const { projectId, videoId } = req.params;
     const supabase = getService();
+    const { project, clientLabel, error: le } = await loadProjectWithClientLabel(supabase, projectId);
+    if (le) return res.status(500).json({ error: le.message });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (
+      !gateLiveDestructive(req, res, project, clientLabel, {
+        code: 'LIVE_PROJECT_VIDEO_DELETE_REQUIRES_CONFIRMATION',
+        requiredValue: CONFIRM_VALUE.DELETE_LIVE_PROJECT_VIDEO,
+        message:
+          'This project is live or published. Removing a catalog video can change the live site. Send header x-confirm-delete: yes-delete-live-project-video to confirm.',
+        extra: { video_id: videoId },
+      })
+    ) {
+      return;
+    }
     const { error } = await supabase.from('project_videos').delete().eq('id', videoId).eq('project_id', projectId);
     if (error) {
       if (migrationHint(error)) return res.status(503).json({ error: 'Run migration 007_project_videos.sql' });

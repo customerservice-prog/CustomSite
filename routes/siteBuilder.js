@@ -10,6 +10,12 @@ const { addServeBundle, createZipBuffer } = require('../lib/bundleStaticSite');
 const { testToken, createCustomDomainForService } = require('../lib/railwayGql');
 const { provisionStaticDeploy } = require('../lib/railwayStaticDeploy');
 const { normalizeCustomDomainHost } = require('../lib/normalizeCustomDomainHost');
+const { attachDashboardToProject } = require('../lib/projectDashboard');
+const {
+  loadProjectWithClientLabel,
+  gateLiveDestructive,
+  CONFIRM_VALUE,
+} = require('../lib/destructiveOperationGuards');
 const { upsertProjectVideosFromHtmlContent } = require('../lib/projectVideosHtmlSync');
 
 const router = express.Router();
@@ -105,6 +111,16 @@ function hostingPatchFromBody(b) {
     const h = b.custom_domain == null || b.custom_domain === '' ? null : normalizeCustomDomainHost(b.custom_domain);
     patch.custom_domain = h;
   }
+  if (b.thumbnail_url !== undefined)
+    patch.thumbnail_url =
+      b.thumbnail_url === null || b.thumbnail_url === '' ? null : String(b.thumbnail_url).trim().slice(0, 4096);
+  if (b.live_url !== undefined)
+    patch.live_url = b.live_url === null || b.live_url === '' ? null : String(b.live_url).trim().slice(0, 4096);
+  if (b.published_at !== undefined)
+    patch.published_at =
+      b.published_at === null || b.published_at === '' ? null : String(b.published_at).trim().slice(0, 120);
+  if (b.stage !== undefined && b.stage != null && String(b.stage).trim())
+    patch.stage = String(b.stage).trim().slice(0, 80);
   return patch;
 }
 
@@ -287,6 +303,22 @@ router.delete('/projects/:projectId/site/file', async (req, res) => {
     const filePath = normalizePath(req.query.path);
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
     const supabase = getService();
+
+    const { project, clientLabel, error: le } = await loadProjectWithClientLabel(supabase, projectId);
+    if (le) return res.status(500).json({ error: le.message });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (
+      !gateLiveDestructive(req, res, project, clientLabel, {
+        code: 'LIVE_SITE_FILE_DELETE_REQUIRES_CONFIRMATION',
+        requiredValue: CONFIRM_VALUE.DELETE_LIVE_SITE_FILE,
+        message:
+          'This project is live or published. Deleting a site file can break production. Send header x-confirm-delete: yes-delete-live-site-file to confirm.',
+        extra: { path: filePath },
+      })
+    ) {
+      return;
+    }
+
     const { error } = await supabase
       .from('site_files')
       .delete()
@@ -474,7 +506,13 @@ router.get('/projects/:projectId', async (req, res) => {
       const c = await supabase.from('users').select('id, email, full_name, company').eq('id', data.client_id).maybeSingle();
       if (!c.error) client = c.data;
     }
-    return res.json({ project: { ...data, client } });
+    let withDash = { ...data, client };
+    try {
+      withDash = await attachDashboardToProject(supabase, withDash);
+    } catch (_) {
+      /* migration 012 not applied yet */
+    }
+    return res.json({ project: withDash });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
@@ -506,8 +544,19 @@ async function patchAdminProjectById(req, res) {
       }
       patch.status = b.status;
       if (b.status === 'live') {
-        const { data: curLu } = await supabase.from('projects').select('launched_at').eq('id', projectId).maybeSingle();
-        if (!curLu?.launched_at) patch.launched_at = new Date().toISOString();
+        const { data: curLu } = await supabase
+          .from('projects')
+          .select('launched_at, published_at, custom_domain, live_url')
+          .eq('id', projectId)
+          .maybeSingle();
+        const nowIso = new Date().toISOString();
+        if (!curLu?.launched_at) patch.launched_at = nowIso;
+        if (!curLu?.published_at) patch.published_at = nowIso;
+        patch.stage = 'live';
+        if (!curLu?.live_url) {
+          const dom = normalizeCustomDomainHost(patch.custom_domain ?? curLu?.custom_domain);
+          if (dom) patch.live_url = `https://${dom}`;
+        }
       }
     }
     if (Object.keys(patch).length === 0) {
@@ -527,7 +576,11 @@ async function patchAdminProjectById(req, res) {
       }
       return res.status(500).json({ error: error.message });
     }
-    return res.json({ success: true, project: data });
+    let payload = data;
+    try {
+      payload = await attachDashboardToProject(supabase, data);
+    } catch (_) {}
+    return res.json({ success: true, project: payload });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
@@ -737,6 +790,22 @@ router.post('/projects/:projectId/site/snapshots/:snapshotId/restore', async (re
   try {
     const { projectId, snapshotId } = req.params;
     const supabase = getService();
+
+    const { project, clientLabel, error: le } = await loadProjectWithClientLabel(supabase, projectId);
+    if (le) return res.status(500).json({ error: le.message });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (
+      !gateLiveDestructive(req, res, project, clientLabel, {
+        code: 'LIVE_SNAPSHOT_RESTORE_REQUIRES_CONFIRMATION',
+        requiredValue: CONFIRM_VALUE.RESTORE_SNAPSHOT_OVERWRITES_LIVE_SITE,
+        message:
+          'This project is live or published. Restoring replaces all files in Supabase for this project. Send header x-confirm-delete: yes-restore-snapshot-overwrites-live-site to confirm.',
+        extra: { snapshot_id: snapshotId },
+      })
+    ) {
+      return;
+    }
+
     const { data: snap, error: ge } = await supabase
       .from('project_site_snapshots')
       .select('id, files')
@@ -866,7 +935,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     const { data: proj, error: perr } = await supabase
       .from('projects')
       .select(
-        'id, name, launched_at, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production, railway_service_id_staging, railway_service_id_production'
+        'id, name, launched_at, published_at, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production, railway_service_id_staging, railway_service_id_production'
       )
       .eq('id', projectId)
       .maybeSingle();
@@ -1008,7 +1077,11 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
       patch.railway_project_id_production = deployed.railwayProjectId;
       patch.railway_service_id_production = deployed.serviceId;
       patch.status = 'live';
-      if (!proj.launched_at) patch.launched_at = new Date().toISOString();
+      const nowIso = new Date().toISOString();
+      if (!proj.launched_at) patch.launched_at = nowIso;
+      if (!proj.published_at) patch.published_at = nowIso;
+      patch.stage = 'live';
+      if (customHost) patch.live_url = `https://${customHost}`;
     } else {
       patch.railway_url_staging = deployed.publicUrl;
       patch.railway_project_id_staging = deployed.railwayProjectId;

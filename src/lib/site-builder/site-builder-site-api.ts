@@ -4,6 +4,7 @@
  */
 
 import { adminFetchJson, type AdminJsonResult } from '@/lib/admin-api';
+import { LIVE_DESTRUCT_CONFIRM, LIVE_DESTRUCT_CONFIRM_HEADER } from '@/lib/live-destructive-confirm';
 import { shouldShowDemoDatasetBanner } from '@/lib/runtime-demo';
 import {
   localSiteDeleteFile,
@@ -67,13 +68,22 @@ export async function siteBuilderPutFile(
   });
 }
 
-export async function siteBuilderDeleteFile(projectId: string, path: string): Promise<AdminJsonResult<{ success?: boolean }>> {
+export async function siteBuilderDeleteFile(
+  projectId: string,
+  path: string,
+  opts?: { confirmLiveDestructive?: boolean }
+): Promise<AdminJsonResult<{ success?: boolean }>> {
   if (shouldPersistSiteFilesLocally()) {
     localSiteDeleteFile(projectId, path);
     return { ok: true, data: { success: true } };
   }
+  const headers: HeadersInit = {};
+  if (opts?.confirmLiveDestructive) {
+    headers[LIVE_DESTRUCT_CONFIRM_HEADER] = LIVE_DESTRUCT_CONFIRM.DELETE_LIVE_SITE_FILE;
+  }
   return adminFetchJson(`/api/admin/projects/${encodeURIComponent(projectId)}/site/file?${new URLSearchParams({ path }).toString()}`, {
     method: 'DELETE',
+    headers,
   });
 }
 

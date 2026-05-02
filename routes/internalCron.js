@@ -1,5 +1,13 @@
 'use strict';
 
+/**
+ * Scheduled jobs (protect client sites):
+ * - Never DELETE or overwrite `site_files` from these routes.
+ * - `rollup-site-analytics`: reads site_pageviews; writes only `site_analytics_daily` upserts.
+ * - `check-video-health`: reads site HTML via sync helper; UPDATE/INSERT `project_videos` metadata only.
+ * - Use `DRY_RUN=true` env in future batch tools; these endpoints log per-project failures and continue.
+ */
+
 const express = require('express');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
 const { probeYoutubeMqThumbnail } = require('../lib/youtubeMqThumbnailProbe');
@@ -67,8 +75,10 @@ router.post('/internal/cron/rollup-site-analytics', async (req, res) => {
         },
         { onConflict: 'project_id,date' }
       );
-      if (!uerr) upserted += 1;
-      else console.warn('[rollup analytics]', projectId, uerr.message);
+      if (!uerr) {
+        upserted += 1;
+        console.log('[rollup analytics]', 'project', projectId, 'date', dateStr);
+      } else console.warn('[rollup analytics]', projectId, uerr.message);
     }
 
     return res.json({
@@ -98,6 +108,7 @@ router.post('/internal/cron/check-video-health', async (_req, res) => {
 
     for (const pid of projectIds) {
       try {
+        console.log('[cron video-health]', 'project', pid);
         const r = await upsertEmbeddedYoutubeFromProjectSiteFiles(supabase, pid);
         embedded_upserts.inserted += r.inserted || 0;
         embedded_upserts.skipped += r.skipped || 0;

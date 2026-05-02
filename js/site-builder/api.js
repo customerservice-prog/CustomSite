@@ -60,7 +60,10 @@ export async function api(path, options = {}) {
     const friendly = /schema cache|Could not find the table|relation .+ does not exist|PGRST205|PGRST204/i.test(raw)
       ? 'Database is not set up yet. In your Supabase project, run the SQL in the repo (supabase/migrations) or see docs/LAUNCH-PHASES.md.'
       : raw;
-    throw new Error(friendly);
+    const err = new Error(friendly);
+    err.body = j;
+    err.status = r.status;
+    throw err;
   }
   const ct = r.headers.get('content-type') || '';
   if (ct.includes('application/json')) {

@@ -915,6 +915,41 @@ function confirmDialog(title, text, onConfirm) {
   });
 }
 
+/** Live/published projects require header x-confirm-delete (server enforces). */
+function deleteAdminProjectFlow(projectId, onSuccess) {
+  void (async () => {
+    try {
+      await api(`/api/admin/entity/project/${projectId}`, { method: 'DELETE' });
+      toast('Project deleted', 'success');
+      if (typeof onSuccess === 'function') onSuccess();
+      return;
+    } catch (e) {
+      if (e?.body?.code !== 'LIVE_PROJECT_DELETE_REQUIRES_CONFIRMATION') {
+        toast(e.message, 'error');
+        return;
+      }
+      confirmDialog(
+        'Delete LIVE project — final step',
+        `${e.body.project?.name || 'Project'} (${e.body.project?.id || projectId}) is live or has been published. Deletion cascades related site data.\n\nOnly continue if this is intentional.`,
+        () => {
+          void (async () => {
+            try {
+              await api(`/api/admin/entity/project/${projectId}`, {
+                method: 'DELETE',
+                headers: { 'x-confirm-delete': 'yes-delete-live-project' },
+              });
+              toast('Project deleted', 'success');
+              if (typeof onSuccess === 'function') onSuccess();
+            } catch (e2) {
+              toast(e2.message, 'error');
+            }
+          })();
+        }
+      );
+    }
+  })();
+}
+
 let loadPromise;
 async function checkDbHealth() {
   const el = document.getElementById('admDbBanner');
@@ -2883,13 +2918,10 @@ async function renderProjectDetailPage(id) {
 
   panel.querySelector('#pdDel')?.addEventListener('click', () => {
     confirmDialog('Delete project', 'Removes the project and related data. Continue?', () => {
-      api(`/api/admin/entity/project/${id}`, { method: 'DELETE' })
-        .then(() => {
-          toast('Project deleted', 'success');
-          closeProjectDetail();
-          return loadAll();
-        })
-        .catch((e) => toast(e.message, 'error'));
+      deleteAdminProjectFlow(id, () => {
+        closeProjectDetail();
+        void loadAll();
+      });
     });
   });
 }
@@ -3614,12 +3646,7 @@ function renderProjects() {
     b.addEventListener('click', () => {
       const id = b.getAttribute('data-delp');
       confirmDialog('Delete project', 'Removes the project and related data. Continue?', () => {
-        api(`/api/admin/entity/project/${id}`, { method: 'DELETE' })
-          .then(() => {
-            toast('Project deleted', 'success');
-            return loadAll();
-          })
-          .catch((e) => toast(e.message, 'error'));
+        deleteAdminProjectFlow(id, () => void loadAll());
       });
     });
   });

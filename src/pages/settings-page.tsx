@@ -127,7 +127,9 @@ export function SettingsPage() {
   const [pendingInvites, setPendingInvites] = useState<{ id: string; email: string; role: UserRole }[]>([]);
 
   useEffect(() => {
-    if (tabSearchParam && TABS.some((x) => x.id === tabSearchParam)) setTab(tabSearchParam);
+    if (!tabSearchParam) return;
+    if (!TABS.some((x) => x.id === tabSearchParam)) return;
+    setTab((prev) => (prev === tabSearchParam ? prev : tabSearchParam));
   }, [tabSearchParam]);
 
   function setTabAndUrl(next: string) {

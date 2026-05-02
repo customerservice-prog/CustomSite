@@ -1,6 +1,13 @@
-import { formatRelativeShort } from '@/lib/format-relative';
+import { formatLastStudioTouch, formatRelativeShort } from '@/lib/format-relative';
 import { projectStatusForLifecycle } from '@/lib/project-lifecycle';
-import type { Client, Project, ProjectDeliveryFocus, ProjectLifecycleStage, SiteBuildArchetypeId } from '@/lib/types/entities';
+import type {
+  Client,
+  ClientSiteStatus,
+  Project,
+  ProjectDeliveryFocus,
+  ProjectLifecycleStage,
+  SiteBuildArchetypeId,
+} from '@/lib/types/entities';
 import type { ClientStatus } from '@/lib/statuses';
 import type { ProjectStatus } from '@/lib/statuses';
 
@@ -103,6 +110,21 @@ export function mapApiClientRowToClient(row: ApiClientRow, ownerId: string): Cli
   };
 }
 
+export type ApiProjectDashboard = {
+  last_studio_touch?: string | null;
+  site_file_count?: number;
+  html_page_count?: number;
+  video_count?: number;
+  effective_site_status?: string;
+  deliverable_progress_pct?: number;
+  thumbnail_url_resolved?: string | null;
+  live_url_resolved?: string | null;
+  focus_line?: string | null;
+  pageviews_total?: number;
+  pageviews_yesterday?: number;
+  live_visitors?: number;
+};
+
 export type ApiProjectRow = Record<string, unknown> & {
   id?: string;
   client_id?: string;
@@ -116,6 +138,12 @@ export type ApiProjectRow = Record<string, unknown> & {
   railway_url_production?: string | null;
   railway_project_id_production?: string | null;
   railway_service_id_production?: string | null;
+  published_at?: string | null;
+  launched_at?: string | null;
+  thumbnail_url?: string | null;
+  live_url?: string | null;
+  stage?: string | null;
+  dashboard?: ApiProjectDashboard | null;
 };
 
 function normalizeDomainHostFromRow(input: unknown): string | null {
@@ -151,14 +179,29 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
   const meta = parseSpaProjectMeta(internal);
   const websiteType = pick<string>(row, 'website_type', 'websiteType') ?? null;
 
-  const lifecycleStage =
-    meta.lifecycleStage && typeof meta.lifecycleStage === 'string'
-      ? meta.lifecycleStage
-      : serverProjectStatusToLifecycle(pick<string>(row, 'status', 'status'));
-  const status: ProjectStatus = projectStatusForLifecycle(lifecycleStage);
+  const rawStatus = pick<string>(row, 'status', 'status') || 'discovery';
+  const publishedAtDb = pick<string | null>(row, 'published_at', 'publishedAt') ?? null;
+  const launchedAtDb = pick<string | null>(row, 'launched_at', 'launchedAt') ?? null;
+  const dash = row.dashboard && typeof row.dashboard === 'object' ? (row.dashboard as ApiProjectDashboard) : null;
 
   const deliveryFocus: ProjectDeliveryFocus =
     meta.deliveryFocus === 'product_other' || websiteType === 'product_other' ? 'product_other' : 'client_site';
+
+  const dbSaysLive =
+    String(rawStatus || '').toLowerCase() === 'live' ||
+    Boolean(publishedAtDb && String(publishedAtDb).trim()) ||
+    Boolean(launchedAtDb && String(launchedAtDb).trim());
+
+  let lifecycleStage: ProjectLifecycleStage =
+    meta.lifecycleStage && typeof meta.lifecycleStage === 'string'
+      ? (meta.lifecycleStage as ProjectLifecycleStage)
+      : serverProjectStatusToLifecycle(rawStatus);
+
+  if (deliveryFocus === 'client_site' && dbSaysLive) {
+    lifecycleStage = 'post_launch';
+  }
+
+  const status: ProjectStatus = projectStatusForLifecycle(lifecycleStage);
 
   const createdAt = pick<string>(row, 'created_at', 'createdAt') || new Date().toISOString();
   const updatedAt = pick<string>(row, 'updated_at', 'updatedAt') || createdAt;
@@ -168,9 +211,67 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
   const railwayProductionUrl = pick<string>(row, 'railway_url_production', 'railwayUrlProduction') ?? null;
   const railwayServiceIdProduction =
     pick<string>(row, 'railway_service_id_production', 'railwayServiceIdProduction') ?? null;
-  const siteLiveUrl = customDomainHost
-    ? `https://${customDomainHost}`
-    : withHttpsBase(railwayProductionUrl ?? undefined);
+
+  const liveResolved = dash?.live_url_resolved?.trim();
+  const explicitLiveUrl = pick<string | null>(row, 'live_url', 'liveUrl')?.trim();
+  const siteLiveUrl =
+    liveResolved ||
+    withHttpsBase(explicitLiveUrl ?? undefined) ||
+    (customDomainHost ? `https://${customDomainHost}` : null) ||
+    withHttpsBase(railwayProductionUrl ?? undefined);
+
+  let siteStatus: ClientSiteStatus | undefined;
+  if (deliveryFocus === 'client_site') {
+    const eff = dash?.effective_site_status;
+    if (eff === 'live' || eff === 'review' || eff === 'draft') {
+      siteStatus = eff;
+    } else {
+      siteStatus =
+        lifecycleStage === 'post_launch' ? 'live' : lifecycleStage === 'review' ? 'review' : 'draft';
+    }
+  }
+
+  const htmlCount = dash?.html_page_count;
+  const sitePageCount =
+    deliveryFocus === 'client_site'
+      ? typeof htmlCount === 'number' && htmlCount > 0
+        ? htmlCount
+        : undefined
+      : undefined;
+
+  const siteVideoCount =
+    deliveryFocus === 'client_site' && typeof dash?.video_count === 'number' ? dash.video_count : undefined;
+
+  const fileCount = dash?.site_file_count ?? 0;
+  const lastTouch = dash?.last_studio_touch && String(dash.last_studio_touch).trim();
+  let lastSiteUpdateLabel: string | undefined;
+  if (deliveryFocus === 'client_site') {
+    if (lastTouch) lastSiteUpdateLabel = formatLastStudioTouch(lastTouch);
+    else if (fileCount > 0) lastSiteUpdateLabel = formatLastStudioTouch(updatedAt);
+    else if (lifecycleStage === 'post_launch') lastSiteUpdateLabel = 'Live on production';
+    else lastSiteUpdateLabel = 'No site files saved yet';
+  }
+
+  const thumbStored = pick<string | null>(row, 'thumbnail_url', 'thumbnailUrl')?.trim();
+  const thumbnailUrl = dash?.thumbnail_url_resolved?.trim() || thumbStored || null;
+
+  const deliverableProgressPercent =
+    typeof dash?.deliverable_progress_pct === 'number' ? dash.deliverable_progress_pct : undefined;
+
+  const studioFocusLine =
+    dash?.focus_line && String(dash.focus_line).trim() ? String(dash.focus_line).trim() : null;
+
+  const publishedAt =
+    publishedAtDb && String(publishedAtDb).trim() ? String(publishedAtDb).trim() : null;
+
+  const siteAnalyticsSnapshot =
+    deliveryFocus === 'client_site' && dash
+      ? {
+          total: Number(dash.pageviews_total ?? 0),
+          yesterday: Number(dash.pageviews_yesterday ?? 0),
+          live: Number(dash.live_visitors ?? 0),
+        }
+      : undefined;
 
   return {
     id,
@@ -188,25 +289,19 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
     siteBuildArchetype: meta.siteBuildArchetype ?? null,
     waitingOn: null,
     deliveryFocus,
-    siteStatus:
-      deliveryFocus === 'client_site'
-        ? lifecycleStage === 'post_launch'
-          ? 'live'
-          : lifecycleStage === 'review'
-            ? 'review'
-            : 'draft'
-        : undefined,
+    siteStatus,
     customDomainHost: customDomainHost || null,
     railwayProductionUrl: railwayProductionUrl?.trim() || null,
     railwayServiceIdProduction: railwayServiceIdProduction?.trim() || null,
     siteLiveUrl,
-    lastSiteUpdateLabel:
-      deliveryFocus === 'client_site'
-        ? lifecycleStage === 'post_launch'
-          ? 'Live on production'
-          : 'Not launched yet'
-        : undefined,
-    sitePageCount: deliveryFocus === 'client_site' ? 5 : undefined,
+    lastSiteUpdateLabel,
+    sitePageCount,
+    siteVideoCount,
+    publishedAt,
+    thumbnailUrl,
+    deliverableProgressPercent,
+    studioFocusLine,
+    siteAnalyticsSnapshot,
     clientPortalVisible: deliveryFocus === 'client_site' ? true : undefined,
     servicePackage: (meta.servicePackage as Project['servicePackage']) ?? null,
   };

@@ -738,7 +738,12 @@ export function SiteBuilderFoundationPage() {
     async (videoId: string) => {
       if (!projectId) return;
       if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) return;
-      const r = await deleteAdminProjectVideo(projectId, videoId);
+      let r = await deleteAdminProjectVideo(projectId, videoId);
+      if (!r.ok && r.code === 'LIVE_PROJECT_VIDEO_DELETE_REQUIRES_CONFIRMATION') {
+        const body = `This project is live or has been published.\n\nRemoving a catalog video can change what appears on the public site.\n\nContinue?`;
+        if (!window.confirm(body)) return;
+        r = await deleteAdminProjectVideo(projectId, videoId, { confirmLiveDestructive: true });
+      }
       if (!r.ok) {
         toast(r.error, 'error');
         return;

@@ -6,6 +6,11 @@ const multer = require('multer');
 const Stripe = require('stripe');
 
 const { getService } = require('../lib/supabase');
+const {
+  loadProjectWithClientLabel,
+  gateLiveDestructive,
+  CONFIRM_VALUE,
+} = require('../lib/destructiveOperationGuards');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const {
   sendWelcomeEmail,
@@ -341,6 +346,7 @@ router.post('/leads/:id/convert', async (req, res) => {
 
 router.get('/projects', async (_req, res) => {
   try {
+    const { attachDashboardToProjects } = require('../lib/projectDashboard');
     const supabase = getService();
     const { data: projects, error } = await supabase
       .from('projects')
@@ -352,10 +358,16 @@ router.get('/projects', async (_req, res) => {
       .select('id, email, full_name, company')
       .eq('role', 'client');
     const umap = Object.fromEntries((users || []).map((u) => [u.id, u]));
-    const enriched = (projects || []).map((p) => ({
+    const base = (projects || []).map((p) => ({
       ...p,
       client: umap[p.client_id] || null,
     }));
+    let enriched = base;
+    try {
+      enriched = await attachDashboardToProjects(supabase, base);
+    } catch (attEx) {
+      console.warn('[admin/projects] dashboard attach skipped', attEx.message);
+    }
     return res.json({ projects: enriched });
   } catch (e) {
     console.error(e);
@@ -492,6 +504,21 @@ router.delete('/entity/project/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     const supabase = getService();
+    const { project, clientLabel, error: le } = await loadProjectWithClientLabel(supabase, projectId);
+    if (le) return res.status(500).json({ error: le.message });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    if (
+      !gateLiveDestructive(req, res, project, clientLabel, {
+        code: 'LIVE_PROJECT_DELETE_REQUIRES_CONFIRMATION',
+        requiredValue: CONFIRM_VALUE.DELETE_LIVE_PROJECT,
+        message:
+          'This project is live or has been published. To delete it, send header x-confirm-delete: yes-delete-live-project after reviewing impact.',
+      })
+    ) {
+      return;
+    }
+
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
     if (error) return res.status(500).json({ error: error.message });
     await logActivity(supabase, req.profile.id, 'project.delete', 'project', projectId, null);

@@ -449,6 +449,20 @@ export function ProjectDetailPage() {
     };
   }, [projectId, project, projectTasks, projectContracts, projectInvoices, client?.name, store]);
 
+  const displayLiveHost = useMemo(() => {
+    if (!project?.siteLiveUrl) return '';
+    try {
+      return new URL(project.siteLiveUrl).hostname;
+    } catch {
+      return project.siteLiveUrl.replace(/^https?:\/\//i, '');
+    }
+  }, [project?.siteLiveUrl]);
+
+  const unreadFormCount = useMemo(
+    () => formSubmissions.filter((s) => !s.read_flag).length,
+    [formSubmissions],
+  );
+
   const homePreviewHtml = useMemo(() => {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return '';
     const k = siteProductionBundleKey(project.id, '/');
@@ -458,6 +472,9 @@ export function ProjectDetailPage() {
 
   const primaryFocusLine = useMemo(() => {
     if (!project) return null;
+    if (project.deliveryFocus === 'client_site' && project.studioFocusLine) {
+      return project.studioFocusLine;
+    }
     return primaryFocusFromTasks(projectTasks) ?? focusFallbackForPhase(lifecycleStageToOfferPhase(project.lifecycleStage));
   }, [project, projectTasks]);
 
@@ -495,6 +512,7 @@ export function ProjectDetailPage() {
 
   const stalledSite =
     project.deliveryFocus === 'client_site' &&
+    project.lifecycleStage !== 'post_launch' &&
     project.waitingOn !== 'client' &&
     ACTIVE_SITE_STAGES.includes(project.lifecycleStage) &&
     daysSinceIso(project.updatedAt) >= 6;
@@ -512,9 +530,30 @@ export function ProjectDetailPage() {
       title={project.name}
       meta={
         project.deliveryFocus === 'client_site' ? (
-          <span>
-            Website for <span className="font-semibold text-slate-900">{client?.company ?? 'Client'}</span> ·{' '}
-            {clientFacingStatus} · Last studio touch {project.lastSiteUpdateLabel ?? '—'}
+          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              Website for <span className="font-semibold text-slate-900">{client?.company ?? 'Client'}</span> ·{' '}
+              {clientFacingStatus} · Last studio touch {project.lastSiteUpdateLabel ?? '—'}
+            </span>
+            {project.siteLiveUrl ? (
+              <a
+                href={project.siteLiveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-semibold text-indigo-700 hover:text-indigo-900"
+              >
+                <span aria-hidden>🌐</span>
+                {displayLiveHost || 'Live site'} ↗
+              </a>
+            ) : null}
+            {projectId ? (
+              <Link
+                to={`/projects/${projectId}/site`}
+                className="text-xs font-semibold text-violet-800 hover:text-violet-950"
+              >
+                Site builder →
+              </Link>
+            ) : null}
           </span>
         ) : (
           <span>
@@ -679,6 +718,98 @@ export function ProjectDetailPage() {
     >
       {project.deliveryFocus === 'client_site' && (
         <>
+          {clientFacingStatus === 'Live' ? (
+          <section className="mb-8 rounded-3xl border border-emerald-200/70 bg-gradient-to-b from-emerald-50/90 via-white to-slate-50/30 px-6 py-8 shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.06] sm:px-8 sm:py-9">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/90">
+              Live project{displayLiveHost ? ` — ${displayLiveHost}` : ''}
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-slate-900/[0.06]">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Views today</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                  {import.meta.env.VITE_USE_REAL_API === '1'
+                    ? siteTrafficAnalyticsLoading && !siteTrafficAnalytics
+                      ? '…'
+                      : (siteTrafficAnalytics?.today_views ?? 0).toLocaleString()
+                    : '—'}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-slate-900/[0.06]">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Views yesterday</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                  {import.meta.env.VITE_USE_REAL_API === '1'
+                    ? siteTrafficAnalyticsLoading && !siteTrafficAnalytics
+                      ? '…'
+                      : (siteTrafficAnalytics?.yesterday_views ?? 0).toLocaleString()
+                    : '—'}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-slate-900/[0.06]">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Live right now</p>
+                <p
+                  className={cn(
+                    'mt-1 text-xl font-bold tabular-nums',
+                    liveVisitorsNow > 0 ? 'text-emerald-700' : 'text-slate-600',
+                  )}
+                >
+                  {import.meta.env.VITE_USE_REAL_API === '1' ? liveVisitorsNow.toLocaleString() : '—'}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-slate-900/[0.06]">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Videos on site</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                  {project.siteVideoCount != null ? project.siteVideoCount.toLocaleString() : '—'}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-slate-900/[0.06]">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Pages</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                  {sitePagesLoading ? '…' : siteHtmlPages.length > 0 ? siteHtmlPages.length : (project.sitePageCount ?? '—')}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-slate-900/[0.06]">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Launched</p>
+                <p className="mt-1 text-sm font-bold text-slate-900">
+                  {project.publishedAt
+                    ? new Date(project.publishedAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : project.lifecycleStage === 'post_launch'
+                      ? 'Production (see Hosting)'
+                      : '—'}
+                </p>
+              </div>
+            </div>
+            {project.siteLiveUrl ? (
+              <p className="mt-6">
+                <a
+                  href={project.siteLiveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm font-bold text-indigo-700 hover:text-indigo-900"
+                >
+                  {displayLiveHost || project.siteLiveUrl} ↗
+                </a>
+              </p>
+            ) : null}
+            <div className="mt-6 border-t border-emerald-200/60 pt-5">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800/90">Open issues</p>
+              <Link
+                to={`/projects/${project.id}?tab=tasks`}
+                className="mt-2 inline-flex text-sm font-semibold text-slate-800 hover:text-indigo-800"
+              >
+                {blockedCount + unreadFormCount > 0
+                  ? `${blockedCount + unreadFormCount} item${blockedCount + unreadFormCount === 1 ? '' : 's'} to review →`
+                  : 'No blocked tasks or unread form replies — tasks →'}
+              </Link>
+            </div>
+            {project.studioFocusLine ? (
+              <p className="mt-5 text-sm font-medium leading-relaxed text-slate-600">{project.studioFocusLine}</p>
+            ) : null}
+          </section>
+          ) : (
           <section className="mb-8 rounded-3xl bg-gradient-to-b from-white via-violet-50/[0.35] to-slate-50/30 px-6 py-8 shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.06] sm:px-8 sm:py-9">
             <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700/90">Current focus</p>
             <p className="mt-3 text-[13px] font-medium text-slate-500">Right now we&apos;re working on</p>
@@ -691,7 +822,7 @@ export function ProjectDetailPage() {
             <p className="mt-8 text-[11px] font-bold uppercase tracking-wide text-slate-400">Next</p>
             <p className="mt-1.5 text-[15px] font-semibold leading-snug tracking-tight text-slate-800">{nextLines.join(' → ')}</p>
           </section>
-
+          )}
           <section className="mb-8 rounded-3xl bg-white px-6 py-7 shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.06] sm:px-8">
             <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700/90">Offer & process</p>
             <p className="mt-2 max-w-3xl text-sm font-medium leading-relaxed text-slate-800">{OFFER_STATEMENT}</p>

@@ -13,3 +13,31 @@ export function formatRelativeShort(iso: string): string {
   if (d < 14) return `${d}d ago`;
   return new Date(iso).toLocaleDateString();
 }
+
+/** Readable “last saved” for studio headers (same calendar day → “Today at …”). */
+export function formatLastStudioTouch(iso: string): string {
+  const d = new Date(iso);
+  const t = d.getTime();
+  if (Number.isNaN(t)) return '—';
+
+  const now = new Date();
+  const startOf = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  if (startOf(d) === startOf(now)) {
+    return `Today at ${d.toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    })}`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (startOf(d) === startOf(yesterday)) {
+    return `Yesterday at ${d.toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    })}`;
+  }
+
+  return formatRelativeShort(iso);
+}

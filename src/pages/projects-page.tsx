@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, Eye, LayoutGrid, Plus, Radio, Search, Table2 } from 'lucide-react';
+import { Calendar, Clapperboard, Eye, FileText, LayoutGrid, Pencil, Plus, Radio, Search, Table2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
 import { PageHeader } from '@/components/ui/page-header';
@@ -31,36 +31,62 @@ import { RecommendedNextAction, type NextActionItem } from '@/components/workspa
 import { useTasks } from '@/store/hooks';
 import { fetchLiveAnalytics, fetchProjectAnalytics } from '@/lib/project-analytics-api';
 
+import type { Project } from '@/lib/types/entities';
+
 function formatSiteTrafficLine(p: {
-  deliveryFocus: string;
-  id: string;
+  project: Project;
   analyticsByProject: Record<string, { total: number; yesterday: number }>;
   liveByProject: Record<string, number>;
 }) {
-  if (import.meta.env.VITE_USE_REAL_API !== '1' || p.deliveryFocus !== 'client_site') return null;
-  const a = p.analyticsByProject[p.id];
-  const live = p.liveByProject[p.id] ?? 0;
-  const total = a?.total ?? 0;
-  const yest = a?.yesterday ?? 0;
+  if (import.meta.env.VITE_USE_REAL_API !== '1' || p.project.deliveryFocus !== 'client_site') return null;
+  const pr = p.project;
+  const a = p.analyticsByProject[pr.id];
+  const snap = pr.siteAnalyticsSnapshot;
+  const total = a?.total ?? snap?.total ?? 0;
+  const yest = a?.yesterday ?? snap?.yesterday ?? 0;
+  const live = p.liveByProject[pr.id] ?? snap?.live ?? 0;
+  const hasAnalytics = total > 0 || yest > 0 || live > 0;
+
+  if (hasAnalytics) {
+    return (
+      <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] font-medium tabular-nums text-slate-500">
+        <span className="inline-flex items-center gap-1">
+          <Eye className="h-3 w-3 text-slate-400" aria-hidden />
+          {(total ?? 0).toLocaleString()} total
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <Calendar className="h-3 w-3 text-slate-400" aria-hidden />
+          {(yest ?? 0).toLocaleString()} yesterday
+        </span>
+        <span
+          className={cn(
+            'inline-flex items-center gap-1',
+            live > 0 ? 'text-emerald-700' : 'text-slate-400',
+            live > 0 && 'animate-pulse',
+          )}
+        >
+          <Radio className="h-3 w-3" aria-hidden />
+          {live.toLocaleString()} live
+        </span>
+      </p>
+    );
+  }
+
   return (
-    <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] font-medium tabular-nums text-slate-500">
+    <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] font-medium tabular-nums text-slate-600">
       <span className="inline-flex items-center gap-1">
-        <Eye className="h-3 w-3 text-slate-400" aria-hidden />
-        {(total ?? 0).toLocaleString()} total
+        <FileText className="h-3 w-3 text-slate-400" aria-hidden />
+        {pr.sitePageCount != null ? `${pr.sitePageCount} pages` : '— pages'}
       </span>
+      <span className="inline-flex items-center gap-1 text-slate-400">|</span>
       <span className="inline-flex items-center gap-1">
-        <Calendar className="h-3 w-3 text-slate-400" aria-hidden />
-        {(yest ?? 0).toLocaleString()} yesterday
+        <Clapperboard className="h-3 w-3 text-slate-400" aria-hidden />
+        {pr.siteVideoCount != null ? `${pr.siteVideoCount} videos` : '— videos'}
       </span>
-      <span
-        className={cn(
-          'inline-flex items-center gap-1',
-          live > 0 ? 'text-emerald-700' : 'text-slate-400',
-          live > 0 && 'animate-pulse',
-        )}
-      >
-        <Radio className="h-3 w-3" aria-hidden />
-        {live.toLocaleString()} live
+      <span className="inline-flex items-center gap-1 text-slate-400">|</span>
+      <span className="inline-flex items-center gap-1">
+        <Pencil className="h-3 w-3 text-slate-400" aria-hidden />
+        Last saved: {pr.lastSiteUpdateLabel ?? '—'}
       </span>
     </p>
   );
@@ -368,9 +394,16 @@ export function ProjectsPage() {
           <TableBody>
             {rows.map((p) => {
               const client = clientMap[p.clientId];
-              const owner = users[p.ownerId];
-              const pct = p.budget > 0 ? Math.min(100, Math.round((p.spent / p.budget) * 100)) : 0;
+              const budgetPct = p.budget > 0 ? Math.min(100, Math.round((p.spent / p.budget) * 100)) : 0;
+              const deliverPct =
+                p.deliveryFocus === 'client_site' && typeof p.deliverableProgressPercent === 'number'
+                  ? p.deliverableProgressPercent
+                  : budgetPct;
+              const isClientLive =
+                p.deliveryFocus === 'client_site' &&
+                (p.lifecycleStage === 'post_launch' || p.siteStatus === 'live');
               const hl = healthByProjectId[p.id] ?? 'healthy';
+              const owner = users[p.ownerId];
               return (
                 <TableRow
                   key={p.id}
@@ -422,8 +455,7 @@ export function ProjectsPage() {
                   <TableCell className="max-w-[200px] text-[11px] text-slate-600">
                     {p.deliveryFocus === 'client_site'
                       ? (formatSiteTrafficLine({
-                          deliveryFocus: p.deliveryFocus,
-                          id: p.id,
+                          project: p,
                           analyticsByProject,
                           liveByProject,
                         }) ?? (
@@ -441,10 +473,23 @@ export function ProjectsPage() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums font-medium">{formatCurrency(p.budget)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <ProgressBar value={pct} max={100} />
-                      <span className="text-[11px] font-semibold text-slate-500">{pct}%</span>
-                    </div>
+                    {isClientLive ? (
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="success" className="w-fit text-[10px] font-bold uppercase tracking-wide">
+                          Live
+                        </Badge>
+                        {p.publishedAt ? (
+                          <span className="text-[10px] leading-tight text-slate-500">
+                            Launched {new Date(p.publishedAt).toLocaleDateString()}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <>
+                        <ProgressBar value={deliverPct} max={100} />
+                        <span className="text-[11px] font-semibold text-slate-500">{deliverPct}%</span>
+                      </>
+                    )}
                   </TableCell>
                   <TableCell className="text-slate-500">{p.due}</TableCell>
                   <TableCell className="text-slate-600">{owner?.name}</TableCell>
@@ -476,11 +521,24 @@ export function ProjectsPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map((p) => {
             const client = clientMap[p.clientId];
-            const pct = p.budget > 0 ? Math.min(100, Math.round((p.spent / p.budget) * 100)) : 0;
+            const budgetPct = p.budget > 0 ? Math.min(100, Math.round((p.spent / p.budget) * 100)) : 0;
+            const deliverPct =
+              p.deliveryFocus === 'client_site' && typeof p.deliverableProgressPercent === 'number'
+                ? p.deliverableProgressPercent
+                : budgetPct;
+            const isClientLive =
+              p.deliveryFocus === 'client_site' &&
+              (p.lifecycleStage === 'post_launch' || p.siteStatus === 'live');
             const hl = healthByProjectId[p.id] ?? 'healthy';
             return (
               <Link key={p.id} to={`/projects/${p.id}`} className="block">
-                <Card className="h-full border-slate-200/80 p-4 transition hover:border-indigo-200 hover:shadow-md">
+                <Card className="relative h-full overflow-hidden border-slate-200/80 p-4 transition hover:border-indigo-200 hover:shadow-md">
+                  {p.thumbnailUrl ? (
+                    <div className="pointer-events-none absolute inset-0 opacity-[0.2]">
+                      <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    </div>
+                  ) : null}
+                  <div className="relative">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-bold text-slate-900">{p.name}</h3>
                     <span className="flex shrink-0 flex-col items-end gap-1">
@@ -495,23 +553,36 @@ export function ProjectsPage() {
                     ${p.spent.toLocaleString()} <span className="font-normal text-slate-400">/</span> ${p.budget.toLocaleString()}
                   </p>
                   <div className="mt-2">
-                    <ProgressBar value={pct} max={100} />
+                    {isClientLive ? (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="success" className="text-[10px] font-bold uppercase">
+                          Live
+                        </Badge>
+                        {p.publishedAt ? (
+                          <span className="text-[10px] text-slate-500">
+                            {new Date(p.publishedAt).toLocaleDateString()}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <ProgressBar value={deliverPct} max={100} />
+                    )}
                   </div>
                   <p className="mt-3 text-xs font-medium text-slate-400">Due {p.due}</p>
                   {p.deliveryFocus === 'client_site' ? (
                     <div className="mt-2 border-t border-slate-100/90 pt-2">
                       {formatSiteTrafficLine({
-                        deliveryFocus: p.deliveryFocus,
-                        id: p.id,
+                        project: p,
                         analyticsByProject,
                         liveByProject,
                       }) ?? (
                         <p className="text-[10px] text-slate-400">
-                          {import.meta.env.VITE_USE_REAL_API === '1' ? 'Loading…' : 'Site traffic uses real API mode.'}
+                          {import.meta.env.VITE_USE_REAL_API !== '1' ? 'Site traffic uses real API mode.' : ''}
                         </p>
                       )}
                     </div>
                   ) : null}
+                  </div>
                 </Card>
               </Link>
             );

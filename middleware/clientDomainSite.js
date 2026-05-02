@@ -128,11 +128,17 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
   } else {
     variantSet = customDomainLookupVariants(hostKey);
   }
+  let projSelect =
+    'id, site_settings, custom_domain, launched_at, name, live_url';
   let { data: rows, error } = await supabase
     .from('projects')
-    .select('id, site_settings, custom_domain, launched_at, name')
+    .select(projSelect)
     .in('custom_domain', variantSet)
     .limit(10);
+  if (error && /\blive_url\b/.test(String(error.message))) {
+    projSelect = 'id, site_settings, custom_domain, launched_at, name';
+    ({ data: rows, error } = await supabase.from('projects').select(projSelect).in('custom_domain', variantSet).limit(10));
+  }
   if (error && /site_settings/.test(String(error.message))) {
     ({ data: rows, error } = await supabase
       .from('projects')
@@ -157,14 +163,52 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
     /** LIKE metachars — strip so filter stays narrow + safe */
     const lit = want ? want.replace(/[%_\\]/g, '') : '';
     if (lit && lit.length >= 3 && /^[\w.-]+$/i.test(lit)) {
-      const { data: loose, error: e2 } = await supabase
+      const looseSel =
+        'id, site_settings, custom_domain, launched_at, name, live_url';
+      let { data: loose, error: e2 } = await supabase
         .from('projects')
-        .select('id, site_settings, custom_domain, launched_at, name')
+        .select(looseSel)
         .not('custom_domain', 'is', null)
         .ilike('custom_domain', `%${lit}%`)
         .limit(24);
+      if (e2 && /\blive_url\b/.test(String(e2.message))) {
+        ({
+          data: loose,
+          error: e2,
+        } = await supabase
+          .from('projects')
+          .select('id, site_settings, custom_domain, launched_at, name')
+          .not('custom_domain', 'is', null)
+          .ilike('custom_domain', `%${lit}%`)
+          .limit(24));
+      }
       if (!e2 && loose && loose.length) {
         row0 = loose.find((r) => normalizeCustomDomainHost(r.custom_domain) === want);
+      }
+    }
+    if (!row0 && want && /^[\w.-]+$/i.test(want)) {
+      const prefixes = [
+        `https://${want}`,
+        `http://${want}`,
+        `https://www.${want}`,
+        `http://www.${want}`,
+      ];
+      for (const pre of prefixes) {
+        const r = await supabase
+          .from('projects')
+          .select('id, site_settings, custom_domain, launched_at, name, live_url')
+          .not('live_url', 'is', null)
+          .ilike('live_url', `${pre}%`)
+          .limit(8);
+        if (r.error) {
+          if (/\blive_url\b/.test(String(r.error.message))) break;
+          continue;
+        }
+        const hit = (r.data || []).find((x) => normalizeCustomDomainHost(x.live_url) === want);
+        if (hit) {
+          row0 = hit;
+          break;
+        }
       }
     }
   }

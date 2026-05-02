@@ -1,4 +1,5 @@
 import { adminFetchJson, type AdminJsonResult } from '@/lib/admin-api';
+import { LIVE_DESTRUCT_CONFIRM, LIVE_DESTRUCT_CONFIRM_HEADER } from '@/lib/live-destructive-confirm';
 
 export type ProjectVideoRow = {
   id: string;
@@ -49,12 +50,17 @@ export function addAdminProjectVideo(
   });
 }
 
-export function deleteAdminProjectVideo(
   projectId: string,
-  videoId: string
+  videoId: string,
+  opts?: { confirmLiveDestructive?: boolean }
 ): Promise<AdminJsonResult<{ success?: boolean }>> {
+  const headers: HeadersInit = {};
+  if (opts?.confirmLiveDestructive) {
+    headers[LIVE_DESTRUCT_CONFIRM_HEADER] = LIVE_DESTRUCT_CONFIRM.DELETE_LIVE_PROJECT_VIDEO;
+  }
   return adminFetchJson(`/api/admin/projects/${encodeURIComponent(projectId)}/videos/${encodeURIComponent(videoId)}`, {
     method: 'DELETE',
+    headers,
   });
 }
 

@@ -124,6 +124,18 @@ export type Project = {
   lastSiteUpdateLabel?: string;
   /** Pages in scope for this site (marketing-style count). */
   sitePageCount?: number;
+  /** YouTube / catalog count from project_videos (when dashboard is synced). */
+  siteVideoCount?: number;
+  /** First production publish (from DB `published_at`) — analytics / “launched” copy. */
+  publishedAt?: string | null;
+  /** Card / list thumbnail URL (stored or inferred from first video). */
+  thumbnailUrl?: string | null;
+  /** Builder-style completion % derived from files, domain, publish, analytics. */
+  deliverableProgressPercent?: number;
+  /** One-line studio focus from dashboard (live / deploy copy). */
+  studioFocusLine?: string | null;
+  /** Hydrated from GET /projects list `dashboard` — used when per-project analytics fetch is still loading. */
+  siteAnalyticsSnapshot?: { total: number; yesterday: number; live: number };
   /** When true, this project’s preview and files show in the client portal. */
   clientPortalVisible?: boolean;
   /** Productized package sold to the client (conversion program tier). */

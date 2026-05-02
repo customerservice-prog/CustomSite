@@ -833,6 +833,31 @@ function buildTree() {
   renderTabs();
 }
 
+async function apiDeleteSiteFile(path, { confirmedLive = false } = {}) {
+  const headers = confirmedLive ? { 'x-confirm-delete': 'yes-delete-live-site-file' } : {};
+  return api(`/api/admin/projects/${projectId}/site/file?path=${encodeURIComponent(path)}`, {
+    method: 'DELETE',
+    headers,
+  });
+}
+
+/** @returns {Promise<boolean>} false if user cancelled a required live-site confirmation */
+async function deleteSiteFileWithLiveGuard(path) {
+  try {
+    await apiDeleteSiteFile(path);
+    return true;
+  } catch (e) {
+    if (e?.body?.code !== 'LIVE_SITE_FILE_DELETE_REQUIRES_CONFIRMATION') throw e;
+    const ok = await showConfirm(
+      'Delete file on live/published project',
+      `${e.body?.project?.name || 'Project'} · ${path}\n\nThis can break the public site. Continue?`,
+    );
+    if (!ok) return false;
+    await apiDeleteSiteFile(path, { confirmedLive: true });
+    return true;
+  }
+}
+
 let ctxPath = null;
 function showCtx(x, y, path) {
   ctxPath = path;
@@ -866,7 +891,8 @@ async function deleteFilePath(path) {
   if (!ok) return;
   if (!projectId) return;
   try {
-    await api(`/api/admin/projects/${projectId}/site/file?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+    const deleted = await deleteSiteFileWithLiveGuard(path);
+    if (!deleted) return;
     mem.delete(path);
     openTabs = openTabs.filter((p) => p !== path);
     if (activePath === path) void activatePath(openTabs[0] || null, false);
@@ -984,7 +1010,15 @@ async function renamePath(path) {
         content_encoding: cur.encoding === 'base64' ? 'base64' : 'utf8',
       }),
     });
-    await api(`/api/admin/projects/${projectId}/site/file?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+    const removedOld = await deleteSiteFileWithLiveGuard(path);
+    if (!removedOld) {
+      toast(
+        'New path saved, but the old file could not be removed (live-site delete not confirmed). Remove the duplicate in the file list.',
+        'error',
+      );
+      await loadFileList();
+      return;
+    }
     mem.delete(path);
     removeModel(path);
     mem.set(np, { content: cur.content, encoding: cur.encoding });
