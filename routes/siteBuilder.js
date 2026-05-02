@@ -9,10 +9,11 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { addServeBundle, createZipBuffer } = require('../lib/bundleStaticSite');
 const { testToken, createCustomDomainForService } = require('../lib/railwayGql');
 const { provisionStaticDeploy } = require('../lib/railwayStaticDeploy');
+const { normalizeCustomDomainHost } = require('../lib/normalizeCustomDomainHost');
 
 const router = express.Router();
-const MAX_FILE_BYTES = 2 * 1024 * 1024;
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 /** Matches `src/lib/data/demo-ids.ts` — friendly default name for seeded demo project id. */
 const DEMO_BUILDER_PROJECT_ID = '00000000-0000-4000-8000-000000000002';
@@ -49,11 +50,12 @@ const upload = multer({
   limits: { fileSize: MAX_IMAGE_BYTES },
 });
 
-const STORAGE_BUCKET = 'project-files';
+/** Public image bucket (Supabase Dashboard → Storage). Override with CUSTOMSITE_STORAGE_BUCKET. */
+const STORAGE_BUCKET = String(process.env.CUSTOMSITE_STORAGE_BUCKET || 'project-assets').trim() || 'project-assets';
 
 async function uploadProjectImagePublicUrl(supabase, projectId, buffer, originalname, mimetype) {
   const safeBase = String(originalname || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
-  const storagePath = `project-assets/${String(projectId).trim()}/${Date.now().toString(36)}_${safeBase}`;
+  const storagePath = `${String(projectId).trim()}/${Date.now()}-${safeBase}`;
   const up = await supabase.storage.from(STORAGE_BUCKET).upload(storagePath, buffer, {
     contentType: mimetype || 'application/octet-stream',
     upsert: true,
@@ -88,18 +90,6 @@ function safeSelectSiteFiles() {
 }
 
 const PROJECT_STATUS_ALLOWED = ['discovery', 'design', 'development', 'review', 'live'];
-
-/** Strip protocol/path; return null if empty after trim. */
-function normalizeCustomDomainHost(v) {
-  if (v == null) return null;
-  let s = String(v).trim().toLowerCase();
-  if (!s) return null;
-  s = s.replace(/^https?:\/\//, '');
-  s = s.split('/')[0] || '';
-  s = s.split(':')[0] || '';
-  s = s.replace(/\.$/, '').trim();
-  return s || null;
-}
 
 function hostingPatchFromBody(b) {
   const patch = {};
@@ -606,11 +596,19 @@ router.post('/projects/:projectId/upload', upload.single('file'), async (req, re
     }
     const supabase = getService();
     const { storagePath, publicUrl } = await uploadProjectImagePublicUrl(supabase, projectId, buffer, originalname, mimetype);
-    return res.json({ success: true, path: storagePath, publicUrl, bucket: STORAGE_BUCKET });
+    return res.json({
+      success: true,
+      path: storagePath,
+      publicUrl,
+      url: publicUrl,
+      bucket: STORAGE_BUCKET,
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({
-      error: e.message || 'Upload failed — ensure bucket "project-files" exists and Storage policies allow service role uploads + public reads.',
+      error:
+        e.message ||
+        `Upload failed — create a public Storage bucket "${STORAGE_BUCKET}" (or set CUSTOMSITE_STORAGE_BUCKET env). Service role uploads + public read URLs.`,
     });
   }
 });
@@ -619,7 +617,7 @@ router.get('/projects/:projectId/site/media', async (req, res) => {
   try {
     const { projectId } = req.params;
     const supabase = getService();
-    const prefix = `project-assets/${String(projectId).trim()}`;
+    const prefix = `${String(projectId).trim()}`;
     const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(prefix, { limit: 500 });
     if (error) return res.status(500).json({ error: error.message });
     const items = [];
@@ -846,6 +844,10 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     const environment = body.environment === 'production' ? 'production' : 'staging';
     const teamId = body.teamId || process.env.RAILWAY_TEAM_ID;
     const token = body.token || process.env.RAILWAY_API_TOKEN;
+    const railwayEnv = {
+      RAILWAY_API_TOKEN: Boolean(String(process.env.RAILWAY_API_TOKEN || '').trim()),
+      RAILWAY_TEAM_ID: Boolean(String(process.env.RAILWAY_TEAM_ID || '').trim()),
+    };
     const supabase = getService();
     const { data: proj, error: perr } = await supabase
       .from('projects')
@@ -901,6 +903,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
         partial: true,
         environment,
         steps,
+        railwayEnv,
         message:
           'No RAILWAY_API_TOKEN. Configure it on the server, then redeploy. Below is a downloadable bundle you can deploy with Railway CLI (railway link && railway up) or by connecting a GitHub repo.',
         zipBytes: zipBuffer.length,
@@ -910,7 +913,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     const t0 = await testToken(token);
     if (!t0.ok) {
       push('token', 'Verify Railway API token', 'error', t0.error);
-      return res.status(400).json({ ok: false, steps, error: t0.error });
+      return res.status(400).json({ ok: false, steps, error: t0.error, railwayEnv });
     }
     push('token', 'Verify Railway API token', 'done', t0.me && t0.me.email ? t0.me.email : 'ok');
     const existingRailwayProjectId =
@@ -929,6 +932,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
         steps,
         error:
           'RAILWAY_TEAM_ID required for the first deploy (new Railway project). After the first successful deploy, IDs are saved and teamId is only needed for new projects.',
+        railwayEnv,
       });
     }
     const rname = (proj.name || 'site') + (environment === 'production' ? ' (prod)' : ' (staging)');
@@ -974,6 +978,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
         manualUrl: `/api/admin/projects/${projectId}/site/export`,
         railwayProjectId: deployed.railwayProjectId,
         serviceId: deployed.serviceId,
+        railwayEnv,
       });
     }
 
@@ -1024,6 +1029,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
       projectName: rname,
       deployedReused: Boolean(deployed.reused),
       projectStatus: environment === 'production' ? 'live' : undefined,
+      railwayEnv,
       note:
         environment === 'production'
           ? `${

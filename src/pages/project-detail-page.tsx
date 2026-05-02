@@ -29,13 +29,11 @@ import {
   offerStepNumber,
   primaryFocusFromTasks,
 } from '@/lib/project-service-narrative';
-import { AGENCY_SITE_PAGES } from '@/lib/site-production/defaults';
 import { pageStatusDisplay } from '@/lib/site-production/page-status-labels';
 import { compileSectionsToPreviewHtml } from '@/lib/site-production/compile-preview-html';
 import { formatCurrency } from '@/lib/format-display';
 import { liveBuildNextLines } from '@/lib/live-build-status';
 import { buildProjectLiveActivityFeed } from '@/lib/project-live-feed';
-import { microProgressForPage } from '@/lib/site-production/page-micro-progress';
 import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
 import { siteProductionBundleKey, useSiteProductionStore } from '@/store/useSiteProductionStore';
 import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
@@ -48,6 +46,7 @@ import { cn } from '@/lib/utils';
 import { normalizeCustomDomainInput, patchAdminProject, railwayHostnameFromUrl, fetchAdminProject } from '@/lib/admin-project-hosting';
 import type { ApiProjectRow } from '@/lib/agency-api-map';
 import { fetchProjectFormSubmissions, patchFormSubmissionReadFlag, type FormSubmissionRow } from '@/lib/project-form-submissions-api';
+import { siteBuilderListFiles } from '@/lib/site-builder/site-builder-site-api';
 import {
   CONVERSION_WORKSPACE_LABEL,
   DELIVERY_ADVANTAGE,
@@ -116,6 +115,10 @@ export function ProjectDetailPage() {
   const [hostingSaveBusy, setHostingSaveBusy] = useState(false);
   const [formSubmissions, setFormSubmissions] = useState<FormSubmissionRow[]>([]);
   const [formSubmissionsLoading, setFormSubmissionsLoading] = useState(false);
+  const [siteHtmlPages, setSiteHtmlPages] = useState<Array<{ path: string; updated_at?: string }>>([]);
+  const [sitePagesLoading, setSitePagesLoading] = useState(false);
+  /** Paths explicitly marked draft in site_settings.page_publish; default is published. */
+  const [pagePublishByPath, setPagePublishByPath] = useState<Record<string, 'draft' | 'published'>>({});
 
   const client = useAppStore(useShallow((s) => (project ? s.clients[project.clientId] : undefined)));
   const owner = project ? users[project.ownerId] : undefined;
@@ -181,6 +184,12 @@ export function ProjectDetailPage() {
         const gid = o.ga4_measurement_id ?? o.ga4MeasurementId;
         setGa4WorkspaceDraft(typeof gid === 'string' ? gid.trim() : '');
       } else setGa4WorkspaceDraft('');
+      const rawDom = p.custom_domain ?? p.customDomain;
+      if (typeof rawDom === 'string' && rawDom.trim()) {
+        setHostDomainDraft(normalizeCustomDomainInput(rawDom));
+      }
+      const svc = p.railway_service_id_production ?? p.railwayServiceIdProduction;
+      if (typeof svc === 'string') setHostSvcDraft(svc);
     })();
     return () => {
       cancelled = true;
@@ -206,6 +215,40 @@ export function ProjectDetailPage() {
       cancelled = true;
     };
   }, [projectId, project?.deliveryFocus, toast]);
+
+  useEffect(() => {
+    if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return;
+    let cancelled = false;
+    setSitePagesLoading(true);
+    void (async () => {
+      const [list, pr] = await Promise.all([siteBuilderListFiles(projectId), fetchAdminProject(projectId)]);
+      if (cancelled) return;
+      setSitePagesLoading(false);
+      const rows = list.ok && Array.isArray(list.data.files) ? list.data.files : [];
+      const html = rows.filter(
+        (row: { path?: string }) => typeof row?.path === 'string' && row.path.toLowerCase().endsWith('.html')
+      ) as Array<{ path: string; updated_at?: string }>;
+      setSiteHtmlPages([...html].sort((a, b) => a.path.localeCompare(b.path)));
+      const settingsRaw =
+        pr.ok && pr.data?.project ? ((pr.data.project as Record<string, unknown>).site_settings ?? null) : null;
+      const settings =
+        settingsRaw && typeof settingsRaw === 'object' && !Array.isArray(settingsRaw) ? settingsRaw : null;
+      const pp = settings ? (settings as Record<string, unknown>).page_publish : null;
+      if (pp && typeof pp === 'object' && !Array.isArray(pp)) {
+        const next: Record<string, 'draft' | 'published'> = {};
+        for (const [k, v] of Object.entries(pp)) {
+          if (v === 'draft' || v === 'published') next[k] = v;
+        }
+        setPagePublishByPath(next);
+      } else {
+        setPagePublishByPath({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, project?.deliveryFocus, project?.updatedAt]);
 
   const reloadFormSubmissions = useCallback(async () => {
     if (!projectId) return;
@@ -235,6 +278,23 @@ export function ProjectDetailPage() {
       );
     },
     [projectId, toast]
+  );
+
+  const setHtmlPagePublishState = useCallback(
+    async (filePath: string, state: 'draft' | 'published') => {
+      if (!projectId || import.meta.env.VITE_USE_REAL_API !== '1') return;
+      const nextPublish = { ...pagePublishByPath, [filePath]: state };
+      const r = await patchAdminProject(projectId, {
+        site_settings: { page_publish: nextPublish },
+      });
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      setPagePublishByPath(nextPublish);
+      toast(state === 'published' ? 'Page marked published.' : 'Page marked draft.', 'success');
+    },
+    [projectId, pagePublishByPath, toast]
   );
 
   const saveProjectHosting = useCallback(async () => {
@@ -676,6 +736,12 @@ export function ProjectDetailPage() {
                 <p className="mt-1 text-xs leading-relaxed text-slate-600">
                   Stored on the project via <code className="text-slate-800">PATCH /api/admin/projects/:id</code>. Production deploy requires a saved domain.
                 </p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                  <span className="font-semibold text-slate-800">Traffic</span>: When a visitor opens your saved hostname, this app matches{' '}
+                  <code className="rounded bg-white px-1 text-slate-800">Host</code> to <code className="rounded bg-white px-1 text-slate-800">custom_domain</code> and serves HTML/CSS/JS from{' '}
+                  <code className="rounded bg-white px-1 text-slate-800">site_files</code> (not the agency admin). At your DNS provider, point the apex with an{' '}
+                  <strong>A record</strong> to the IP from <strong>Railway → Networking</strong>, or use a <strong>CNAME</strong> for <code className="text-slate-800">www</code> to your Railway hostname.
+                </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <div>
                     <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-host-domain">
@@ -799,34 +865,61 @@ export function ProjectDetailPage() {
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Pages in this site</p>
+                <p className="mt-1 text-[11px] text-slate-500">From live <code className="text-slate-700">site_files</code>. New pages default to published; mark draft to hide from “complete” in this list only (URLs still work until you remove the file).</p>
                 <div className="mt-2 overflow-hidden rounded-xl bg-white ring-1 ring-slate-900/[0.06]">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50/90 text-[11px] font-bold uppercase tracking-wide text-slate-500">
                       <tr>
-                        <th className="px-3 py-2">Page</th>
-                        <th className="px-3 py-2">Progress</th>
+                        <th className="px-3 py-2">File</th>
                         <th className="px-3 py-2">Status</th>
-                        <th className="px-3 py-2 text-right">Updated</th>
+                        <th className="px-3 py-2 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/90 bg-white">
-                      {AGENCY_SITE_PAGES.map((pg) => {
-                        const mp = microProgressForPage(pg);
-                        return (
-                          <tr key={pg.path} className="transition-colors duration-150 hover:bg-slate-50/60">
-                            <td className="px-3 py-2 font-medium text-slate-900">{pg.name}</td>
-                            <td className="max-w-[140px] px-3 py-2">
-                              <div className="flex items-center gap-2">
-                                <ProgressBar value={mp.pct} max={100} className="h-2 min-w-[72px] flex-1" />
-                                <span className="shrink-0 tabular-nums text-xs font-semibold text-slate-700">{mp.pct}%</span>
-                              </div>
-                              <p className="mt-0.5 text-[10px] text-slate-500">{mp.hint}</p>
-                            </td>
-                            <td className="px-3 py-2 text-slate-700">{pageStatusDisplay(pg.publishState)}</td>
-                            <td className="px-3 py-2 text-right text-slate-500">{pg.updatedLabel}</td>
-                          </tr>
-                        );
-                      })}
+                      {sitePagesLoading ? (
+                        <tr>
+                          <td colSpan={3} className="px-3 py-6 text-center text-slate-500">
+                            Loading pages…
+                          </td>
+                        </tr>
+                      ) : siteHtmlPages.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-3 py-6 text-center text-slate-500">
+                            No HTML files on the server yet — open Site builder and save <code className="text-slate-700">index.html</code> or add pages.
+                          </td>
+                        </tr>
+                      ) : (
+                        siteHtmlPages.map((row) => {
+                          const state = pagePublishByPath[row.path] === 'draft' ? 'draft' : 'published';
+                          return (
+                            <tr key={row.path} className="transition-colors duration-150 hover:bg-slate-50/60">
+                              <td className="px-3 py-2 font-mono text-xs font-medium text-slate-900">{row.path}</td>
+                              <td className="px-3 py-2 text-slate-700">{pageStatusDisplay(state === 'draft' ? 'draft' : 'published')}</td>
+                              <td className="px-3 py-2 text-right">
+                                {state === 'draft' ? (
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="h-8 text-xs"
+                                    onClick={() => void setHtmlPagePublishState(row.path, 'published')}
+                                  >
+                                    Mark published
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="h-8 text-xs text-slate-600"
+                                    onClick={() => void setHtmlPagePublishState(row.path, 'draft')}
+                                  >
+                                    Mark draft
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>

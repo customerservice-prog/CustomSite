@@ -21,6 +21,11 @@ const { devModeApiStub } = require('./middleware/devModeApiStub');
 const { router: paymentsRoutes, handleWebhook } = require('./routes/payments');
 const configPublicRoutes = require('./routes/configPublic');
 const formsPublicRoutes = require('./routes/formsPublic');
+const {
+  projectVideosPublicRouter,
+  projectVideosAdminRouter,
+  projectVideosCronRouter,
+} = require('./routes/projectVideos');
 const { isSupabaseConfigured } = require('./lib/supabase');
 const { isDevAuthEnabled } = require('./lib/devAuth');
 const { isPlatformHostname } = require('./lib/customsitePlatformHosts');
@@ -110,8 +115,11 @@ app.post(
   handleWebhook
 );
 
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+/** Custom domains → client `site_files` before admin stub, APIs, marketing static, or `/` admin redirect. */
+app.use(clientDomainSiteMiddleware);
 
 app.use(devModeApiStub);
 
@@ -122,7 +130,10 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', siteBuilderRoutes);
+app.use('/api/admin', projectVideosAdminRouter);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api', projectVideosCronRouter);
+app.use('/api', projectVideosPublicRouter);
 app.use('/api', configPublicRoutes);
 
 /** Stub for legacy or future clients that POST to a same-origin broadcast relay. Realtime uses Supabase channels in-app. */
@@ -261,9 +272,6 @@ app.use(async (req, res, next) => {
   }
   return next();
 });
-
-/** Client-owned domains → `site_files` for matching `projects.custom_domain` (after LOCAL_SEO, before marketing static). */
-app.use(clientDomainSiteMiddleware);
 
 /** React admin SPA (Vite build → dist-admin/). Dev: `npm run admin:dev` → open /admin-spa.html on Vite port. */
 const ADMIN_SPA_HTML = path.resolve(__dirname, 'dist-admin', 'admin-spa.html');

@@ -1,7 +1,9 @@
 'use strict';
 
+const crypto = require('crypto');
 const multer = require('multer');
 const { isSupabaseConfigured } = require('../lib/supabase');
+const { extractYoutubeId, fetchYoutubeOembed, probeYoutubeAvailability } = require('../lib/youtubeUtils');
 
 const demoMemUpload = multer({
   storage: multer.memoryStorage(),
@@ -290,6 +292,9 @@ const devProjectHostingById = {};
 /** In-memory uploads for GET /site/media demo (Supabase off). */
 const devProjectMediaStore = {};
 
+/** RAM-backed project_videos rows when DB is off. */
+const devProjectVideosStore = {};
+
 /**
  * When Supabase is not configured, serve API responses for the signed-in dev user
  * so the admin and site builder UIs load. Site files and preview use RAM.
@@ -302,6 +307,10 @@ function devModeApiStub(req, res, next) {
   const p = pathName(req);
   const m = req.method;
 
+  if (m === 'GET' && /^\/api\/public\/projects\/[^/]+\/videos$/.test(p)) {
+    return res.json({ videos: [] });
+  }
+
   if (m === 'POST' && /^\/api\/admin\/projects\/[^/]+\/upload$/.test(p)) {
     return demoMemUpload(req, res, (err) => {
       if (err) return res.status(400).json({ error: String(err.message || err) });
@@ -310,11 +319,11 @@ function devModeApiStub(req, res, next) {
       if (!f) return res.status(400).json({ error: 'file required' });
       const safe = String(f.originalname || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
       const fileName = `${Date.now()}-${safe}`;
-      const storagePath = `project-assets/${projectId}/${fileName}`;
+      const storagePath = `${projectId}/${fileName}`;
       const fakeUrl = `https://dev-media.local/${encodeURIComponent(projectId)}/${encodeURIComponent(fileName)}`;
       if (!devProjectMediaStore[projectId]) devProjectMediaStore[projectId] = [];
       devProjectMediaStore[projectId].push({ name: fileName, url: fakeUrl, path: storagePath });
-      res.json({ success: true, path: storagePath, publicUrl: fakeUrl, bucket: 'project-files' });
+      res.json({ success: true, path: storagePath, publicUrl: fakeUrl, url: fakeUrl, bucket: 'project-assets' });
     });
   }
 
@@ -564,6 +573,144 @@ function devModeApiStub(req, res, next) {
   }
   if (m === 'PATCH' && /^\/api\/admin\/projects\/[^/]+\/form-submissions\/[^/]+\/read$/.test(p)) {
     return res.json({ success: true });
+  }
+
+  /** Dev-backed project videos (requires dev Bearer token; same shapes as `/routes/projectVideos.js`). */
+  const devVidList = /^\/api\/admin\/projects\/([^/]+)\/videos$/;
+  const devVidCheck = /^\/api\/admin\/projects\/([^/]+)\/videos\/check$/;
+  const devVidCache = /^\/api\/admin\/projects\/([^/]+)\/videos\/cache-thumbnails$/;
+  const devVidReorder = /^\/api\/admin\/projects\/([^/]+)\/videos\/reorder$/;
+  const devVidOne = /^\/api\/admin\/projects\/([^/]+)\/videos\/([^/]+)$/;
+  const devVideoRowId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  function devEnsVideos(pid) {
+    if (!devProjectVideosStore[pid]) devProjectVideosStore[pid] = [];
+    return devProjectVideosStore[pid];
+  }
+
+  if (m === 'GET' && devVidList.test(p)) {
+    const projectId = p.match(devVidList)[1];
+    const rows = [...devEnsVideos(projectId)].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    return res.json({ videos: rows });
+  }
+  if (m === 'POST' && devVidCheck.test(p)) {
+    const projectId = p.match(devVidCheck)[1];
+    const list = devEnsVideos(projectId);
+    let active = 0;
+    let unavailable = 0;
+    return (async () => {
+      const nowIso = new Date().toISOString();
+      for (const row of list) {
+        const probe = await probeYoutubeAvailability(row.youtube_id);
+        if (probe.ok) {
+          active += 1;
+          const meta = probe.meta || {};
+          if (typeof meta.title === 'string' && meta.title.trim()) row.title = meta.title.trim();
+          if (typeof meta.thumbnail_url === 'string') row.thumbnail_url = meta.thumbnail_url;
+          if (typeof meta.author_name === 'string') row.author_name = meta.author_name;
+          row.status = 'active';
+        } else {
+          unavailable += 1;
+          row.status = 'unavailable';
+        }
+        row.last_checked = nowIso;
+      }
+      return res.json({
+        checked: list.length,
+        active,
+        unavailable,
+        summary: `${list.length} checked — ${active} active, ${unavailable} unavailable`,
+      });
+    })();
+  }
+  if (m === 'POST' && devVidCache.test(p)) {
+    const projectId = p.match(devVidCache)[1];
+    const list = devEnsVideos(projectId);
+    const need = list.filter((r) => !r.cached_thumbnail && r.thumbnail_url);
+    let cached = 0;
+    let failed = 0;
+    const nowIso = new Date().toISOString();
+    for (const row of need) {
+      try {
+        row.cached_thumbnail = `${row.thumbnail_url}${String(row.thumbnail_url).includes('?') ? '&' : '?'}cs_dev_cache=1`;
+        row.last_checked = nowIso;
+        cached += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    return res.json({ queued: need.length, cached, failed });
+  }
+  if (m === 'PUT' && devVidReorder.test(p)) {
+    const projectId = p.match(devVidReorder)[1];
+    const ids = req.body && req.body.ordered_ids;
+    if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) {
+      return res.status(400).json({ error: 'ordered_ids: string[] required' });
+    }
+    ids.forEach((id, i) => {
+      const row = devEnsVideos(projectId).find((r) => r.id === id);
+      if (row) row.sort_order = i;
+    });
+    return res.json({ success: true });
+  }
+  if (m === 'PUT' && devVidOne.test(p)) {
+    const [, projectId, videoId] = p.match(devVidOne);
+    if (devVideoRowId.test(videoId)) {
+      const row = devEnsVideos(projectId).find((r) => r.id === videoId);
+      if (!row) return res.status(404).json({ error: 'Not found' });
+      const b = req.body || {};
+      ['title', 'description', 'author_name', 'thumbnail_url', 'cached_thumbnail', 'duration', 'view_count', 'status', 'sort_order'].forEach(
+        (k) => {
+          if (b[k] !== undefined) row[k] = b[k];
+        }
+      );
+      return res.json({ video: row });
+    }
+  }
+  if (m === 'DELETE' && devVidOne.test(p)) {
+    const [, projectId, videoId] = p.match(devVidOne);
+    if (devVideoRowId.test(videoId)) {
+      const list = devEnsVideos(projectId);
+      const ix = list.findIndex((r) => r.id === videoId);
+      if (ix < 0) return res.status(404).json({ error: 'Not found' });
+      list.splice(ix, 1);
+      return res.json({ success: true });
+    }
+  }
+  if (m === 'POST' && devVidList.test(p)) {
+    const projectId = p.match(devVidList)[1];
+    const yt = extractYoutubeId(String((req.body && (req.body.youtube_url || req.body.youtube_id)) || ''));
+    if (!yt) {
+      return res.status(400).json({ error: 'youtube_url or youtube_id required (paste a standard YouTube link)' });
+    }
+    const list = devEnsVideos(projectId);
+    if (list.some((r) => r.youtube_id === yt)) {
+      return res.status(409).json({ error: 'That video is already on this project' });
+    }
+    return (async () => {
+      const meta = await fetchYoutubeOembed(yt);
+      const row = {
+        id: crypto.randomUUID(),
+        project_id: projectId,
+        youtube_id: yt,
+        title: meta?.title || `YouTube ${yt}`,
+        description: req.body && req.body.description != null ? String(req.body.description) : null,
+        author_name: meta?.author_name || null,
+        thumbnail_url: meta?.thumbnail_url || null,
+        cached_thumbnail: null,
+        duration: null,
+        view_count: null,
+        status: 'active',
+        last_checked: new Date().toISOString(),
+        sort_order: list.length,
+        created_at: new Date().toISOString(),
+      };
+      list.push(row);
+      if (row.thumbnail_url) {
+        row.cached_thumbnail = `${row.thumbnail_url}${String(row.thumbnail_url).includes('?') ? '&' : '?'}cs_dev_cache=1`;
+      }
+      return res.status(201).json({ video: row });
+    })();
   }
 
   if (p.startsWith('/api/admin/')) {

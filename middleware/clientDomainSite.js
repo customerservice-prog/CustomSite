@@ -2,6 +2,7 @@
 
 const path = require('path');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
+const { normalizeCustomDomainHost } = require('../lib/normalizeCustomDomainHost');
 const {
   isPlatformHostname,
   stripPort,
@@ -90,16 +91,30 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
     return hit.projectId ? { projectId: hit.projectId, siteSettings: hit.siteSettings } : null;
   }
   const variants = customDomainLookupVariants(hostKey);
-  let { data: rows, error } = await supabase.from('projects').select('id, site_settings').in('custom_domain', variants).limit(1);
+  let { data: rows, error } = await supabase.from('projects').select('id, site_settings, custom_domain').in('custom_domain', variants).limit(5);
   if (error && /site_settings/.test(String(error.message))) {
-    ({ data: rows, error } = await supabase.from('projects').select('id').in('custom_domain', variants).limit(1));
+    ({ data: rows, error } = await supabase.from('projects').select('id, custom_domain').in('custom_domain', variants).limit(5));
   }
   if (error) {
     console.error('[clientDomainSite] project lookup', error.message);
     projectByHostCache.set(hostKey, { projectId: null, siteSettings: null, expires: now + 15000 });
     return null;
   }
-  const row0 = rows && rows[0];
+  let row0 = rows && rows[0];
+  if (!row0) {
+    const want = normalizeCustomDomainHost(hostKey);
+    if (want) {
+      const { data: loose, error: e2 } = await supabase
+        .from('projects')
+        .select('id, site_settings, custom_domain')
+        .not('custom_domain', 'is', null)
+        .ilike('custom_domain', `%${want}%`)
+        .limit(40);
+      if (!e2 && loose && loose.length) {
+        row0 = loose.find((r) => normalizeCustomDomainHost(r.custom_domain) === want);
+      }
+    }
+  }
   const id = row0 && row0.id ? String(row0.id) : null;
   const siteSettings = row0 && row0.site_settings !== undefined ? row0.site_settings : null;
   projectByHostCache.set(hostKey, { projectId: id, siteSettings, expires: now + CACHE_TTL_MS });

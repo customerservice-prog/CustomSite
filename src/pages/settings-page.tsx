@@ -346,7 +346,7 @@ export function SettingsPage() {
               </Select>
             </div>
             {inviteOpen ? (
-              <Modal open title="Invite team member" onClose={() => setInviteOpen(false)}>
+              <Modal open={inviteOpen} title="Invite team member" onClose={() => setInviteOpen(false)}>
                 <div className="space-y-3">
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="inv-email">

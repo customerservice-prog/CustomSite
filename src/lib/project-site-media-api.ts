@@ -7,7 +7,7 @@ export function fetchProjectSiteMedia(projectId: string): Promise<AdminJsonResul
 }
 
 export function uploadProjectSiteImage(projectId: string, file: File): Promise<
-  AdminJsonResult<{ success?: boolean; publicUrl?: string; path?: string }>
+  AdminJsonResult<{ success?: boolean; publicUrl?: string; url?: string; path?: string; bucket?: string }>
 > {
   const fd = new FormData();
   fd.append('file', file);

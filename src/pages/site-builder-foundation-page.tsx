@@ -6,14 +6,17 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  GripVertical,
   ImagePlus,
   LayoutTemplate,
   Loader2,
   Maximize2,
   Plus,
+  RefreshCw,
   Rocket,
   Sparkles,
   Trash2,
+  Video,
 } from 'lucide-react';
 import { Button, buttonClassName } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +64,15 @@ import { useAppStore } from '@/store/useAppStore';
 import { useShallow } from 'zustand/shallow';
 import type { ApiProjectRow } from '@/lib/agency-api-map';
 import { fetchProjectSiteMedia, uploadProjectSiteImage, type SiteMediaItem } from '@/lib/project-site-media-api';
+import {
+  addAdminProjectVideo,
+  cacheAdminProjectVideoThumbnails,
+  checkAdminProjectVideos,
+  deleteAdminProjectVideo,
+  fetchAdminProjectVideos,
+  reorderAdminProjectVideos,
+  type ProjectVideoRow,
+} from '@/lib/project-videos-api';
 
 const BASE_FILES = ['index.html', 'styles.css', 'script.js'] as const;
 
@@ -158,6 +170,15 @@ export function SiteBuilderFoundationPage() {
   const [mediaItems, setMediaItems] = useState<SiteMediaItem[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
   const [mediaUploadBusy, setMediaUploadBusy] = useState(false);
+  const [asideTab, setAsideTab] = useState<'files' | 'media' | 'videos'>('files');
+  const [projectVideos, setProjectVideos] = useState<ProjectVideoRow[]>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
+  const [videosBusy, setVideosBusy] = useState(false);
+  const [videoCheckBusy, setVideoCheckBusy] = useState(false);
+  const [videoThumbWarmBusy, setVideoThumbWarmBusy] = useState(false);
+  const [youtubePaste, setYoutubePaste] = useState('');
+  const [previewYoutubeId, setPreviewYoutubeId] = useState<string | null>(null);
+  const [dragVideoId, setDragVideoId] = useState<string | null>(null);
   const [hostingSaving, setHostingSaving] = useState(false);
   const [deployBusy, setDeployBusy] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
@@ -479,14 +500,17 @@ export function SiteBuilderFoundationPage() {
         return;
       }
       const partial = Boolean((r.data as { partial?: boolean })?.partial);
+      const re = (r.data as { railwayEnv?: { RAILWAY_API_TOKEN?: boolean; RAILWAY_TEAM_ID?: boolean } })?.railwayEnv;
       const ref = await fetchAdminProject(projectId);
       if (ref.ok && ref.data?.project) mergeProjectRowFromServer(ref.data.project as ApiProjectRow);
-      toast(
-        partial
-          ? 'Deploy finished with manual steps — check ZIP / Railway token and team ID on the server.'
-          : 'Production deploy request completed.',
-        partial ? 'info' : 'success'
-      );
+      let msg = partial
+        ? 'Deploy finished with manual steps — check ZIP / Railway token and team ID on the server.'
+        : 'Production deploy request completed.';
+      if (partial && re && !re.RAILWAY_API_TOKEN) {
+        msg =
+          'Bundle ready — set RAILWAY_API_TOKEN in Railway (service variables) to enable automatic redeploy; until then use the ZIP export link from the deploy response.';
+      }
+      toast(msg, partial ? 'info' : 'success');
     } finally {
       setDeployBusy(false);
     }
@@ -508,6 +532,143 @@ export function SiteBuilderFoundationPage() {
     }
   }, [projectId, toast]);
 
+  const refreshProjectVideos = useCallback(async () => {
+    if (!projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) return;
+    setVideosLoading(true);
+    try {
+      const r = await fetchAdminProjectVideos(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        setProjectVideos([]);
+        return;
+      }
+      const list = Array.isArray(r.data.videos) ? r.data.videos : [];
+      list.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      setProjectVideos(list);
+    } finally {
+      setVideosLoading(false);
+    }
+  }, [projectId, toast]);
+
+  const runCheckProjectVideos = useCallback(async () => {
+    if (!projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in with the live API to check YouTube availability.', 'error');
+      return;
+    }
+    setVideoCheckBusy(true);
+    try {
+      const r = await checkAdminProjectVideos(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      toast(
+        r.data.summary || `${r.data.checked} videos checked`,
+        r.data.unavailable ? 'info' : 'success'
+      );
+      await refreshProjectVideos();
+    } finally {
+      setVideoCheckBusy(false);
+    }
+  }, [projectId, refreshProjectVideos, toast]);
+
+  const addYoutubeFromPaste = useCallback(async () => {
+    if (!projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in with the live API to add videos.', 'error');
+      return;
+    }
+    const raw = youtubePaste.trim();
+    if (!raw) {
+      toast('Paste a YouTube link or video ID.', 'error');
+      return;
+    }
+    setVideosBusy(true);
+    try {
+      const r = await addAdminProjectVideo(projectId, { youtube_url: raw });
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      setYoutubePaste('');
+      toast('Video added — metadata loaded from YouTube.', 'success');
+      await refreshProjectVideos();
+    } finally {
+      setVideosBusy(false);
+    }
+  }, [projectId, youtubePaste, refreshProjectVideos, toast]);
+
+  const warmVideoThumbnailsNow = useCallback(async () => {
+    if (!projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in with the live API.', 'error');
+      return;
+    }
+    setVideoThumbWarmBusy(true);
+    try {
+      const r = await cacheAdminProjectVideoThumbnails(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      toast(
+        `Thumbnail backup: cached ${r.data.cached ?? 0}, failed ${r.data.failed ?? 0} (queued ${r.data.queued ?? 0}).`,
+        'info'
+      );
+      await refreshProjectVideos();
+    } finally {
+      setVideoThumbWarmBusy(false);
+    }
+  }, [projectId, refreshProjectVideos, toast]);
+
+  const deleteProjectVideoRow = useCallback(
+    async (videoId: string) => {
+      if (!projectId) return;
+      if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) return;
+      const r = await deleteAdminProjectVideo(projectId, videoId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      toast('Video removed from project catalog.', 'success');
+      await refreshProjectVideos();
+    },
+    [projectId, refreshProjectVideos, toast]
+  );
+
+  const applyVideoReorderDrop = useCallback(
+    async (targetId: string) => {
+      if (!projectId || !dragVideoId || dragVideoId === targetId) return;
+      const ids = projectVideos.map((v) => v.id);
+      const from = ids.indexOf(dragVideoId);
+      const to = ids.indexOf(targetId);
+      if (from < 0 || to < 0) return;
+      const nextIds = [...ids];
+      nextIds.splice(from, 1);
+      nextIds.splice(to, 0, dragVideoId);
+      const byId = new Map(projectVideos.map((x) => [x.id, x]));
+      let nextRows: ProjectVideoRow[];
+      try {
+        nextRows = nextIds.map((id, i) => {
+          const row = byId.get(id);
+          if (!row) throw new Error('missing');
+          return { ...row, sort_order: i };
+        });
+      } catch {
+        return;
+      }
+      setProjectVideos(nextRows);
+      const r = await reorderAdminProjectVideos(projectId, nextIds);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        await refreshProjectVideos();
+      }
+    },
+    [projectId, dragVideoId, projectVideos, refreshProjectVideos, toast]
+  );
+
   const onMediaFileSelected = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -524,7 +685,8 @@ export function SiteBuilderFoundationPage() {
           toast(r.error, 'error');
           return;
         }
-        if (!r.data?.publicUrl) {
+        const url = r.data?.publicUrl ?? r.data?.url;
+        if (!url?.trim()) {
           toast('Upload finished but no public URL returned.', 'error');
           return;
         }
@@ -544,6 +706,12 @@ export function SiteBuilderFoundationPage() {
   }, [projectId, site.files.length, refreshSiteMedia]);
 
   useEffect(() => {
+    if (asideTab !== 'videos') return;
+    if (!projectId || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) return;
+    void refreshProjectVideos();
+  }, [asideTab, projectId, refreshProjectVideos]);
+
+  useEffect(() => {
     if (!publishPanelOpen || !projectId) return;
     if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) return;
     let cancelled = false;
@@ -552,6 +720,11 @@ export function SiteBuilderFoundationPage() {
       if (cancelled || !r.ok || !r.data?.project) return;
       const p = r.data.project as Record<string, unknown>;
       setGa4MeasurementDraft(readGa4FromProjectPayload(p));
+      const domRaw = typeof p.custom_domain === 'string' ? p.custom_domain : typeof p.customDomain === 'string' ? p.customDomain : '';
+      if (domRaw.trim()) setDomainDraft(normalizeCustomDomainInput(domRaw));
+      const svc = p.railway_service_id_production ?? p.railwayServiceIdProduction;
+      if (typeof svc === 'string') setRailwayServiceDraft(svc);
+      mergeProjectRowFromServer(r.data.project as ApiProjectRow);
     })();
     return () => {
       cancelled = true;
@@ -1231,92 +1404,282 @@ export function SiteBuilderFoundationPage() {
           <div className={cn('flex min-h-0 flex-1 flex-col', !visualEditorMode && 'lg:flex-row')}>
             {!visualEditorMode ? (
               <>
-                <aside className="shrink-0 border-b border-white/10 p-2 lg:w-52 lg:border-b-0 lg:border-r">
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Files</p>
-                  <ul className="space-y-0.5">
-                    {fileTabs.map((name) => {
-                      const exists = site.files.some((f) => f.name === name);
-                      const active = activeFileId === name;
-                      return (
-                        <li key={name}>
-                          <button
-                            type="button"
-                            disabled={!exists}
-                            onClick={() => void selectFile(name)}
-                            className={cn(
-                              'w-full truncate rounded px-2 py-1.5 text-left text-xs transition-colors',
-                              active ? 'bg-white/10 font-semibold text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200',
-                              !exists && 'cursor-not-allowed opacity-40'
-                            )}
-                          >
-                            {name}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <input ref={mediaInputRef} type="file" accept="image/*,.svg" className="hidden" onChange={onMediaFileSelected} aria-hidden />
-                  {serverWritesConfigured && signedInForApi ? (
-                    <div className="mt-3 border-t border-white/10 pt-3">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Media</p>
-                        <button
-                          type="button"
-                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-violet-300 hover:bg-white/5 hover:text-violet-200"
-                          disabled={mediaLoading}
-                          onClick={() => void refreshSiteMedia()}
-                        >
-                          Refresh
-                        </button>
-                      </div>
-                      <Button
+                <aside className="flex max-h-[min(70vh,640px)] min-h-0 shrink-0 flex-col border-b border-white/10 p-2 lg:w-56 lg:border-b-0 lg:border-r">
+                  <div className="mb-2 flex shrink-0 gap-0.5 rounded-lg bg-black/40 p-0.5">
+                    {(['files', 'media', 'videos'] as const).map((tab) => (
+                      <button
+                        key={tab}
                         type="button"
-                        variant="secondary"
-                        className="mb-2 h-7 w-full gap-1 border-white/10 bg-white/10 px-2 text-[10px] text-white hover:bg-white/15"
-                        disabled={mediaUploadBusy || mediaLoading}
-                        onClick={() => mediaInputRef.current?.click()}
-                      >
-                        {mediaUploadBusy ? (
-                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                        ) : (
-                          <ImagePlus className="h-3 w-3" aria-hidden />
+                        onClick={() => setAsideTab(tab)}
+                        className={cn(
+                          'flex-1 rounded-md px-1 py-1.5 text-[9px] font-semibold uppercase tracking-wide transition',
+                          asideTab === tab ? 'bg-white/15 text-white' : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
                         )}
-                        Upload image
-                      </Button>
-                      {mediaLoading ? (
-                        <div className="flex items-center gap-1 py-2 text-[10px] text-zinc-500">
-                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                          Loading…
-                        </div>
-                      ) : mediaItems.length === 0 ? (
-                        <p className="text-[10px] leading-relaxed text-zinc-600">
-                          Public URLs from project storage — paste into HTML or CSS.
-                        </p>
-                      ) : (
-                        <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-0.5">
-                          {mediaItems.map((item) => (
-                            <li key={item.path} className="flex gap-2 rounded-md bg-white/[0.04] p-1.5 ring-1 ring-white/10">
-                              <img src={item.url} alt="" className="h-10 w-10 shrink-0 rounded object-cover" loading="lazy" />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-[10px] text-zinc-500">{item.name}</p>
-                                <button
-                                  type="button"
-                                  className="mt-0.5 text-[10px] font-semibold text-emerald-300 hover:text-emerald-200"
-                                  onClick={() => void copyPublishUrl('Public URL', item.url)}
-                                >
-                                  Copy URL
-                                </button>
-                              </div>
+                      >
+                        {tab === 'files' ? 'Files' : tab === 'media' ? 'Media' : 'Videos'}
+                      </button>
+                    ))}
+                  </div>
+                  <input ref={mediaInputRef} type="file" accept="image/*,.svg" className="hidden" onChange={onMediaFileSelected} aria-hidden />
+
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    {asideTab === 'files' ? (
+                      <ul className="space-y-0.5">
+                        {fileTabs.map((name) => {
+                          const exists = site.files.some((f) => f.name === name);
+                          const active = activeFileId === name;
+                          return (
+                            <li key={name}>
+                              <button
+                                type="button"
+                                disabled={!exists}
+                                onClick={() => void selectFile(name)}
+                                className={cn(
+                                  'w-full truncate rounded px-2 py-1.5 text-left text-xs transition-colors',
+                                  active ? 'bg-white/10 font-semibold text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200',
+                                  !exists && 'cursor-not-allowed opacity-40'
+                                )}
+                              >
+                                {name}
+                              </button>
                             </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ) : hasFiles ? (
-                    <p className="mt-3 border-t border-white/10 pt-3 text-[10px] leading-relaxed text-zinc-600">
-                      Sign in with the live API to upload images and copy public URLs.
-                    </p>
-                  ) : null}
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+
+                    {asideTab === 'media' ? (
+                      <div className="space-y-2">
+                        {serverWritesConfigured && signedInForApi ? (
+                          <>
+                            <div className="flex flex-wrap items-center justify-between gap-1">
+                              <button
+                                type="button"
+                                className="rounded px-1.5 py-0.5 text-[10px] font-medium text-violet-300 hover:bg-white/5 hover:text-violet-200"
+                                disabled={mediaLoading}
+                                onClick={() => void refreshSiteMedia()}
+                              >
+                                Refresh media
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-300/90 hover:bg-white/5 hover:text-amber-200"
+                                disabled={videoCheckBusy}
+                                onClick={() => {
+                                  void runCheckProjectVideos();
+                                }}
+                              >
+                                {videoCheckBusy ? (
+                                  <>
+                                    <Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden />
+                                    Checking…
+                                  </>
+                                ) : (
+                                  'Check videos'
+                                )}
+                              </button>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="h-7 w-full gap-1 border-white/10 bg-white/10 px-2 text-[10px] text-white hover:bg-white/15"
+                              disabled={mediaUploadBusy || mediaLoading}
+                              onClick={() => mediaInputRef.current?.click()}
+                            >
+                              {mediaUploadBusy ? (
+                                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                              ) : (
+                                <ImagePlus className="h-3 w-3" aria-hidden />
+                              )}
+                              Upload image
+                            </Button>
+                            <p className="text-[9px] leading-snug text-zinc-600">
+                              Public URLs use Storage bucket <span className="font-mono text-zinc-500">project-assets</span>. Use{' '}
+                              <span className="text-zinc-500">Check videos</span> for YouTube health.
+                            </p>
+                            {mediaLoading ? (
+                              <div className="flex items-center gap-1 py-2 text-[10px] text-zinc-500">
+                                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                Loading…
+                              </div>
+                            ) : mediaItems.length === 0 ? (
+                              <p className="text-[10px] leading-relaxed text-zinc-600">No uploads yet.</p>
+                            ) : (
+                              <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-0.5">
+                                {mediaItems.map((item) => (
+                                  <li key={item.path} className="flex gap-2 rounded-md bg-white/[0.04] p-1.5 ring-1 ring-white/10">
+                                    <img src={item.url} alt="" className="h-10 w-10 shrink-0 rounded object-cover" loading="lazy" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-[10px] text-zinc-500">{item.name}</p>
+                                      <button
+                                        type="button"
+                                        className="mt-0.5 text-[10px] font-semibold text-emerald-300 hover:text-emerald-200"
+                                        onClick={() => void copyPublishUrl('Public URL', item.url)}
+                                      >
+                                        Copy URL
+                                      </button>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </>
+                        ) : hasFiles ? (
+                          <p className="text-[10px] leading-relaxed text-zinc-600">
+                            Sign in with the live API to upload images and manage YouTube backup.
+                          </p>
+                        ) : (
+                          <p className="text-[10px] leading-relaxed text-zinc-600">Add site files first, then upload media.</p>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {asideTab === 'videos' ? (
+                      <div className="space-y-2">
+                        {serverWritesConfigured && signedInForApi ? (
+                          <>
+                            <Input
+                              value={youtubePaste}
+                              onChange={(e) => setYoutubePaste(e.target.value)}
+                              placeholder="YouTube URL or ID"
+                              className="h-8 border-white/15 bg-black/40 text-[11px] text-white placeholder:text-zinc-600"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void addYoutubeFromPaste();
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="h-8 w-full gap-1 border-white/15 bg-white/10 text-[10px] font-semibold text-white hover:bg-white/15"
+                              disabled={videosBusy}
+                              onClick={() => void addYoutubeFromPaste()}
+                            >
+                              {videosBusy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Plus className="h-3 w-3" aria-hidden />}
+                              Add video
+                            </Button>
+                            <div className="flex flex-wrap gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="h-7 shrink-0 gap-1 px-2 text-[10px] text-zinc-300 hover:bg-white/5 hover:text-white"
+                                disabled={videoCheckBusy}
+                                onClick={() => void runCheckProjectVideos()}
+                              >
+                                {videoCheckBusy ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                ) : (
+                                  <RefreshCw className="h-3 w-3" aria-hidden />
+                                )}
+                                Refresh all
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="h-7 shrink-0 gap-1 px-2 text-[10px] text-zinc-400 hover:bg-white/5 hover:text-white"
+                                disabled={videoThumbWarmBusy}
+                                onClick={() => void warmVideoThumbnailsNow()}
+                              >
+                                {videoThumbWarmBusy ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                ) : (
+                                  <ImagePlus className="h-3 w-3" aria-hidden />
+                                )}
+                                Warm thumbs
+                              </Button>
+                            </div>
+                            <p className="text-[9px] leading-snug text-zinc-600">
+                              Drag rows to reorder. Public endpoint:{' '}
+                              <code className="break-all rounded bg-black/40 px-0.5 text-[8px] text-zinc-500">
+                                GET /api/public/projects/&lt;projectId&gt;/videos
+                              </code>
+                            </p>
+                            {videosLoading ? (
+                              <div className="flex items-center gap-1 py-2 text-[10px] text-zinc-500">
+                                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                Loading…
+                              </div>
+                            ) : projectVideos.length === 0 ? (
+                              <p className="flex items-start gap-1.5 text-[10px] text-zinc-600">
+                                <Video className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+                                No saved videos. Add links here to back up thumbnails in Storage when YouTube changes or removes clips.
+                              </p>
+                            ) : (
+                              <ul className="space-y-1.5 pb-2">
+                                {projectVideos.map((v) => {
+                                  const thumb = v.cached_thumbnail || v.thumbnail_url || '';
+                                  const ok = String(v.status || 'active').toLowerCase() === 'active';
+                                  const lc = v.last_checked ? new Date(v.last_checked).toLocaleString() : '—';
+                                  return (
+                                    <li key={v.id}>
+                                      <div
+                                        draggable
+                                        onDragStart={() => setDragVideoId(v.id)}
+                                        onDragEnd={() => setDragVideoId(null)}
+                                        onDragOver={(ev) => ev.preventDefault()}
+                                        onDrop={(ev) => {
+                                          ev.preventDefault();
+                                          void applyVideoReorderDrop(v.id);
+                                        }}
+                                        role="presentation"
+                                        className={cn(
+                                          'flex cursor-grab gap-1.5 rounded-md bg-white/[0.04] p-1.5 ring-1 ring-white/10 active:cursor-grabbing',
+                                          dragVideoId === v.id && 'opacity-75 ring-violet-500/40'
+                                        )}
+                                      >
+                                        <GripVertical className="mt-1 h-4 w-4 shrink-0 text-zinc-600" aria-hidden />
+                                        <button
+                                          type="button"
+                                          className="min-w-0 flex-1 text-left"
+                                          onClick={() => setPreviewYoutubeId(v.youtube_id)}
+                                        >
+                                          <div className="flex gap-2">
+                                            <img
+                                              src={thumb || '/assets/video-unavailable.png'}
+                                              alt=""
+                                              className="h-11 w-[4.85rem] shrink-0 rounded object-cover"
+                                              loading="lazy"
+                                              onError={(e) => {
+                                                e.currentTarget.src = '/assets/video-unavailable.png';
+                                              }}
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                              <span
+                                                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"
+                                                style={{ backgroundColor: ok ? '#22c55e' : '#ef4444' }}
+                                                title={ok ? 'Active on YouTube' : 'Unavailable or removed'}
+                                                aria-hidden
+                                              />
+                                              <p className="line-clamp-2 text-[10px] font-medium leading-snug text-zinc-200">{v.title}</p>
+                                              <p className="mt-0.5 text-[8px] text-zinc-600">Checked: {lc}</p>
+                                            </div>
+                                          </div>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="shrink-0 self-start rounded p-1 text-zinc-500 hover:bg-red-950/40 hover:text-red-300"
+                                          aria-label="Remove video"
+                                          onClick={(ev) => {
+                                            ev.stopPropagation();
+                                            void deleteProjectVideoRow(v.id);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                                        </button>
+                                      </div>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-[10px] leading-relaxed text-zinc-600">
+                            Sign in with the live API to manage the video catalog for this project.
+                          </p>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
                 </aside>
                 <section className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-white/10 p-2 lg:border-b-0">
                   <div className="mb-1 flex items-center justify-between gap-2">
@@ -1687,6 +2050,22 @@ export function SiteBuilderFoundationPage() {
           </aside>
         </div>
       ) : null}
+
+      <Modal open={Boolean(previewYoutubeId)} onClose={() => setPreviewYoutubeId(null)} title="Video preview" className="max-w-3xl">
+        {previewYoutubeId ? (
+          <div className="space-y-3">
+            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+              <iframe
+                title="YouTube preview"
+                src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(previewYoutubeId)}`}
+                className="h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal open={importBundleOpen} onClose={() => setImportBundleOpen(false)} title="Import site bundle">
         <div className="space-y-3 text-sm text-slate-600">
