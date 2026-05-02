@@ -59,6 +59,7 @@ function ActivityRow({ activity: a }: { activity: Activity }) {
 }
 
 export function ActivityPage() {
+  const { toast } = useShell();
   const activities = useActivitiesFeed();
   const [filter, setFilter] = useState<(typeof ACTIVITY_FILTERS)[number]['id']>('all');
 
@@ -72,9 +73,8 @@ export function ActivityPage() {
       const actor = useAppStore.getState().users[a.actorUserId]?.name ?? 'Team';
       return [a.timeLabel, a.type, `"${a.title.replace(/"/g, '""')}"`, actor].join(',');
     });
-    const blob = new Blob([['Time', 'Type', 'Title', 'Actor'].join(','), '\n', rows.join('\n')].join(''), {
-      type: 'text/csv;charset=utf-8',
-    });
+    const csv = [['Time', 'Type', 'Title', 'Actor'].join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

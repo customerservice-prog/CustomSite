@@ -8,7 +8,7 @@ const el = document.getElementById('root');
 if (!el) throw new Error('Root element #root not found');
 
 class RootErrorBoundary extends Component<{ children: ReactNode }, { err: Error | null }> {
-  state = { err: null };
+  state: { err: Error | null } = { err: null };
 
   static getDerivedStateFromError(err: Error) {
     return { err };

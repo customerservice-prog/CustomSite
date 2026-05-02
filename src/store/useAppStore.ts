@@ -86,7 +86,7 @@ type PushNotificationInput = {
 export interface AppStore extends RootState {
   setMobileSidebarOpen: (open: boolean) => void;
   setCommandPaletteOpen: (open: boolean) => void;
-  openModal: (modal: Exclude<ActiveModal, null>) => void;
+  openModal: (modal: Exclude<ActiveModal, null>, options?: OpenModalOptions) => void;
   closeModal: () => void;
   setSelectedClientId: (id: string | null) => void;
   setSelectedProjectId: (id: string | null) => void;
@@ -239,7 +239,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setMobileSidebarOpen: (open) => set((s) => ({ ui: { ...s.ui, mobileSidebarOpen: open } })),
   setCommandPaletteOpen: (open) => set((s) => ({ ui: { ...s.ui, commandPaletteOpen: open } })),
-  openModal: (modal, options) =>
+  openModal: (modal: Exclude<ActiveModal, null>, options?: OpenModalOptions) =>
     set((s) => ({
       ui: {
         ...s.ui,

@@ -32,8 +32,8 @@ export function DemoDatasetBanner() {
         <span className="text-amber-950">
           You are not using the live admin API (
           <code className="rounded bg-amber-200/90 px-1.5 py-0.5 font-mono text-[11px] text-amber-950">VITE_USE_REAL_API</code> is off). Client and project lists still come
-          from the demo dataset in memory, but <span className="font-semibold text-amber-950">Site builder files for each project are saved in this browser</span>{' '}
-          (localStorage) so you can build and preview without Supabase. For server-backed lists and deploys: put{' '}
+          from the demo dataset in memory, and <span className="font-semibold text-amber-950">site builder files use a dev-only workspace</span>{' '}
+          (not the production database). For server-backed lists and deploys: put{' '}
           <code className="rounded bg-amber-200/90 px-1 font-mono text-[11px] text-amber-950">VITE_USE_REAL_API=1</code> in <code className="rounded bg-amber-200/90 px-1 font-mono text-[11px] text-amber-950">.env</code>, keep Express running (
           <code className="rounded bg-amber-200/90 px-1 font-mono text-[11px] text-amber-950">npm run dev</code> on one port, or <code className="rounded bg-amber-200/90 px-1 font-mono text-[11px] text-amber-950">npm run admin:dev</code> with API on{' '}
           <code className="rounded bg-amber-200/90 px-1 font-mono text-[11px] text-amber-950">127.0.0.1:3000</code>), then restart Vite.

@@ -17,7 +17,7 @@ export type ProjectSiteWorkspaceRow = {
   previewHtml: string;
   previewNonce: number;
   lastSavedAt: number | null;
-  saveStatus: 'idle' | 'saving' | 'saved' | 'saved_local_only' | 'error';
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   saveError: string | null;
   loadStatus: 'idle' | 'loading' | 'ready' | 'error';
   loadError: string | null;
@@ -44,15 +44,15 @@ function humanizeSiteApiSaveError(apiError: string | undefined): string {
   const m = (apiError || '').trim();
   if (!m) return humanizeError(new Error('unknown'));
   if (/foreign key|site_files_project_id_fkey|violates foreign key/i.test(m)) {
-    return 'Cloud save failed: project row could not be created in the database (check Supabase logs / permissions). Your files are still in this browser only.';
+    return 'Server rejected the save (project missing or database permissions). Fix the project or sign-in, then save again. A session cache may still hold your last edit until you leave this tab.';
   }
   if (/network|failed to fetch|load failed/i.test(m)) {
-    return 'Could not reach the server — your work is saved in this browser only.';
+    return 'Could not reach the server. Check your connection, then retry save.';
   }
   if (/401|403|session|unauth|invalid session/i.test(m)) {
-    return 'Session expired — sign in again. Your work is saved in this browser only.';
+    return 'Session expired — sign in again, then save.';
   }
-  return `Cloud save failed: ${m}`;
+  return `Server save failed: ${m}`;
 }
 
 function escapePreviewErr(msg: string): string {
@@ -182,7 +182,7 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
         ...s.byProjectId,
         [projectId]: {
           ...row,
-          saveStatus: 'saved_local_only',
+          saveStatus: 'error',
           saveError,
           lastSavedAt: Date.now(),
         },
@@ -419,7 +419,7 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
         if (withSnapshot) {
           const label =
             snapLabel ??
-            (result.apiOk ? 'Manual save — saved to server' : 'Manual save — local only (server failed)');
+            (result.apiOk ? 'Manual save — server confirmed' : 'Manual save — server rejected (see error)');
           const plan =
             snapPlan ??
             (result.apiOk ? ['Server API accepted the write'] : ['Server API failed', result.apiError || 'unknown']);
@@ -445,14 +445,11 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
           return {
             byProjectId: {
               ...s.byProjectId,
-              [projectId]: { ...r, saveStatus: 'saved_local_only', saveError, lastSavedAt: Date.now() },
+              [projectId]: { ...r, saveStatus: 'error', saveError, lastSavedAt: Date.now() },
             },
           };
         });
-        useAppStore.getState().toast(
-          `Site files were not saved to the server. ${saveError} Your copy is in this browser only — fix the issue and save again.`,
-          'error'
-        );
+        useAppStore.getState().toast(`Site files were not saved to the server. ${saveError}`, 'error');
       })
       .catch((err) => {
         const saveError = humanizeError(err);
@@ -466,6 +463,7 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
             },
           };
         });
+        useAppStore.getState().toast(`Save failed: ${saveError}`, 'error');
       });
   },
 
@@ -546,13 +544,17 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
               ...st.byProjectId,
               [projectId]: {
                 ...r,
-                saveStatus: 'saved_local_only',
+                saveStatus: 'error',
                 saveError,
                 lastSavedAt: Date.now(),
               },
             },
           };
         });
+        useAppStore.getState().toast(
+          `Site files were not saved to the server. ${saveError} Fix the issue and save again.`,
+          'error'
+        );
       })
       .catch((err) => {
         const saveError = humanizeError(err);

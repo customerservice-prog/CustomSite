@@ -45,7 +45,8 @@ import { SiteBuilderPreviewDebugPanel } from '@/components/site-builder/site-bui
 import { SiteBuilderPreviewErrorBoundary } from '@/components/site-builder/site-builder-preview-error-boundary';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
-import { shouldShowDemoDatasetBanner } from '@/lib/runtime-demo';
+import { getAccessToken } from '@/lib/admin-api';
+import { siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
 
 const BASE_FILES = ['index.html', 'styles.css', 'script.js'] as const;
 
@@ -120,7 +121,6 @@ export function SiteBuilderFoundationPage() {
   const didInitEditor = useRef(false);
   const prevLoadErrRef = useRef<string | null>(null);
   const prevSaveErrRef = useRef<string | null>(null);
-  const saveCloudToastSigRef = useRef<string | null>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
   const fullscreenFrameRef = useRef<HTMLIFrameElement>(null);
@@ -302,11 +302,16 @@ export function SiteBuilderFoundationPage() {
     if (!projectId) return;
     patchSiteFile(projectId, activeFileId, draftContent);
     setSavedContent(draftContent);
+    if (siteFilesTargetLiveServer() && !getAccessToken()?.trim()) return;
     optimisticPersist(projectId, { snapshot: false });
   }, [projectId, activeFileId, draftContent, patchSiteFile, optimisticPersist]);
 
   const saveCurrentToSite = useCallback(() => {
     if (!projectId) return;
+    if (siteFilesTargetLiveServer() && !getAccessToken()?.trim()) {
+      toast('Sign in to save files to the server.', 'error');
+      return;
+    }
     patchSiteFile(projectId, activeFileId, draftContent);
     setSavedContent(draftContent);
     optimisticPersist(projectId, { snapshot: true });
@@ -543,34 +548,6 @@ export function SiteBuilderFoundationPage() {
     [activeFileId, unsaved, persistDraftQuiet, projectId, applyFileToEditor, flushPreview]
   );
 
-  const onStartBlank = useCallback(async () => {
-    if (!projectId) return;
-    setBooting(true);
-    try {
-      const rich = project?.deliveryFocus === 'client_site';
-      const { site: next, save } = await createStarterFiles(projectId, { rich, context: starterSiteContext });
-      setSiteImmediate(projectId, next);
-      recordPersistResult(projectId, save);
-      appendSnapshot(
-        projectId,
-        rich ? 'Rich starter site' : 'Starter shell',
-        [rich ? 'Multi-section homepage seed' : 'Blank HTML/CSS/JS from Site Builder'],
-        siteFilesToVersionPayload(next)
-      );
-      applyFileToEditor(next, 'index.html');
-    } finally {
-      setBooting(false);
-    }
-  }, [
-    projectId,
-    project?.deliveryFocus,
-    starterSiteContext,
-    setSiteImmediate,
-    appendSnapshot,
-    applyFileToEditor,
-    recordPersistResult,
-  ]);
-
   const onStartBlankMinimal = useCallback(async () => {
     if (!projectId) return;
     setBooting(true);
@@ -703,9 +680,35 @@ export function SiteBuilderFoundationPage() {
   const hasFiles = site.files.length > 0;
   const loading = loadStatus === 'loading' && !row?.hydrated;
   const liveUrl = project?.siteLiveUrl;
+  const serverWritesConfigured = siteFilesTargetLiveServer();
+  const signedInForApi = Boolean(getAccessToken()?.trim());
+  const showPersistenceBanner = !serverWritesConfigured || (serverWritesConfigured && !signedInForApi);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-zinc-950 text-zinc-100">
+      {showPersistenceBanner ? (
+        <div
+          role="alert"
+          className={cn(
+            'shrink-0 border-b px-3 py-2 text-center text-[11px] font-medium leading-snug sm:text-xs',
+            serverWritesConfigured && !signedInForApi
+              ? 'border-rose-500/40 bg-rose-950/80 text-rose-100'
+              : 'border-amber-500/35 bg-amber-950/90 text-amber-50'
+          )}
+        >
+          {serverWritesConfigured && !signedInForApi ? (
+            <>
+              You are not signed in — site files cannot be written to the database. Open your account menu and sign in,
+              then use Save again.
+            </>
+          ) : (
+            <>
+              This build is not pointed at the live API (<code className="rounded bg-black/30 px-1">VITE_USE_REAL_API=1</code> off). Files stay in a
+              dev workspace on this machine only. For production, rebuild the admin with the real API flag and deploy.
+            </>
+          )}
+        </div>
+      ) : null}
       <header className="flex min-h-11 shrink-0 flex-col gap-1 border-b border-white/10 px-3 py-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -783,24 +786,12 @@ export function SiteBuilderFoundationPage() {
           <div className="flex-1" />
           {saveStatus === 'saved' && !unsaved ? (
             <span className="text-[10px] font-medium text-emerald-400/90">
-              Saved to server
+              {serverWritesConfigured ? 'Saved to server' : 'Saved (dev workspace)'}
               {lastSavedAt != null ? (
-                <span className="ml-1 font-normal text-zinc-500" title="Server API accepted the last write">
-                  · {new Date(lastSavedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-                </span>
-              ) : null}
-            </span>
-          ) : null}
-          {saveStatus === 'saved_local_only' && !unsaved ? (
-            <span
-              className="max-w-[min(280px,46vw)] truncate text-[10px] font-medium text-amber-400/95"
-              title={saveError ?? 'Cloud sync failed; see toast'}
-            >
-              {shouldShowDemoDatasetBanner()
-                ? 'Saved in this browser only (demo)'
-                : 'Not saved to server — local copy only'}
-              {lastSavedAt != null ? (
-                <span className="ml-1 font-normal text-zinc-500">
+                <span
+                  className="ml-1 font-normal text-zinc-500"
+                  title={serverWritesConfigured ? 'Server API accepted the last write' : 'Local dev workspace only'}
+                >
                   · {new Date(lastSavedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                 </span>
               ) : null}
@@ -829,6 +820,8 @@ export function SiteBuilderFoundationPage() {
               type="button"
               variant="secondary"
               className="h-8 border-zinc-600 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+              disabled={serverWritesConfigured && !signedInForApi}
+              title={serverWritesConfigured && !signedInForApi ? 'Sign in to save to the server' : undefined}
               onClick={() => saveCurrentToSite()}
             >
               Save
@@ -1241,15 +1234,15 @@ export function SiteBuilderFoundationPage() {
               <section className="rounded-lg border border-white/10 bg-white/5 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Builder save</p>
                 <p className="mt-1.5 text-sm text-zinc-200">
-                  {saveStatus === 'saving' && 'Saving to browser and cloud…'}
-                  {saveStatus === 'saved' && 'Saved to server — the API reported success.'}
-                  {saveStatus === 'saved_local_only' && 'Local only — cloud save failed (see message below).'}
-                  {saveStatus === 'error' && 'Save error — check the message below.'}
+                  {saveStatus === 'saving' && 'Saving…'}
+                  {saveStatus === 'saved' &&
+                    (serverWritesConfigured ? 'Server confirmed the last save.' : 'Last save stored in the dev workspace on this machine.')}
+                  {saveStatus === 'error' && 'Save error — the server did not confirm (see below).'}
                   {saveStatus === 'idle' && 'Save status will update after you edit or save.'}
                 </p>
                 {saveError ? <p className="mt-2 text-xs text-amber-200/95">{saveError}</p> : null}
                 {lastSavedAt != null && saveStatus !== 'idle' ? (
-                  <p className="mt-1 text-[11px] text-zinc-500">Last cloud/local write: {new Date(lastSavedAt).toLocaleString()}</p>
+                  <p className="mt-1 text-[11px] text-zinc-500">Last write: {new Date(lastSavedAt).toLocaleString()}</p>
                 ) : null}
               </section>
 
@@ -1279,7 +1272,18 @@ export function SiteBuilderFoundationPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-2 text-sm text-zinc-400">No production URL on this project yet. Set it from the project workspace.</p>
+                  <div className="mt-2 space-y-2 text-sm text-zinc-400">
+                    <p>No production URL is stored on this project yet.</p>
+                    <ol className="list-decimal space-y-2 pl-5 text-xs text-zinc-300">
+                      <li>
+                        Open <strong>Project workspace</strong> below → set the client-facing URL (staging or live) on the project record.
+                      </li>
+                      <li>Confirm the toolbar shows a successful save before you deploy.</li>
+                      <li>
+                        Use <strong>Legacy publish dashboard</strong> only if you ship ZIP / static hosting from that tool; otherwise the workspace URL is your source of truth.
+                      </li>
+                    </ol>
+                  </div>
                 )}
               </section>
 
@@ -1314,7 +1318,7 @@ export function SiteBuilderFoundationPage() {
       <Modal open={importBundleOpen} onClose={() => setImportBundleOpen(false)} title="Import site bundle">
         <div className="space-y-3 text-sm text-slate-600">
           <p className="text-xs leading-relaxed">
-            Paste the JSON copied with <strong>Copy site</strong>. This replaces all files in this project&apos;s workspace for this browser.
+            Paste the JSON copied with <strong>Copy site</strong>. This replaces all files in this project&apos;s workspace.
           </p>
           <Textarea
             value={importPaste}

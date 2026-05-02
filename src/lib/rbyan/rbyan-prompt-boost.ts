@@ -8,9 +8,11 @@ export function appendProjectContextToPrompt(prompt: string, ctx: RbyanProjectCo
   const lines: string[] = [
     '[Client context — use to differentiate layout, copy, and CSS from generic templates]',
     `- Contact: ${ctx.clientContactName?.trim() || '—'}`,
-    `- Business: ${ctx.clientCompany?.trim() || ctx.projectName}`,
+    `- Business / company: ${ctx.clientCompany?.trim() || ctx.projectName}`,
     `- Project: ${ctx.projectName}`,
   ];
+  if (ctx.clientEmail?.trim()) lines.push(`- Email: ${ctx.clientEmail.trim()}`);
+  if (ctx.clientPhone?.trim()) lines.push(`- Phone: ${ctx.clientPhone.trim()}`);
   if (ctx.industryNiche?.trim()) {
     lines.push(`- Industry / niche: ${ctx.industryNiche.trim()}`);
   }
@@ -37,7 +39,7 @@ export function appendProjectContextToPrompt(prompt: string, ctx: RbyanProjectCo
   }
   lines.push(
     '[/Client context]',
-    'Instruction: Reflect this business in headlines, section order, and visual tone — avoid one-size-fits-all placeholder copy.',
+    'Instruction: Reflect this business in headlines, section order, and visual tone. Never use generic labels like "Brand", "Primary CTA", or "Ship a premium client site" as if they were the client. Do not duplicate the same hero section twice.',
     ''
   );
   return `${lines.join('\n')}${prompt.trim()}`;

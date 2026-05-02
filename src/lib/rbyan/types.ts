@@ -27,6 +27,8 @@ export type RbyanProjectContext = {
   clientCompany?: string | null;
   /** Primary contact — pairs with company for voice. */
   clientContactName?: string | null;
+  clientEmail?: string | null;
+  clientPhone?: string | null;
   /** Short niche line from AI Builder (e.g. “Neighborhood Italian bistro”). */
   industryNiche?: string | null;
   /** e.g. client_site */

@@ -6,6 +6,7 @@
 import type { ProjectSite, ProjectSiteFile } from '@/lib/site-builder/project-site-model';
 import { newFile } from '@/lib/site-builder/project-site-model';
 import { adminFetchJson } from '@/lib/admin-api';
+import { siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
 
 const LS_PREFIX = 'project_site_';
 
@@ -124,6 +125,9 @@ export async function saveProjectSite(site: ProjectSite): Promise<SaveProjectSit
       apiOk: false,
       apiError: 'Could not write to browser storage (quota full or private mode).',
     };
+  }
+  if (!siteFilesTargetLiveServer()) {
+    return { localSaved: true, apiOk: true };
   }
   try {
     const api = await tryPushToApi(site);

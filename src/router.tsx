@@ -12,6 +12,7 @@ import { InvoicesPage } from '@/pages/invoices-page';
 import { InvoiceDetailPage } from '@/pages/invoice-detail-page';
 import { MessagesPage } from '@/pages/messages-page';
 import { SettingsPage } from '@/pages/settings-page';
+import { SettingsRouteErrorBoundary } from '@/components/settings/settings-route-error-boundary';
 import { AccountPage } from '@/pages/account-page';
 import { SiteBuilderFoundationPage } from '@/pages/site-builder-foundation-page';
 import { SiteBuilderRedirectPage } from '@/pages/site-builder-redirect-page';
@@ -90,7 +91,14 @@ export const router = createHashRouter([
         ],
       },
       { path: 'client-preview', element: <Navigate to="/client-portal" replace /> },
-      { path: 'settings', element: <SettingsPage /> },
+      {
+        path: 'settings',
+        element: (
+          <SettingsRouteErrorBoundary>
+            <SettingsPage />
+          </SettingsRouteErrorBoundary>
+        ),
+      },
       { path: 'account', element: <AccountPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

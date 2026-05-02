@@ -21,6 +21,11 @@ export function shouldPersistSiteFilesLocally(): boolean {
   return shouldShowDemoDatasetBanner();
 }
 
+/** When true, the SPA is built for production API and site PUTs should target the server (not local-only mocks). */
+export function siteFilesTargetLiveServer(): boolean {
+  return !shouldPersistSiteFilesLocally();
+}
+
 /** Synchronous read for preview memoization (local workspace only). */
 export function readLocalWorkspaceFileSync(projectId: string, path: string): string | null {
   if (!shouldPersistSiteFilesLocally()) return null;

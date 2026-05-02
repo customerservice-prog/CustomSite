@@ -10,7 +10,7 @@ type Props = {
   events: PreviewDebugEvent[];
   loadError: string | null;
   saveError: string | null;
-  saveStatus: 'idle' | 'saving' | 'saved' | 'saved_local_only' | 'error';
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   unsaved: boolean;
   lastSavedAt: number | null;
   previewHtml: string;
@@ -128,15 +128,7 @@ export function SiteBuilderPreviewDebugPanel({
     sandbox === 'leaked' ? 'bad' : sandbox === 'safe' ? 'ok' : 'pending';
 
   const saveRealState: 'ok' | 'bad' | 'warn' | 'pending' =
-    saveStatus === 'saved'
-      ? 'ok'
-      : saveStatus === 'saved_local_only'
-        ? 'warn'
-        : saveStatus === 'error'
-          ? 'bad'
-          : saveStatus === 'saving'
-            ? 'pending'
-            : 'pending';
+    saveStatus === 'saved' ? 'ok' : saveStatus === 'error' ? 'bad' : saveStatus === 'saving' ? 'pending' : 'pending';
 
   const serverState: 'ok' | 'bad' | 'pending' =
     serverReachable === true ? 'ok' : serverReachable === false ? 'bad' : 'pending';
@@ -151,7 +143,6 @@ export function SiteBuilderPreviewDebugPanel({
     missingCoreFiles.length > 0 ||
     unsaved ||
     saveStatus === 'saving' ||
-    saveStatus === 'saved_local_only' ||
     saveStatus === 'error' ||
     sandbox === 'leaked';
 
@@ -237,8 +228,8 @@ export function SiteBuilderPreviewDebugPanel({
                 <span className="font-semibold text-zinc-400">Save:</span>{' '}
                 {saveStatus === 'saved' && !unsaved && 'Last write reported success from the server API.'}
                 {saveStatus === 'saved' && unsaved && 'Server accepted the last save; you have new unsaved edits.'}
-                {saveStatus === 'saved_local_only' && 'Files are in this browser only; server API failed (see error below).'}
-                {saveStatus === 'error' && 'Save failed — nothing claimed as server-synced.'}
+                {saveStatus === 'error' &&
+                  (saveError ? `Server did not accept the last save: ${saveError}` : 'Save failed — server did not confirm.')}
                 {saveStatus === 'saving' && 'Save in progress…'}
                 {saveStatus === 'idle' && 'No completed save in this session yet, or waiting after load.'}
               </li>
@@ -269,7 +260,7 @@ export function SiteBuilderPreviewDebugPanel({
               Last saved: <span className="font-medium text-zinc-300">{formatSavedAt(lastSavedAt)}</span>
               {unsaved ? <span className="ml-2 text-amber-400">Unsaved edits</span> : null}
               {saveStatus === 'saving' ? <span className="ml-2 text-violet-300">Saving…</span> : null}
-              {saveStatus === 'saved_local_only' ? <span className="ml-2 text-amber-400">Local only (server failed)</span> : null}
+              {saveStatus === 'error' && saveError ? <span className="ml-2 text-amber-400">Server save failed</span> : null}
               {saveStatus === 'saved' && !unsaved ? <span className="ml-2 text-emerald-400/90">Saved to server</span> : null}
             </p>
             {missingCoreFiles.length > 0 ? (
@@ -282,7 +273,7 @@ export function SiteBuilderPreviewDebugPanel({
               <p
                 className={cn(
                   'mt-1 rounded border px-2 py-1',
-                  saveStatus === 'saved_local_only'
+                  saveStatus === 'error'
                     ? 'border-amber-700/40 bg-amber-950/40 text-amber-100'
                     : 'border-rose-700/40 bg-rose-950/40 text-rose-200'
                 )}

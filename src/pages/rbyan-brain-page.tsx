@@ -250,6 +250,8 @@ export function RbyanBrainPage() {
       clientId: activeProject.clientId,
       clientCompany: companyRow?.company ?? null,
       clientContactName: companyRow?.name ?? null,
+      clientEmail: companyRow?.email?.trim() || null,
+      clientPhone: companyRow?.phone?.trim() || null,
       industryNiche: industryNiche.trim() || null,
       deliveryFocus: activeProject.deliveryFocus,
       siteBuildArchetype: activeProject.siteBuildArchetype ?? null,
@@ -267,6 +269,20 @@ export function RbyanBrainPage() {
     voice,
     visualStyle,
   ]);
+
+  const activeClientForAi = useMemo(() => {
+    if (!activeProject) return null;
+    return clients.find((c) => c.id === activeProject.clientId) ?? null;
+  }, [activeProject, clients]);
+
+  /** True when we lack company + niche + offer — generation would fall back to generic templates. */
+  const aiContextThin = useMemo(() => {
+    if (!projectId || !activeClientForAi) return false;
+    const hasCompany = Boolean(activeClientForAi.company?.trim());
+    const hasNiche = Boolean(industryNiche.trim());
+    const hasBiz = Boolean(bizSummary.trim());
+    return !(hasCompany || hasNiche || hasBiz);
+  }, [projectId, activeClientForAi, industryNiche, bizSummary]);
 
   const hydrate = useProjectSiteWorkspaceStore((s) => s.hydrate);
   const workspaceRow = useProjectSiteWorkspaceStore((s) => (projectId ? s.byProjectId[projectId] : undefined));
@@ -365,6 +381,13 @@ export function RbyanBrainPage() {
         if (!projectContext) toast('Select a project first.', 'info');
         return;
       }
+      if (aiContextThin) {
+        toast(
+          'Add the client company on their CRM record, or fill Industry / Offer below, before generating — otherwise output stays generic.',
+          'error'
+        );
+        return;
+      }
       setLastUserPrompt(text);
       setInput('');
       setMessages((m) => [...m, { id: `u-${Date.now()}`, role: 'user', content: text }]);
@@ -443,7 +466,7 @@ export function RbyanBrainPage() {
         if (projectId) useProjectSiteWorkspaceStore.getState().setRbyanBusy(projectId, false);
       }
     },
-    [projectContext, projectId, lastResult, sessionMemory, toast, rbyanSession.currentSection]
+    [projectContext, projectId, lastResult, sessionMemory, toast, rbyanSession.currentSection, aiContextThin]
   );
 
   const sendPromptRef = useRef(sendPrompt);
@@ -506,7 +529,7 @@ export function RbyanBrainPage() {
     if (!saveResult.localSaved) {
       toast(saveResult.apiError ?? 'Could not save to browser storage.', 'error');
     } else if (!saveResult.apiOk) {
-      toast(`Restored locally. Cloud sync failed: ${saveResult.apiError ?? 'Unknown error'}`, 'warning');
+      toast(`Restored in workspace only — server did not confirm: ${saveResult.apiError ?? 'Unknown error'}`, 'error');
     } else {
       toast(`Restored “${v.label}”.`, 'success');
     }
@@ -594,9 +617,13 @@ export function RbyanBrainPage() {
           {projectId ? (
             <div className="mb-4 rounded-lg border border-violet-500/25 bg-violet-950/25 p-3">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-300/90">Business &amp; brand</p>
-              <p className="mb-2 text-[10px] leading-snug text-zinc-500">
-                Used on every generation pass (saved per project in this browser).
-              </p>
+              <p className="mb-2 text-[10px] leading-snug text-zinc-500">Used on every generation pass (stored with this project in your session).</p>
+              {aiContextThin ? (
+                <p className="mb-2 rounded border border-amber-600/40 bg-amber-950/40 px-2 py-1.5 text-[10px] leading-snug text-amber-100">
+                  Add <strong>company</strong> on the client record, or fill <strong>Industry</strong> / <strong>Offer</strong> here — send is blocked until at least one is set so the AI
+                  is not guessing.
+                </p>
+              ) : null}
               <label className="mb-0.5 block text-[10px] text-zinc-400">Industry / niche</label>
               <Input
                 className="mb-2 h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
@@ -967,7 +994,8 @@ export function RbyanBrainPage() {
               <Button
                 type="button"
                 className="h-11 w-11 shrink-0 self-end rounded-lg bg-violet-600 p-0 hover:bg-violet-500 disabled:opacity-40"
-                disabled={generating || !input.trim() || !projectContext}
+                disabled={generating || !input.trim() || !projectContext || aiContextThin}
+                title={aiContextThin ? 'Add client company or industry/offer context first' : undefined}
                 aria-label="Send"
                 onClick={() => void sendPrompt(input)}
               >
