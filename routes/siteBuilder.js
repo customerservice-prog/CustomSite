@@ -40,7 +40,7 @@ async function ensureProjectRowForSiteFiles(supabase, projectId, ownerUserId) {
   }
   if (row?.id) return true;
   const name =
-    projectId === DEMO_BUILDER_PROJECT_ID ? 'E-Commerce Site (Tables & Chairs)' : 'Website project';
+    projectId === DEMO_BUILDER_PROJECT_ID ? 'Tables & Chairs Pro' : 'Website project';
   const { error } = await supabase.from('projects').insert({
     id: projectId,
     client_id: ownerUserId,

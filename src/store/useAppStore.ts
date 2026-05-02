@@ -313,13 +313,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
   mergeProjectRowFromServer: (row) => {
     const mapped = mapApiProjectRowToProject(row, get().clients);
     if (!mapped) return;
-    const existing = get().projects[mapped.id];
-    set((s) => ({
-      projects: {
-        ...s.projects,
-        [mapped.id]: existing ? { ...existing, ...mapped } : mapped,
-      },
-    }));
+    set((s) => {
+      const existing = s.projects[mapped.id];
+      if (!existing) {
+        return { projects: { ...s.projects, [mapped.id]: mapped } };
+      }
+      const next = { ...existing };
+      (Object.keys(mapped) as (keyof Project)[]).forEach((k) => {
+        const v = mapped[k];
+        if (v !== undefined) (next as Record<string, unknown>)[k as string] = v as unknown;
+      });
+      return { projects: { ...s.projects, [mapped.id]: next } };
+    });
   },
 
   toast: (message, variant = 'success') => {
@@ -499,10 +504,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
         : 'discovery';
     const budget = tmpl ? tmpl.defaultBudget : input.budget;
     const dueStr = (tmpl ? tmpl.defaultDue : input.due).trim();
-    const nameInput = input.name.trim();
-    const name = nameInput || (tmpl ? `${tmpl.name} — ${client.company}` : '');
+    const name = input.name.trim();
     if (!name) {
-      if (!silent) get().toast('Enter a project name (or pick a template to auto-name).', 'error');
+      if (!silent) {
+        get().toast('Enter the site / project name — it is shown on cards and should match the client-facing brand.', 'error');
+      }
       return '';
     }
     const status = input.status ?? projectStatusForLifecycle(lifecycleStage);

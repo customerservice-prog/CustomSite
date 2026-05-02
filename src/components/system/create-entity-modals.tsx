@@ -78,10 +78,8 @@ export function CreateEntityModals() {
   }, [projects, invoiceForm.clientId]);
 
   const canCreateProject = useMemo(
-    () =>
-      Boolean(projectForm.clientId) &&
-      (Boolean(projectForm.templateId) || projectForm.name.trim().length > 0),
-    [projectForm.clientId, projectForm.templateId, projectForm.name]
+    () => Boolean(projectForm.clientId) && projectForm.name.trim().length > 0,
+    [projectForm.clientId, projectForm.name]
   );
 
   useEffect(() => {
@@ -381,14 +379,19 @@ export function CreateEntityModals() {
               ))}
             </Select>
           </Field>
-          <Field label="Project name">
-            <Input value={projectForm.name} onChange={(e) => setProjectForm((f) => ({ ...f, name: e.target.value }))} />
+          <Field label="Site / project name">
+            <Input
+              value={projectForm.name}
+              onChange={(e) => setProjectForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Tables & Chairs Pro"
+            />
           </Field>
-          {projectForm.templateId && (
+          {projectForm.templateId ? (
             <p className="text-xs text-slate-500">
-              {getProjectTemplate(projectForm.templateId)?.description ?? ''} Leave the name empty to auto-name from the template.
+              {getProjectTemplate(projectForm.templateId)?.description ?? ''} The name above is stored as-is and shown on project cards — use the public
+              brand or site title, not an internal label.
             </p>
-          )}
+          ) : null}
           {getProjectTemplate(projectForm.templateId)?.deliveryFocus === 'client_site' && (
             <Field label="What type of site are we building?">
               <Select
@@ -435,7 +438,7 @@ export function CreateEntityModals() {
             <Button
               type="button"
               disabled={!canCreateProject}
-              title={!canCreateProject ? 'Choose a client and a template or project name' : undefined}
+              title={!canCreateProject ? 'Choose a client and enter the site / project name' : undefined}
               onClick={async () => {
                 if (!canCreateProject) return;
                 const tmpl = projectForm.templateId ? getProjectTemplate(projectForm.templateId) : undefined;

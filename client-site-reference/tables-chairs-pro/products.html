@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Product catalog — Tables &amp; Chairs Pro</title>
+  <meta name="description" content="Commercial tables and chairs catalog with filters." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+  <div class="main-wrap">
+
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="index.html">Tables &amp; Chairs Pro</a>
+        <nav class="nav-main" aria-label="Primary">
+          <a href="index.html">Home</a>
+          <a href="products.html">Products</a>
+          <a href="categories.html">Categories</a>
+          <a href="videos.html">Videos</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+
+      <div class="shell">
+        <div class="page-hero">
+          <h1>Commercial catalog</h1>
+          <p class="sub">Filter by category, material, and price band. Pricing is illustrative — your quote desk applies tiers.</p>
+        </div>
+        <div class="filter-bar">
+          <div class="filter-row">
+            <div><label for="f-cat">Category</label>
+              <select id="f-cat" aria-label="Category">
+                <option value="all">All</option>
+                <option value="folding-tables">Folding tables</option>
+                <option value="folding-chairs">Folding chairs</option>
+                <option value="resin-chairs">Resin chairs</option>
+                <option value="banquet-chairs">Banquet chairs</option>
+                <option value="cocktail-tables">Cocktail tables</option>
+                <option value="bar-stools">Bar stools</option>
+                <option value="accessories">Accessories</option>
+              </select></div>
+            <div><label for="f-mat">Material</label>
+              <select id="f-mat" aria-label="Material">
+                <option value="all">All</option>
+                <option value="wood">Wood</option>
+                <option value="plastic">Plastic</option>
+                <option value="metal">Metal</option>
+                <option value="resin">Resin</option>
+                <option value="fabric">Fabric</option>
+              </select></div>
+            <div><label for="f-price">Price</label>
+              <select id="f-price" aria-label="Price range">
+                <option value="all">All</option>
+                <option value="under50">Under $50</option>
+                <option value="50to100">$50 – $100</option>
+                <option value="over100">$100+</option>
+              </select></div>
+            <div><label for="f-sort">Sort</label>
+              <select id="f-sort" aria-label="Sort">
+                <option value="popular">Most popular</option>
+                <option value="price-asc">Price low–high</option>
+                <option value="price-desc">Price high–low</option>
+                <option value="newest">Newest</option>
+              </select></div>
+            <button type="button" class="btn btn--ghost js-clear-filters">Clear filters</button>
+          </div>
+          <div class="badges-active" id="tcp-active-filters"></div>
+          <p class="meta" id="tcp-filter-count" style="margin:0.35rem 0 0;font-size:0.8rem;color:var(--muted)">—</p>
+        </div>
+        <div class="product-grid" id="tcp-product-grid">
+          <article class="card product-card" data-category="folding-tables" data-material="wood" data-price="89" data-new="101">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>6ft Rectangular Folding Table (Wood)</h3>
+              <p class="meta">72″ × 30″ · ~500 lb distributed</p>
+              <div class="price">From $89</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-tables" data-material="wood" data-price="109" data-new="100">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>8ft Rectangular Folding Table (Wood)</h3>
+              <p class="meta">96″ × 30″ · steel folding legs</p>
+              <div class="price">From $109</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-tables" data-material="wood" data-price="99" data-new="99">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>60&quot; Round Folding Table (Wood)</h3>
+              <p class="meta">Seats 8–10 · plywood core</p>
+              <div class="price">From $99</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-tables" data-material="plastic" data-price="69" data-new="98">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>48&quot; Round Folding Table (Plastic)</h3>
+              <p class="meta">Blow-mold polyethylene top</p>
+              <div class="price">From $69</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="cocktail-tables" data-material="metal" data-price="79" data-new="97">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>30&quot; Cocktail Table (Metal)</h3>
+              <p class="meta">Column &amp; base kit · bar height</p>
+              <div class="price">From $79</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="cocktail-tables" data-material="resin" data-price="72" data-new="96">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>36&quot; Bistro Cocktail Table (Resin)</h3>
+              <p class="meta">Indoor/outdoor resin top</p>
+              <div class="price">From $72</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-chairs" data-material="metal" data-price="19" data-new="95">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Padded Folding Chair (White)</h3>
+              <p class="meta">18-gauge frame · padded vinyl</p>
+              <div class="price">From $19</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-chairs" data-material="resin" data-price="16" data-new="94">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Resin Folding Chair (White)</h3>
+              <p class="meta">Fan-back · UV stabilized</p>
+              <div class="price">From $16</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="resin-chairs" data-material="resin" data-price="31" data-new="103">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Resin Versailles Chair (Ivory)</h3>
+              <p class="meta">Formal silhouette · detachable cushion ring</p>
+              <div class="price">From $31</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="resin-chairs" data-material="resin" data-price="28" data-new="102">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Resin Ghost Armchair Stackable</h3>
+              <p class="meta">Clear smoke option · wipes clean · stack 40+ high</p>
+              <div class="price">From $28</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="banquet-chairs" data-material="wood" data-price="45" data-new="93">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Chiavari Chair (Gold)</h3>
+              <p class="meta">Hardwood frame · cushion-ready</p>
+              <div class="price">From $45</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="banquet-chairs" data-material="fabric" data-price="38" data-new="92">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Banquet Chair (Black)</h3>
+              <p class="meta">Crown back · dense foam</p>
+              <div class="price">From $38</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-chairs" data-material="wood" data-price="22" data-new="91">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Mahogany Folding Chair</h3>
+              <p class="meta">Wood seat/back · banquet profile</p>
+              <div class="price">From $22</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="bar-stools" data-material="metal" data-price="55" data-new="90">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Aluminum Bar Stool</h3>
+              <p class="meta">Brushed aluminum · foot ring</p>
+              <div class="price">From $55</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="accessories" data-material="metal" data-price="129" data-new="89">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Chair Dolly Cart</h3>
+              <p class="meta">Welded steel · brake casters</p>
+              <div class="price">From $129</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="accessories" data-material="metal" data-price="149" data-new="88">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Table Cart (6–8ft tables)</h3>
+              <p class="meta">Vertical storage rails</p>
+              <div class="price">From $149</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="accessories" data-material="plastic" data-price="12" data-new="87">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Chair Ganging Clips (10pk)</h3>
+              <p class="meta">Standard banquet frame clips</p>
+              <div class="price">From $12</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="accessories" data-material="plastic" data-price="8" data-new="86">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Table Skirt Clips (12pk)</h3>
+              <p class="meta">Fits ¾″–1″ tabletop edge</p>
+              <div class="price">From $8</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-chairs" data-material="plastic" data-price="17" data-new="85">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>White Plastic Folding Chair</h3>
+              <p class="meta">Adult-rated blow-mold</p>
+              <div class="price">From $17</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-tables" data-material="wood" data-price="119" data-new="84">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>24&quot; × 72&quot; Seminar Folding Table</h3>
+              <p class="meta">Training / classroom silhouette</p>
+              <div class="price">From $119</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="folding-tables" data-material="metal" data-price="94" data-new="83">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Adjustable Height Folding Table</h3>
+              <p class="meta">29″–41″ height presets</p>
+              <div class="price">From $94</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="banquet-chairs" data-material="wood" data-price="62" data-new="82">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Cross-back Banquet Chair (Walnut)</h3>
+              <p class="meta">Restaurant-grade hardwood</p>
+              <div class="price">From $62</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="accessories" data-material="metal" data-price="489" data-new="81">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>3-Step Folding Stage Panel Set</h3>
+              <p class="meta">Per 4′×8′ bay · guardrails extra</p>
+              <div class="price">From $489</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+          <article class="card product-card" data-category="accessories" data-material="fabric" data-price="54" data-new="80">
+            <div class="card-photo"><img src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=480&q=80" alt="" loading="lazy" width="480" height="360" /></div>
+            <div class="card-body">
+              <h3>Polyester Linen Bundle (90&quot; round)</h3>
+              <p class="meta">Starter palette · 6-pack</p>
+              <div class="price">From $54</div>
+              <a class="btn btn--primary js-quote" style="margin-top:.75rem;display:inline-flex;text-decoration:none" href="about.html#quote">Get quote</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><h4>Navigate</h4><ul><li><a href="index.html">Home</a></li><li><a href="about.html">About</a></li><li><a href="videos.html">Videos</a></li></ul></div>
+        <div><h4>Catalog</h4><ul><li><a href="products.html?cat=folding-tables">Folding tables</a></li><li><a href="products.html?cat=folding-chairs">Folding chairs</a></li><li><a href="products.html?cat=accessories">Accessories</a></li></ul></div>
+        <div><h4>Contact</h4><ul><li><a href="about.html#quote">Quote desk</a></li><li><a href="mailto:quotes@tablesandchairspro.example">quotes@tablesandchairspro.example</a></li></ul></div>
+      </div>
+      <p class="footer-base">© Tables &amp; Chairs Pro. Demo storefront — pricing illustrative.</p>
+    </footer>
+  </div>
+
+  <script src="site.js"></script>
+</body>
+</html>

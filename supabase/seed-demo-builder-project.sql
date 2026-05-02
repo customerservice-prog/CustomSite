@@ -13,7 +13,7 @@
 -- values (
 --   '00000000-0000-4000-8000-000000000002',
 --   'YOUR_USER_UUID'::uuid,
---   'E-Commerce Site (Tables & Chairs)',
+--   'Tables & Chairs Pro',
 --   'discovery'
 -- )
 -- on conflict (id) do update

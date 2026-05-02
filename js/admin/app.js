@@ -3132,9 +3132,13 @@ function renderProjects() {
         .map((p) => {
           const c = p.client || {};
           return `<div class="cs-proj-tile-wrap${p.id === selPrj ? ' is-sel-wrap' : ''}" data-pwrap="${esc(p.id)}">
-      <button type="button" class="cs-proj-tile${p.id === selPrj ? ' is-sel' : ''}" data-pselect="${esc(p.id)}">
+      <button type="button" class="cs-proj-tile${p.id === selPrj ? ' is-sel' : ''}" data-pselect="${esc(p.id)}"
+        aria-label="Project ${esc(p.name)}. Client ${esc(c.email || c.full_name || 'unknown')}."
+      >
         <span class="cs-proj-tile-n">${esc(p.name)}</span>
-        <span class="cs-proj-tile-c">${esc(c.email || c.full_name || '—')}</span>
+        <span class="cs-proj-tile-c"><span class="cs-proj-tile-client-meta">Client</span> · ${esc(
+          c.email || c.full_name || '—'
+        )}</span>
         <span class="cs-proj-tile-ph">${phBadge(p.status)}</span>
       </button>
       <button type="button" class="adm-btn adm-btn--secondary adm-btn--sm cs-proj-tile-view" data-pdetail="${esc(p.id)}">View project</button>

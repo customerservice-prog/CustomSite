@@ -5,7 +5,7 @@ export const projectsSeed: Project[] = [
   {
     id: DEMO_PROJECT_ID,
     clientId: DEMO_CLIENT_ID,
-    name: 'E-Commerce Site (Tables & Chairs)',
+    name: 'Tables & Chairs Pro',
     status: 'Planning',
     budget: 18000,
     spent: 0,

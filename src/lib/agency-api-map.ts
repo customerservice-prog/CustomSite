@@ -176,7 +176,7 @@ function pick<T>(row: ApiProjectRow, snake: keyof ApiProjectRow, camel: string):
 export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<string, Client>): Project | null {
   const id = pick<string>(row, 'id', 'id');
   const clientId = pick<string>(row, 'client_id', 'clientId');
-  const name = pick<string>(row, 'name', 'name');
+  const name = pick<string>(row, 'name', 'projectName');
   if (!id || !clientId || !name) return null;
 
   const internal = pick<string>(row, 'internal_notes', 'internalNotes') ?? null;

@@ -19,6 +19,7 @@ const {
   sendInvoiceCreatedNotice,
   sendProjectMessageToClient,
 } = require('../lib/email');
+const { attachDashboardToProject, attachDashboardToProjects } = require('../lib/projectDashboard');
 
 const router = express.Router();
 
@@ -346,7 +347,6 @@ router.post('/leads/:id/convert', async (req, res) => {
 
 router.get('/projects', async (_req, res) => {
   try {
-    const { attachDashboardToProjects } = require('../lib/projectDashboard');
     const supabase = getService();
     const { data: projects, error } = await supabase
       .from('projects')
@@ -403,7 +403,13 @@ router.post('/projects', async (req, res) => {
     const { data, error } = await supabase.from('projects').insert(insert).select().single();
     if (error) return res.status(500).json({ error: error.message });
     await logActivity(supabase, req.profile.id, 'project_created', 'project', data.id, { name: data.name });
-    return res.json({ success: true, project: data });
+    let project = data;
+    try {
+      project = await attachDashboardToProject(supabase, data);
+    } catch (attEx) {
+      console.warn('[admin/projects POST] dashboard attach skipped', attEx.message);
+    }
+    return res.json({ success: true, project });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
@@ -499,7 +505,13 @@ router.patch('/entity/project/:projectId', async (req, res) => {
       .single();
     if (error) return res.status(500).json({ error: error.message });
     await logActivity(supabase, req.profile.id, 'project.update', 'project', projectId, updates);
-    return res.json({ success: true, project: data });
+    let project = data;
+    try {
+      project = await attachDashboardToProject(supabase, data);
+    } catch (attEx) {
+      console.warn('[admin/entity/project PATCH] dashboard attach skipped', attEx.message);
+    }
+    return res.json({ success: true, project });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
