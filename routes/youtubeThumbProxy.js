@@ -3,6 +3,7 @@
 const express = require('express');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
 const { thumbnailBufferLooksUnavailable, FALLBACK_SVG } = require('../lib/youtubeThumbnailLogic');
+const { fetchYoutubeThumbnailBuffer } = require('../lib/fetchYoutubeThumbnail');
 
 const router = express.Router();
 
@@ -11,22 +12,8 @@ const THUMB_BUCKET = String(process.env.CUSTOMSITE_VIDEO_THUMB_BUCKET || 'video-
 /** Dedupe concurrent fetches per id */
 const inflight = new Map();
 
-const YOUTUBE_THUMB_SRC = 'https://i.ytimg.com/vi/__ID__/mqdefault.jpg';
-
 function validateVideoId(id) {
   return typeof id === 'string' && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
-}
-
-async function fetchYouTubeMq(id) {
-  const url = YOUTUBE_THUMB_SRC.replace('__ID__', id);
-  const r = await fetch(url, {
-    redirect: 'follow',
-    headers: { Accept: 'image/*', 'User-Agent': 'CustomSite-thumb-proxy/1.0' },
-  });
-  if (!r.ok) return null;
-  const ab = await r.arrayBuffer();
-  const buf = Buffer.from(ab);
-  return buf;
 }
 
 async function uploadThumbToBucket(supabase, id, buf) {
@@ -79,7 +66,7 @@ router.get('/yt-thumb', async (req, res) => {
       let p = inflight.get(id);
       if (!p) {
         p = (async () => {
-          const bufRaw = await fetchYouTubeMq(id);
+          const bufRaw = await fetchYoutubeThumbnailBuffer(id);
           let finalBuf = bufRaw;
           if (!finalBuf || thumbnailBufferLooksUnavailable(finalBuf)) {
             return { kind: 'svg' };
@@ -109,7 +96,7 @@ router.get('/yt-thumb', async (req, res) => {
       }
     }
 
-    const bufRaw = await fetchYouTubeMq(id);
+    const bufRaw = await fetchYoutubeThumbnailBuffer(id);
     if (!bufRaw || thumbnailBufferLooksUnavailable(bufRaw)) {
       res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
       res.setHeader('X-Thumbnail-Source', 'fallback');

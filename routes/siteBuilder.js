@@ -114,12 +114,71 @@ async function querySiteFilesList(supabase, projectId) {
 }
 
 function mapSiteFileListPayload(data) {
-  return (data || []).map((row) => ({
-    path: row.path,
-    updated_at: row.updated_at,
-    content_encoding: row.content_encoding || 'utf8',
-    size: row.size_bytes != null ? Number(row.size_bytes) : null,
-  }));
+  return (data || []).map((row) => {
+    const size = row.size_bytes != null ? Number(row.size_bytes) : null;
+    return {
+      path: row.path,
+      updated_at: row.updated_at,
+      content_encoding: row.content_encoding || 'utf8',
+      size,
+      len: size,
+    };
+  });
+}
+
+function contentOctetLength(text, encoding) {
+  const t = text == null ? '' : String(text);
+  if (encoding === 'base64') {
+    try {
+      return Buffer.from(t, 'base64').length;
+    } catch {
+      return Buffer.byteLength(t, 'utf8');
+    }
+  }
+  return Buffer.byteLength(t, 'utf8');
+}
+
+async function maybeAdvanceProjectBuildStatus(supabase, projectId) {
+  try {
+    const { data: p, error } = await supabase
+      .from('projects')
+      .select('id, status, custom_domain')
+      .eq('id', projectId)
+      .maybeSingle();
+    if (error || !p) return;
+    const s = String(p.status || '').toLowerCase();
+    const hasDom = Boolean(normalizeCustomDomainHost(p.custom_domain));
+    if (s === 'discovery') {
+      await supabase.from('projects').update({ status: 'development' }).eq('id', projectId);
+      return;
+    }
+    if (s === 'development' && hasDom) {
+      await supabase.from('projects').update({ status: 'review' }).eq('id', projectId);
+    }
+  } catch (e) {
+    console.warn('[site/file] status bump skipped', e.message || e);
+  }
+}
+
+async function bumpProjectStatusWhenDomainAndFiles(supabase, projectId) {
+  try {
+    const { data: p } = await supabase.from('projects').select('id, status, custom_domain').eq('id', projectId).maybeSingle();
+    if (!p) return;
+    const hasDom = Boolean(normalizeCustomDomainHost(p.custom_domain));
+    if (!hasDom) return;
+    const s = String(p.status || '').toLowerCase();
+    const { count, error: ce } = await supabase
+      .from('site_files')
+      .select('path', { count: 'exact', head: true })
+      .eq('project_id', projectId);
+    if (ce) return;
+    if ((count ?? 0) === 0) return;
+    if (s === 'discovery' || s === 'development') {
+      await supabase.from('projects').update({ status: 'review' }).eq('id', projectId);
+    }
+  } catch (e) {
+    console.warn('[project] domain status bump skipped', e.message || e);
+  }
 }
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -243,58 +302,37 @@ router.put('/projects/:projectId/site/file', async (req, res) => {
       .eq('path', filePath)
       .maybeSingle();
 
+    const nbytes = contentOctetLength(text, encoding);
     const baseRow = { content: text, updated_at: now, content_encoding: encoding };
-    const insertRow = { project_id: projectId, path: filePath, ...baseRow };
+    const baseRowSized = { ...baseRow, size_bytes: nbytes };
 
-    async function writePlain(rowPlain) {
+    async function persistRow(rowPayload) {
       if (existing) {
-        return supabase
-          .from('site_files')
-          .update(rowPlain)
-          .eq('id', existing.id)
-          .select()
-          .single();
+        return supabase.from('site_files').update(rowPayload).eq('id', existing.id).select().single();
       }
-      return supabase
-        .from('site_files')
-        .insert({ project_id: projectId, path: filePath, ...rowPlain })
-        .select()
-        .single();
+      return supabase.from('site_files').insert({ project_id: projectId, path: filePath, ...rowPayload }).select().single();
     }
 
     let data;
     let error;
-    if (existing) {
-      ({ data, error } = await supabase
-        .from('site_files')
-        .update(baseRow)
-        .eq('id', existing.id)
-        .select()
-        .single());
-    } else {
-      ({ data, error } = await supabase
-        .from('site_files')
-        .insert(insertRow)
-        .select()
-        .single());
-    }
+    ({ data, error } = await persistRow(baseRowSized));
     if (
       error &&
       !existing &&
       /site_files_project_id_fkey|foreign key constraint/i.test(String(error.message || ''))
     ) {
       const fixed = await ensureProjectRowForSiteFiles(supabase, projectId, req.profile?.id);
-      if (fixed) {
-        ({ data, error } = await supabase
-          .from('site_files')
-          .insert(insertRow)
-          .select()
-          .single());
-      }
+      if (fixed) ({ data, error } = await persistRow(baseRowSized));
+    }
+    if (error && /size_bytes|size bytes/i.test(String(error.message || ''))) {
+      ({ data, error } = await persistRow(baseRow));
     }
     if (error && /content_encoding/.test(String(error.message))) {
-      const rowPlain = { content: text, updated_at: now };
-      ({ data, error } = await writePlain(rowPlain));
+      const rowPlainSized = { content: text, updated_at: now, size_bytes: nbytes };
+      ({ data, error } = await persistRow(rowPlainSized));
+      if (error && /size_bytes|size bytes/i.test(String(error.message || ''))) {
+        ({ data, error } = await persistRow({ content: text, updated_at: now }));
+      }
     } else if (error) {
       return res.status(500).json({ error: error.message });
     }
@@ -308,6 +346,9 @@ router.put('/projects/:projectId/site/file', async (req, res) => {
         }
       });
     }
+    setImmediate(() => {
+      maybeAdvanceProjectBuildStatus(supabase, projectId).catch(() => {});
+    });
     return res.json({ success: true, file: data });
   } catch (e) {
     console.error(e);
@@ -605,6 +646,9 @@ async function patchAdminProjectById(req, res) {
     try {
       payload = await attachDashboardToProject(supabase, data);
     } catch (_) {}
+    if (Object.prototype.hasOwnProperty.call(patch, 'custom_domain')) {
+      void bumpProjectStatusWhenDomainAndFiles(supabase, projectId);
+    }
     return res.json({ success: true, project: payload });
   } catch (e) {
     console.error(e);

@@ -292,11 +292,16 @@ router.post('/logout', (_req, res) => {
 });
 
 router.get('/me', requireAuth, (req, res) => {
+  const meta = req.authUser && typeof req.authUser.user_metadata === 'object' ? req.authUser.user_metadata || {} : {};
+  const metaName = String(meta.full_name || meta.name || '').trim();
+  const dbName = String(req.profile.full_name || '').trim();
+  /** Prefer Auth metadata — DB row sometimes lags onboarding or stale demo imports. */
+  const full_name = metaName || dbName || null;
   return res.json({
     user: {
       id: req.profile.id,
       email: req.profile.email,
-      full_name: req.profile.full_name,
+      full_name,
       company: req.profile.company,
       role: req.profile.role,
       created_at: req.profile.created_at,
