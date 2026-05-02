@@ -270,6 +270,8 @@ export function SiteBuilderFoundationPage() {
   const [hostingSaving, setHostingSaving] = useState(false);
   const [deployBusy, setDeployBusy] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
+  /** When true, POST /railway/attach-custom-domain also registers www.<apex> at Railway (TLS + routing). */
+  const [attachIncludeWww, setAttachIncludeWww] = useState(true);
   const mergeProjectRowFromServer = useAppStore(useShallow((s) => s.mergeProjectRowFromServer));
 
   const modKey = useMemo(() => {
@@ -577,6 +579,7 @@ export function SiteBuilderFoundationPage() {
       const r = await attachRailwayCustomDomain(projectId, {
         domain: normalizeCustomDomainInput(domainDraft) || undefined,
         serviceId: railwayServiceDraft.trim() || undefined,
+        includeWww: attachIncludeWww,
       });
       if (!r.ok) {
         toast(r.error, 'error');
@@ -591,7 +594,7 @@ export function SiteBuilderFoundationPage() {
     } finally {
       setAttachBusy(false);
     }
-  }, [projectId, domainDraft, railwayServiceDraft, toast]);
+  }, [projectId, domainDraft, railwayServiceDraft, attachIncludeWww, toast]);
 
   const runDeployProduction = useCallback(async () => {
     if (!projectId) return;
@@ -2389,6 +2392,16 @@ export function SiteBuilderFoundationPage() {
 
               <section className="rounded-lg border border-white/10 bg-white/5 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">3 · Railway & deploy</p>
+                <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={attachIncludeWww}
+                    onChange={(e) => setAttachIncludeWww(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-zinc-600 bg-zinc-900"
+                  />
+                  Register <code className="text-zinc-200">www</code> at Railway too (recommended; app still 301s{' '}
+                  <code className="text-zinc-200">www</code> → apex)
+                </label>
                 <div className="mt-3 flex flex-col gap-2">
                   <Button
                     type="button"

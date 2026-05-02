@@ -1174,12 +1174,39 @@ router.post('/projects/:projectId/railway/attach-custom-domain', async (req, res
     if (created.error) {
       return res.status(400).json({ ok: false, error: created.error });
     }
+    const includeWww =
+      body.includeWww === true && domain && !/^www\./i.test(domain) ? true : false;
+    let wwwCreated = null;
+    if (includeWww) {
+      const wwwHost = `www.${domain}`;
+      wwwCreated = await createCustomDomainForService(token, { serviceId, domain: wwwHost });
+      if (wwwCreated.error) {
+        return res.status(400).json({
+          ok: false,
+          error: wwwCreated.error,
+          partial: true,
+          domain: created.domain,
+          customDomainId: created.id,
+          dnsRecords: created.dnsRecords,
+          hint: `Apex ${domain} was attached; www failed — fix error and retry or add www in Railway dashboard.`,
+        });
+      }
+    }
     return res.json({
       ok: true,
       domain: created.domain,
       customDomainId: created.id,
       dnsRecords: created.dnsRecords,
-      hint: 'Add the DNS records at your registrar. Railway may also require a TXT record for verification — see dnsRecords.',
+      ...(wwwCreated && !wwwCreated.error
+        ? {
+            wwwDomain: wwwCreated.domain,
+            wwwCustomDomainId: wwwCreated.id,
+            wwwDnsRecords: wwwCreated.dnsRecords,
+          }
+        : {}),
+      hint: includeWww
+        ? 'Add DNS records at your registrar for both apex and www (Railway may use TXT for verification). This app 301-redirects www → apex once DNS resolves.'
+        : 'Add the DNS records at your registrar. Railway may also require a TXT record for verification — see dnsRecords. Pass includeWww: true to register www as well.',
     });
   } catch (e) {
     console.error(e);

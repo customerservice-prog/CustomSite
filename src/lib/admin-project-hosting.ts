@@ -62,7 +62,7 @@ export async function deployAdminProjectZip(projectId: string, environment: 'sta
 
 export async function attachRailwayCustomDomain(
   projectId: string,
-  body: { domain?: string; serviceId?: string; token?: string } = {}
+  body: { domain?: string; serviceId?: string; token?: string; includeWww?: boolean } = {}
 ) {
   return adminFetchJson<{
     ok?: boolean;

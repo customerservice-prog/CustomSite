@@ -11,6 +11,10 @@
 -- TRAFFIC: CustomSite matches Host to custom_domain (+ optional live_url fallback).
 -- Middleware 301s www.<apex> -> apex unless CUSTOMSITE_SKIP_CLIENT_WWW_REDIRECT=1.
 -- Paths index.html, videos.html, debate.html, etc. are served from site_files (see resolveSiteFilePath).
+--
+-- RAILWAY: After this UPDATE, register the hostname on the production Railway service:
+--   - Site builder → Publish → "Register custom domain on Railway" (with www checkbox), OR
+--   - operations/railway-attach-cestui-domain.ps1 with your admin JWT (server must have RAILWAY_API_TOKEN + railway_service_id_production on the project).
 
 BEGIN;
 
