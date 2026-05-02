@@ -191,10 +191,10 @@ router.put('/projects/:projectId/site/file', async (req, res) => {
     const encoding = encIn === 'base64' ? 'base64' : 'utf8';
     const text = content == null ? '' : String(content);
     if (encoding === 'utf8' && Buffer.byteLength(text, 'utf8') > MAX_FILE_BYTES) {
-      return res.status(400).json({ error: 'File too large (max 2MB for text)' });
+      return res.status(400).json({ error: `File too large (max ${MAX_FILE_BYTES / (1024 * 1024)}MB for text)` });
     }
     if (encoding === 'base64' && Buffer.byteLength(text, 'utf8') > MAX_IMAGE_BYTES) {
-      return res.status(400).json({ error: 'File too large (max 4MB for images)' });
+      return res.status(400).json({ error: `File too large (max ${MAX_IMAGE_BYTES / (1024 * 1024)}MB for base64 assets)` });
     }
     const supabase = getService();
     const now = new Date().toISOString();

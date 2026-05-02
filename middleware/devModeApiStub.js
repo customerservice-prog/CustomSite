@@ -82,8 +82,8 @@ function tryRespondLocalDemoSite(req, res, m, p) {
       return true;
     }
     const text = req.body && req.body.content != null ? String(req.body.content) : '';
-    if (Buffer.byteLength(text, 'utf8') > 2 * 1024 * 1024) {
-      res.status(400).json({ error: 'File too large (max 2MB)' });
+    if (Buffer.byteLength(text, 'utf8') > 10 * 1024 * 1024) {
+      res.status(400).json({ error: 'File too large (max 10MB)' });
       return true;
     }
     const enc = req.body && req.body.content_encoding;

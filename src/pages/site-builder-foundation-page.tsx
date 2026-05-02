@@ -41,6 +41,7 @@ import {
 } from '@/lib/site-builder/quick-html-insert';
 import { buildSectionByTemplateId } from '@/lib/site-templates/section-catalog';
 import type { SectionTemplateRow } from '@/lib/site-templates/section-catalog';
+import { applyInlinePreviewYoutubeThumbnailPlaceholders } from '@/lib/site-builder/preview-youtube-thumbnail-placeholder';
 import { collectMobileHtmlWarnings } from '@/lib/mobile-site-linter';
 import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
 import { createPreviewDebugEvent, type PreviewDebugEvent } from '@/lib/site-builder/preview-debug-events';
@@ -131,6 +132,10 @@ export function SiteBuilderFoundationPage() {
 
   const site: ProjectSite = row?.site ?? { projectId: projectId || '', files: [] };
   const previewHtml = row?.previewHtml ?? '';
+  const inlineSlotPreviewHtml = useMemo(
+    () => applyInlinePreviewYoutubeThumbnailPlaceholders(previewHtml),
+    [previewHtml]
+  );
   const loadStatus = row?.loadStatus ?? 'idle';
   const loadError = row?.loadError ?? null;
   const saveStatus = row?.saveStatus ?? 'idle';
@@ -758,8 +763,9 @@ export function SiteBuilderFoundationPage() {
   useEffect(() => {
     const el = previewFrameRef.current;
     if (!el) return;
-    el.srcdoc = previewHtml;
-  }, [previewHtml, previewIframeKey]);
+    /** Inline pane: no YouTube CDN thumbnail fetches — fullscreen & new tab use full `previewHtml`. */
+    el.srcdoc = inlineSlotPreviewHtml;
+  }, [inlineSlotPreviewHtml, previewIframeKey]);
 
   useEffect(() => {
     if (!fullscreenPreviewOpen) return;

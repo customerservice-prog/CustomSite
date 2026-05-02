@@ -32,6 +32,9 @@ const { isPlatformHostname } = require('./lib/customsitePlatformHosts');
 const clientDomainSiteMiddleware = require('./middleware/clientDomainSite');
 
 const app = express();
+/** Site file saves and bulk JSON APIs — default 10mb so ~1MB+ HTML never fails parsing before handlers run. Align proxy (nginx/Railway) with this cap. */
+const JSON_BODY_LIMIT = String(process.env.EXPRESS_JSON_LIMIT || process.env.JSON_BODY_LIMIT || '10mb').trim() || '10mb';
+
 const PORT = Number.parseInt(String(process.env.PORT || '3000'), 10) || 3000;
 /** Bind all interfaces so http://127.0.0.1:PORT and http://localhost:PORT work; required on Railway/Docker. */
 const BIND_HOST = process.env.BIND_HOST || '0.0.0.0';
@@ -115,8 +118,8 @@ app.post(
   handleWebhook
 );
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: JSON_BODY_LIMIT }));
+app.use(express.urlencoded({ limit: JSON_BODY_LIMIT, extended: true }));
 
 /** Custom domains → client `site_files` before admin stub, APIs, marketing static, or `/` admin redirect. */
 app.use(clientDomainSiteMiddleware);
@@ -346,6 +349,17 @@ app.use((req, res) => {
       res.status(404).type('text/plain').send('Not found');
     }
   });
+});
+
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.too.large') {
+    console.warn('[body-parser] payload too large', req.method, req.path, JSON_BODY_LIMIT);
+    return res.status(413).json({
+      error: 'Request body too large',
+      limit: JSON_BODY_LIMIT,
+    });
+  }
+  next(err);
 });
 
 app.use((err, _req, res, _next) => {
