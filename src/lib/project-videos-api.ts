@@ -50,6 +50,7 @@ export function addAdminProjectVideo(
   });
 }
 
+export function deleteAdminProjectVideo(
   projectId: string,
   videoId: string,
   opts?: { confirmLiveDestructive?: boolean }
