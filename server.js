@@ -54,8 +54,9 @@ app.set('trust proxy', 1);
 /**
  * www and apex (e.g. customsite.online vs www.customsite.online) are different origins;
  * `localStorage` (session token after login) is not shared, so the user appears signed
- * out on the other host. If PUBLIC_SITE_URL is set, 301 GET/HEAD to that hostname
- * for the same "site" (ignores Railway/Render preview hostnames). Set
+ * out on the other host. If PUBLIC_SITE_URL is set, 301 GET/HEAD to that hostname for
+ * platform hosts only (see isPlatformHostname) — production client domains skip this so
+ * CNAME/custom-domain traffic is not redirected to PUBLIC_SITE_URL. Set
  * PUBLIC_SITE_URL=https://customsite.online (pick www or not — use one and stick to it).
  * Emergency bypass: SKIP_CANONICAL_HOST=1
  */
@@ -77,6 +78,10 @@ app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   if (String(process.env.SKIP_CANONICAL_HOST || '').trim() === '1') return next();
   if (skipCanonicalHostCheck(req.hostname)) return next();
+  const host = String(req.hostname || '').toLowerCase();
+  if (host && !isPlatformHostname(host)) {
+    return next();
+  }
   const raw = String(process.env.PUBLIC_SITE_URL || '').trim();
   if (!raw) return next();
   let canonicalHost;
@@ -87,7 +92,6 @@ app.use((req, res, next) => {
     return next();
   }
   if (!canonicalHost) return next();
-  const host = String(req.hostname || '').toLowerCase();
   if (host === canonicalHost) return next();
   const stripWww = (x) => (x.startsWith('www.') ? x.slice(4) : x);
   if (stripWww(host) !== stripWww(canonicalHost)) return next();
