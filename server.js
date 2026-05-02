@@ -7,6 +7,7 @@ const { applySitePhoneToHtml } = require('./lib/sitePhone');
 
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const helmet = require('helmet');
 const { buildCorsOptions } = require('./lib/corsConfig');
 
@@ -104,6 +105,8 @@ app.use(
 );
 // CORS: CORS_ORIGINS (comma list) or PUBLIC_SITE_URL; reflect any origin in dev if unset.
 app.use(cors(buildCorsOptions()));
+/** gzip/brotli response bodies — client sites + APIs that return JSON/HTML */
+app.use(compression());
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -134,7 +137,9 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', siteBuilderRoutes);
 app.use('/api/admin', projectVideosAdminRouter);
+app.use('/api/admin', siteAnalyticsAdminRouter);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api', internalCronRouter);
 app.use('/api', projectVideosCronRouter);
 app.use('/api', projectVideosPublicRouter);
 app.use('/api', configPublicRoutes);

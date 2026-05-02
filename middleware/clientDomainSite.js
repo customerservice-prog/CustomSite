@@ -10,9 +10,16 @@ const {
   customDomainLookupVariants,
 } = require('../lib/customsitePlatformHosts');
 const { injectSiteSettingsIntoHtml } = require('../lib/siteHeadInjector');
+const {
+  applyClientSiteTechnicalSeo,
+  filePathToUrlPath,
+  buildSitemapXml,
+  buildRobotsTxt,
+} = require('../lib/clientSiteSeo');
+const { insertSitePageview } = require('../lib/sitePageviewTrack');
 
 const CACHE_TTL_MS = Math.min(Math.max(Number(process.env.CUSTOMSITE_DOMAIN_CACHE_MS) || 120000, 5000), 600000);
-/** @type {Map<string, { projectId: string | null; siteSettings: unknown | null; expires: number }>} */
+/** @type {Map<string, { projectId: string | null; siteSettings: unknown | null; launchedAt: string | null; projectName: string | null; expires: number }>} */
 const projectByHostCache = new Map();
 
 function mimeForPath(p) {
@@ -83,21 +90,46 @@ function resolveSiteFilePath(urlPath) {
   return rel;
 }
 
-/** @returns {Promise<{ projectId: string; siteSettings?: unknown | null } | null>} */
+function setClientSecurityHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+}
+
+function setCacheForAsset(res, filePath) {
+  const lower = String(filePath).toLowerCase();
+  if (lower.endsWith('.html')) res.setHeader('Cache-Control', 'public, max-age=3600');
+  else if (lower.endsWith('.css') || lower.endsWith('.js')) res.setHeader('Cache-Control', 'public, max-age=86400');
+  else if (/\.(png|jpe?g|gif|webp|svg|ico)$/i.test(lower)) res.setHeader('Cache-Control', 'public, max-age=604800');
+  else res.setHeader('Cache-Control', 'public, max-age=86400');
+}
+
+/** @returns {Promise<{ projectId: string; siteSettings?: unknown | null; launchedAt: string | null; projectName: string | null } | null>} */
 async function lookupProjectMetaByHost(supabase, hostKey) {
   const now = Date.now();
   const hit = projectByHostCache.get(hostKey);
   if (hit && hit.expires > now) {
-    return hit.projectId ? { projectId: hit.projectId, siteSettings: hit.siteSettings } : null;
+    return hit.projectId
+      ? { projectId: hit.projectId, siteSettings: hit.siteSettings, launchedAt: hit.launchedAt, projectName: hit.projectName }
+      : null;
   }
   const variants = customDomainLookupVariants(hostKey);
-  let { data: rows, error } = await supabase.from('projects').select('id, site_settings, custom_domain').in('custom_domain', variants).limit(5);
+  let { data: rows, error } = await supabase
+    .from('projects')
+    .select('id, site_settings, custom_domain, launched_at, name')
+    .in('custom_domain', variants)
+    .limit(5);
   if (error && /site_settings/.test(String(error.message))) {
-    ({ data: rows, error } = await supabase.from('projects').select('id, custom_domain').in('custom_domain', variants).limit(5));
+    ({ data: rows, error } = await supabase.from('projects').select('id, custom_domain, launched_at, name').in('custom_domain', variants).limit(5));
   }
   if (error) {
     console.error('[clientDomainSite] project lookup', error.message);
-    projectByHostCache.set(hostKey, { projectId: null, siteSettings: null, expires: now + 15000 });
+    projectByHostCache.set(hostKey, {
+      projectId: null,
+      siteSettings: null,
+      launchedAt: null,
+      projectName: null,
+      expires: now + 15000,
+    });
     return null;
   }
   let row0 = rows && rows[0];
@@ -106,7 +138,7 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
     if (want) {
       const { data: loose, error: e2 } = await supabase
         .from('projects')
-        .select('id, site_settings, custom_domain')
+        .select('id, site_settings, custom_domain, launched_at, name')
         .not('custom_domain', 'is', null)
         .ilike('custom_domain', `%${want}%`)
         .limit(40);
@@ -117,8 +149,16 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
   }
   const id = row0 && row0.id ? String(row0.id) : null;
   const siteSettings = row0 && row0.site_settings !== undefined ? row0.site_settings : null;
-  projectByHostCache.set(hostKey, { projectId: id, siteSettings, expires: now + CACHE_TTL_MS });
-  return id ? { projectId: id, siteSettings } : null;
+  const launchedAt = row0 && row0.launched_at ? String(row0.launched_at) : null;
+  const projectName = row0 && row0.name != null ? String(row0.name) : null;
+  projectByHostCache.set(hostKey, {
+    projectId: id,
+    siteSettings,
+    launchedAt,
+    projectName,
+    expires: now + CACHE_TTL_MS,
+  });
+  return id ? { projectId: id, siteSettings, launchedAt, projectName } : null;
 }
 
 async function loadFileRow(supabase, projectId, filePath) {
@@ -133,12 +173,7 @@ async function loadFileRow(supabase, projectId, filePath) {
   row = q1.data;
   err = q1.error;
   if (err && /content_encoding/.test(String(err.message))) {
-    const q2 = await supabase
-      .from('site_files')
-      .select('content')
-      .eq('project_id', projectId)
-      .eq('path', filePath)
-      .maybeSingle();
+    const q2 = await supabase.from('site_files').select('content').eq('project_id', projectId).eq('path', filePath).maybeSingle();
     row = q2.data;
     err = q2.error;
   }
@@ -146,7 +181,34 @@ async function loadFileRow(supabase, projectId, filePath) {
   return row;
 }
 
-function buildBody(row, filePath, req, siteSettings) {
+async function listSitemapEntries(supabase, projectId) {
+  const { data, error } = await supabase.from('site_files').select('path, updated_at').eq('project_id', projectId);
+  if (error) throw error;
+  const today = new Date().toISOString().slice(0, 10);
+  return (data || [])
+    .filter((r) => r.path && /\.html$/i.test(r.path))
+    .map((r) => {
+      const lm = r.updated_at ? String(r.updated_at).slice(0, 10) : today;
+      return { path: filePathToUrlPath(r.path), lastmod: lm };
+    })
+    .sort((a, b) => {
+      if (a.path === '/') return -1;
+      if (b.path === '/') return 1;
+      return a.path.localeCompare(b.path);
+    });
+}
+
+function schedulePageviewTracking(res, opts) {
+  const { shouldTrack } = opts;
+  if (!shouldTrack) return;
+  res.once('finish', () => {
+    setImmediate(() => {
+      insertSitePageview(opts.supabase, opts.ctx).catch(() => {});
+    });
+  });
+}
+
+function buildBody(row, filePath, req, siteSettings, projectName) {
   const enc = row.content_encoding === 'base64' ? 'base64' : 'utf8';
   const isHtml = filePath.toLowerCase().endsWith('.html');
   if (enc === 'base64' && !isHtml) {
@@ -160,7 +222,14 @@ function buildBody(row, filePath, req, siteSettings) {
   const origin = originForClientSite(req);
   const baseHref = origin ? `${origin.replace(/\/$/, '')}/` : null;
   const withBase = injectLiveBaseHref(raw, baseHref);
-  return injectSiteSettingsIntoHtml(withBase, filePath, siteSettings);
+  const withSettings = injectSiteSettingsIntoHtml(withBase, filePath, siteSettings);
+  const canonOrigin = origin ? origin.replace(/\/$/, '') : `https://${stripPort(req.get('x-forwarded-host') || req.get('host') || 'localhost')}`;
+  return applyClientSiteTechnicalSeo(withSettings, {
+    filePath,
+    siteSettings,
+    siteName: projectName || 'Site',
+    canonicalOrigin: canonOrigin,
+  });
 }
 
 async function handleClientDomain(req, res) {
@@ -173,12 +242,11 @@ async function handleClientDomain(req, res) {
     return false;
   }
 
-  const reqPath = req.path || '/';
+  const reqPath = (req.path || '/').split('?')[0];
   if (reqPath.startsWith('/api') || reqPath.startsWith('/preview/')) {
     return false;
   }
 
-  /** SEO / single canonical hostname: redirect www.anything → apex (custom domains only). Bypass: CUSTOMSITE_SKIP_CLIENT_WWW_REDIRECT=1 */
   if (
     String(process.env.CUSTOMSITE_SKIP_CLIENT_WWW_REDIRECT || '').trim() !== '1' &&
     /^www\./i.test(hostIncoming)
@@ -206,7 +274,10 @@ async function handleClientDomain(req, res) {
   const meta = await lookupProjectMetaByHost(supabase, host);
   const projectId = meta && meta.projectId;
   const siteSettings = meta && meta.siteSettings;
+  const launchedAt = meta && meta.launchedAt;
+  const projectName = meta && meta.projectName;
   if (!projectId) {
+    setClientSecurityHeaders(res);
     res.status(404).type('html').send(
       `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Not found</title></head><body style="font-family:system-ui;padding:2rem;color:#334155"><h1>Site not found</h1><p>No project is linked to <strong>${escapeHtml(
         host
@@ -215,8 +286,43 @@ async function handleClientDomain(req, res) {
     return true;
   }
 
+  const origin = originForClientSite(req);
+  const originBase = origin ? origin.replace(/\/$/, '') : `https://${host}`;
+
+  if (reqPath === '/sitemap.xml') {
+    setClientSecurityHeaders(res);
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    if (req.method === 'HEAD') {
+      res.end();
+      return true;
+    }
+    try {
+      const entries = await listSitemapEntries(supabase, projectId);
+      const xml = buildSitemapXml(originBase, entries.length ? entries : [{ path: '/', lastmod: new Date().toISOString().slice(0, 10) }]);
+      res.send(xml);
+    } catch (e) {
+      console.error(e);
+      res.status(500).type('text/plain').send('Sitemap error');
+    }
+    return true;
+  }
+
+  if (reqPath === '/robots.txt') {
+    setClientSecurityHeaders(res);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    if (req.method === 'HEAD') {
+      res.end();
+      return true;
+    }
+    res.send(buildRobotsTxt(originBase));
+    return true;
+  }
+
   const filePath = resolveSiteFilePath(reqPath);
   if (!filePath) {
+    setClientSecurityHeaders(res);
     res.status(400).type('text/plain').send('Invalid path');
     return true;
   }
@@ -229,11 +335,13 @@ async function handleClientDomain(req, res) {
     }
   } catch (e) {
     console.error(e);
+    setClientSecurityHeaders(res);
     res.status(500).type('text/plain').send('Error loading site');
     return true;
   }
 
   if (!row) {
+    setClientSecurityHeaders(res);
     res.status(404).type('html').send(
       `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Page not found</title></head><body style="font-family:system-ui;padding:2rem;color:#334155"><h1>Page not found</h1><p><code>${escapeHtml(
         filePath
@@ -242,13 +350,28 @@ async function handleClientDomain(req, res) {
     return true;
   }
 
+  setClientSecurityHeaders(res);
+  setCacheForAsset(res, filePath);
   res.setHeader('Content-Type', mimeForPath(filePath));
-  res.setHeader('Cache-Control', 'public, max-age=120');
+
+  const trackPath = req.path.split('?')[0] || '/';
+  const shouldTrackHtml = launchedAt && req.method === 'GET' && filePath.toLowerCase().endsWith('.html');
+  schedulePageviewTracking(res, {
+    shouldTrack: shouldTrackHtml,
+    supabase,
+    ctx: {
+      projectId,
+      host,
+      path: trackPath.endsWith('/') && trackPath.length > 1 ? trackPath.slice(0, -1) || '/' : trackPath,
+      req,
+    },
+  });
+
   if (req.method === 'HEAD') {
     res.end();
     return true;
   }
-  const out = buildBody(row, filePath, req, siteSettings);
+  const out = buildBody(row, filePath, req, siteSettings, projectName);
   if (Buffer.isBuffer(out)) {
     res.send(out);
   } else {
@@ -257,11 +380,6 @@ async function handleClientDomain(req, res) {
   return true;
 }
 
-/**
- * Serves `site_files` for the project whose `custom_domain` matches Host (with www apex variants).
- * Register after LOCAL_SEO / host-specific marketing routes so those hosts are unchanged.
- * Register before `express.static` so client domains never receive the platform marketing `index.html`.
- */
 function clientDomainSiteMiddleware(req, res, next) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   handleClientDomain(req, res)

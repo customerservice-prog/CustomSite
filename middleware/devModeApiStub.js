@@ -575,6 +575,33 @@ function devModeApiStub(req, res, next) {
     return res.json({ success: true });
   }
 
+  if (m === 'GET' && /^\/api\/admin\/projects\/[^/]+\/analytics$/.test(p)) {
+    const projectId = p.split('/')[4];
+    const thirty = [];
+    for (let i = 29; i >= 0; i -= 1) {
+      const d = new Date(Date.now() - i * 86400000);
+      thirty.push({
+        date: d.toISOString().slice(0, 10),
+        pageviews: 0,
+        unique_visitors: 0,
+      });
+    }
+    return res.json({
+      total_views: 0,
+      yesterday_views: 0,
+      yesterday_unique_visitors: 0,
+      today_views: 0,
+      last_30_days: thirty,
+      launched_at: null,
+      peak_day: null,
+      top_referrers: [],
+      project_id: projectId,
+    });
+  }
+  if (m === 'GET' && p === '/api/admin/analytics/live') {
+    return res.json({ total_live: 0, by_project: [] });
+  }
+
   /** Dev-backed project videos (requires dev Bearer token; same shapes as `/routes/projectVideos.js`). */
   const devVidList = /^\/api\/admin\/projects\/([^/]+)\/videos$/;
   const devVidCheck = /^\/api\/admin\/projects\/([^/]+)\/videos\/check$/;

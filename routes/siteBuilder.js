@@ -493,7 +493,8 @@ async function patchAdminProjectById(req, res) {
       }
       patch.status = b.status;
       if (b.status === 'live') {
-        patch.launched_at = new Date().toISOString();
+        const { data: curLu } = await supabase.from('projects').select('launched_at').eq('id', projectId).maybeSingle();
+        if (!curLu?.launched_at) patch.launched_at = new Date().toISOString();
       }
     }
     if (Object.keys(patch).length === 0) {
@@ -852,7 +853,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     const { data: proj, error: perr } = await supabase
       .from('projects')
       .select(
-        'id, name, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production, railway_service_id_staging, railway_service_id_production'
+        'id, name, launched_at, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production, railway_service_id_staging, railway_service_id_production'
       )
       .eq('id', projectId)
       .maybeSingle();
@@ -994,7 +995,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
       patch.railway_project_id_production = deployed.railwayProjectId;
       patch.railway_service_id_production = deployed.serviceId;
       patch.status = 'live';
-      patch.launched_at = new Date().toISOString();
+      if (!proj.launched_at) patch.launched_at = new Date().toISOString();
     } else {
       patch.railway_url_staging = deployed.publicUrl;
       patch.railway_project_id_staging = deployed.railwayProjectId;

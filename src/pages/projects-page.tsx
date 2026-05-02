@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LayoutGrid, Plus, Search, Table2 } from 'lucide-react';
+import { Calendar, Eye, LayoutGrid, Plus, Radio, Search, Table2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
 import { PageHeader } from '@/components/ui/page-header';
@@ -29,6 +29,42 @@ import { formatCurrency } from '@/lib/format-display';
 import { CONVERSION_WORKSPACE_LABEL } from '@/lib/offer-positioning';
 import { RecommendedNextAction, type NextActionItem } from '@/components/workspace/recommended-next-action';
 import { useTasks } from '@/store/hooks';
+import { fetchLiveAnalytics, fetchProjectAnalytics } from '@/lib/project-analytics-api';
+
+function formatSiteTrafficLine(p: {
+  deliveryFocus: string;
+  id: string;
+  analyticsByProject: Record<string, { total: number; yesterday: number }>;
+  liveByProject: Record<string, number>;
+}) {
+  if (import.meta.env.VITE_USE_REAL_API !== '1' || p.deliveryFocus !== 'client_site') return null;
+  const a = p.analyticsByProject[p.id];
+  const live = p.liveByProject[p.id] ?? 0;
+  const total = a?.total ?? 0;
+  const yest = a?.yesterday ?? 0;
+  return (
+    <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] font-medium tabular-nums text-slate-500">
+      <span className="inline-flex items-center gap-1">
+        <Eye className="h-3 w-3 text-slate-400" aria-hidden />
+        {(total ?? 0).toLocaleString()} total
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <Calendar className="h-3 w-3 text-slate-400" aria-hidden />
+        {(yest ?? 0).toLocaleString()} yesterday
+      </span>
+      <span
+        className={cn(
+          'inline-flex items-center gap-1',
+          live > 0 ? 'text-emerald-700' : 'text-slate-400',
+          live > 0 && 'animate-pulse',
+        )}
+      >
+        <Radio className="h-3 w-3" aria-hidden />
+        {live.toLocaleString()} live
+      </span>
+    </p>
+  );
+}
 
 export function ProjectsPage() {
   const navigate = useNavigate();
@@ -80,6 +116,59 @@ export function ProjectsPage() {
       return d !== 0 ? d : a.name.localeCompare(b.name);
     });
   }, [projects, q, status, clientMap, healthByProjectId]);
+
+  const clientSiteProjectIdsKey = useMemo(() => rows.filter((p) => p.deliveryFocus === 'client_site').map((p) => p.id).join(','), [rows]);
+
+  const [liveByProject, setLiveByProject] = useState<Record<string, number>>({});
+  const [analyticsByProject, setAnalyticsByProject] = useState<Record<string, { total: number; yesterday: number }>>({});
+
+  useEffect(() => {
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return;
+    let cancelled = false;
+    const poll = async () => {
+      const r = await fetchLiveAnalytics();
+      if (cancelled || !r.ok) return;
+      const m: Record<string, number> = {};
+      for (const row of r.data.by_project || []) {
+        m[row.project_id] = row.live_visitors;
+      }
+      setLiveByProject(m);
+    };
+    void poll();
+    const t = window.setInterval(poll, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return;
+    const ids = clientSiteProjectIdsKey ? clientSiteProjectIdsKey.split(',') : [];
+    if (!ids.length) {
+      setAnalyticsByProject({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const next: Record<string, { total: number; yesterday: number }> = {};
+      await Promise.all(
+        ids.map(async (id) => {
+          const r = await fetchProjectAnalytics(id);
+          if (r.ok) {
+            next[id] = {
+              total: r.data.total_views ?? 0,
+              yesterday: r.data.yesterday_views ?? 0,
+            };
+          }
+        }),
+      );
+      if (!cancelled) setAnalyticsByProject(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientSiteProjectIdsKey]);
 
   const drawerProject = drawerProjectId ? store.projects[drawerProjectId] : undefined;
   const drawerClient = drawerProject ? store.clients[drawerProject.clientId] : undefined;
@@ -265,8 +354,9 @@ export function ProjectsPage() {
             <TableRow>
               <TableHeadCell>Project</TableHeadCell>
               <TableHeadCell>Client</TableHeadCell>
-              <TableHeadCell>Client site</TableHeadCell>
-              <TableHeadCell>Status</TableHeadCell>
+                  <TableHeadCell>Client site</TableHeadCell>
+                  <TableHeadCell>Site traffic</TableHeadCell>
+                  <TableHeadCell>Status</TableHeadCell>
               <TableHeadCell>Health</TableHeadCell>
               <TableHeadCell className="text-right">Budget</TableHeadCell>
               <TableHeadCell className="min-w-[140px]">Progress</TableHeadCell>
@@ -328,6 +418,20 @@ export function ProjectsPage() {
                     ) : (
                       <span className="text-xs text-slate-400">Retainer / app</span>
                     )}
+                  </TableCell>
+                  <TableCell className="max-w-[200px] text-[11px] text-slate-600">
+                    {p.deliveryFocus === 'client_site'
+                      ? (formatSiteTrafficLine({
+                          deliveryFocus: p.deliveryFocus,
+                          id: p.id,
+                          analyticsByProject,
+                          liveByProject,
+                        }) ?? (
+                          <span className="text-slate-400">
+                            {import.meta.env.VITE_USE_REAL_API === '1' ? 'Loading…' : 'Real API mode only'}
+                          </span>
+                        ))
+                      : '—'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={projectStatusBadgeVariant(p.status)}>{p.status}</Badge>
@@ -394,6 +498,20 @@ export function ProjectsPage() {
                     <ProgressBar value={pct} max={100} />
                   </div>
                   <p className="mt-3 text-xs font-medium text-slate-400">Due {p.due}</p>
+                  {p.deliveryFocus === 'client_site' ? (
+                    <div className="mt-2 border-t border-slate-100/90 pt-2">
+                      {formatSiteTrafficLine({
+                        deliveryFocus: p.deliveryFocus,
+                        id: p.id,
+                        analyticsByProject,
+                        liveByProject,
+                      }) ?? (
+                        <p className="text-[10px] text-slate-400">
+                          {import.meta.env.VITE_USE_REAL_API === '1' ? 'Loading…' : 'Site traffic uses real API mode.'}
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
                 </Card>
               </Link>
             );

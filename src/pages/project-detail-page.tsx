@@ -55,8 +55,12 @@ import {
   PROCESS_STEPS,
   RISK_REVERSAL,
 } from '@/lib/offer-positioning';
+import { Radio, TrendingUp } from 'lucide-react';
+import { fetchLiveAnalytics, fetchProjectAnalytics, type ProjectAnalyticsPayload } from '@/lib/project-analytics-api';
 
 const ACTIVE_SITE_STAGES: ProjectLifecycleStage[] = ['discovery', 'proposal_contract', 'build', 'review'];
+
+const SITE_TYPE_OPTIONS = ['person', 'restaurant', 'local_business', 'ecommerce', 'portfolio'] as const;
 
 function lifecycleStageIndex(project: Project): number {
   const i = LIFECYCLE_ORDER.indexOf(project.lifecycleStage);
@@ -119,6 +123,11 @@ export function ProjectDetailPage() {
   const [sitePagesLoading, setSitePagesLoading] = useState(false);
   /** Paths explicitly marked draft in site_settings.page_publish; default is published. */
   const [pagePublishByPath, setPagePublishByPath] = useState<Record<string, 'draft' | 'published'>>({});
+  const [siteTrafficAnalytics, setSiteTrafficAnalytics] = useState<ProjectAnalyticsPayload | null>(null);
+  const [siteTrafficAnalyticsLoading, setSiteTrafficAnalyticsLoading] = useState(false);
+  const [liveVisitorsNow, setLiveVisitorsNow] = useState(0);
+  const [siteTypeDraft, setSiteTypeDraft] = useState<string>('portfolio');
+  const [googleSiteVerificationDraft, setGoogleSiteVerificationDraft] = useState('');
 
   const client = useAppStore(useShallow((s) => (project ? s.clients[project.clientId] : undefined)));
   const owner = project ? users[project.ownerId] : undefined;
@@ -183,7 +192,17 @@ export function ProjectDetailPage() {
         const o = ss as Record<string, unknown>;
         const gid = o.ga4_measurement_id ?? o.ga4MeasurementId;
         setGa4WorkspaceDraft(typeof gid === 'string' ? gid.trim() : '');
-      } else setGa4WorkspaceDraft('');
+        const st = o.site_type ?? o.siteType;
+        setSiteTypeDraft(
+          typeof st === 'string' && SITE_TYPE_OPTIONS.includes(st as (typeof SITE_TYPE_OPTIONS)[number]) ? st : 'portfolio'
+        );
+        const gsc = o.google_site_verification ?? o.googleSearchConsoleVerification;
+        setGoogleSiteVerificationDraft(typeof gsc === 'string' ? gsc.trim() : '');
+      } else {
+        setGa4WorkspaceDraft('');
+        setSiteTypeDraft('portfolio');
+        setGoogleSiteVerificationDraft('');
+      }
       const rawDom = p.custom_domain ?? p.customDomain;
       if (typeof rawDom === 'string' && rawDom.trim()) {
         setHostDomainDraft(normalizeCustomDomainInput(rawDom));
@@ -308,7 +327,11 @@ export function ProjectDetailPage() {
       const r = await patchAdminProject(projectId, {
         custom_domain: normalizeCustomDomainInput(hostDomainDraft) || null,
         railway_service_id_production: hostSvcDraft.trim() || null,
-        site_settings: { ga4_measurement_id: ga4WorkspaceDraft.trim() || null },
+        site_settings: {
+          ga4_measurement_id: ga4WorkspaceDraft.trim() || null,
+          site_type: siteTypeDraft.trim() || null,
+          google_site_verification: googleSiteVerificationDraft.trim() || null,
+        },
       });
       if (!r.ok) {
         toast(r.error, 'error');
@@ -320,11 +343,53 @@ export function ProjectDetailPage() {
     } finally {
       setHostingSaveBusy(false);
     }
-  }, [projectId, hostDomainDraft, hostSvcDraft, ga4WorkspaceDraft, mergeProjectRowFromServer, toast]);
+  }, [projectId, hostDomainDraft, hostSvcDraft, ga4WorkspaceDraft, siteTypeDraft, googleSiteVerificationDraft, mergeProjectRowFromServer, toast]);
 
   const dnsCnameTarget = useMemo(
     () => railwayHostnameFromUrl(project?.railwayProductionUrl ?? null),
     [project?.railwayProductionUrl]
+  );
+
+  useEffect(() => {
+    if (!projectId || project?.deliveryFocus !== 'client_site') return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return;
+    let cancelled = false;
+    setSiteTrafficAnalyticsLoading(true);
+    void fetchProjectAnalytics(projectId).then((r) => {
+      if (cancelled) return;
+      setSiteTrafficAnalyticsLoading(false);
+      if (r.ok) setSiteTrafficAnalytics(r.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, project?.deliveryFocus]);
+
+  useEffect(() => {
+    if (!projectId || project?.deliveryFocus !== 'client_site') return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return;
+    let cancelled = false;
+    const poll = async () => {
+      const r = await fetchLiveAnalytics();
+      if (cancelled || !r.ok) return;
+      const row = r.data.by_project?.find((x) => x.project_id === projectId);
+      setLiveVisitorsNow(row?.live_visitors ?? 0);
+    };
+    void poll();
+    const t = window.setInterval(poll, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [projectId, project?.deliveryFocus]);
+
+  const trafficLast14 = useMemo(() => {
+    const days = siteTrafficAnalytics?.last_30_days ?? [];
+    return days.slice(-14);
+  }, [siteTrafficAnalytics]);
+  const trafficChartMax = useMemo(
+    () => Math.max(1, ...trafficLast14.map((d) => d.pageviews ?? 0)),
+    [trafficLast14],
   );
 
   const nextAction = useMemo(() => {
@@ -691,6 +756,7 @@ export function ProjectDetailPage() {
       )}
 
       {project.deliveryFocus === 'client_site' && (
+        <>
         <div className="mb-10 overflow-hidden rounded-3xl bg-white shadow-md shadow-slate-900/[0.04] ring-1 ring-slate-900/[0.06]">
           <div className="grid gap-0 lg:grid-cols-2">
             <div className="space-y-6 p-6 sm:p-8 lg:bg-slate-50/35">
@@ -768,6 +834,40 @@ export function ProjectDetailPage() {
                     />
                   </div>
                 </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-site-type">
+                      Site type (SEO / JSON-LD)
+                    </label>
+                    <select
+                      id="pd-site-type"
+                      value={siteTypeDraft}
+                      onChange={(e) => setSiteTypeDraft(e.target.value)}
+                      disabled={import.meta.env.VITE_USE_REAL_API !== '1'}
+                      className="mt-1 flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-inner"
+                    >
+                      {SITE_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt.replace(/_/g, ' ')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-gsc-verify">
+                      Google Search Console verification
+                    </label>
+                    <Input
+                      id="pd-gsc-verify"
+                      value={googleSiteVerificationDraft}
+                      onChange={(e) => setGoogleSiteVerificationDraft(e.target.value)}
+                      placeholder="Meta content token from GSC"
+                      className="mt-1 h-9 font-mono text-xs"
+                      spellCheck={false}
+                      disabled={import.meta.env.VITE_USE_REAL_API !== '1'}
+                    />
+                  </div>
+                </div>
                 <div className="mt-3">
                   <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-ga4-measure">
                     GA4 measurement ID (optional)
@@ -794,7 +894,7 @@ export function ProjectDetailPage() {
                     disabled={hostingSaveBusy || import.meta.env.VITE_USE_REAL_API !== '1'}
                     onClick={() => void saveProjectHosting()}
                   >
-                    {hostingSaveBusy ? 'Saving…' : 'Save domain, Railway & GA'}
+                    {hostingSaveBusy ? 'Saving…' : 'Save domain, SEO & analytics'}
                   </Button>
                   <Link to={`/projects/${project.id}/site`} className={buttonClassName('secondary', 'h-9 px-3 text-xs')}>
                     Open site builder
@@ -984,6 +1084,121 @@ export function ProjectDetailPage() {
             </div>
           </div>
         </div>
+
+        <Card className="mb-10 overflow-hidden ring-1 ring-slate-900/[0.06]">
+          <div className="border-b border-slate-100/90 bg-slate-50/50 px-6 py-5 sm:px-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-violet-600" aria-hidden />
+                  <h3 className="text-lg font-bold tracking-tight text-slate-900">Site analytics</h3>
+                </div>
+                <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-slate-500">
+                  Page views counted on the mapped custom domain after the project launches. Visitor IDs are one-way hashes (IP fragment + UA) — no PII retained.
+                </p>
+              </div>
+              {import.meta.env.VITE_USE_REAL_API === '1' ? (
+                <div
+                  className={cn(
+                    'flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold tabular-nums ring-1',
+                    liveVisitorsNow > 0
+                      ? 'animate-pulse bg-emerald-50 text-emerald-900 ring-emerald-200/90'
+                      : 'bg-white text-slate-500 ring-slate-200/90',
+                  )}
+                >
+                  <Radio className="h-4 w-4 shrink-0" aria-hidden />
+                  {liveVisitorsNow} live now
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div className="space-y-6 p-6 sm:p-8">
+            {import.meta.env.VITE_USE_REAL_API !== '1' ? (
+              <p className="text-sm text-slate-600">
+                Analytics load from Postgres when{' '}
+                <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">VITE_USE_REAL_API</code> is enabled in the admin build.
+              </p>
+            ) : siteTrafficAnalyticsLoading && !siteTrafficAnalytics ? (
+              <p className="text-sm text-slate-500">Loading traffic…</p>
+            ) : siteTrafficAnalytics ? (
+              <>
+                <div className="grid gap-8 lg:grid-cols-12">
+                  <div className="space-y-4 lg:col-span-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Totals</p>
+                    <p className="text-3xl font-bold tabular-nums text-slate-900">
+                      {(siteTrafficAnalytics.total_views ?? 0).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Views since{' '}
+                      <span className="font-semibold text-slate-700">
+                        {siteTrafficAnalytics.launched_at
+                          ? new Date(siteTrafficAnalytics.launched_at).toLocaleDateString()
+                          : 'launch'}
+                      </span>{' '}
+                      (timezone: your browser). Today:{' '}
+                      <span className="font-semibold text-slate-800">
+                        {(siteTrafficAnalytics.today_views ?? 0).toLocaleString()}
+                      </span>
+                      , Yesterday:{' '}
+                      <span className="font-semibold text-slate-800">
+                        {(siteTrafficAnalytics.yesterday_views ?? 0).toLocaleString()}
+                      </span>
+                      .
+                    </p>
+                    {siteTrafficAnalytics.peak_day?.date ? (
+                      <p className="rounded-lg bg-violet-50/80 px-3 py-2 text-xs leading-relaxed text-violet-950 ring-1 ring-violet-200/60">
+                        <span className="font-semibold">Peak day</span> {siteTrafficAnalytics.peak_day.date} ·{' '}
+                        {(siteTrafficAnalytics.peak_day.pageviews ?? 0).toLocaleString()} views
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="lg:col-span-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Last 14 days</p>
+                    <div className="mt-3 flex h-[120px] items-end gap-1">
+                      {trafficLast14.length === 0 ? (
+                        <p className="text-xs text-slate-500">No daily rollups yet — cron fills these after UTC midnight.</p>
+                      ) : (
+                        trafficLast14.map((d) => (
+                          <div
+                            key={d.date}
+                            title={`${d.date}: ${d.pageviews} views`}
+                            className="min-h-[8px] flex-1 rounded-t-sm bg-gradient-to-t from-violet-500 to-violet-400/85"
+                            style={{
+                              height: `${Math.round(((d.pageviews ?? 0) / trafficChartMax) * 100)}%`,
+                              minHeight: (d.pageviews ?? 0) > 0 ? '8px' : '2px',
+                            }}
+                          />
+                        ))
+                      )}
+                    </div>
+                    <div className="mt-2 flex justify-between text-[10px] font-semibold uppercase text-slate-400">
+                      <span>{trafficLast14[0]?.date.slice(5) ?? '—'}</span>
+                      <span>{trafficLast14[trafficLast14.length - 1]?.date.slice(5) ?? '—'}</span>
+                    </div>
+                  </div>
+                  <div className="lg:col-span-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Top referrers (sample)</p>
+                    {siteTrafficAnalytics.top_referrers && siteTrafficAnalytics.top_referrers.length > 0 ? (
+                      <ul className="mt-3 space-y-2">
+                        {siteTrafficAnalytics.top_referrers.map((r) => (
+                          <li key={r.referrer} className="flex items-start justify-between gap-3 text-[13px] text-slate-700">
+                            <span className="min-w-0 flex-1 break-all">{r.referrer}</span>
+                            <span className="shrink-0 tabular-nums font-semibold text-slate-500">{r.count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-3 text-xs text-slate-500">No referrer strings recorded yet.</p>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">Could not load analytics.</p>
+            )}
+          </div>
+        </Card>
+        </>
       )}
 
       {project.deliveryFocus !== 'client_site' && (

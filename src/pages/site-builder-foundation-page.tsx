@@ -77,6 +77,72 @@ import {
 
 const BASE_FILES = ['index.html', 'styles.css', 'script.js'] as const;
 
+type PageSeoForm = {
+  title: string;
+  description: string;
+  og_image_url: string;
+  canonical_url: string;
+  allow_index: boolean;
+};
+
+const EMPTY_PAGE_SEO: PageSeoForm = {
+  title: '',
+  description: '',
+  og_image_url: '',
+  canonical_url: '',
+  allow_index: true,
+};
+
+const SITE_SETTINGS_SITE_TYPES = ['person', 'restaurant', 'local_business', 'ecommerce', 'portfolio'] as const;
+
+function filePathToUrlPathForCanon(filePath: string): string {
+  const lower = filePath.toLowerCase();
+  if (lower === 'index.html') return '/';
+  const base = filePath.replace(/\.html$/i, '');
+  return '/' + base.replace(/^\//, '').replace(/\\/g, '/');
+}
+
+function seoRowFromServer(raw: Record<string, unknown>): PageSeoForm {
+  const noI = raw.no_index === true || raw.index === false || raw.robots === 'noindex';
+  return {
+    title: typeof raw.title === 'string' ? raw.title : typeof raw.pageTitle === 'string' ? raw.pageTitle : '',
+    description:
+      typeof raw.description === 'string'
+        ? raw.description
+        : typeof raw.metaDescription === 'string'
+          ? raw.metaDescription
+          : '',
+    og_image_url:
+      typeof raw.og_image_url === 'string'
+        ? raw.og_image_url
+        : typeof raw.ogImage === 'string'
+          ? raw.ogImage
+          : '',
+    canonical_url:
+      typeof raw.canonical_url === 'string'
+        ? raw.canonical_url
+        : typeof raw.canonical === 'string'
+          ? raw.canonical
+          : '',
+    allow_index: !noI,
+  };
+}
+
+function pageSeoMapToPayload(map: Record<string, PageSeoForm>): Record<string, unknown> | null {
+  const out: Record<string, unknown> = {};
+  for (const [path, row] of Object.entries(map)) {
+    const chunk: Record<string, unknown> = {};
+    if (row.title.trim()) chunk.title = row.title.trim();
+    const desc = row.description.trim();
+    if (desc) chunk.description = desc.slice(0, 160);
+    if (row.og_image_url.trim()) chunk.og_image_url = row.og_image_url.trim();
+    if (row.canonical_url.trim()) chunk.canonical_url = row.canonical_url.trim();
+    if (!row.allow_index) chunk.no_index = true;
+    if (Object.keys(chunk).length) out[path] = chunk;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 const CLIENT_SITE_STATUS_LABEL: Record<'draft' | 'review' | 'live', string> = {
   draft: 'Draft — not on production URL yet',
   review: 'Review — QA or stakeholder sign-off',
@@ -172,6 +238,10 @@ export function SiteBuilderFoundationPage() {
   const [domainDraft, setDomainDraft] = useState('');
   const [railwayServiceDraft, setRailwayServiceDraft] = useState('');
   const [ga4MeasurementDraft, setGa4MeasurementDraft] = useState('');
+  const [publishSiteTypeDraft, setPublishSiteTypeDraft] = useState<string>('portfolio');
+  const [publishGoogleVerificationDraft, setPublishGoogleVerificationDraft] = useState('');
+  const [publishPageSeoByPath, setPublishPageSeoByPath] = useState<Record<string, PageSeoForm>>({});
+  const [publishSeoFilePick, setPublishSeoFilePick] = useState('index.html');
   const [mediaItems, setMediaItems] = useState<SiteMediaItem[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
   const [mediaUploadBusy, setMediaUploadBusy] = useState(false);
@@ -432,6 +502,15 @@ export function SiteBuilderFoundationPage() {
   );
   const prodDomainReady = Boolean(project?.customDomainHost?.trim());
 
+  const publishSeoSuggestedCanonical = useMemo(() => {
+    const h = normalizeCustomDomainInput(domainDraft);
+    if (!h) return '';
+    const p = filePathToUrlPathForCanon(publishSeoFilePick);
+    return `https://${h}${p}`;
+  }, [domainDraft, publishSeoFilePick]);
+
+  const publishSeoRow = publishPageSeoByPath[publishSeoFilePick] ?? EMPTY_PAGE_SEO;
+
   const saveHostingFields = useCallback(async () => {
     if (!projectId) return;
     if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
@@ -441,11 +520,15 @@ export function SiteBuilderFoundationPage() {
     const normalized = normalizeCustomDomainInput(domainDraft);
     setHostingSaving(true);
     try {
+      const pageSeoPayload = pageSeoMapToPayload(publishPageSeoByPath);
       const r = await patchAdminProject(projectId, {
         custom_domain: normalized || null,
         railway_service_id_production: railwayServiceDraft.trim() || null,
         site_settings: {
           ga4_measurement_id: ga4MeasurementDraft.trim() || null,
+          site_type: publishSiteTypeDraft.trim() || null,
+          google_site_verification: publishGoogleVerificationDraft.trim() || null,
+          ...(pageSeoPayload ? { page_seo: pageSeoPayload } : {}),
         },
       });
       if (!r.ok) {
@@ -458,7 +541,17 @@ export function SiteBuilderFoundationPage() {
     } finally {
       setHostingSaving(false);
     }
-  }, [projectId, domainDraft, railwayServiceDraft, ga4MeasurementDraft, mergeProjectRowFromServer, toast]);
+  }, [
+    projectId,
+    domainDraft,
+    railwayServiceDraft,
+    ga4MeasurementDraft,
+    publishSiteTypeDraft,
+    publishGoogleVerificationDraft,
+    publishPageSeoByPath,
+    mergeProjectRowFromServer,
+    toast,
+  ]);
 
   const runAttachRailwayDomain = useCallback(async () => {
     if (!projectId) return;
@@ -725,6 +818,7 @@ export function SiteBuilderFoundationPage() {
       if (cancelled || !r.ok || !r.data?.project) return;
       const p = r.data.project as Record<string, unknown>;
       setGa4MeasurementDraft(readGa4FromProjectPayload(p));
+      readSiteSeoDraftsFromProjectPayload(p, setPublishSiteTypeDraft, setPublishGoogleVerificationDraft, setPublishPageSeoByPath);
       const domRaw = typeof p.custom_domain === 'string' ? p.custom_domain : typeof p.customDomain === 'string' ? p.customDomain : '';
       if (domRaw.trim()) setDomainDraft(normalizeCustomDomainInput(domRaw));
       const svc = p.railway_service_id_production ?? p.railwayServiceIdProduction;
@@ -735,6 +829,16 @@ export function SiteBuilderFoundationPage() {
       cancelled = true;
     };
   }, [publishPanelOpen, projectId]);
+
+  useEffect(() => {
+    if (!publishPanelOpen || !site.files.length) return;
+    const htmlNames = site.files.map((f) => f.name).filter((n) => /\.html?$/i.test(n));
+    setPublishSeoFilePick((pick) => {
+      if (htmlNames.includes(pick)) return pick;
+      if (htmlNames.includes('index.html')) return 'index.html';
+      return htmlNames[0] || 'index.html';
+    });
+  }, [publishPanelOpen, site.files]);
 
   useEffect(() => {
     const save = () => saveCurrentToSite();
@@ -1889,6 +1993,180 @@ export function SiteBuilderFoundationPage() {
                 />
               </section>
 
+              <section className="rounded-lg border border-sky-500/25 bg-sky-950/25 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-sky-200/90">SEO &amp; Search Console</p>
+                <p className="mt-1.5 text-xs text-zinc-400">
+                  Stored in <code className="text-zinc-300">site_settings</code> and merged at serve time with auto tags, sitemap, and JSON-LD. Per-page fields use the file path as key (e.g.{' '}
+                  <code className="text-zinc-300">index.html</code>).
+                </p>
+                <label className="mt-3 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-site-type">
+                  Site type (structured data)
+                </label>
+                <select
+                  id="pub-site-type"
+                  value={publishSiteTypeDraft}
+                  onChange={(e) => setPublishSiteTypeDraft(e.target.value)}
+                  disabled={!serverWritesConfigured || !signedInForApi}
+                  className="mt-1 h-9 w-full rounded-md border border-white/10 bg-zinc-900 px-2 text-xs text-white"
+                >
+                  {SITE_SETTINGS_SITE_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+                <label className="mt-3 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-google-verif">
+                  Google Search Console verification (meta content only)
+                </label>
+                <Input
+                  id="pub-google-verif"
+                  value={publishGoogleVerificationDraft}
+                  onChange={(e) => setPublishGoogleVerificationDraft(e.target.value)}
+                  placeholder="Paste the content= value from Google"
+                  className="mt-1 h-9 border-white/10 bg-zinc-900 font-mono text-xs text-white"
+                  spellCheck={false}
+                  disabled={!serverWritesConfigured || !signedInForApi}
+                />
+                <label className="mt-3 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-seo-page">
+                  Page (HTML file)
+                </label>
+                <select
+                  id="pub-seo-page"
+                  value={publishSeoFilePick}
+                  onChange={(e) => setPublishSeoFilePick(e.target.value)}
+                  disabled={!serverWritesConfigured || !signedInForApi}
+                  className="mt-1 h-9 w-full rounded-md border border-white/10 bg-zinc-900 px-2 text-xs text-white"
+                >
+                  {site.files
+                    .map((f) => f.name)
+                    .filter((n) => /\.html?$/i.test(n))
+                    .map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                </select>
+                <label className="mt-3 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-seo-title">
+                  Page title override
+                </label>
+                <Input
+                  id="pub-seo-title"
+                  value={publishSeoRow.title}
+                  onChange={(e) =>
+                    setPublishPageSeoByPath((m) => ({
+                      ...m,
+                      [publishSeoFilePick]: { ...EMPTY_PAGE_SEO, ...m[publishSeoFilePick], title: e.target.value },
+                    }))
+                  }
+                  placeholder="Shown before the site name in &lt;title&gt;"
+                  className="mt-1 h-9 border-white/10 bg-zinc-900 text-sm text-white"
+                  disabled={!serverWritesConfigured || !signedInForApi}
+                />
+                <div className="mt-3 flex items-end justify-between gap-2">
+                  <label className="block flex-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-seo-desc">
+                    Meta description (max 160)
+                  </label>
+                  <span className="text-[10px] font-medium text-zinc-500">{publishSeoRow.description.length}/160</span>
+                </div>
+                <Textarea
+                  id="pub-seo-desc"
+                  value={publishSeoRow.description}
+                  maxLength={160}
+                  rows={3}
+                  onChange={(e) =>
+                    setPublishPageSeoByPath((m) => ({
+                      ...m,
+                      [publishSeoFilePick]: { ...EMPTY_PAGE_SEO, ...m[publishSeoFilePick], description: e.target.value },
+                    }))
+                  }
+                  className="mt-1 w-full resize-y border-white/10 bg-zinc-900 p-2 text-xs text-white"
+                  disabled={!serverWritesConfigured || !signedInForApi}
+                  spellCheck
+                />
+                <label className="mt-3 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-seo-og">
+                  Open Graph image URL
+                </label>
+                <Input
+                  id="pub-seo-og"
+                  value={publishSeoRow.og_image_url}
+                  onChange={(e) =>
+                    setPublishPageSeoByPath((m) => ({
+                      ...m,
+                      [publishSeoFilePick]: { ...EMPTY_PAGE_SEO, ...m[publishSeoFilePick], og_image_url: e.target.value },
+                    }))
+                  }
+                  placeholder="https://… absolute URL preferred"
+                  className="mt-1 h-9 border-white/10 bg-zinc-900 font-mono text-xs text-white"
+                  spellCheck={false}
+                  disabled={!serverWritesConfigured || !signedInForApi}
+                />
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-seo-can">
+                    Canonical URL
+                  </label>
+                  {publishSeoSuggestedCanonical ? (
+                    <button
+                      type="button"
+                      disabled={!serverWritesConfigured || !signedInForApi}
+                      className="text-[10px] font-semibold text-sky-300 hover:text-sky-200 disabled:opacity-40"
+                      onClick={() =>
+                        setPublishPageSeoByPath((m) => ({
+                          ...m,
+                          [publishSeoFilePick]: {
+                            ...EMPTY_PAGE_SEO,
+                            ...m[publishSeoFilePick],
+                            canonical_url: publishSeoSuggestedCanonical,
+                          },
+                        }))
+                      }
+                    >
+                      Use suggested
+                    </button>
+                  ) : null}
+                </div>
+                <Input
+                  id="pub-seo-can"
+                  value={publishSeoRow.canonical_url}
+                  onChange={(e) =>
+                    setPublishPageSeoByPath((m) => ({
+                      ...m,
+                      [publishSeoFilePick]: { ...EMPTY_PAGE_SEO, ...m[publishSeoFilePick], canonical_url: e.target.value },
+                    }))
+                  }
+                  placeholder={publishSeoSuggestedCanonical || 'Save a domain first'}
+                  className="mt-1 h-9 border-white/10 bg-zinc-900 font-mono text-xs text-white"
+                  spellCheck={false}
+                  disabled={!serverWritesConfigured || !signedInForApi}
+                />
+                {publishSeoSuggestedCanonical ? (
+                  <p className="mt-1 text-[10px] text-zinc-500">
+                    Suggested: <code className="text-zinc-300">{publishSeoSuggestedCanonical}</code>
+                  </p>
+                ) : null}
+                <label className="mt-4 flex cursor-pointer items-center gap-2 text-[12px] text-zinc-300">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-white/30 bg-zinc-900 accent-sky-500"
+                    checked={publishSeoRow.allow_index}
+                    disabled={!serverWritesConfigured || !signedInForApi}
+                    onChange={(e) =>
+                      setPublishPageSeoByPath((m) => ({
+                        ...m,
+                        [publishSeoFilePick]: {
+                          ...EMPTY_PAGE_SEO,
+                          ...m[publishSeoFilePick],
+                          allow_index: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                  Allow search engines to index this page
+                </label>
+                <p className="mt-3 text-[10px] leading-relaxed text-zinc-500">
+                  Save with the production domain button below — per-page SEO patches merge with existing <code className="text-zinc-400">site_settings</code> on the server.
+                </p>
+              </section>
+
               <section className="rounded-lg border border-violet-500/25 bg-violet-950/20 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-violet-300/90">1 · Production domain</p>
                 <p className="mt-1.5 text-xs text-zinc-400">
@@ -1923,7 +2201,7 @@ export function SiteBuilderFoundationPage() {
                   disabled={hostingSaving || !serverWritesConfigured || !signedInForApi}
                   onClick={() => void saveHostingFields()}
                 >
-                  {hostingSaving ? 'Saving…' : 'Save domain, Railway & GA to server'}
+                  {hostingSaving ? 'Saving…' : 'Save domain, Railway, SEO & GA to server'}
                 </Button>
                 {!prodDomainReady ? (
                   <p className="mt-2 text-[11px] text-amber-200/90">
@@ -2097,6 +2375,36 @@ export function SiteBuilderFoundationPage() {
       </Modal>
     </div>
   );
+}
+
+function readSiteSeoDraftsFromProjectPayload(
+  p: Record<string, unknown>,
+  setSiteType: (v: string) => void,
+  setGoogleVerification: (v: string) => void,
+  setPageMap: (m: Record<string, PageSeoForm>) => void,
+) {
+  const ss = p.site_settings ?? p.siteSettings;
+  if (!ss || typeof ss !== 'object' || Array.isArray(ss)) {
+    setSiteType('portfolio');
+    setGoogleVerification('');
+    setPageMap({});
+    return;
+  }
+  const o = ss as Record<string, unknown>;
+  const st = o.site_type ?? o.siteType;
+  const allowedSt = SITE_SETTINGS_SITE_TYPES as readonly string[];
+  setSiteType(typeof st === 'string' && allowedSt.includes(st) ? st : 'portfolio');
+  const gv = o.google_site_verification ?? o.googleSearchConsoleVerification;
+  setGoogleVerification(typeof gv === 'string' ? gv.trim() : '');
+  const rawPs = o.page_seo ?? o.pageSeo;
+  const nextMap: Record<string, PageSeoForm> = {};
+  if (rawPs && typeof rawPs === 'object' && !Array.isArray(rawPs)) {
+    for (const [k, v] of Object.entries(rawPs)) {
+      if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+      nextMap[k] = seoRowFromServer(v as Record<string, unknown>);
+    }
+  }
+  setPageMap(nextMap);
 }
 
 function readGa4FromProjectPayload(p: Record<string, unknown>): string {
