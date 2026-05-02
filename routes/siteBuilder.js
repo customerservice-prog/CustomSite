@@ -7,7 +7,8 @@ const { getService } = require('../lib/supabase');
 const { getTemplateFiles, TEMPLATE_KEYS } = require('../lib/siteTemplates');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { addServeBundle, createZipBuffer } = require('../lib/bundleStaticSite');
-const { testToken, createProject, createCustomDomainForService } = require('../lib/railwayGql');
+const { testToken, createCustomDomainForService } = require('../lib/railwayGql');
+const { provisionStaticDeploy } = require('../lib/railwayStaticDeploy');
 
 const router = express.Router();
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
@@ -636,43 +637,82 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
         error: 'RAILWAY_TEAM_ID required. Copy your team (workspace) id from Railway account settings or GraphiQL me{teams}.',
       });
     }
-    const slug = `customsite-${String(projectId).slice(0, 8)}-${environment}`;
     const rname = (proj.name || 'site') + (environment === 'production' ? ' (prod)' : ' (staging)');
-    const cproj = await createProject(token, { name: `${rname}`.slice(0, 64), teamId, description: `CustomSite static deploy ${projectId}` });
-    if (cproj.error) {
-      push('create', 'Create Railway project', 'error', cproj.error);
-      return res.status(400).json({ ok: false, steps, error: cproj.error, zipBytes: zipBuffer.length });
+    const customHost = normalizeCustomDomainHost(proj.custom_domain);
+    const attachRailwayDomain =
+      environment === 'production' && customHost && body.attach_custom_domain !== false;
+
+    push('railway', 'Create Railway project, service, and upload site (CLI)', 'pending', 'This can take 2–4 minutes');
+    const deployed = await provisionStaticDeploy({
+      token,
+      teamId,
+      displayName: `${rname}`.slice(0, 64),
+      description: `CustomSite static deploy ${projectId}`,
+      files,
+      domain:
+        environment === 'production'
+          ? { attachCustomDomain: attachRailwayDomain, customDomain: customHost }
+          : { attachCustomDomain: false, customDomain: null },
+    });
+
+    if (!deployed.ok) {
+      if (deployed.railwayProjectId) {
+        push('railway', 'Railway project created but deploy failed', 'error', deployed.error);
+      } else {
+        push('railway', 'Railway provision failed', 'error', deployed.error);
+      }
+      return res.status(400).json({
+        ok: false,
+        steps,
+        error: deployed.error,
+        zipBytes: zipBuffer.length,
+        manualUrl: `/api/admin/projects/${projectId}/site/export`,
+        railwayProjectId: deployed.railwayProjectId,
+        serviceId: deployed.serviceId,
+      });
     }
-    push('create', 'Create Railway project', 'done', cproj.id);
-    const railwayProjectId = cproj.id;
-    const publicUrl = `https://${slug}.up.railway.app`;
+
+    push('railway', 'Create Railway project, service, and upload site (CLI)', 'done', deployed.publicUrl);
     const patch = {};
     if (environment === 'production') {
-      patch.railway_url_production = publicUrl;
-      patch.railway_project_id_production = railwayProjectId;
+      patch.railway_url_production = deployed.publicUrl;
+      patch.railway_project_id_production = deployed.railwayProjectId;
+      patch.railway_service_id_production = deployed.serviceId;
     } else {
-      patch.railway_url_staging = publicUrl;
-      patch.railway_project_id_staging = railwayProjectId;
+      patch.railway_url_staging = deployed.publicUrl;
+      patch.railway_project_id_staging = deployed.railwayProjectId;
+      patch.railway_service_id_staging = deployed.serviceId;
     }
     const { error: uerr } = await supabase.from('projects').update(patch).eq('id', projectId);
     if (uerr && !/railway_/.test(String(uerr.message))) {
       console.warn(uerr);
     }
-    push(
-      'code',
-      'Connect source in Railway',
-      'pending',
-      'Upload this ZIP in Railway (empty service → deploy from local via CLI) or connect Git. Bundle ready via GET /api/admin/projects/{id}/site/export'
-    );
+
+    const dnsHint = {
+      cnameTarget: deployed.cnameTarget,
+      registrarNote:
+        deployed.cnameTarget && customHost
+          ? `At your DNS provider: point ${customHost} (or www) CNAME → ${deployed.cnameTarget} (or use ALIAS/ANAME at apex if supported).`
+          : deployed.cnameTarget
+            ? `Point your hostname CNAME → ${deployed.cnameTarget}.`
+            : 'Use the Railway dashboard → Networking for exact DNS rows.',
+    };
+
     return res.json({
       ok: true,
       environment,
       steps,
-      railwayProjectId,
-      publicUrl,
-      projectName: cproj.name,
-      note:
-        'Railway needs a connected Git repository or a CLI deploy to host these files. Your project was created in Railway — open the dashboard, create an empty service, then run: railway link <id> in the unzipped folder, or connect a GitHub repo and push. The staging/production URL is stored on this CustomSite project once migration is applied.',
+      railwayProjectId: deployed.railwayProjectId,
+      railwayServiceId: deployed.serviceId,
+      serviceName: deployed.serviceName,
+      publicUrl: deployed.publicUrl,
+      cnameTarget: deployed.cnameTarget,
+      dnsHint,
+      customDomainDns: deployed.customDomainDns || undefined,
+      projectName: rname,
+      note: attachRailwayDomain
+        ? 'Production URL saved. Custom domain attach was attempted — verify dnsRecords / Railway dashboard if TLS is pending.'
+        : 'Production URL saved on this project. Add a CNAME at your registrar when you use a custom domain.',
       downloadZip: `/api/admin/projects/${projectId}/site/export`,
     });
   } catch (e) {
