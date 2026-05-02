@@ -1,11 +1,12 @@
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { DetailPageLayout } from '@/components/layout/templates/detail-page-layout';
 import { Tabs } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonClassName } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHeadCell, TableHeader, TableRow } from '@/components/ui/table';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import {
@@ -44,6 +45,8 @@ import { useProject, useProjectActivities } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
 import { cn } from '@/lib/utils';
+import { normalizeCustomDomainInput, patchAdminProject, railwayHostnameFromUrl } from '@/lib/admin-project-hosting';
+import type { ApiProjectRow } from '@/lib/agency-api-map';
 import {
   CONVERSION_WORKSPACE_LABEL,
   DELIVERY_ADVANTAGE,
@@ -104,6 +107,11 @@ export function ProjectDetailPage() {
   const sendInvoice = useAppStore((s) => s.sendInvoice);
   const users = useAppStore(useShallow((s) => s.users));
   const store = useAppStore((s) => s);
+  const mergeProjectRowFromServer = useAppStore((s) => s.mergeProjectRowFromServer);
+
+  const [hostDomainDraft, setHostDomainDraft] = useState('');
+  const [hostSvcDraft, setHostSvcDraft] = useState('');
+  const [hostingSaveBusy, setHostingSaveBusy] = useState(false);
 
   const client = useAppStore(useShallow((s) => (project ? s.clients[project.clientId] : undefined)));
   const owner = project ? users[project.ownerId] : undefined;
@@ -148,6 +156,41 @@ export function ProjectDetailPage() {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
     ensurePagesForProject(projectId);
   }, [projectId, project, ensurePagesForProject]);
+
+  useEffect(() => {
+    if (!project) return;
+    setHostDomainDraft(project.customDomainHost ?? '');
+    setHostSvcDraft(project.railwayServiceIdProduction ?? '');
+  }, [project?.id, project?.customDomainHost, project?.railwayServiceIdProduction]);
+
+  const saveProjectHosting = useCallback(async () => {
+    if (!projectId) return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1') {
+      toast('Turn on VITE_USE_REAL_API to save hosting fields to the database.', 'error');
+      return;
+    }
+    setHostingSaveBusy(true);
+    try {
+      const r = await patchAdminProject(projectId, {
+        custom_domain: normalizeCustomDomainInput(hostDomainDraft) || null,
+        railway_service_id_production: hostSvcDraft.trim() || null,
+      });
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const row = r.data?.project;
+      if (row && typeof row === 'object') mergeProjectRowFromServer(row as ApiProjectRow);
+      toast('Hosting settings saved.', 'success');
+    } finally {
+      setHostingSaveBusy(false);
+    }
+  }, [projectId, hostDomainDraft, hostSvcDraft, mergeProjectRowFromServer, toast]);
+
+  const dnsCnameTarget = useMemo(
+    () => railwayHostnameFromUrl(project?.railwayProductionUrl ?? null),
+    [project?.railwayProductionUrl]
+  );
 
   const nextAction = useMemo(() => {
     if (!projectId || !project) return null;
@@ -552,6 +595,61 @@ export function ProjectDetailPage() {
                     />
                   );
                 })}
+              </div>
+              <div className="rounded-xl border border-violet-200/60 bg-violet-50/50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-violet-800/90">Production domain & DNS</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  Stored on the project via <code className="text-slate-800">PATCH /api/admin/projects/:id</code>. Production deploy requires a saved domain.
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-host-domain">
+                      Custom domain
+                    </label>
+                    <Input
+                      id="pd-host-domain"
+                      value={hostDomainDraft}
+                      onChange={(e) => setHostDomainDraft(e.target.value)}
+                      placeholder="www.client.com"
+                      className="mt-1 h-9 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-railway-svc">
+                      Railway service ID
+                    </label>
+                    <Input
+                      id="pd-railway-svc"
+                      value={hostSvcDraft}
+                      onChange={(e) => setHostSvcDraft(e.target.value)}
+                      placeholder="Optional — for API domain attach"
+                      className="mt-1 h-9 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    className="h-9 px-3 text-xs"
+                    disabled={hostingSaveBusy}
+                    onClick={() => void saveProjectHosting()}
+                  >
+                    {hostingSaveBusy ? 'Saving…' : 'Save to server'}
+                  </Button>
+                  <Link to={`/projects/${project.id}/site`} className={buttonClassName('secondary', 'h-9 px-3 text-xs')}>
+                    Open site builder
+                  </Link>
+                </div>
+                {dnsCnameTarget ? (
+                  <p className="mt-3 text-xs text-slate-600">
+                    Point a <strong>CNAME</strong> (or ALIAS for apex) at{' '}
+                    <code className="rounded bg-white px-1 py-0.5 text-slate-800">{dnsCnameTarget}</code>
+                  </p>
+                ) : (
+                  <p className="mt-3 text-xs text-slate-500">
+                    CNAME target appears once <code className="text-slate-700">railway_url_production</code> is set (e.g. after deploy with Railway credentials).
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Pages in this site</p>

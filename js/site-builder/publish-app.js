@@ -6,6 +6,8 @@ import { initToast, toast } from './toast.js';
 
 let projectId = null;
 let projects = [];
+/** Latest row from GET /api/admin/projects/:id (hosting fields). */
+let currentProjectHosting = {};
 let files = [];
 let selectedPath = 'index.html';
 let previewWidth = '100%';
@@ -156,8 +158,57 @@ async function loadFiles() {
   void setPreviewFrame();
 }
 
+function normalizeDomainInput(raw) {
+  let s = String(raw || '').trim().toLowerCase();
+  if (!s) return '';
+  s = s.replace(/^https?:\/\//, '');
+  s = s.split('/')[0] || '';
+  s = s.split(':')[0] || '';
+  return s.replace(/\.$/, '').trim();
+}
+
+function syncDomainUi() {
+  const cd = document.getElementById('pdCustomDomain');
+  const svc = document.getElementById('pdRailwaySvc');
+  const deployProd = document.getElementById('pdDeployProd');
+  const hint = document.getElementById('pdDnsHint');
+  if (cd) cd.value = normalizeDomainInput(currentProjectHosting.custom_domain || '');
+  if (svc) svc.value = (currentProjectHosting.railway_service_id_production && String(currentProjectHosting.railway_service_id_production)) || '';
+  const ok = Boolean(normalizeDomainInput(currentProjectHosting.custom_domain || ''));
+  if (deployProd) {
+    deployProd.disabled = !ok;
+    deployProd.title = ok ? '' : 'Save a production domain above first';
+  }
+  if (hint) {
+    const ru = currentProjectHosting.railway_url_production;
+    if (ru) {
+      try {
+        const u = new URL(String(ru).trim().startsWith('http') ? String(ru).trim() : `https://${String(ru).trim()}`);
+        hint.textContent = `DNS: point a CNAME (or ALIAS for apex) at ${u.hostname}`;
+      } catch {
+        hint.textContent = '';
+      }
+    } else {
+      hint.textContent =
+        'After deploy with Railway credentials, the default *.up.railway.app URL is stored here and this line shows your CNAME target.';
+    }
+  }
+}
+
+async function loadProjectHosting(id) {
+  currentProjectHosting = {};
+  try {
+    const d = await api(`/api/admin/projects/${encodeURIComponent(id)}`);
+    currentProjectHosting = d.project || {};
+  } catch {
+    currentProjectHosting = {};
+  }
+  syncDomainUi();
+}
+
 async function onProject(id) {
   projectId = id;
+  await loadProjectHosting(id);
   await loadFiles();
 }
 
@@ -189,6 +240,10 @@ async function runDeploy(env) {
     toast('Select a project', 'error');
     return;
   }
+  if (env === 'production' && !normalizeDomainInput(currentProjectHosting.custom_domain || '')) {
+    toast('Set and save a production domain before deploying to production.', 'error');
+    return;
+  }
   try {
     const r = await api(`/api/admin/projects/${projectId}/deploy`, {
       method: 'POST',
@@ -200,6 +255,9 @@ async function runDeploy(env) {
       r.ok === false || r.error ? String(r.error || 'Deploy failed') : `Deploy API completed${stepHint}${partial}`,
       r.ok === false || r.error ? 'error' : 'success'
     );
+    if (projectId && r && r.ok !== false && !r.error) {
+      await loadProjectHosting(projectId);
+    }
   } catch (e) {
     toast(e.message || 'Deploy failed', 'error');
   }
@@ -242,6 +300,29 @@ function main() {
   document.getElementById('pdRefresh')?.addEventListener('click', () => void loadFiles());
   document.getElementById('pdDeployStaging')?.addEventListener('click', () => void runDeploy('staging'));
   document.getElementById('pdDeployProd')?.addEventListener('click', () => void runDeploy('production'));
+  document.getElementById('pdSaveDomain')?.addEventListener('click', async () => {
+    if (!projectId) {
+      toast('Select a project', 'error');
+      return;
+    }
+    const cdEl = document.getElementById('pdCustomDomain');
+    const svcEl = document.getElementById('pdRailwaySvc');
+    const cd = normalizeDomainInput(cdEl && cdEl.value);
+    const svc = (svcEl && String(svcEl.value).trim()) || '';
+    try {
+      await api(`/api/admin/projects/${encodeURIComponent(projectId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          custom_domain: cd || null,
+          railway_service_id_production: svc || null,
+        }),
+      });
+      await loadProjectHosting(projectId);
+      toast('Domain saved on server', 'success');
+    } catch (e) {
+      toast(e.message || 'Save failed', 'error');
+    }
+  });
   document.querySelectorAll('#pdPreviewBar .pd-dv button[data-pd]').forEach((btn) => {
     btn.addEventListener('click', () => {
       previewWidth = btn.getAttribute('data-pd') || '100%';

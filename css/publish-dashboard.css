@@ -88,6 +88,56 @@ body {
 .pd-btn-primary:hover {
   background: #4338ca;
 }
+.pd-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.pd-domain-panel {
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0c1424;
+  padding: 0.5rem 1rem 0.65rem;
+}
+.pd-domain-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+  max-width: 72rem;
+}
+.pd-domain-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 10rem;
+}
+.pd-domain-field label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+.pd-input {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.35);
+  color: #f1f5f9;
+  font-size: 0.85rem;
+  min-width: 12rem;
+}
+.pd-input.pd-mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+.pd-dns-hint {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
 .pd-main {
   flex: 1;
   display: flex;

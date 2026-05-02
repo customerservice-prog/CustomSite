@@ -31,6 +31,20 @@
           <button type="button" class="pd-btn pd-btn-primary" id="pdDeployProd">Deploy production</button>
         </div>
       </header>
+      <div class="pd-domain-panel" id="pdDomainPanel">
+        <div class="pd-domain-inner">
+          <div class="pd-domain-field">
+            <label for="pdCustomDomain">Production domain</label>
+            <input type="text" id="pdCustomDomain" class="pd-input" placeholder="www.client.com (required for prod deploy)" autocomplete="off" />
+          </div>
+          <div class="pd-domain-field">
+            <label for="pdRailwaySvc">Railway service ID</label>
+            <input type="text" id="pdRailwaySvc" class="pd-input pd-mono" placeholder="Optional — from Railway service settings" autocomplete="off" />
+          </div>
+          <button type="button" class="pd-btn" id="pdSaveDomain">Save to server</button>
+          <p class="pd-dns-hint" id="pdDnsHint"></p>
+        </div>
+      </div>
       <div class="pd-main">
         <aside class="pd-pages">
           <div class="pd-pages-h">Pages</div>

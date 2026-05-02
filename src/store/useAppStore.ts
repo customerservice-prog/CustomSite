@@ -93,6 +93,8 @@ export interface AppStore extends RootState {
   setHydration: (status: RootState['hydration']['status'], error?: string) => void;
   /** Load clients + projects from `/api/admin/*` when `VITE_USE_REAL_API=1`. */
   hydrateAgencyFromServer: () => Promise<void>;
+  /** Merge one project row from GET/PATCH `/api/admin/projects/:id` without reloading the whole agency. */
+  mergeProjectRowFromServer: (row: ApiProjectRow) => void;
 
   toast: (message: string, variant?: ToastItem['variant']) => void;
   dismissToast: (id: string) => void;
@@ -306,6 +308,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const msg = e instanceof Error ? e.message : String(e);
       set({ hydration: { status: 'error', error: msg } });
     }
+  },
+
+  mergeProjectRowFromServer: (row) => {
+    const mapped = mapApiProjectRowToProject(row, get().clients);
+    if (!mapped) return;
+    const existing = get().projects[mapped.id];
+    set((s) => ({
+      projects: {
+        ...s.projects,
+        [mapped.id]: existing ? { ...existing, ...mapped } : mapped,
+      },
+    }));
   },
 
   toast: (message, variant = 'success') => {

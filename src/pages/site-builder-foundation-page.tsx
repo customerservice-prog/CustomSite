@@ -46,7 +46,18 @@ import { SiteBuilderPreviewErrorBoundary } from '@/components/site-builder/site-
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 import { getAccessToken } from '@/lib/admin-api';
+import {
+  attachRailwayCustomDomain,
+  deployAdminProjectZip,
+  fetchAdminProject,
+  normalizeCustomDomainInput,
+  patchAdminProject,
+  railwayHostnameFromUrl,
+} from '@/lib/admin-project-hosting';
 import { siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
+import { useAppStore } from '@/store/useAppStore';
+import { useShallow } from 'zustand/shallow';
+import type { ApiProjectRow } from '@/lib/agency-api-map';
 
 const BASE_FILES = ['index.html', 'styles.css', 'script.js'] as const;
 
@@ -137,6 +148,12 @@ export function SiteBuilderFoundationPage() {
   const [serverReachable, setServerReachable] = useState<boolean | null>(null);
   const [starterTemplatesOpen, setStarterTemplatesOpen] = useState(false);
   const [visualEditorMode, setVisualEditorMode] = useState(false);
+  const [domainDraft, setDomainDraft] = useState('');
+  const [railwayServiceDraft, setRailwayServiceDraft] = useState('');
+  const [hostingSaving, setHostingSaving] = useState(false);
+  const [deployBusy, setDeployBusy] = useState(false);
+  const [attachBusy, setAttachBusy] = useState(false);
+  const mergeProjectRowFromServer = useAppStore(useShallow((s) => s.mergeProjectRowFromServer));
 
   const modKey = useMemo(() => {
     if (typeof navigator === 'undefined') return 'Ctrl';
@@ -246,6 +263,11 @@ export function SiteBuilderFoundationPage() {
     const target = af && s.files.some((f) => f.name === af) ? af : 'index.html';
     applyFileToEditor(s, target);
   }, [projectId, row?.hydrated, row?.activeFile, applyFileToEditor]);
+
+  useEffect(() => {
+    setDomainDraft(project?.customDomainHost ? project.customDomainHost : '');
+    setRailwayServiceDraft(project?.railwayServiceIdProduction ?? '');
+  }, [project?.id, project?.customDomainHost, project?.railwayServiceIdProduction]);
 
   useEffect(() => {
     if (!projectId || !row?.hydrated || unsaved) return;
@@ -365,6 +387,95 @@ export function SiteBuilderFoundationPage() {
     },
     [toast]
   );
+
+  const cnameTarget = useMemo(
+    () => railwayHostnameFromUrl(project?.railwayProductionUrl ?? null),
+    [project?.railwayProductionUrl]
+  );
+  const prodDomainReady = Boolean(project?.customDomainHost?.trim());
+
+  const saveHostingFields = useCallback(async () => {
+    if (!projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in and use the live API to save hosting fields.', 'error');
+      return;
+    }
+    const normalized = normalizeCustomDomainInput(domainDraft);
+    setHostingSaving(true);
+    try {
+      const r = await patchAdminProject(projectId, {
+        custom_domain: normalized || null,
+        railway_service_id_production: railwayServiceDraft.trim() || null,
+      });
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const row = r.data?.project;
+      if (row && typeof row === 'object') mergeProjectRowFromServer(row as ApiProjectRow);
+      toast('Hosting settings saved to the server.', 'success');
+    } finally {
+      setHostingSaving(false);
+    }
+  }, [projectId, domainDraft, railwayServiceDraft, mergeProjectRowFromServer, toast]);
+
+  const runAttachRailwayDomain = useCallback(async () => {
+    if (!projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in on the live API to register the domain with Railway.', 'error');
+      return;
+    }
+    setAttachBusy(true);
+    try {
+      const r = await attachRailwayCustomDomain(projectId, {
+        domain: normalizeCustomDomainInput(domainDraft) || undefined,
+        serviceId: railwayServiceDraft.trim() || undefined,
+      });
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const dns = r.data?.dnsRecords;
+      const msg =
+        Array.isArray(dns) && dns.length
+          ? `Railway returned ${dns.length} DNS record(s) — check the response in the network tab or your registrar.`
+          : 'Custom domain registered in Railway. Open the Railway dashboard for DNS targets if needed.';
+      toast(msg, 'success');
+    } finally {
+      setAttachBusy(false);
+    }
+  }, [projectId, domainDraft, railwayServiceDraft, toast]);
+
+  const runDeployProduction = useCallback(async () => {
+    if (!projectId) return;
+    if (!prodDomainReady) {
+      toast('Set and save a production domain first.', 'error');
+      return;
+    }
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in on the live API to deploy.', 'error');
+      return;
+    }
+    setDeployBusy(true);
+    try {
+      const r = await deployAdminProjectZip(projectId, 'production');
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const partial = Boolean((r.data as { partial?: boolean })?.partial);
+      const ref = await fetchAdminProject(projectId);
+      if (ref.ok && ref.data?.project) mergeProjectRowFromServer(ref.data.project as ApiProjectRow);
+      toast(
+        partial
+          ? 'Deploy finished with manual steps — check ZIP / Railway token and team ID on the server.'
+          : 'Production deploy request completed.',
+        partial ? 'info' : 'success'
+      );
+    } finally {
+      setDeployBusy(false);
+    }
+  }, [projectId, prodDomainReady, mergeProjectRowFromServer, toast]);
 
   useEffect(() => {
     const save = () => saveCurrentToSite();
@@ -1246,8 +1357,109 @@ export function SiteBuilderFoundationPage() {
                 ) : null}
               </section>
 
+              <section className="rounded-lg border border-violet-500/25 bg-violet-950/20 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-violet-300/90">1 · Production domain</p>
+                <p className="mt-1.5 text-xs text-zinc-400">
+                  Enter the hostname clients will use (no <code className="text-zinc-300">https://</code>). This is stored on the project and is{' '}
+                  <strong className="text-zinc-200">required</strong> before production deploy.
+                </p>
+                <label className="mt-3 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-custom-domain">
+                  Custom domain
+                </label>
+                <Input
+                  id="pub-custom-domain"
+                  value={domainDraft}
+                  onChange={(e) => setDomainDraft(e.target.value)}
+                  placeholder="www.jordanmaxwell.org"
+                  className="mt-1 h-9 border-white/10 bg-zinc-900 text-sm text-white"
+                  autoComplete="off"
+                />
+                <label className="mt-3 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-railway-svc">
+                  Railway service ID (production)
+                </label>
+                <Input
+                  id="pub-railway-svc"
+                  value={railwayServiceDraft}
+                  onChange={(e) => setRailwayServiceDraft(e.target.value)}
+                  placeholder="From Railway → service → Settings → Service ID"
+                  className="mt-1 h-9 border-white/10 bg-zinc-900 font-mono text-xs text-white"
+                  autoComplete="off"
+                />
+                <Button
+                  type="button"
+                  className="mt-3 h-9 w-full text-xs"
+                  disabled={hostingSaving || !serverWritesConfigured || !signedInForApi}
+                  onClick={() => void saveHostingFields()}
+                >
+                  {hostingSaving ? 'Saving…' : 'Save domain to server'}
+                </Button>
+                {!prodDomainReady ? (
+                  <p className="mt-2 text-[11px] text-amber-200/90">
+                    Production deploy stays disabled until a domain is saved on this project.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-[11px] text-emerald-200/90">Domain on file — you can deploy production.</p>
+                )}
+              </section>
+
               <section className="rounded-lg border border-white/10 bg-white/5 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Live site</p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">2 · DNS at your registrar</p>
+                {cnameTarget ? (
+                  <div className="mt-2 space-y-2 text-xs text-zinc-300">
+                    <p>
+                      Create a <strong className="text-white">CNAME</strong> from your hostname (or <code className="text-zinc-200">@</code> with ALIAS/ANAME if
+                      your DNS supports it) to:
+                    </p>
+                    <code className="block break-all rounded bg-black/40 px-2 py-1.5 text-[11px] text-emerald-200">{cnameTarget}</code>
+                    <p className="text-zinc-500">
+                      Railway may also show a TXT record for verification — use <strong>Register on Railway</strong> below, then follow the records Railway returns
+                      (or the Railway dashboard).
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-zinc-400">
+                    After a successful production deploy with <code className="text-zinc-200">RAILWAY_API_TOKEN</code> and <code className="text-zinc-200">RAILWAY_TEAM_ID</code> on the server, the
+                    project gets a default <code className="text-zinc-200">*.up.railway.app</code> hostname — then this panel shows the exact CNAME target. Until then, open Railway and copy the
+                    service URL, or paste it into the project via the API as <code className="text-zinc-200">railway_url_production</code>.
+                  </p>
+                )}
+              </section>
+
+              <section className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">3 · Railway & deploy</p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-10 border-white/15 bg-white/10 text-left text-xs text-white"
+                    disabled={attachBusy || !serverWritesConfigured || !signedInForApi}
+                    onClick={() => void runAttachRailwayDomain()}
+                  >
+                    {attachBusy ? 'Contacting Railway…' : 'Register custom domain on Railway'}
+                  </Button>
+                  <Button
+                    type="button"
+                    className={cn(
+                      'h-10 text-sm font-semibold',
+                      prodDomainReady ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'cursor-not-allowed bg-zinc-700 text-zinc-400'
+                    )}
+                    disabled={!prodDomainReady || deployBusy || !serverWritesConfigured || !signedInForApi}
+                    title={
+                      !prodDomainReady
+                        ? 'Save a production domain on this project first'
+                        : !signedInForApi
+                          ? 'Sign in to deploy'
+                          : undefined
+                    }
+                    onClick={() => void runDeployProduction()}
+                  >
+                    {deployBusy ? 'Deploying…' : 'Deploy production (ZIP / Railway)'}
+                  </Button>
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Live URL</p>
                 {liveUrl ? (
                   <div className="mt-2 space-y-2">
                     <a
@@ -1273,14 +1485,12 @@ export function SiteBuilderFoundationPage() {
                   </div>
                 ) : (
                   <div className="mt-2 space-y-2 text-sm text-zinc-400">
-                    <p>No production URL is stored on this project yet.</p>
+                    <p>No visitor URL yet — set and save a custom domain above, or complete a Railway deploy to attach a default hostname.</p>
                     <ol className="list-decimal space-y-2 pl-5 text-xs text-zinc-300">
+                      <li>Save domain → optional &quot;Register on Railway&quot; for TXT/CNAME details.</li>
+                      <li>Confirm site files saved to the server, then deploy production.</li>
                       <li>
-                        Open <strong>Project workspace</strong> below → set the client-facing URL (staging or live) on the project record.
-                      </li>
-                      <li>Confirm the toolbar shows a successful save before you deploy.</li>
-                      <li>
-                        Use <strong>Legacy publish dashboard</strong> only if you ship ZIP / static hosting from that tool; otherwise the workspace URL is your source of truth.
+                        Legacy <strong>publish dashboard</strong> (new tab below) uses the same rules: production deploy is blocked without a saved domain.
                       </li>
                     </ol>
                   </div>

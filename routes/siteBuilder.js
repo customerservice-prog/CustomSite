@@ -7,7 +7,7 @@ const { getService } = require('../lib/supabase');
 const { getTemplateFiles, TEMPLATE_KEYS } = require('../lib/siteTemplates');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { addServeBundle, createZipBuffer } = require('../lib/bundleStaticSite');
-const { testToken, createProject } = require('../lib/railwayGql');
+const { testToken, createProject, createCustomDomainForService } = require('../lib/railwayGql');
 
 const router = express.Router();
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
@@ -67,6 +67,37 @@ function isUuidParam(id) {
 
 function safeSelectSiteFiles() {
   return 'path, content, updated_at, content_encoding';
+}
+
+const PROJECT_STATUS_ALLOWED = ['discovery', 'design', 'development', 'review', 'live'];
+
+/** Strip protocol/path; return null if empty after trim. */
+function normalizeCustomDomainHost(v) {
+  if (v == null) return null;
+  let s = String(v).trim().toLowerCase();
+  if (!s) return null;
+  s = s.replace(/^https?:\/\//, '');
+  s = s.split('/')[0] || '';
+  s = s.split(':')[0] || '';
+  s = s.replace(/\.$/, '').trim();
+  return s || null;
+}
+
+function hostingPatchFromBody(b) {
+  const patch = {};
+  if (!b || typeof b !== 'object') return patch;
+  if (b.railway_url_staging !== undefined) patch.railway_url_staging = b.railway_url_staging;
+  if (b.railway_url_production !== undefined) patch.railway_url_production = b.railway_url_production;
+  if (b.railway_project_id_staging !== undefined) patch.railway_project_id_staging = b.railway_project_id_staging;
+  if (b.railway_project_id_production !== undefined) patch.railway_project_id_production = b.railway_project_id_production;
+  if (b.railway_service_id_staging !== undefined) patch.railway_service_id_staging = b.railway_service_id_staging;
+  if (b.railway_service_id_production !== undefined) patch.railway_service_id_production = b.railway_service_id_production;
+  if (b.custom_domain !== undefined) {
+    const h = b.custom_domain == null || b.custom_domain === '' ? null : normalizeCustomDomainHost(b.custom_domain);
+    patch.custom_domain = h;
+  }
+  if (b.site_settings !== undefined) patch.site_settings = b.site_settings;
+  return patch;
 }
 
 router.get('/projects/:projectId/site', async (req, res) => {
@@ -382,15 +413,7 @@ router.patch('/projects/:projectId/builder', async (req, res) => {
     const { projectId } = req.params;
     const b = req.body || {};
     const supabase = getService();
-    const patch = {};
-    if (b.railway_url_staging !== undefined) patch.railway_url_staging = b.railway_url_staging;
-    if (b.railway_url_production !== undefined) patch.railway_url_production = b.railway_url_production;
-    if (b.railway_project_id_staging !== undefined) patch.railway_project_id_staging = b.railway_project_id_staging;
-    if (b.railway_project_id_production !== undefined) patch.railway_project_id_production = b.railway_project_id_production;
-    if (b.railway_service_id_staging !== undefined) patch.railway_service_id_staging = b.railway_service_id_staging;
-    if (b.railway_service_id_production !== undefined) patch.railway_service_id_production = b.railway_service_id_production;
-    if (b.custom_domain !== undefined) patch.custom_domain = b.custom_domain;
-    if (b.site_settings !== undefined) patch.site_settings = b.site_settings;
+    const patch = hostingPatchFromBody(b);
     if (Object.keys(patch).length === 0) {
       return res.status(400).json({ error: 'No valid fields' });
     }
@@ -414,6 +437,68 @@ router.patch('/projects/:projectId/builder', async (req, res) => {
     return res.status(500).json({ error: 'Server error' });
   }
 });
+
+router.get('/projects/:projectId', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const { data, error } = await supabase.from('projects').select('*').eq('id', projectId).maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!data) return res.status(404).json({ error: 'Not found' });
+    let client = null;
+    if (data.client_id) {
+      const c = await supabase.from('users').select('id, email, full_name, company').eq('id', data.client_id).maybeSingle();
+      if (!c.error) client = c.data;
+    }
+    return res.json({ project: { ...data, client } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+async function patchAdminProjectById(req, res) {
+  try {
+    const { projectId } = req.params;
+    const b = req.body || {};
+    const supabase = getService();
+    const patch = hostingPatchFromBody(b);
+    if (b.name != null && String(b.name).trim()) patch.name = String(b.name).trim();
+    if (b.status != null) {
+      if (!PROJECT_STATUS_ALLOWED.includes(b.status)) {
+        return res.status(400).json({ error: 'Invalid status', allowed: PROJECT_STATUS_ALLOWED });
+      }
+      patch.status = b.status;
+      if (b.status === 'live') {
+        patch.launched_at = new Date().toISOString();
+      }
+    }
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+    const { data, error } = await supabase
+      .from('projects')
+      .update(patch)
+      .eq('id', projectId)
+      .select()
+      .single();
+    if (error) {
+      if (/railway_|site_settings|custom_domain/.test(String(error.message))) {
+        return res.status(400).json({
+          error: 'Run migration migration_site_builder_v2.sql in Supabase to enable these fields.',
+        });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    return res.json({ success: true, project: data });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+}
+
+router.patch('/projects/:projectId', patchAdminProjectById);
+router.put('/projects/:projectId', patchAdminProjectById);
 
 router.post('/projects/:projectId/site/upload-asset', upload.single('file'), async (req, res) => {
   try {
@@ -492,16 +577,28 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     const supabase = getService();
     const { data: proj, error: perr } = await supabase
       .from('projects')
-      .select('id, name, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production')
+      .select(
+        'id, name, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production'
+      )
       .eq('id', projectId)
       .maybeSingle();
     if (perr) {
-      if (/railway_/.test(String(perr.message))) {
+      if (/railway_/.test(String(perr.message)) || /custom_domain/.test(String(perr.message))) {
         return res.status(400).json({ error: 'Run migration migration_site_builder_v2.sql' });
       }
       return res.status(500).json({ error: perr.message });
     }
     if (!proj) return res.status(404).json({ error: 'Project not found' });
+    if (environment === 'production') {
+      const dom = normalizeCustomDomainHost(proj.custom_domain);
+      if (!dom) {
+        return res.status(400).json({
+          error:
+            'Production deploy requires a custom domain on this project. PATCH /api/admin/projects/:id with { "custom_domain": "www.example.com" } (or set it in the publish workspace), then deploy again.',
+          code: 'DOMAIN_REQUIRED',
+        });
+      }
+    }
     const rows = await listProjectFileRows(supabase, projectId);
     if (!rows.length) {
       return res.status(400).json({ error: 'No site files to deploy. Init a starter or add files first.' });
@@ -577,6 +674,60 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
       note:
         'Railway needs a connected Git repository or a CLI deploy to host these files. Your project was created in Railway — open the dashboard, create an empty service, then run: railway link <id> in the unzipped folder, or connect a GitHub repo and push. The staging/production URL is stored on this CustomSite project once migration is applied.',
       downloadZip: `/api/admin/projects/${projectId}/site/export`,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.message || 'Server error' });
+  }
+});
+
+router.post('/projects/:projectId/railway/attach-custom-domain', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const body = req.body || {};
+    const token = body.token || process.env.RAILWAY_API_TOKEN;
+    if (!token) {
+      return res.status(400).json({
+        error: 'Railway API token required. Set RAILWAY_API_TOKEN on the server or pass token in the JSON body.',
+      });
+    }
+    const supabase = getService();
+    const { data: proj, error: perr } = await supabase
+      .from('projects')
+      .select('id, custom_domain, railway_service_id_production')
+      .eq('id', projectId)
+      .maybeSingle();
+    if (perr) {
+      if (/railway_|custom_domain/.test(String(perr.message))) {
+        return res.status(400).json({ error: 'Run migration migration_site_builder_v2.sql' });
+      }
+      return res.status(500).json({ error: perr.message });
+    }
+    if (!proj) return res.status(404).json({ error: 'Project not found' });
+    const domain = normalizeCustomDomainHost(body.domain) || normalizeCustomDomainHost(proj.custom_domain);
+    if (!domain) {
+      return res.status(400).json({
+        error: 'No domain: set custom_domain via PATCH /api/admin/projects/:id or pass { "domain": "www.example.com" }.',
+      });
+    }
+    const serviceId = (body.serviceId && String(body.serviceId).trim()) || proj.railway_service_id_production;
+    if (!serviceId) {
+      return res.status(400).json({
+        error:
+          'railway_service_id_production is not set on this project. In Railway, open your static site service → Settings → copy Service ID, then PATCH the project with { "railway_service_id_production": "<id>" } or pass serviceId in this request.',
+        code: 'SERVICE_ID_REQUIRED',
+      });
+    }
+    const created = await createCustomDomainForService(token, { serviceId, domain });
+    if (created.error) {
+      return res.status(400).json({ ok: false, error: created.error });
+    }
+    return res.json({
+      ok: true,
+      domain: created.domain,
+      customDomainId: created.id,
+      dnsRecords: created.dnsRecords,
+      hint: 'Add the DNS records at your registrar. Railway may also require a TXT record for verification — see dnsRecords.',
     });
   } catch (e) {
     console.error(e);

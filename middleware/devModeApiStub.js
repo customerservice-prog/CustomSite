@@ -138,6 +138,7 @@ function tryRespondLocalDemoSite(req, res, m, p) {
 
   if (m === 'GET' && /^\/api\/admin\/projects\/[^/]+\/builder$/.test(p)) {
     const projectId = p.split('/')[4];
+    const host = devProjectHostingById[projectId] || {};
     res.json({
       project: {
         id: projectId,
@@ -145,9 +146,10 @@ function tryRespondLocalDemoSite(req, res, m, p) {
         status: demoProjectRow.status,
         client_id: demoProjectRow.client_id,
         website_type: demoProjectRow.website_type,
-        railway_url_staging: 'https://demo-staging.up.railway.app',
-        railway_url_production: '',
-        custom_domain: '',
+        railway_url_staging: host.railway_url_staging || 'https://demo-staging.up.railway.app',
+        railway_url_production: host.railway_url_production || '',
+        custom_domain: host.custom_domain || '',
+        railway_service_id_production: host.railway_service_id_production || null,
         site_settings: {},
         created_at: demoProjectRow.created_at,
         client: { email: demoClient.email, full_name: demoClient.full_name, company: demoClient.company },
@@ -156,8 +158,39 @@ function tryRespondLocalDemoSite(req, res, m, p) {
     return true;
   }
 
+  if (m === 'GET' && /^\/api\/admin\/projects\/[^/]+$/.test(p)) {
+    const projectId = p.split('/')[4];
+    const host = devProjectHostingById[projectId] || {};
+    res.json({
+      project: {
+        ...demoProjectRow,
+        id: projectId,
+        railway_url_staging: host.railway_url_staging || null,
+        railway_url_production: host.railway_url_production || null,
+        custom_domain: host.custom_domain || null,
+        railway_project_id_production: host.railway_project_id_production || null,
+        railway_service_id_production: host.railway_service_id_production || null,
+        client: demoClient,
+      },
+    });
+    return true;
+  }
+
   if (m === 'PATCH' && /^\/api\/admin\/projects\/[^/]+\/builder$/.test(p)) {
-    res.json({ project: { ...demoProjectRow, ...req.body } });
+    const projectId = p.split('/')[4];
+    devProjectHostingById[projectId] = { ...(devProjectHostingById[projectId] || {}), ...req.body };
+    res.json({ project: { ...demoProjectRow, id: projectId, ...devProjectHostingById[projectId] } });
+    return true;
+  }
+
+  if (m === 'PATCH' && /^\/api\/admin\/projects\/[^/]+$/.test(p)) {
+    const projectId = p.split('/')[4];
+    const body = req.body || {};
+    devProjectHostingById[projectId] = { ...(devProjectHostingById[projectId] || {}), ...body };
+    res.json({
+      success: true,
+      project: { ...demoProjectRow, id: projectId, ...devProjectHostingById[projectId] },
+    });
     return true;
   }
 
@@ -167,16 +200,37 @@ function tryRespondLocalDemoSite(req, res, m, p) {
   }
 
   if (m === 'POST' && /^\/api\/admin\/projects\/[^/]+\/deploy$/.test(p)) {
+    const projectId = p.split('/')[4];
+    const env = (req.body && req.body.environment) || 'staging';
+    const host = devProjectHostingById[projectId] || {};
+    const dom = String(host.custom_domain || '').trim();
+    if (env === 'production' && !dom) {
+      res.status(400).json({
+        error:
+          'Production deploy requires a custom domain on this project (dev stub). PATCH /api/admin/projects/:id with custom_domain first.',
+        code: 'DOMAIN_REQUIRED',
+      });
+      return true;
+    }
     res.json({
       ok: true,
       partial: true,
-      environment: (req.body && req.body.environment) || 'staging',
+      environment: env,
       steps: [
         { id: 'bundle', label: 'Bundling', status: 'done', at: new Date().toISOString() },
         { id: 'dev', label: 'Local dev (no Supabase)', status: 'done', detail: 'Deploy API is a stub' },
       ],
       publicUrl: 'https://dev-preview.example.com',
       message: 'Local preview bundle ready. Add Railway credentials in production for live deploys.',
+    });
+    return true;
+  }
+
+  if (m === 'POST' && /^\/api\/admin\/projects\/[^/]+\/railway\/attach-custom-domain$/.test(p)) {
+    res.status(400).json({
+      ok: false,
+      error: 'Local dev: configure Supabase + RAILWAY_API_TOKEN to register domains via API.',
+      code: 'DEV_STUB',
     });
     return true;
   }
@@ -203,6 +257,9 @@ const demoProjectRow = {
   created_at: new Date().toISOString(),
   launched_at: null,
 };
+
+/** RAM merge for GET/PATCH /api/admin/projects/:id when Supabase is off. */
+const devProjectHostingById = {};
 
 /**
  * When Supabase is not configured, serve API responses for the signed-in dev user

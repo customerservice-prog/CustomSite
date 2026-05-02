@@ -114,6 +114,12 @@ export type Project = {
   siteStatus?: ClientSiteStatus;
   /** Canonical URL the client sees when live (preview hostname ok). */
   siteLiveUrl?: string | null;
+  /** Normalized hostname from DB `custom_domain` (no protocol). */
+  customDomainHost?: string | null;
+  /** Default Railway / hosting URL for static bundle (HTTPS). */
+  railwayProductionUrl?: string | null;
+  /** Railway service UUID for production — required to attach custom domains via API. */
+  railwayServiceIdProduction?: string | null;
   /** Human label for last publish or content touch. */
   lastSiteUpdateLabel?: string;
   /** Pages in scope for this site (marketing-style count). */
