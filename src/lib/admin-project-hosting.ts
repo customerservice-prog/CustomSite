@@ -8,7 +8,9 @@ export function normalizeCustomDomainInput(raw: string): string {
   s = s.replace(/^https?:\/\//, '');
   s = s.split('/')[0] ?? '';
   s = s.split(':')[0] ?? '';
-  return s.replace(/\.$/, '').trim();
+  s = s.replace(/\.$/, '').trim();
+  if (s.startsWith('www.')) s = s.slice(4);
+  return s;
 }
 
 /** Target hostname for a CNAME (e.g. xxxxx.up.railway.app) from a full Railway HTTPS URL. */

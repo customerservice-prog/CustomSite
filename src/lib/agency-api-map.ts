@@ -157,6 +157,7 @@ function normalizeDomainHostFromRow(input: unknown): string | null {
   s = s.split('/')[0] || '';
   s = s.split(':')[0] || '';
   s = s.replace(/\.$/, '').trim();
+  if (s.startsWith('www.')) s = s.slice(4);
   return s || null;
 }
 

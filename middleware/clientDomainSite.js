@@ -347,9 +347,11 @@ async function handleClientDomain(req, res) {
   if (!projectId) {
     setClientSecurityHeaders(res);
     res.status(404).type('html').send(
-      `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Not found</title></head><body style="font-family:system-ui;padding:2rem;color:#334155"><h1>Site not found</h1><p>No project is linked to <strong>${escapeHtml(
+      `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Not found</title></head><body style="font-family:system-ui;max-width:36rem;margin:3rem auto;padding:0 1.25rem;color:#334155;line-height:1.5"><h1 style="font-size:1.25rem;color:#0f172a">Site not found</h1><p>No project has <strong>Production domain</strong> set to <strong>${escapeHtml(
         host
-      )}</strong>. If you own this domain, add it in CustomSite (project → production domain) and point DNS here.</p></body></html>`
+      )}</strong> in CustomSite, so traffic with this hostname cannot load <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">site_files</code>.</p><p style="margin-top:1rem"><strong>Fix:</strong></p><ol style="margin:0.75rem 0 0;padding-left:1.25rem"><li>Sign in → <strong>Projects</strong> → open the site → <strong>Hosting / production domain</strong>.</li><li>Put <code style="background:#f1f5f9">${escapeHtml(
+        host
+      )}</code> in the domain field only (no <code style="background:#f1f5f9">https://</code>), click save.</li><li>Confirm DNS for this hostname targets your CustomSite deployment (Railway custom domain / CNAME).</li></ol><p style="margin-top:1rem;font-size:0.9rem;color:#64748b">If you saved the domain elsewhere (only in Railway, or typo like <code style="background:#fef3c7">www.</code> only in DB), set it explicitly on the project row <code style="background:#f1f5f9">custom_domain</code> — it takes up to ~2 minutes to pick up.</p></body></html>`
     );
     return true;
   }

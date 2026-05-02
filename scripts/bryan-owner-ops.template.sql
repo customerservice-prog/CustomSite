@@ -31,3 +31,12 @@
 -- DELETE FROM public.users WHERE id = '317f4b73-16de-4e7b-957a-98912dd2da0e';
 
 -- Jordan Maxwell projects stay on the paying Jordan client — do not reassign those.
+
+-- -----------------------------------------------------------------------------
+-- Production hostname → project (fixes “Site not found” when DNS already hits CustomSite):
+
+-- UPDATE public.projects
+-- SET custom_domain = 'cestuiquevietrust.com'
+-- WHERE id = '55546683-c4f1-419c-a2d4-b35378679537';
+
+-- Prefer apex hostname (no www.) — middleware 301-redirects www → apex before lookup.
