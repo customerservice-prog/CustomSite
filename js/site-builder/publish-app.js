@@ -42,10 +42,9 @@ function pageLabel(path) {
   return p;
 }
 
-function statusForPath(path) {
+function statusForPath(_path) {
   if (previewMode === 'mirror') return { label: 'Live mirror', cls: 'pub' };
-  if (path === 'index.html' || path === 'styles.css') return { label: 'Published', cls: 'pub' };
-  return { label: 'Draft', cls: 'draft' };
+  return { label: 'Published', cls: 'pub' };
 }
 
 function escapeHtmlAttr(s) {
@@ -156,6 +155,7 @@ async function loadFiles() {
   const prefer = files.some((f) => f.path === 'index.html') ? 'index.html' : files[0]?.path || 'index.html';
   selectedPath = prefer;
   void setPreviewFrame();
+  syncDomainUi();
 }
 
 function normalizeDomainInput(raw) {
@@ -168,8 +168,8 @@ function normalizeDomainInput(raw) {
 }
 
 function syncDomainUi() {
-  const cd = document.getElementById('pdCustomDomain');
-  const svc = document.getElementById('pdRailwaySvc');
+  const cd = document.getElementById('production-domain-input');
+  const svc = document.getElementById('railway-service-id-production');
   const deployProd = document.getElementById('pdDeployProd');
   const hint = document.getElementById('pdDnsHint');
   if (cd) cd.value = normalizeDomainInput(currentProjectHosting.custom_domain || '');
@@ -244,6 +244,10 @@ async function runDeploy(env) {
     toast('Set and save a production domain before deploying to production.', 'error');
     return;
   }
+  const liveRow = document.getElementById('pdLiveDeployRow');
+  const liveA = document.getElementById('pdLiveDeployUrl');
+  if (liveRow) liveRow.hidden = true;
+  if (liveA) liveA.removeAttribute('href');
   try {
     const r = await api(`/api/admin/projects/${projectId}/deploy`, {
       method: 'POST',
@@ -255,6 +259,13 @@ async function runDeploy(env) {
       r.ok === false || r.error ? String(r.error || 'Deploy failed') : `Deploy API completed${stepHint}${partial}`,
       r.ok === false || r.error ? 'error' : 'success'
     );
+    if (r && r.publicUrl && liveRow && liveA) {
+      const u = String(r.publicUrl).trim();
+      const href = u.startsWith('http') ? u : `https://${u}`;
+      liveA.href = href;
+      liveA.textContent = u;
+      liveRow.hidden = false;
+    }
     if (projectId && r && r.ok !== false && !r.error) {
       await loadProjectHosting(projectId);
     }
@@ -305,8 +316,8 @@ function main() {
       toast('Select a project', 'error');
       return;
     }
-    const cdEl = document.getElementById('pdCustomDomain');
-    const svcEl = document.getElementById('pdRailwaySvc');
+    const cdEl = document.getElementById('production-domain-input');
+    const svcEl = document.getElementById('railway-service-id-production');
     const cd = normalizeDomainInput(cdEl && cdEl.value);
     const svc = (svcEl && String(svcEl.value).trim()) || '';
     try {

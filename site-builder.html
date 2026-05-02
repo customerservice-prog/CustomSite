@@ -34,15 +34,18 @@
       <div class="pd-domain-panel" id="pdDomainPanel">
         <div class="pd-domain-inner">
           <div class="pd-domain-field">
-            <label for="pdCustomDomain">Production domain</label>
-            <input type="text" id="pdCustomDomain" class="pd-input" placeholder="www.client.com (required for prod deploy)" autocomplete="off" />
+            <label for="production-domain-input">Production domain</label>
+            <input type="text" id="production-domain-input" class="pd-input" placeholder="www.client.com (required for prod deploy)" autocomplete="off" />
           </div>
           <div class="pd-domain-field">
-            <label for="pdRailwaySvc">Railway service ID</label>
-            <input type="text" id="pdRailwaySvc" class="pd-input pd-mono" placeholder="Optional — from Railway service settings" autocomplete="off" />
+            <label for="railway-service-id-production">Railway service ID</label>
+            <input type="text" id="railway-service-id-production" class="pd-input pd-mono" placeholder="Optional — from Railway service settings" autocomplete="off" />
           </div>
           <button type="button" class="pd-btn" id="pdSaveDomain">Save to server</button>
           <p class="pd-dns-hint" id="pdDnsHint"></p>
+          <p class="pd-live-url" id="pdLiveDeployRow" hidden>
+            <strong>Live:</strong> <a id="pdLiveDeployUrl" href="#" target="_blank" rel="noopener"></a>
+          </p>
         </div>
       </div>
       <div class="pd-main">

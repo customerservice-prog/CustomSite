@@ -111,8 +111,12 @@ function seatLabel(u: User): string {
 export function SettingsPage() {
   const { toast } = useShell();
   const [searchParams, setSearchParams] = useSearchParams();
-  const users = useAppStore(useShallow((s) => Object.values(s.users)));
-  const teamMembers = useMemo(() => users.filter((u) => u.role !== 'client'), [users]);
+  const tabSearchParam = searchParams.get('tab');
+  const users = useAppStore(useShallow((s) => Object.values(s.users ?? {})));
+  const teamMembers = useMemo(
+    () => users.filter((u): u is User => Boolean(u && u.role && u.role !== 'client')),
+    [users],
+  );
   const buildHelperEnabled = useBuildHelperStore((s) => s.enabled);
   const setBuildHelperEnabled = useBuildHelperStore((s) => s.setEnabled);
   const setHelperPanelCollapsed = useBuildHelperStore((s) => s.setPanelCollapsed);
@@ -123,9 +127,8 @@ export function SettingsPage() {
   const [pendingInvites, setPendingInvites] = useState<{ id: string; email: string; role: UserRole }[]>([]);
 
   useEffect(() => {
-    const t = searchParams.get('tab');
-    if (t && TABS.some((x) => x.id === t)) setTab(t);
-  }, [searchParams]);
+    if (tabSearchParam && TABS.some((x) => x.id === tabSearchParam)) setTab(tabSearchParam);
+  }, [tabSearchParam]);
 
   function setTabAndUrl(next: string) {
     setTab(next);

@@ -188,12 +188,24 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
     siteBuildArchetype: meta.siteBuildArchetype ?? null,
     waitingOn: null,
     deliveryFocus,
-    siteStatus: deliveryFocus === 'client_site' ? 'draft' : undefined,
+    siteStatus:
+      deliveryFocus === 'client_site'
+        ? lifecycleStage === 'post_launch'
+          ? 'live'
+          : lifecycleStage === 'review'
+            ? 'review'
+            : 'draft'
+        : undefined,
     customDomainHost: customDomainHost || null,
     railwayProductionUrl: railwayProductionUrl?.trim() || null,
     railwayServiceIdProduction: railwayServiceIdProduction?.trim() || null,
     siteLiveUrl,
-    lastSiteUpdateLabel: deliveryFocus === 'client_site' ? 'Not launched yet' : undefined,
+    lastSiteUpdateLabel:
+      deliveryFocus === 'client_site'
+        ? lifecycleStage === 'post_launch'
+          ? 'Live on production'
+          : 'Not launched yet'
+        : undefined,
     sitePageCount: deliveryFocus === 'client_site' ? 5 : undefined,
     clientPortalVisible: deliveryFocus === 'client_site' ? true : undefined,
     servicePackage: (meta.servicePackage as Project['servicePackage']) ?? null,

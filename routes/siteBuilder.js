@@ -579,7 +579,7 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     const { data: proj, error: perr } = await supabase
       .from('projects')
       .select(
-        'id, name, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production'
+        'id, name, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production, railway_service_id_staging, railway_service_id_production'
       )
       .eq('id', projectId)
       .maybeSingle();
@@ -629,12 +629,22 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
       return res.status(400).json({ ok: false, steps, error: t0.error });
     }
     push('token', 'Verify Railway API token', 'done', t0.me && t0.me.email ? t0.me.email : 'ok');
-    if (!teamId) {
+    const existingRailwayProjectId =
+      environment === 'production' ? proj.railway_project_id_production : proj.railway_project_id_staging;
+    const existingServiceId =
+      environment === 'production' ? proj.railway_service_id_production : proj.railway_service_id_staging;
+    const hasReuse =
+      Boolean(existingRailwayProjectId) &&
+      Boolean(existingServiceId) &&
+      String(existingRailwayProjectId).trim().length > 0 &&
+      String(existingServiceId).trim().length > 0;
+    if (!hasReuse && !teamId) {
       push('team', 'Team ID for project create', 'error', 'Set RAILWAY_TEAM_ID or pass teamId in the request');
       return res.status(400).json({
         ok: false,
         steps,
-        error: 'RAILWAY_TEAM_ID required. Copy your team (workspace) id from Railway account settings or GraphiQL me{teams}.',
+        error:
+          'RAILWAY_TEAM_ID required for the first deploy (new Railway project). After the first successful deploy, IDs are saved and teamId is only needed for new projects.',
       });
     }
     const rname = (proj.name || 'site') + (environment === 'production' ? ' (prod)' : ' (staging)');
@@ -642,7 +652,12 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     const attachRailwayDomain =
       environment === 'production' && customHost && body.attach_custom_domain !== false;
 
-    push('railway', 'Create Railway project, service, and upload site (CLI)', 'pending', 'This can take 2–4 minutes');
+    push(
+      'railway',
+      hasReuse ? 'Redeploy files to existing Railway static service' : 'Create Railway project, service, and upload site (CLI)',
+      'pending',
+      'This can take 2–4 minutes'
+    );
     const deployed = await provisionStaticDeploy({
       token,
       teamId,
@@ -653,6 +668,12 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
         environment === 'production'
           ? { attachCustomDomain: attachRailwayDomain, customDomain: customHost }
           : { attachCustomDomain: false, customDomain: null },
+      existingDeployment: hasReuse
+        ? {
+            railwayProjectId: String(existingRailwayProjectId).trim(),
+            serviceId: String(existingServiceId).trim(),
+          }
+        : undefined,
     });
 
     if (!deployed.ok) {
@@ -672,12 +693,19 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
       });
     }
 
-    push('railway', 'Create Railway project, service, and upload site (CLI)', 'done', deployed.publicUrl);
+    push(
+      'railway',
+      hasReuse ? 'Redeploy to existing Railway service' : 'Create Railway project, service, and upload site (CLI)',
+      'done',
+      deployed.publicUrl
+    );
     const patch = {};
     if (environment === 'production') {
       patch.railway_url_production = deployed.publicUrl;
       patch.railway_project_id_production = deployed.railwayProjectId;
       patch.railway_service_id_production = deployed.serviceId;
+      patch.status = 'live';
+      patch.launched_at = new Date().toISOString();
     } else {
       patch.railway_url_staging = deployed.publicUrl;
       patch.railway_project_id_staging = deployed.railwayProjectId;
@@ -710,9 +738,16 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
       dnsHint,
       customDomainDns: deployed.customDomainDns || undefined,
       projectName: rname,
-      note: attachRailwayDomain
-        ? 'Production URL saved. Custom domain attach was attempted — verify dnsRecords / Railway dashboard if TLS is pending.'
-        : 'Production URL saved on this project. Add a CNAME at your registrar when you use a custom domain.',
+      deployedReused: Boolean(deployed.reused),
+      projectStatus: environment === 'production' ? 'live' : undefined,
+      note:
+        environment === 'production'
+          ? `${
+              attachRailwayDomain
+                ? 'Production URL saved; custom domain attach was attempted — verify dnsRecords / Railway if TLS is pending.'
+                : 'Production URL saved. Add a CNAME at your registrar when you use a custom domain.'
+            } Project status set to live in the database.`
+          : 'Preview/staging URL saved on this project.',
       downloadZip: `/api/admin/projects/${projectId}/site/export`,
     });
   } catch (e) {

@@ -259,3 +259,10 @@ body {
   background: #fff;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
 }
+.pd-live-url {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+.pd-live-url a {
+  color: #94f9c4;
+}

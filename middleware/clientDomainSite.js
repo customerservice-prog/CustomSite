@@ -2,7 +2,12 @@
 
 const path = require('path');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
-const { isPlatformHostname, stripPort, customDomainLookupVariants } = require('../lib/customsitePlatformHosts');
+const {
+  isPlatformHostname,
+  stripPort,
+  stripWww,
+  customDomainLookupVariants,
+} = require('../lib/customsitePlatformHosts');
 
 const CACHE_TTL_MS = Math.min(Math.max(Number(process.env.CUSTOMSITE_DOMAIN_CACHE_MS) || 120000, 5000), 600000);
 /** @type {Map<string, { projectId: string | null; expires: number }>} */
@@ -140,8 +145,8 @@ async function handleClientDomain(req, res) {
     return false;
   }
 
-  const host = stripPort(req.get('x-forwarded-host') || req.get('host') || '');
-  if (!host || isPlatformHostname(host)) {
+  const hostIncoming = stripPort(req.get('x-forwarded-host') || req.get('host') || '');
+  if (!hostIncoming || isPlatformHostname(hostIncoming)) {
     return false;
   }
 
@@ -150,6 +155,30 @@ async function handleClientDomain(req, res) {
     return false;
   }
 
+  /** SEO / single canonical hostname: redirect www.anything → apex (custom domains only). Bypass: CUSTOMSITE_SKIP_CLIENT_WWW_REDIRECT=1 */
+  if (
+    String(process.env.CUSTOMSITE_SKIP_CLIENT_WWW_REDIRECT || '').trim() !== '1' &&
+    /^www\./i.test(hostIncoming)
+  ) {
+    const apex = stripWww(hostIncoming);
+    if (apex && apex !== hostIncoming) {
+      const rawProto = req.get('x-forwarded-proto') || req.protocol || 'https';
+      const proto = String(rawProto).split(',')[0].trim() || 'https';
+      const rel = req.originalUrl || req.url || '/';
+      try {
+        const dest = new URL(rel, `${proto === 'http' ? 'http' : 'https'}://${apex}/`);
+        dest.protocol = proto === 'http' ? 'http:' : 'https:';
+        dest.hostname = apex;
+        dest.port = '';
+        return res.redirect(301, dest.toString());
+      } catch {
+        const q = String(rel).startsWith('/') ? rel : `/${rel}`;
+        return res.redirect(301, `${proto === 'http' ? 'http' : 'https'}://${apex}${q}`);
+      }
+    }
+  }
+
+  const host = hostIncoming;
   const supabase = getService();
   const projectId = await lookupProjectIdByHost(supabase, host);
   if (!projectId) {
