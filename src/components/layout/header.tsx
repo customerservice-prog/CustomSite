@@ -70,7 +70,8 @@ export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHead
   const onStudioPulse = pathname === '/dashboard' || pathname === '/' || pathname === '';
   const setCommandOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const openModal = useAppStore((s) => s.openModal);
-  const currentUser = useAppStore((s) => s.users.u1);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const currentUser = useAppStore((s) => s.users[currentUserId]);
   const markRead = useAppStore((s) => s.markNotificationRead);
   const markAllRead = useAppStore((s) => s.markAllNotificationsRead);
   const unread = useUnreadNotificationCount();

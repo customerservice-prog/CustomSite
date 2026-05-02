@@ -144,8 +144,9 @@ app.use('/api/forms', formsPublicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/messages', messagesRoutes);
-app.use('/api/admin', adminRoutes);
+/** Site builder / project hosting routes first so paths like `/projects/:id/site*` are not shadowed by broader admin `/projects/*` handlers. */
 app.use('/api/admin', siteBuilderRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/admin', projectVideosAdminRouter);
 app.use('/api/admin', siteAnalyticsAdminRouter);
 app.use('/api/payments', paymentsRoutes);

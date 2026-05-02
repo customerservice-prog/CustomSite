@@ -51,7 +51,8 @@ function SidebarInner({
   onToggleDesktopCollapse?: () => void;
 }) {
   const workspace = useAppStore((s) => s.workspace);
-  const currentUser = useAppStore((s) => s.users.u1);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const currentUser = useAppStore((s) => s.users[currentUserId]);
   const unreadThreads = useAppStore((s) => sel.getUnreadThreads(s).length);
   const pendingContracts = useAppStore((s) => sel.getPendingContracts(s).length);
   const openInvoices = useAppStore((s) => sel.getOpenInvoiceCount(s));
@@ -137,9 +138,9 @@ function SidebarInner({
 
       <div className="shrink-0 border-t border-gray-200 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-2">
-          <Avatar name={currentUser?.name ?? 'Jordan Blake'} size="md" />
+          <Avatar name={currentUser?.name ?? 'You'} size="md" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-900">{currentUser?.name ?? 'Jordan Blake'}</p>
+            <p className="truncate text-sm font-medium text-gray-900">{currentUser?.name ?? 'You'}</p>
             <p className="truncate text-xs text-gray-500">{currentUser?.email ?? ''}</p>
           </div>
           <Dropdown

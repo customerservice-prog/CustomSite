@@ -94,7 +94,8 @@ export function DashboardPage() {
     [payments]
   );
 
-  const user = store.users.u1;
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const user = useAppStore((s) => s.users[currentUserId]);
   const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';

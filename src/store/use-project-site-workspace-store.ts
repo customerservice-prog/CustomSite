@@ -174,6 +174,9 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
           },
         },
       }));
+      if (import.meta.env.VITE_USE_REAL_API === '1') {
+        void useAppStore.getState().refreshProjectDashboardFromServer(projectId);
+      }
       return;
     }
     const saveError = humanizeSiteApiSaveError(result.apiError);

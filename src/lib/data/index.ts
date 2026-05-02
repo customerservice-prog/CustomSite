@@ -89,7 +89,7 @@ function emptyAgencyMapsBootstrap(): BootstrapEntities {
   const notifications = toMap(notificationList);
   return {
     workspace: workspaceSeed,
-    users: toMap(usersSeed),
+    users: {},
     clients: {},
     projects: {},
     leads: toMap(leadsSeed),

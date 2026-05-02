@@ -43,6 +43,7 @@ function pathName(req) {
  */
 function tryRespondLocalDemoSite(req, res, m, p) {
   const siteList = /^\/api\/admin\/projects\/([^/]+)\/site$/;
+  const siteFilesList = /^\/api\/admin\/projects\/([^/]+)\/site\/files$/;
   const siteFileGet = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
   const siteFilePut = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
   const siteFileDel = /^\/api\/admin\/projects\/([^/]+)\/site\/file$/;
@@ -50,6 +51,12 @@ function tryRespondLocalDemoSite(req, res, m, p) {
 
   if (m === 'GET' && siteList.test(p)) {
     const projectId = p.match(siteList)[1];
+    const listed = devStore.listPaths(projectId);
+    res.json({ files: listed });
+    return true;
+  }
+  if (m === 'GET' && siteFilesList.test(p)) {
+    const projectId = p.match(siteFilesList)[1];
     const listed = devStore.listPaths(projectId);
     res.json({ files: listed });
     return true;

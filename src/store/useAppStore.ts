@@ -41,6 +41,7 @@ import {
   type ApiProjectRow,
 } from '@/lib/agency-api-map';
 import { adminFetchJson } from '@/lib/admin-api';
+import { mapApiAuthMeUserToStudioUser, type ApiAuthMeUser } from '@/lib/auth-user-map';
 import { getProjectTemplate, instantiateTemplateTasks } from '@/lib/project-templates';
 import { LIFECYCLE_LABELS, nextLifecycleStage, projectStatusForLifecycle } from '@/lib/project-lifecycle';
 import { useSiteProductionStore } from '@/store/useSiteProductionStore';
@@ -95,6 +96,8 @@ export interface AppStore extends RootState {
   hydrateAgencyFromServer: () => Promise<void>;
   /** Merge one project row from GET/PATCH `/api/admin/projects/:id` without reloading the whole agency. */
   mergeProjectRowFromServer: (row: ApiProjectRow) => void;
+  /** Refresh project card metrics (site file count, index.html flag) after site builder saves. */
+  refreshProjectDashboardFromServer: (projectId: string) => Promise<void>;
 
   toast: (message: string, variant?: ToastItem['variant']) => void;
   dismissToast: (id: string) => void;
@@ -224,7 +227,7 @@ const boot = createBootstrapEntities();
 
 export const useAppStore = create<AppStore>((set, get) => ({
   ...boot,
-  currentUserId: 'u1',
+  currentUserId: import.meta.env.VITE_USE_REAL_API === '1' ? '' : 'u1',
   pendingNewClientId: null,
   ui: {
     mobileSidebarOpen: false,
@@ -273,13 +276,43 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
     set({ hydration: { status: 'loading' } });
     try {
+      const meRes = await adminFetchJson<{ user?: ApiAuthMeUser }>('/api/auth/me');
+      if (!meRes.ok) {
+        if (meRes.status === 401) {
+          set({
+            users: {},
+            currentUserId: '',
+            clients: {},
+            projects: {},
+            tasks: {},
+            hydration: { status: 'ready' },
+          });
+          return;
+        }
+        set({ hydration: { status: 'error', error: meRes.error } });
+        return;
+      }
+      const meRow = meRes.data?.user;
+      if (!meRow?.id) {
+        set({ hydration: { status: 'error', error: 'Session did not return a user profile.' } });
+        return;
+      }
+      const studioUser = mapApiAuthMeUserToStudioUser(meRow);
+
       const [cRes, pRes] = await Promise.all([
         adminFetchJson<{ clients?: ApiClientRow[] }>('/api/admin/clients'),
         adminFetchJson<{ projects?: ApiProjectRow[] }>('/api/admin/projects'),
       ]);
       if (!cRes.ok) {
         if (cRes.status === 401) {
-          set({ clients: {}, projects: {}, tasks: {}, hydration: { status: 'ready' } });
+          set({
+            users: {},
+            currentUserId: '',
+            clients: {},
+            projects: {},
+            tasks: {},
+            hydration: { status: 'ready' },
+          });
           return;
         }
         set({ hydration: { status: 'error', error: cRes.error } });
@@ -287,13 +320,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
       if (!pRes.ok) {
         if (pRes.status === 401) {
-          set({ clients: {}, projects: {}, tasks: {}, hydration: { status: 'ready' } });
+          set({
+            users: {},
+            currentUserId: '',
+            clients: {},
+            projects: {},
+            tasks: {},
+            hydration: { status: 'ready' },
+          });
           return;
         }
         set({ hydration: { status: 'error', error: pRes.error } });
         return;
       }
-      const ownerFallback = get().currentUserId;
+      const ownerFallback = studioUser.id;
       const clients: Record<string, Client> = {};
       for (const row of cRes.data.clients || []) {
         clients[row.id] = mapApiClientRowToClient(row, ownerFallback);
@@ -303,7 +343,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
         const p = mapApiProjectRowToProject(row, clients);
         if (p) projects[p.id] = p;
       }
-      set({ clients, projects, tasks: {}, hydration: { status: 'ready' } });
+      set({
+        users: { [studioUser.id]: studioUser },
+        currentUserId: studioUser.id,
+        clients,
+        projects,
+        tasks: {},
+        hydration: { status: 'ready' },
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       set({ hydration: { status: 'error', error: msg } });
@@ -325,6 +372,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
       });
       return { projects: { ...s.projects, [mapped.id]: next } };
     });
+  },
+
+  refreshProjectDashboardFromServer: async (projectId) => {
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return;
+    const id = String(projectId || '').trim();
+    if (!id) return;
+    const r = await adminFetchJson<{ project?: ApiProjectRow }>(`/api/admin/projects/${encodeURIComponent(id)}`);
+    if (!r.ok || !r.data?.project) return;
+    get().mergeProjectRowFromServer(r.data.project);
   },
 
   toast: (message, variant = 'success') => {
