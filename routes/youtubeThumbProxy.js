@@ -45,9 +45,32 @@ router.get('/yt-thumb', async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=86400');
 
-    /** Pass-through cache only (skip Supabase) */
+    /** Pass-through cache only (skip Supabase) — CUSTOMSITE_VIDEO_THUMB_BUCKET names the bucket. */
     const skipStorage = String(process.env.CUSTOMSITE_YT_THUMB_STORAGE || '').trim() === '0';
 
+    /** 1 — YouTube/CDN fetch first so missing `video-thumbs` bucket cannot block thumbnails. */
+    let ytPromise = inflight.get(id);
+    if (!ytPromise) {
+      ytPromise = fetchYoutubeThumbnailBuffer(id).finally(() => inflight.delete(id));
+      inflight.set(id, ytPromise);
+    }
+    try {
+      const bufYt = await ytPromise;
+      if (bufYt && !thumbnailBufferLooksUnavailable(bufYt)) {
+        if (!skipStorage && isSupabaseConfigured()) {
+          uploadThumbToBucket(getService(), id, bufYt).catch((e) =>
+            console.warn('[yt-thumb] cache upload skipped', id, e.message || e)
+          );
+        }
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('X-Thumbnail-Source', 'youtube-first');
+        return res.send(bufYt);
+      }
+    } catch {
+      /* continue to Storage + final fallback */
+    }
+
+    /** 2 — Supabase bucket cache hit */
     if (!skipStorage && isSupabaseConfigured()) {
       const supabase = getService();
       let stored;
@@ -61,41 +84,9 @@ router.get('/yt-thumb', async (req, res) => {
         res.setHeader('X-Thumbnail-Source', 'storage');
         return res.send(stored);
       }
-
-      /** Singleflight-ish */
-      let p = inflight.get(id);
-      if (!p) {
-        p = (async () => {
-          const bufRaw = await fetchYoutubeThumbnailBuffer(id);
-          let finalBuf = bufRaw;
-          if (!finalBuf || thumbnailBufferLooksUnavailable(finalBuf)) {
-            return { kind: 'svg' };
-          }
-          try {
-            await uploadThumbToBucket(supabase, id, finalBuf);
-          } catch (e) {
-            console.warn('[yt-thumb] storage cache miss upload', id, e.message);
-          }
-          return { kind: 'jpeg', buf: finalBuf };
-        })().finally(() => inflight.delete(id));
-        inflight.set(id, p);
-      }
-
-      try {
-        const out = await p;
-        if (out.kind === 'svg') {
-          res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
-          res.setHeader('X-Thumbnail-Source', 'fallback');
-          return res.status(200).send(FALLBACK_SVG);
-        }
-        res.setHeader('Content-Type', 'image/jpeg');
-        res.setHeader('X-Thumbnail-Source', 'youtube-fetched');
-        return res.send(out.buf);
-      } catch {
-        /** fall through to direct fetch below */
-      }
     }
 
+    /** 3 — retry fetch outside inflight singleton (prior attempt may race) */
     const bufRaw = await fetchYoutubeThumbnailBuffer(id);
     if (!bufRaw || thumbnailBufferLooksUnavailable(bufRaw)) {
       res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
@@ -103,7 +94,7 @@ router.get('/yt-thumb', async (req, res) => {
       return res.status(200).send(FALLBACK_SVG);
     }
     res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('X-Thumbnail-Source', 'youtube-proxy');
+    res.setHeader('X-Thumbnail-Source', 'youtube-proxy-retry');
     return res.send(bufRaw);
   } catch (e) {
     console.error(e);

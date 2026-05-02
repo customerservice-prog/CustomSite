@@ -6,6 +6,8 @@ import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/useAppStore';
 import { useShell } from '@/context/shell-context';
+import { adminFetchJson } from '@/lib/admin-api';
+import { mapApiAuthMeUserToStudioUser, type ApiAuthMeUser } from '@/lib/auth-user-map';
 
 const TIMEZONES = [
   'America/New_York',
@@ -30,6 +32,7 @@ export function AccountPage() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '');
   const [timezone, setTimezone] = useState(user?.timezone ?? 'America/New_York');
   const [password, setPassword] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -109,22 +112,68 @@ export function AccountPage() {
             placeholder="Leave blank to keep current"
             autoComplete="new-password"
           />
-          <p className="mt-1 text-[11px] text-slate-500">Demo: password changes are not sent to a server yet.</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Leave blank to keep current. Password changes use Supabase Auth and are not handled on this screen yet.
+          </p>
         </div>
         <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
           <Button
             type="button"
-            disabled={!dirty}
-            onClick={() => {
-              updateUserProfile(currentUserId, { name: name.trim(), email: email.trim(), avatarUrl: avatarUrl.trim() || undefined, timezone });
-              toast('Profile saved locally — connect auth to sync to the server.', 'success');
+            disabled={!dirty || savingProfile}
+            onClick={async () => {
+              const trimmedName = name.trim();
+              const trimmedEmail = email.trim();
+              const nameChanged = trimmedName !== (user?.name ?? '');
+
+              if (import.meta.env.VITE_USE_REAL_API === '1' && nameChanged) {
+                setSavingProfile(true);
+                try {
+                  const r = await adminFetchJson<{ user: ApiAuthMeUser }>('/api/auth/me', {
+                    method: 'PATCH',
+                    json: { full_name: trimmedName },
+                  });
+                  if (!r.ok) {
+                    toast(r.error || 'Could not save display name.', 'error');
+                    return;
+                  }
+                  const synced = mapApiAuthMeUserToStudioUser(r.data.user);
+                  updateUserProfile(currentUserId, {
+                    name: synced.name,
+                    avatarUrl: avatarUrl.trim() || undefined,
+                    timezone,
+                    email: trimmedEmail,
+                  });
+                  toast(
+                    trimmedEmail !== synced.email
+                      ? 'Display name synced. Email is managed in Authentication, not overwritten here.'
+                      : 'Profile saved.',
+                    'success'
+                  );
+                } finally {
+                  setSavingProfile(false);
+                }
+              } else {
+                updateUserProfile(currentUserId, {
+                  name: trimmedName,
+                  email: trimmedEmail,
+                  avatarUrl: avatarUrl.trim() || undefined,
+                  timezone,
+                });
+                toast(
+                  import.meta.env.VITE_USE_REAL_API === '1'
+                    ? 'Preferences saved.'
+                    : 'Profile saved locally — turn on API mode to sync display name.',
+                  'success'
+                );
+              }
+
               if (password.trim()) {
-                toast('Password change queued — wire Supabase Auth to apply in production.', 'info');
+                toast('Password changes use Supabase Auth — not handled on this screen yet.', 'info');
                 setPassword('');
               }
             }}
           >
-            Save profile
+            {savingProfile ? 'Saving…' : 'Save profile'}
           </Button>
         </div>
       </Card>

@@ -61,7 +61,9 @@ export function serverProjectStatusToLifecycle(status: string | undefined | null
     discovery: 'discovery',
     design: 'proposal_contract',
     development: 'build',
+    in_progress: 'build',
     review: 'review',
+    ready: 'review',
     live: 'post_launch',
   };
   return map[s] || 'discovery';
@@ -72,7 +74,7 @@ export function lifecycleStageToServerProjectStatus(stage: ProjectLifecycleStage
     inquiry: 'discovery',
     discovery: 'discovery',
     proposal_contract: 'design',
-    build: 'development',
+    build: 'in_progress',
     review: 'review',
     launch: 'live',
     post_launch: 'live',

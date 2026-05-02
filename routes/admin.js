@@ -387,7 +387,7 @@ router.post('/projects', async (req, res) => {
     if (!client_id || !name || !String(name).trim()) {
       return res.status(400).json({ error: 'client_id and name are required' });
     }
-    const allowed = ['discovery', 'design', 'development', 'review', 'live'];
+    const allowed = ['discovery', 'design', 'development', 'in_progress', 'ready', 'review', 'live'];
     const st = status && allowed.includes(status) ? status : 'discovery';
     const supabase = getService();
     const insert = {
@@ -475,7 +475,7 @@ router.patch('/entity/project/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     const { name, status, website_type, internal_notes } = req.body || {};
-    const allowed = ['discovery', 'design', 'development', 'review', 'live'];
+    const allowed = ['discovery', 'design', 'development', 'in_progress', 'ready', 'review', 'live'];
     const supabase = getService();
     const updates = {};
     if (name != null) updates.name = String(name).trim();
@@ -865,7 +865,7 @@ router.patch('/projects/:clientId/status', async (req, res) => {
   try {
     const { clientId } = req.params;
     const { status } = req.body || {};
-    const allowed = ['discovery', 'design', 'development', 'review', 'live'];
+    const allowed = ['discovery', 'design', 'development', 'in_progress', 'ready', 'review', 'live'];
     if (!status || !allowed.includes(status)) {
       return res.status(400).json({ error: 'Invalid status', allowed });
     }

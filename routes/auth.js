@@ -5,6 +5,7 @@ require('../lib/env');
 const express = require('express');
 const { getAnon, getService, isSupabaseConfigured, isSupabaseAnonReady } = require('../lib/supabase');
 const { isBootstrapAdminEmail } = require('../lib/bootstrapAdmin');
+const { resolveMeFullName } = require('../lib/displayNameFromEmail');
 const { requireAuth } = require('../middleware/auth');
 const { isDevAuthEnabled, signDevToken } = require('../lib/devAuth');
 
@@ -215,6 +216,15 @@ router.post('/login', async (req, res) => {
       return res.status(502).json({ error: 'Could not load profile' });
     }
 
+    const pu = profile || {
+      id: data.user.id,
+      email: String(data.user.email || '').trim().toLowerCase(),
+      full_name: null,
+      company: null,
+      role: 'client',
+      created_at: null,
+    };
+    const fullResolved = resolveMeFullName(pu, data.user);
     return res.json({
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
@@ -222,7 +232,7 @@ router.post('/login', async (req, res) => {
       user: {
         id: data.user.id,
         email: data.user.email,
-        full_name: profile?.full_name ?? null,
+        full_name: fullResolved,
         company: profile?.company ?? null,
         role: profile?.role ?? 'client',
         created_at: profile?.created_at ?? null,
@@ -268,6 +278,17 @@ router.post('/refresh', async (req, res) => {
       console.error(err);
       return res.status(502).json({ error: 'Could not load profile' });
     }
+    const puRefresh =
+      profile ||
+      ({
+        id: data.user.id,
+        email: String(data.user.email || '').trim().toLowerCase(),
+        full_name: null,
+        company: null,
+        role: 'client',
+        created_at: null,
+      });
+    const fullResolved = resolveMeFullName(puRefresh, data.user);
     return res.json({
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
@@ -275,10 +296,10 @@ router.post('/refresh', async (req, res) => {
       user: {
         id: data.user.id,
         email: data.user.email,
-        full_name: profile?.full_name ?? null,
-        company: profile?.company ?? null,
-        role: profile?.role ?? 'client',
-        created_at: profile?.created_at ?? null,
+        full_name: fullResolved,
+        company: puRefresh.company ?? null,
+        role: puRefresh.role ?? 'client',
+        created_at: puRefresh.created_at ?? null,
       },
     });
   } catch (e) {
@@ -292,11 +313,7 @@ router.post('/logout', (_req, res) => {
 });
 
 router.get('/me', requireAuth, (req, res) => {
-  const meta = req.authUser && typeof req.authUser.user_metadata === 'object' ? req.authUser.user_metadata || {} : {};
-  const metaName = String(meta.full_name || meta.name || '').trim();
-  const dbName = String(req.profile.full_name || '').trim();
-  /** Prefer Auth metadata — DB row sometimes lags onboarding or stale demo imports. */
-  const full_name = metaName || dbName || null;
+  const full_name = resolveMeFullName(req.profile, req.authUser);
   return res.json({
     user: {
       id: req.profile.id,
@@ -307,6 +324,78 @@ router.get('/me', requireAuth, (req, res) => {
       created_at: req.profile.created_at,
     },
   });
+});
+
+router.patch('/me', requireAuth, async (req, res) => {
+  try {
+    const body = req.body || {};
+
+    /** Local dev JWT — mutate in-memory profile only */
+    if (req.isDevToken) {
+      if (typeof body.full_name === 'string') req.profile.full_name = body.full_name.trim() || null;
+      if (typeof body.company === 'string') req.profile.company = body.company.trim() || null;
+      const full_name = resolveMeFullName(req.profile, req.authUser);
+      return res.json({
+        user: {
+          id: req.profile.id,
+          email: req.profile.email,
+          full_name,
+          company: req.profile.company,
+          role: req.profile.role,
+          created_at: req.profile.created_at,
+        },
+      });
+    }
+
+    if (!isSupabaseConfigured()) {
+      return res.status(503).json({ error: 'Server has no Supabase profile store' });
+    }
+
+    const patch = {};
+    if (typeof body.full_name === 'string') patch.full_name = body.full_name.trim() ? body.full_name.trim() : null;
+    if (typeof body.company === 'string') patch.company = body.company.trim() ? body.company.trim() : null;
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: 'Provide full_name or company to update' });
+    }
+
+    const supabase = getService();
+    const { data: row, error } = await supabase
+      .from('users')
+      .update(patch)
+      .eq('id', req.profile.id)
+      .select('*')
+      .maybeSingle();
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    req.profile = row || req.profile;
+    if (patch.full_name !== undefined || patch.company !== undefined) {
+      try {
+        const md = {};
+        if (patch.full_name !== undefined) md.full_name = patch.full_name;
+        if (patch.company !== undefined) md.company = patch.company;
+        const { error: au } = await supabase.auth.admin.updateUserById(req.profile.id, { user_metadata: md });
+        if (au) console.warn('[PATCH /me] auth metadata sync', au.message || au);
+      } catch (e) {
+        console.warn('[PATCH /me] auth.admin', e.message || e);
+      }
+    }
+
+    const full_name = resolveMeFullName(req.profile, req.authUser);
+    return res.json({
+      user: {
+        id: req.profile.id,
+        email: req.profile.email,
+        full_name,
+        company: req.profile.company,
+        role: req.profile.role,
+        created_at: req.profile.created_at,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e && e.message ? e.message : 'Update failed' });
+  }
 });
 
 module.exports = router;

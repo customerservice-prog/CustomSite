@@ -138,7 +138,22 @@ function contentOctetLength(text, encoding) {
   return Buffer.byteLength(t, 'utf8');
 }
 
-async function maybeAdvanceProjectBuildStatus(supabase, projectId) {
+async function siteProjectHasIndexHtml(supabase, projectId) {
+  const { data, error } = await supabase
+    .from('site_files')
+    .select('path')
+    .eq('project_id', projectId)
+    .eq('path', 'index.html')
+    .maybeSingle();
+  if (error) return false;
+  return Boolean(data?.path);
+}
+
+/**
+ * discovery → in_progress when any site file exists;
+ * in_progress/design/development → ready when index.html exists and custom_domain is set (live stays manual).
+ */
+async function syncProjectAutomationStatus(supabase, projectId) {
   try {
     const { data: p, error } = await supabase
       .from('projects')
@@ -146,39 +161,40 @@ async function maybeAdvanceProjectBuildStatus(supabase, projectId) {
       .eq('id', projectId)
       .maybeSingle();
     if (error || !p) return;
-    const s = String(p.status || '').toLowerCase();
-    const hasDom = Boolean(normalizeCustomDomainHost(p.custom_domain));
-    if (s === 'discovery') {
-      await supabase.from('projects').update({ status: 'development' }).eq('id', projectId);
-      return;
-    }
-    if (s === 'development' && hasDom) {
-      await supabase.from('projects').update({ status: 'review' }).eq('id', projectId);
-    }
-  } catch (e) {
-    console.warn('[site/file] status bump skipped', e.message || e);
-  }
-}
 
-async function bumpProjectStatusWhenDomainAndFiles(supabase, projectId) {
-  try {
-    const { data: p } = await supabase.from('projects').select('id, status, custom_domain').eq('id', projectId).maybeSingle();
-    if (!p) return;
+    let s = String(p.status || 'discovery').toLowerCase();
+    if (['live', 'ready', 'review'].includes(s)) return;
+
     const hasDom = Boolean(normalizeCustomDomainHost(p.custom_domain));
-    if (!hasDom) return;
-    const s = String(p.status || '').toLowerCase();
+
     const { count, error: ce } = await supabase
       .from('site_files')
       .select('path', { count: 'exact', head: true })
       .eq('project_id', projectId);
     if (ce) return;
-    if ((count ?? 0) === 0) return;
-    if (s === 'discovery' || s === 'development') {
-      await supabase.from('projects').update({ status: 'review' }).eq('id', projectId);
+    const hasFiles = (count ?? 0) > 0;
+    if (!hasFiles) return;
+
+    const hasIndex = await siteProjectHasIndexHtml(supabase, projectId);
+
+    if (s === 'discovery') {
+      const { error: u1 } = await supabase.from('projects').update({ status: 'in_progress' }).eq('id', projectId);
+      if (u1) console.warn('[project-status] discovery→in_progress', u1.message || u1);
+      s = 'in_progress';
+    }
+
+    const canReady = ['in_progress', 'development', 'design'].includes(s);
+    if (canReady && hasIndex && hasDom) {
+      const { error: u2 } = await supabase.from('projects').update({ status: 'ready' }).eq('id', projectId);
+      if (u2) console.warn('[project-status] →ready', u2.message || u2);
     }
   } catch (e) {
-    console.warn('[project] domain status bump skipped', e.message || e);
+    console.warn('[project-status] automation skipped', e.message || e);
   }
+}
+
+async function bumpProjectStatusWhenDomainAndFiles(supabase, projectId) {
+  await syncProjectAutomationStatus(supabase, projectId);
 }
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -236,7 +252,7 @@ function hostingPatchFromBody(b) {
   return patch;
 }
 
-const PROJECT_STATUS_ALLOWED = ['discovery', 'design', 'development', 'review', 'live'];
+const PROJECT_STATUS_ALLOWED = ['discovery', 'design', 'development', 'in_progress', 'ready', 'review', 'live'];
 
 router.get('/projects/:projectId/site/file', async (req, res) => {
   try {
@@ -347,7 +363,7 @@ router.put('/projects/:projectId/site/file', async (req, res) => {
       });
     }
     setImmediate(() => {
-      maybeAdvanceProjectBuildStatus(supabase, projectId).catch(() => {});
+      syncProjectAutomationStatus(supabase, projectId).catch(() => {});
     });
     return res.json({ success: true, file: data });
   } catch (e) {
@@ -432,29 +448,58 @@ router.post('/projects/:projectId/site/init', async (req, res) => {
         .eq('path', path)
         .maybeSingle();
       if (row) {
-        const { error } = await supabase
-          .from('site_files')
-          .update({ content, updated_at: now, content_encoding: 'utf8' })
-          .eq('id', row.id);
+        const nbytes = contentOctetLength(content, 'utf8');
+        const upd = { content, updated_at: now, content_encoding: 'utf8', size_bytes: nbytes };
+        let { error } = await supabase.from('site_files').update(upd).eq('id', row.id);
+        if (error && /size_bytes/i.test(String(error.message))) {
+          delete upd.size_bytes;
+          ({ error } = await supabase.from('site_files').update(upd).eq('id', row.id));
+        }
         if (error && /content_encoding/.test(String(error.message))) {
-          const e2 = await supabase
-            .from('site_files')
-            .update({ content, updated_at: now })
-            .eq('id', row.id);
+          const plain = { content, updated_at: now, size_bytes: nbytes };
+          let e2 = await supabase.from('site_files').update(plain).eq('id', row.id);
+          if (e2.error && /size_bytes/i.test(String(e2.error.message))) {
+            delete plain.size_bytes;
+            e2 = await supabase.from('site_files').update(plain).eq('id', row.id);
+          }
           if (e2.error) return res.status(500).json({ error: e2.error.message });
         } else if (error) {
           return res.status(500).json({ error: error.message });
         }
       } else {
-        const insert = { project_id: projectId, path, content, updated_at: now, content_encoding: 'utf8' };
+        const nbytes = contentOctetLength(content, 'utf8');
+        let insert = {
+          project_id: projectId,
+          path,
+          content,
+          updated_at: now,
+          content_encoding: 'utf8',
+          size_bytes: nbytes,
+        };
         let { error } = await supabase.from('site_files').insert(insert);
-        if (error && /content_encoding/.test(String(error.message))) {
-          delete insert.content_encoding;
+        if (error && /size_bytes/i.test(String(error.message))) {
+          delete insert.size_bytes;
           ({ error } = await supabase.from('site_files').insert(insert));
+        }
+        if (error && /content_encoding/.test(String(error.message))) {
+          insert = {
+            project_id: projectId,
+            path,
+            content,
+            updated_at: now,
+            size_bytes: nbytes,
+          };
+          ({ error } = await supabase.from('site_files').insert(insert));
+          if (error && /size_bytes/i.test(String(error.message))) {
+            ({ error } = await supabase
+              .from('site_files')
+              .insert({ project_id: projectId, path, content, updated_at: now }));
+          }
         }
         if (error) return res.status(500).json({ error: error.message });
       }
     }
+    void syncProjectAutomationStatus(supabase, projectId);
     return res.json({ success: true, paths: Object.keys(files), template: templateId });
   } catch (e) {
     console.error(e);
@@ -674,9 +719,17 @@ router.post('/projects/:projectId/site/upload-asset', upload.single('file'), asy
       rel = `assets/${rel.replace(/^assets\//, '')}`;
     }
     const b64 = buffer.toString('base64');
+    const nbytes = buffer.length;
     const supabase = getService();
     const now = new Date().toISOString();
-    const row = { project_id: projectId, path: rel, content: b64, updated_at: now, content_encoding: 'base64' };
+    const row = {
+      project_id: projectId,
+      path: rel,
+      content: b64,
+      updated_at: now,
+      content_encoding: 'base64',
+      size_bytes: nbytes,
+    };
     const { data: ex } = await supabase
       .from('site_files')
       .select('id')
@@ -687,20 +740,43 @@ router.post('/projects/:projectId/site/upload-asset', upload.single('file'), asy
     if (ex) {
       const u = await supabase.from('site_files').update(row).eq('id', ex.id);
       err = u.error;
+      if (err && /size_bytes/i.test(String(err.message))) {
+        delete row.size_bytes;
+        err = (await supabase.from('site_files').update(row).eq('id', ex.id)).error;
+      }
     } else {
       const ins = await supabase.from('site_files').insert(row);
       err = ins.error;
+      if (err && /size_bytes/i.test(String(err.message))) {
+        delete row.size_bytes;
+        err = (await supabase.from('site_files').insert(row)).error;
+      }
     }
     if (err && /content_encoding/.test(String(err.message))) {
-      const r2 = { project_id: projectId, path: rel, content: b64, updated_at: now };
+      const r2 = {
+        project_id: projectId,
+        path: rel,
+        content: b64,
+        updated_at: now,
+        size_bytes: nbytes,
+      };
+      let e2;
       if (ex) {
-        const u = await supabase.from('site_files').update(r2).eq('id', ex.id);
-        err = u.error;
+        let u = await supabase.from('site_files').update(r2).eq('id', ex.id);
+        if (u.error && /size_bytes/i.test(String(u.error.message))) {
+          delete r2.size_bytes;
+          u = await supabase.from('site_files').update(r2).eq('id', ex.id);
+        }
+        e2 = u.error;
       } else {
-        const ins = await supabase.from('site_files').insert(r2);
-        err = ins.error;
+        let ins = await supabase.from('site_files').insert(r2);
+        if (ins.error && /size_bytes/i.test(String(ins.error.message))) {
+          delete r2.size_bytes;
+          ins = await supabase.from('site_files').insert(r2);
+        }
+        e2 = ins.error;
       }
-      if (err) return res.status(500).json({ error: err.message, hint: 'Add content_encoding to site_files (migration)' });
+      if (e2) return res.status(500).json({ error: e2.message, hint: 'Add content_encoding to site_files (migration)' });
     } else if (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -713,6 +789,8 @@ router.post('/projects/:projectId/site/upload-asset', upload.single('file'), asy
     } catch (e) {
       console.warn('[upload-asset] Storage URL skipped:', e.message);
     }
+
+    void syncProjectAutomationStatus(supabase, projectId);
 
     return res.json({ success: true, path: rel, content_encoding: 'base64', publicUrl });
   } catch (e) {
