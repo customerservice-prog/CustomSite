@@ -27,6 +27,8 @@ const {
   projectVideosAdminRouter,
   projectVideosCronRouter,
 } = require('./routes/projectVideos');
+const { siteAnalyticsAdminRouter } = require('./routes/siteAnalyticsAdmin');
+const { internalCronRouter } = require('./routes/internalCron');
 const { isSupabaseConfigured } = require('./lib/supabase');
 const { isDevAuthEnabled } = require('./lib/devAuth');
 const { isPlatformHostname } = require('./lib/customsitePlatformHosts');
