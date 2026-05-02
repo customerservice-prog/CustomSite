@@ -24,6 +24,33 @@ const CACHE_TTL_MS = Math.min(Math.max(Number(process.env.CUSTOMSITE_DOMAIN_CACH
 /** @type {Map<string, { projectId: string | null; siteSettings: unknown | null; launchedAt: string | null; projectName: string | null; expires: number }>} */
 const projectByHostCache = new Map();
 
+const UUID_V4_PROJECT = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Optional Railway env when DNS is correct but DB `custom_domain` is unset or typo'd:
+ * CUSTOMSITE_DOMAIN_PROJECT_MAP=apex.host|PROJECT_UUID,... (comma-separated pairs, host normalized like DB)
+ * Example:
+ * CUSTOMSITE_DOMAIN_PROJECT_MAP=cestuiquevietrust.com|55546683-c4f1-419c-a2d4-b35378679537
+ */
+function parseDomainProjectOverrideMap() {
+  const raw = String(process.env.CUSTOMSITE_DOMAIN_PROJECT_MAP || '').trim();
+  const m = new Map();
+  if (!raw) return m;
+  for (const chunk of raw.split(',')) {
+    const part = chunk.trim();
+    if (!part) continue;
+    const pipe = part.indexOf('|');
+    if (pipe < 1) continue;
+    const hostCandidate = normalizeCustomDomainHost(part.slice(0, pipe));
+    const projId = part.slice(pipe + 1).trim();
+    if (!hostCandidate || !UUID_V4_PROJECT.test(projId)) continue;
+    m.set(hostCandidate, projId);
+  }
+  return m;
+}
+
+const DOMAIN_PROJECT_OVERRIDE = parseDomainProjectOverrideMap();
+
 function mimeForPath(p) {
   const lower = p.toLowerCase();
   if (lower.endsWith('.html')) return 'text/html; charset=utf-8';
@@ -105,6 +132,33 @@ function setCacheForAsset(res, filePath) {
   else res.setHeader('Cache-Control', 'public, max-age=86400');
 }
 
+/**
+ * Load a project by id with the same column fallbacks as custom_domain lookup.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} id
+ */
+async function loadProjectRowById(supabase, id) {
+  let projSelect =
+    'id, site_settings, custom_domain, launched_at, name, live_url';
+  let { data, error } = await supabase.from('projects').select(projSelect).eq('id', id).maybeSingle();
+  if (error && /\blive_url\b/.test(String(error.message))) {
+    projSelect = 'id, site_settings, custom_domain, launched_at, name';
+    ({ data, error } = await supabase.from('projects').select(projSelect).eq('id', id).maybeSingle());
+  }
+  if (error && /site_settings/.test(String(error.message))) {
+    ({ data, error } = await supabase
+      .from('projects')
+      .select('id, custom_domain, launched_at, name')
+      .eq('id', id)
+      .maybeSingle());
+  }
+  if (error) {
+    console.error('[clientDomainSite] loadProjectRowById', error.message);
+    return null;
+  }
+  return data || null;
+}
+
 /** @returns {Promise<{ projectId: string; siteSettings?: unknown | null; launchedAt: string | null; projectName: string | null } | null>} */
 async function lookupProjectMetaByHost(supabase, hostKey) {
   const now = Date.now();
@@ -115,8 +169,14 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
       : null;
   }
   const nh = normalizeCustomDomainHost(hostKey);
+  const forcedProjectId = nh ? DOMAIN_PROJECT_OVERRIDE.get(nh) : null;
+  let row0 = forcedProjectId ? await loadProjectRowById(supabase, forcedProjectId) : null;
+  if (forcedProjectId && !row0) {
+    console.warn('[clientDomainSite] CUSTOMSITE_DOMAIN_PROJECT_MAP: project not found', forcedProjectId);
+  }
   /** Match DB values pasted as URLs or with stray whitespace/trailing slashes. */
   let variantSet = [];
+  if (!row0) {
   if (nh) {
     const apex = /^www\./i.test(nh) ? nh.slice(4) : nh;
     const hostLike = apex && /^[\w.-]+$/.test(apex)
@@ -158,7 +218,7 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
     });
     return null;
   }
-  let row0 = rows && rows[0];
+  row0 = rows && rows[0];
   if (!row0) {
     const want = nh || normalizeCustomDomainHost(hostKey);
     /** LIKE metachars — strip so filter stays narrow + safe */
@@ -212,6 +272,7 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
         }
       }
     }
+  }
   }
   const id = row0 && row0.id ? String(row0.id) : null;
   const siteSettings = row0 && row0.site_settings !== undefined ? row0.site_settings : null;
