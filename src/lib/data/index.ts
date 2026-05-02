@@ -84,7 +84,36 @@ function reconcileClientsWithInvoices(clients: EntityMap<Client>, invoices: Enti
   return next;
 }
 
+function emptyAgencyMapsBootstrap(): BootstrapEntities {
+  const notificationList = initialNotifications();
+  const notifications = toMap(notificationList);
+  return {
+    workspace: workspaceSeed,
+    users: toMap(usersSeed),
+    clients: {},
+    projects: {},
+    leads: toMap(leadsSeed),
+    tasks: {},
+    invoices: {},
+    payments: toMap(paymentsSeed),
+    contracts: toMap(contractsSeed),
+    messageThreads: toMap(messageThreadsSeed),
+    messages: toMap(messagesSeed),
+    files: toMap(filesSeed),
+    expenses: toMap(expensesSeed),
+    activities: {},
+    activityIds: [],
+    notifications,
+    notificationIds: notificationList.map((n) => n.id),
+    deadlines: deadlinesSeed,
+    operator: emptyOperatorState(),
+  };
+}
+
 export function createBootstrapEntities(): BootstrapEntities {
+  if (import.meta.env.VITE_USE_REAL_API === '1') {
+    return emptyAgencyMapsBootstrap();
+  }
   const activities = toMap(activitiesSeed);
   const notificationList = initialNotifications();
   const notifications = toMap(notificationList);

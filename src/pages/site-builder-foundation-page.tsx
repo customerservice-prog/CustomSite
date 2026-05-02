@@ -45,6 +45,7 @@ import { SiteBuilderPreviewDebugPanel } from '@/components/site-builder/site-bui
 import { SiteBuilderPreviewErrorBoundary } from '@/components/site-builder/site-builder-preview-error-boundary';
 import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
+import { shouldShowDemoDatasetBanner } from '@/lib/runtime-demo';
 
 const BASE_FILES = ['index.html', 'styles.css', 'script.js'] as const;
 
@@ -795,7 +796,9 @@ export function SiteBuilderFoundationPage() {
               className="max-w-[min(280px,46vw)] truncate text-[10px] font-medium text-amber-400/95"
               title={saveError ?? 'Cloud sync failed; see toast'}
             >
-              Saved in this browser only
+              {shouldShowDemoDatasetBanner()
+                ? 'Saved in this browser only (demo)'
+                : 'Not saved to server — local copy only'}
               {lastSavedAt != null ? (
                 <span className="ml-1 font-normal text-zinc-500">
                   · {new Date(lastSavedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}

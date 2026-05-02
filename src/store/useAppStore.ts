@@ -32,6 +32,15 @@ import { newId, isoNow } from '@/store/ids';
 import { planAutonomousActions } from '@/lib/autonomous-operator-cycle';
 import type { OperatorEvent } from '@/store/operator-state';
 import type { DeadlineSeed } from '@/lib/data/deadlines';
+import {
+  buildProjectInternalNotes,
+  lifecycleStageToServerProjectStatus,
+  mapApiClientRowToClient,
+  mapApiProjectRowToProject,
+  type ApiClientRow,
+  type ApiProjectRow,
+} from '@/lib/agency-api-map';
+import { adminFetchJson } from '@/lib/admin-api';
 import { getProjectTemplate, instantiateTemplateTasks } from '@/lib/project-templates';
 import { LIFECYCLE_LABELS, nextLifecycleStage, projectStatusForLifecycle } from '@/lib/project-lifecycle';
 import { useSiteProductionStore } from '@/store/useSiteProductionStore';
@@ -82,6 +91,8 @@ export interface AppStore extends RootState {
   setSelectedClientId: (id: string | null) => void;
   setSelectedProjectId: (id: string | null) => void;
   setHydration: (status: RootState['hydration']['status'], error?: string) => void;
+  /** Load clients + projects from `/api/admin/*` when `VITE_USE_REAL_API=1`. */
+  hydrateAgencyFromServer: () => Promise<void>;
 
   toast: (message: string, variant?: ToastItem['variant']) => void;
   dismissToast: (id: string) => void;
@@ -101,7 +112,7 @@ export interface AppStore extends RootState {
       ownerId?: string;
     },
     options?: { silent?: boolean }
-  ) => string;
+  ) => Promise<string>;
   addProject: (
     input: {
       name: string;
@@ -118,7 +129,7 @@ export interface AppStore extends RootState {
       servicePackage?: ServicePackageId | null;
     },
     options?: { silent?: boolean; skipStarterTasks?: boolean }
-  ) => string;
+  ) => Promise<string>;
   addInvoice: (input: {
     clientId: string;
     projectId: string | null;
@@ -175,7 +186,7 @@ export interface AppStore extends RootState {
   setProjectSiteBuildArchetype: (projectId: string, siteBuildArchetype: SiteBuildArchetypeId | null) => void;
   requestClientFeedback: (projectId: string) => void;
   advanceLeadStage: (leadId: string) => void;
-  convertWonLead: (leadId: string) => string | null;
+  convertWonLead: (leadId: string) => Promise<string | null>;
   addExpense: (input: {
     projectId: string;
     vendor: string;
@@ -222,7 +233,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     resumeModalAfterClientCreate: null,
     pickContextAfterClientCreate: false,
   },
-  hydration: { status: 'ready' },
+  hydration:
+    import.meta.env.VITE_USE_REAL_API === '1' ? { status: 'loading' as const } : { status: 'ready' as const },
   toasts: [],
 
   setMobileSidebarOpen: (open) => set((s) => ({ ui: { ...s.ui, mobileSidebarOpen: open } })),
@@ -251,6 +263,50 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setSelectedClientId: (id) => set((s) => ({ ui: { ...s.ui, selectedClientId: id } })),
   setSelectedProjectId: (id) => set((s) => ({ ui: { ...s.ui, selectedProjectId: id } })),
   setHydration: (status, error) => set({ hydration: { status, error } }),
+
+  hydrateAgencyFromServer: async () => {
+    if (import.meta.env.VITE_USE_REAL_API !== '1') {
+      set({ hydration: { status: 'ready' } });
+      return;
+    }
+    set({ hydration: { status: 'loading' } });
+    try {
+      const [cRes, pRes] = await Promise.all([
+        adminFetchJson<{ clients?: ApiClientRow[] }>('/api/admin/clients'),
+        adminFetchJson<{ projects?: ApiProjectRow[] }>('/api/admin/projects'),
+      ]);
+      if (!cRes.ok) {
+        if (cRes.status === 401) {
+          set({ clients: {}, projects: {}, tasks: {}, hydration: { status: 'ready' } });
+          return;
+        }
+        set({ hydration: { status: 'error', error: cRes.error } });
+        return;
+      }
+      if (!pRes.ok) {
+        if (pRes.status === 401) {
+          set({ clients: {}, projects: {}, tasks: {}, hydration: { status: 'ready' } });
+          return;
+        }
+        set({ hydration: { status: 'error', error: pRes.error } });
+        return;
+      }
+      const ownerFallback = get().currentUserId;
+      const clients: Record<string, Client> = {};
+      for (const row of cRes.data.clients || []) {
+        clients[row.id] = mapApiClientRowToClient(row, ownerFallback);
+      }
+      const projects: Record<string, Project> = {};
+      for (const row of pRes.data.projects || []) {
+        const p = mapApiProjectRowToProject(row, clients);
+        if (p) projects[p.id] = p;
+      }
+      set({ clients, projects, tasks: {}, hydration: { status: 'ready' } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      set({ hydration: { status: 'error', error: msg } });
+    }
+  },
 
   toast: (message, variant = 'success') => {
     const id = newId('toast');
@@ -322,11 +378,56 @@ export const useAppStore = create<AppStore>((set, get) => ({
       ),
     })),
 
-  addClient: (input, options) => {
+  addClient: async (input, options) => {
     const silent = options?.silent;
+    const ownerId = input.ownerId ?? get().currentUserId;
+
+    if (import.meta.env.VITE_USE_REAL_API === '1') {
+      const r = await adminFetchJson<{ client?: ApiClientRow }>('/api/admin/clients', {
+        method: 'POST',
+        json: {
+          email: input.email.trim(),
+          full_name: input.name.trim(),
+          company: input.company.trim(),
+          phone: input.phone?.trim() || undefined,
+        },
+      });
+      if (!r.ok) {
+        if (!silent) get().toast(r.error, 'error');
+        return '';
+      }
+      const raw = r.data?.client;
+      if (!raw?.id) {
+        if (!silent) get().toast('Server did not return a client id.', 'error');
+        return '';
+      }
+      const client = mapApiClientRowToClient(raw, ownerId);
+      if (input.status && input.status !== client.status) {
+        client.status = input.status;
+      }
+      set((s) => ({ clients: { ...s.clients, [client.id]: client } }));
+      get().logActivity({
+        type: 'client_created',
+        entityKind: 'client',
+        entityId: client.id,
+        title: `${client.name} added as ${client.status === 'Lead' ? 'lead' : 'client'} · ${client.company}`,
+        metadata: { clientId: client.id },
+      });
+      if (!silent) {
+        get().pushNotification({
+          kind: 'system',
+          title: 'New client',
+          body: client.name,
+          href: `/clients/${client.id}`,
+          entityId: client.id,
+        });
+        get().toast(`${client.name} saved to server`, 'success');
+      }
+      return client.id;
+    }
+
     const id = newId('client');
     const now = isoNow();
-    const ownerId = input.ownerId ?? get().currentUserId;
     const client: Client = {
       id,
       name: input.name.trim(),
@@ -357,12 +458,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
         href: `/clients/${id}`,
         entityId: id,
       });
-      get().toast(`${client.name} created`, 'success');
+      get().toast(`${client.name} created (demo — not saved to server)`, 'info');
     }
     return id;
   },
 
-  addProject: (input, options) => {
+  addProject: async (input, options) => {
     const silent = options?.silent;
     const tmpl = input.templateId ? getProjectTemplate(input.templateId) : undefined;
     if (input.templateId && !tmpl) {
@@ -376,8 +477,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
       if (!silent) get().toast('Pick a valid client — projects always belong to a client.', 'error');
       return '';
     }
-    const id = newId('project');
-    const now = isoNow();
     const ownerId = input.ownerId ?? get().currentUserId;
     const lifecycleStage: ProjectLifecycleStage = tmpl
       ? tmpl.initialLifecycleStage
@@ -393,6 +492,129 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return '';
     }
     const status = input.status ?? projectStatusForLifecycle(lifecycleStage);
+
+    const starterStubs = skipStarterStubs
+      ? []
+      : [
+          { title: 'Discovery checklist', due: 'This week' },
+          { title: 'Stakeholder kickoff session', due: 'Next week' },
+          { title: 'Scope sign-off', due: 'Next week' },
+        ];
+
+    const runCommit = (id: string, project: Project, now: string, allTaskRows: Task[]) => {
+      const taskMap = Object.fromEntries(allTaskRows.map((t) => [t.id, t]));
+      set((s) => ({
+        projects: { ...s.projects, [id]: project },
+        tasks: { ...s.tasks, ...taskMap },
+        clients: {
+          ...s.clients,
+          [input.clientId]: {
+            ...s.clients[input.clientId]!,
+            lastActivityLabel: formatRelativeShort(now),
+            updatedAt: now,
+          },
+        },
+      }));
+      for (const t of allTaskRows) {
+        get().logActivity({
+          type: 'task_created',
+          entityKind: 'task',
+          entityId: t.id,
+          title: `Task “${t.title}” added to ${project.name}`,
+          metadata: { projectId: id, clientId: input.clientId },
+        });
+      }
+      get().logActivity({
+        type: 'project_created',
+        entityKind: 'project',
+        entityId: id,
+        title: `Project “${project.name}” opened for ${client.company}`,
+        metadata: { clientId: input.clientId, projectId: id },
+      });
+      if (deliveryFocus === 'client_site') {
+        useSiteProductionStore.getState().ensurePagesForProject(id);
+      }
+    };
+
+    if (import.meta.env.VITE_USE_REAL_API === '1') {
+      const serverStatus = lifecycleStageToServerProjectStatus(lifecycleStage);
+      const metaPayload = {
+        budget,
+        due: dueStr,
+        ownerId,
+        deliveryFocus,
+        lifecycleStage,
+        siteBuildArchetype: input.siteBuildArchetype ?? null,
+        servicePackage: input.servicePackage ?? null,
+        spent: 0,
+      };
+      const internal_notes = buildProjectInternalNotes(metaPayload, null);
+      const r = await adminFetchJson<{ success?: boolean; project?: ApiProjectRow }>('/api/admin/projects', {
+        method: 'POST',
+        json: {
+          client_id: input.clientId,
+          name,
+          status: serverStatus,
+          website_type: deliveryFocus === 'client_site' ? 'client_site' : 'product_other',
+          internal_notes,
+        },
+      });
+      if (!r.ok) {
+        if (!silent) get().toast(r.error, 'error');
+        return '';
+      }
+      const row = r.data?.project;
+      if (!row || typeof row !== 'object') {
+        if (!silent) get().toast('Server did not return project data.', 'error');
+        return '';
+      }
+      const mapped = mapApiProjectRowToProject(row, get().clients);
+      if (!mapped) {
+        if (!silent) get().toast('Could not map project from server.', 'error');
+        return '';
+      }
+      const id = mapped.id;
+      const now = mapped.updatedAt;
+      const project: Project = {
+        ...mapped,
+        name,
+        status,
+        budget,
+        spent: 0,
+        due: dueStr,
+        ownerId,
+        lifecycleStage,
+        templateId: tmpl ? tmpl.id : null,
+        siteBuildArchetype: input.siteBuildArchetype ?? null,
+        servicePackage: input.servicePackage ?? null,
+      };
+      const stubTasks: Task[] = starterStubs.map((stub) => ({
+        id: newId('task'),
+        projectId: id,
+        title: stub.title,
+        status: 'Todo' as const,
+        due: stub.due,
+        assigneeId: ownerId,
+        lifecycleStage: 'discovery' as const,
+        createdAt: now,
+        updatedAt: now,
+      }));
+      const templateTasks = tmpl ? instantiateTemplateTasks(id, ownerId, tmpl.id, () => newId('task'), now) : [];
+      const allTaskRows = [...stubTasks, ...templateTasks];
+      runCommit(id, project, now, allTaskRows);
+      if (!silent) {
+        get().toast(
+          tmpl
+            ? `Project “${name}” saved to server — ${templateTasks.length} template tasks + default pages.`
+            : `Project “${name}” saved to server with starter tasks`,
+          'success'
+        );
+      }
+      return id;
+    }
+
+    const id = newId('project');
+    const now = isoNow();
     const project: Project = {
       id,
       clientId: input.clientId,
@@ -416,13 +638,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
       clientPortalVisible: deliveryFocus === 'client_site' ? true : undefined,
       servicePackage: input.servicePackage ?? null,
     };
-    const starterStubs = skipStarterStubs
-      ? []
-      : [
-          { title: 'Discovery checklist', due: 'This week' },
-          { title: 'Stakeholder kickoff session', due: 'Next week' },
-          { title: 'Scope sign-off', due: 'Next week' },
-        ];
     const stubTasks: Task[] = starterStubs.map((stub) => ({
       id: newId('task'),
       projectId: id,
@@ -436,44 +651,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }));
     const templateTasks = tmpl ? instantiateTemplateTasks(id, ownerId, tmpl.id, () => newId('task'), now) : [];
     const allTaskRows = [...stubTasks, ...templateTasks];
-    const taskMap = Object.fromEntries(allTaskRows.map((t) => [t.id, t]));
-    set((s) => ({
-      projects: { ...s.projects, [id]: project },
-      tasks: { ...s.tasks, ...taskMap },
-      clients: {
-        ...s.clients,
-        [input.clientId]: {
-          ...s.clients[input.clientId]!,
-          lastActivityLabel: formatRelativeShort(now),
-          updatedAt: now,
-        },
-      },
-    }));
-    for (const t of allTaskRows) {
-      get().logActivity({
-        type: 'task_created',
-        entityKind: 'task',
-        entityId: t.id,
-        title: `Task “${t.title}” added to ${project.name}`,
-        metadata: { projectId: id, clientId: input.clientId },
-      });
-    }
-    get().logActivity({
-      type: 'project_created',
-      entityKind: 'project',
-      entityId: id,
-      title: `Project “${project.name}” opened for ${client.company}`,
-      metadata: { clientId: input.clientId, projectId: id },
-    });
-    if (deliveryFocus === 'client_site') {
-      useSiteProductionStore.getState().ensurePagesForProject(id);
-    }
+    runCommit(id, project, now, allTaskRows);
     if (!silent) {
       get().toast(
         tmpl
-          ? `Project “${name}” created — ${templateTasks.length} template tasks + default pages.`
-          : `Project “${name}” created with starter tasks`,
-        'success'
+          ? `Project “${name}” created — ${templateTasks.length} template tasks + default pages (demo — not on server).`
+          : `Project “${name}” created with starter tasks (demo — not on server).`,
+        'info'
       );
     }
     return id;
@@ -1300,7 +1484,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     get().toast(`${lead.company} → ${nextStage}`, 'success');
   },
 
-  convertWonLead: (leadId) => {
+  convertWonLead: async (leadId) => {
     const lead = get().leads[leadId];
     if (!lead) return null;
     if (lead.convertedClientId) {
@@ -1308,7 +1492,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return lead.convertedClientId;
     }
     const email = `contact.${lead.id.replace(/[^a-z0-9]/gi, '').slice(0, 10)}@won.local`;
-    const clientId = get().addClient(
+    const clientId = await get().addClient(
       {
         name: lead.name,
         company: lead.company,
@@ -1319,8 +1503,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
       },
       { silent: true }
     );
+    if (!clientId) return null;
     const kickoffBudget = Math.max(8000, Math.round(lead.value * 0.12));
-    const projectId = get().addProject(
+    const projectId = await get().addProject(
       {
         name: `Kickoff — ${lead.company}`,
         clientId,
@@ -1332,6 +1517,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       },
       { silent: true }
     );
+    if (!projectId) return null;
     const now = isoNow();
     set((s) => ({
       leads: {

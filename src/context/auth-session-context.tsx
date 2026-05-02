@@ -50,7 +50,6 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (!cfg?.configured || !cfg.supabaseUrl || !cfg.supabaseAnonKey) {
           setSupabaseBrowser(null);
-          setSessionHydrated(true);
           return;
         }
 
@@ -88,10 +87,16 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
         } = supabase.auth.onAuthStateChange((event, nextSession) => {
           if (event === 'SIGNED_OUT') {
             clearAdminTokens();
+            if (import.meta.env.VITE_USE_REAL_API === '1') {
+              void import('@/store/useAppStore').then(({ useAppStore }) => useAppStore.getState().hydrateAgencyFromServer());
+            }
             return;
           }
           if (nextSession) {
             syncTokensFromSupabaseSession(nextSession);
+          }
+          if (import.meta.env.VITE_USE_REAL_API === '1' && nextSession && event === 'SIGNED_IN') {
+            void import('@/store/useAppStore').then(({ useAppStore }) => useAppStore.getState().hydrateAgencyFromServer());
           }
         });
         unsub = () => subscription.unsubscribe();
@@ -102,7 +107,17 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       } catch {
         if (!cancelled) setSupabaseBrowser(null);
       } finally {
-        if (!cancelled) setSessionHydrated(true);
+        if (!cancelled) {
+          if (import.meta.env.VITE_USE_REAL_API === '1') {
+            try {
+              const { useAppStore } = await import('@/store/useAppStore');
+              await useAppStore.getState().hydrateAgencyFromServer();
+            } catch {
+              /* hydrate sets its own error state */
+            }
+          }
+          setSessionHydrated(true);
+        }
       }
     })();
 

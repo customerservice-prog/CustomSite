@@ -276,11 +276,11 @@ export function CreateEntityModals() {
             </Button>
             <Button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 if (!clientForm.name.trim() || !clientForm.company.trim() || !clientForm.email.trim()) return;
                 const ui = useAppStore.getState().ui;
                 const silentToast = Boolean(ui.resumeModalAfterClientCreate || ui.pickContextAfterClientCreate);
-                const newId = addClient(
+                const newId = await addClient(
                   {
                     name: clientForm.name,
                     company: clientForm.company,
@@ -436,10 +436,10 @@ export function CreateEntityModals() {
               type="button"
               disabled={!canCreateProject}
               title={!canCreateProject ? 'Choose a client and a template or project name' : undefined}
-              onClick={() => {
+              onClick={async () => {
                 if (!canCreateProject) return;
                 const tmpl = projectForm.templateId ? getProjectTemplate(projectForm.templateId) : undefined;
-                const pid = addProject({
+                const pid = await addProject({
                   name: projectForm.name,
                   clientId: projectForm.clientId,
                   budget: Math.max(0, Number(projectForm.budget) || 0),

@@ -81,6 +81,12 @@ export function ClientsPage() {
         </TableToolbar>
       }
     >
+      {hydration.status === 'loading' && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Loading clients and projects from the server…
+        </div>
+      )}
+
       {hydration.status === 'error' && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {hydration.error ?? 'Something went wrong loading agency data.'}

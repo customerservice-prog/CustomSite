@@ -176,7 +176,7 @@ export function PipelinePage() {
                                 <Button
                                   type="button"
                                   className="flex-1 px-2 py-1.5 text-[11px]"
-                                  onClick={() => convertWonLead(l.id)}
+                                  onClick={() => void convertWonLead(l.id)}
                                 >
                                   Mark won
                                 </Button>

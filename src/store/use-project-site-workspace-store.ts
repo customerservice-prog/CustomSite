@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useAppStore } from '@/store/useAppStore';
 import type { ProjectSite, ProjectSiteFile } from '@/lib/site-builder/project-site-model';
 import { inferFileType, newFile } from '@/lib/site-builder/project-site-model';
 import { composePreviewDocument } from '@/lib/site-builder/compose-preview-document';
@@ -412,6 +413,7 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
               },
             };
           });
+          useAppStore.getState().toast(`Save failed: ${saveError}`, 'error');
           return;
         }
         if (withSnapshot) {
@@ -447,6 +449,10 @@ export const useProjectSiteWorkspaceStore = create<Store>((set, get) => ({
             },
           };
         });
+        useAppStore.getState().toast(
+          `Site files were not saved to the server. ${saveError} Your copy is in this browser only — fix the issue and save again.`,
+          'error'
+        );
       })
       .catch((err) => {
         const saveError = humanizeError(err);
