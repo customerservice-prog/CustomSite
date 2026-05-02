@@ -37,6 +37,7 @@ export function ClientsTable({ rows }: { rows: Client[] }) {
           <TableHeadCell>Client</TableHeadCell>
           <TableHeadCell>Company</TableHeadCell>
           <TableHeadCell>Status</TableHeadCell>
+          <TableHeadCell>Health</TableHeadCell>
           <TableHeadCell className="text-right">Projects</TableHeadCell>
           <TableHeadCell className="text-right">Lifetime value</TableHeadCell>
           <TableHeadCell className="text-right">Balance</TableHeadCell>
@@ -62,6 +63,13 @@ export function ClientsTable({ rows }: { rows: Client[] }) {
                 <Badge variant={clientStatusBadgeVariant(c.status)} className="font-semibold">
                   {c.status}
                 </Badge>
+                {c.isOwner ? (
+                  <span className="mt-1 inline-block">
+                    <Badge variant="neutral" className="border-indigo-300 bg-indigo-50 text-[10px] font-bold uppercase text-indigo-950">
+                      Owner account
+                    </Badge>
+                  </span>
+                ) : null}
               </TableCell>
               <TableCell>
                 <Badge variant={clientHealthBadgeVariant(healthById[c.id] ?? 'strong')} className="font-semibold">

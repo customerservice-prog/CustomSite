@@ -420,15 +420,22 @@ export function ProjectsPage() {
                       {p.name}
                     </Link>
                   </TableCell>
-                  <TableCell>
-                    {client ? (
-                      <Link to={`/clients/${client.id}`} className="text-slate-800 hover:text-indigo-700" onClick={(e) => e.stopPropagation()}>
-                        {client.company}
-                      </Link>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
+              <TableCell>
+                {client ? (
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    <Link to={`/clients/${client.id}`} className="text-slate-800 hover:text-indigo-700" onClick={(e) => e.stopPropagation()}>
+                      {client.company}
+                    </Link>
+                    {client.isOwner ? (
+                      <Badge variant="neutral" className="border-indigo-300 bg-indigo-50 px-2 py-0 text-[10px] font-bold uppercase text-indigo-950">
+                        Owner
+                      </Badge>
+                    ) : null}
+                  </span>
+                ) : (
+                  '—'
+                )}
+              </TableCell>
                   <TableCell>
                     {p.deliveryFocus === 'client_site' ? (
                       <div className="flex flex-col gap-1">
@@ -548,7 +555,14 @@ export function ProjectsPage() {
                       </Badge>
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">{client?.company}</p>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span>{client?.company}</span>
+                    {client?.isOwner ? (
+                      <Badge variant="neutral" className="border-indigo-300 bg-indigo-50 px-1.5 py-0 text-[9px] font-bold uppercase text-indigo-950">
+                        Owner
+                      </Badge>
+                    ) : null}
+                  </p>
                   <p className="mt-3 text-sm font-semibold text-slate-700">
                     ${p.spent.toLocaleString()} <span className="font-normal text-slate-400">/</span> ${p.budget.toLocaleString()}
                   </p>

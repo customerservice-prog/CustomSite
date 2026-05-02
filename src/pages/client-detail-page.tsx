@@ -81,12 +81,25 @@ export function ClientDetailPage() {
       title={client.name}
       meta={
         <span>
-          {client.company} · Last touch {client.lastActivityLabel} · Paid revenue (invoices) ${client.lifetimeValue.toLocaleString()}
+          {client.company} · Last touch {client.lastActivityLabel}
+          {client.isOwner ? (
+            <>
+              {' '}
+              · <span className="font-semibold text-indigo-800">Platform owner account</span> (excluded from revenue totals)
+            </>
+          ) : (
+            <> · Paid revenue (invoices) ${client.lifetimeValue.toLocaleString()}</>
+          )}
         </span>
       }
       badge={
         <span className="flex flex-wrap items-center gap-2">
           <Badge variant={clientStatusBadgeVariant(client.status)}>{client.status}</Badge>
+          {client.isOwner ? (
+            <Badge variant="neutral" className="border-indigo-300 bg-indigo-50 text-indigo-950">
+              Owner account
+            </Badge>
+          ) : null}
           <Badge variant={clientHealthBadgeVariant(clientHealth)}>{clientHealthLabel(clientHealth)}</Badge>
         </span>
       }

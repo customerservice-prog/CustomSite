@@ -13,7 +13,6 @@ import {
   useAutomatedInsights,
   useClients,
   useDashboardMetrics,
-  useInvoices,
   useLeads,
   usePipelineColumnStats,
   useProjects,
@@ -67,13 +66,13 @@ export function ReportsPage() {
   const m = useDashboardMetrics();
   const pipelineCols = usePipelineColumnStats();
   const clients = useClients();
-  const invoices = useInvoices();
   const leads = useLeads();
   const projects = useProjects();
   const revenueHealth = useRevenueHealth();
   const narrativeInsights = useAutomatedInsights();
   const { toast } = useShell();
   const overdueAmount = useAppStore(useShallow((s) => sel.getOverdueInvoicesAmount(s)));
+  const billableInvoices = useAppStore(useShallow((s) => sel.billableInvoicesList(s)));
 
   function downloadReportsCsv() {
     const lines = [
@@ -148,14 +147,14 @@ export function ReportsPage() {
   }, [projects]);
 
   const aging = useMemo(() => {
-    const open = invoices.filter((i) => !['Paid', 'Void'].includes(i.status));
+    const open = billableInvoices.filter((i) => !['Paid', 'Void'].includes(i.status));
     const buckets = [
       { label: 'Current', value: open.filter((i) => i.status !== 'Overdue').length },
       { label: 'Overdue', value: open.filter((i) => i.status === 'Overdue').length },
     ];
     const max = Math.max(1, ...buckets.map((b) => b.value));
     return buckets.map((b) => ({ ...b, max }));
-  }, [invoices]);
+  }, [billableInvoices]);
 
   const utilization = useMemo(() => {
     const live = projects.filter((p) => p.status === 'Live' || p.status === 'Review').length;
@@ -167,7 +166,10 @@ export function ReportsPage() {
   }, [projects]);
 
   const topClients = useMemo(() => {
-    return [...clients].sort((a, b) => b.lifetimeValue - a.lifetimeValue).slice(0, 5);
+    return [...clients]
+      .filter((c) => !c.isOwner)
+      .sort((a, b) => b.lifetimeValue - a.lifetimeValue)
+      .slice(0, 5);
   }, [clients]);
 
   const conversion = useMemo(() => {

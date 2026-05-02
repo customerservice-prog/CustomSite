@@ -58,8 +58,8 @@ function nextClientsAfterInvoices(s: RootState, invoices: RootState['invoices'],
     ...s.clients,
     [clientId]: {
       ...c,
-      balance: computeClientBalance(list, clientId),
-      lifetimeValue: computeClientLifetimeValue(list, clientId),
+      balance: computeClientBalance(list, clientId, s.clients),
+      lifetimeValue: computeClientLifetimeValue(list, clientId, s.clients),
       updatedAt: now,
     },
   };

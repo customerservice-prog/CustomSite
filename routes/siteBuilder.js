@@ -17,6 +17,8 @@ const {
   CONFIRM_VALUE,
 } = require('../lib/destructiveOperationGuards');
 const { upsertProjectVideosFromHtmlContent } = require('../lib/projectVideosHtmlSync');
+const { extractYoutubeIdsFromHtml } = require('../lib/extractYoutubeIdsFromHtml');
+const { checkYoutubeOembed } = require('../lib/youtubeOembedCheck');
 
 const router = express.Router();
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -123,6 +125,8 @@ function hostingPatchFromBody(b) {
     patch.stage = String(b.stage).trim().slice(0, 80);
   return patch;
 }
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 router.get('/projects/:projectId/site', async (req, res) => {
   try {
@@ -525,6 +529,13 @@ async function patchAdminProjectById(req, res) {
     const b = req.body || {};
     const supabase = getService();
     const patch = hostingPatchFromBody(b);
+    if (b.client_id !== undefined && b.client_id !== null && String(b.client_id).trim()) {
+      const cid = String(b.client_id).trim().toLowerCase();
+      if (!UUID_V4.test(cid)) {
+        return res.status(400).json({ error: 'Invalid client_id (expected UUID)' });
+      }
+      patch.client_id = cid;
+    }
     if (b.site_settings !== undefined) {
       if (b.site_settings && typeof b.site_settings === 'object' && !Array.isArray(b.site_settings)) {
         const { data: cur } = await supabase.from('projects').select('site_settings').eq('id', projectId).maybeSingle();
@@ -837,6 +848,60 @@ router.post('/projects/:projectId/site/snapshots/:snapshotId/restore', async (re
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: e.message || 'Server error' });
+  }
+});
+
+router.post('/projects/:projectId/site/youtube-oembed-scan', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isUuidParam(projectId)) return res.status(400).json({ error: 'Invalid project id' });
+    const supabase = getService();
+    const { data: rows, error } = await supabase
+      .from('site_files')
+      .select('path, content, content_encoding')
+      .eq('project_id', projectId);
+    if (error) return res.status(500).json({ error: error.message });
+    /** @type {Map<string, true>} */
+    const seen = new Map();
+    const byFile = [];
+    for (const row of rows || []) {
+      const pl = row.path && String(row.path).toLowerCase();
+      if (!pl || !/\.html?$/.test(pl)) continue;
+      if (typeof row.content !== 'string') continue;
+      const ids = extractYoutubeIdsFromHtml(row.content);
+      if (!ids.length) continue;
+      const uniqueInFile = [...new Set(ids)];
+      uniqueInFile.forEach((id) => seen.set(id, true));
+      byFile.push({ path: row.path, ids: uniqueInFile });
+    }
+    const uniqueIds = [...seen.keys()].sort();
+    const live = [];
+    const dead = [];
+    const batchSize = Number(process.env.CUSTOMSITE_YT_OEMBED_BATCH || 5) || 5;
+    const delayMs = Number(process.env.CUSTOMSITE_YT_OEMBED_DELAY_MS || 120) || 120;
+    for (let i = 0; i < uniqueIds.length; i += batchSize) {
+      const slice = uniqueIds.slice(i, i + batchSize);
+      const checked = await Promise.all(slice.map((id) => checkYoutubeOembed(id)));
+      for (const r of checked) {
+        if (r.ok) live.push(r.id);
+        else dead.push({ id: r.id, status: r.status });
+      }
+      if (i + batchSize < uniqueIds.length && delayMs > 0)
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    if (dead.length) console.warn(`[youtube-oembed-scan] project=${projectId} dead=${dead.length}`, dead.map((d) => d.id).join(', '));
+    return res.json({
+      projectId,
+      scannedHtmlFiles: byFile.length,
+      uniqueIds,
+      uniqueCount: uniqueIds.length,
+      live,
+      dead,
+      byFile,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 

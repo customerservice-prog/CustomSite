@@ -33,6 +33,7 @@ const { isSupabaseConfigured } = require('./lib/supabase');
 const { isDevAuthEnabled } = require('./lib/devAuth');
 const { isPlatformHostname } = require('./lib/customsitePlatformHosts');
 const clientDomainSiteMiddleware = require('./middleware/clientDomainSite');
+const youtubeThumbProxyRoutes = require('./routes/youtubeThumbProxy');
 
 const app = express();
 /** Site file saves and bulk JSON APIs — default 10mb so ~1MB+ HTML never fails parsing before handlers run. Align proxy (nginx/Railway) with this cap. */
@@ -125,6 +126,9 @@ app.post(
 
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 app.use(express.urlencoded({ limit: JSON_BODY_LIMIT, extended: true }));
+
+/** Public MJPEG-proxy style thumb cache — no auth; used by client-site HTML thumbnails. */
+app.use('/api/proxy', youtubeThumbProxyRoutes);
 
 /** Custom domains → client `site_files` before admin stub, APIs, marketing static, or `/` admin redirect. */
 app.use(clientDomainSiteMiddleware);

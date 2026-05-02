@@ -46,6 +46,7 @@ export function InvoicesPage() {
   const navigate = useNavigate();
   const { toast } = useShell();
   const invoices = useInvoices();
+  const billableInvoices = useAppStore(useShallow((s) => sel.billableInvoicesList(s)));
   const clients = useClients();
   const projects = useProjects();
   const openModal = useAppStore((s) => s.openModal);
@@ -56,7 +57,7 @@ export function InvoicesPage() {
   const [drawerInvoiceId, setDrawerInvoiceId] = useState<string | null>(null);
   const defaultedFilter = useRef(false);
 
-  const overdueInvoices = useMemo(() => invoices.filter((i) => i.status === 'Overdue'), [invoices]);
+  const overdueInvoices = useMemo(() => billableInvoices.filter((i) => i.status === 'Overdue'), [billableInvoices]);
   useEffect(() => {
     if (!defaultedFilter.current && overdueInvoices.length > 0) {
       setStatus('Overdue');
@@ -79,17 +80,17 @@ export function InvoicesPage() {
   const projectMap = useMemo(() => Object.fromEntries(projects.map((p) => [p.id, p])), [projects]);
 
   const paidMonth = useMemo(
-    () => invoices.filter((i) => i.status === 'Paid').reduce((s, i) => s + i.amount, 0),
-    [invoices]
+    () => billableInvoices.filter((i) => i.status === 'Paid').reduce((s, i) => s + i.amount, 0),
+    [billableInvoices]
   );
   const outstanding = useMemo(
-    () => invoices.filter((i) => !['Paid', 'Void'].includes(i.status)).reduce((s, i) => s + i.amount, 0),
-    [invoices]
+    () => billableInvoices.filter((i) => !['Paid', 'Void'].includes(i.status)).reduce((s, i) => s + i.amount, 0),
+    [billableInvoices]
   );
   const overdueCount = overdueInvoices.length;
   const overdueTotal = useMemo(() => overdueInvoices.reduce((s, i) => s + i.amount, 0), [overdueInvoices]);
-  const draftCount = useMemo(() => invoices.filter((i) => i.status === 'Draft').length, [invoices]);
-  const sentCount = useMemo(() => invoices.filter((i) => i.status === 'Sent').length, [invoices]);
+  const draftCount = useMemo(() => billableInvoices.filter((i) => i.status === 'Draft').length, [billableInvoices]);
+  const sentCount = useMemo(() => billableInvoices.filter((i) => i.status === 'Sent').length, [billableInvoices]);
   const worstOverdueDays = useMemo(() => {
     if (!overdueInvoices.length) return null;
     const sorted = [...overdueInvoices].sort(

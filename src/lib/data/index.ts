@@ -77,8 +77,8 @@ function reconcileClientsWithInvoices(clients: EntityMap<Client>, invoices: Enti
     const c = next[id];
     next[id] = {
       ...c,
-      balance: computeClientBalance(list, id),
-      lifetimeValue: computeClientLifetimeValue(list, id),
+      balance: computeClientBalance(list, id, next),
+      lifetimeValue: computeClientLifetimeValue(list, id, next),
     };
   }
   return next;

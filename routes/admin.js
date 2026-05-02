@@ -353,11 +353,17 @@ router.get('/projects', async (_req, res) => {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, email, full_name, company')
-      .eq('role', 'client');
-    const umap = Object.fromEntries((users || []).map((u) => [u.id, u]));
+
+    let umap = {};
+    const u1 = await supabase.from('users').select('id, email, full_name, company, is_owner').eq('role', 'client');
+    const uRows = !u1.error ? u1.data : null;
+    if (u1.error) {
+      const u2 = await supabase.from('users').select('id, email, full_name, company').eq('role', 'client');
+      if (u2.error) return res.status(500).json({ error: u2.error.message });
+      umap = Object.fromEntries((u2.data || []).map((u) => [u.id, u]));
+    } else {
+      umap = Object.fromEntries((uRows || []).map((u) => [u.id, u]));
+    }
     const base = (projects || []).map((p) => ({
       ...p,
       client: umap[p.client_id] || null,
@@ -633,7 +639,7 @@ router.get('/clients', async (_req, res) => {
     const supabase = getService();
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, full_name, company, phone, website, timezone, role, created_at')
+      .select('id, email, full_name, company, phone, website, timezone, role, created_at, is_owner')
       .eq('role', 'client')
       .order('created_at', { ascending: false });
     if (error) {
@@ -677,7 +683,7 @@ router.get('/clients/:id', async (req, res) => {
 router.patch('/clients/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { full_name, company, phone, website, timezone } = req.body || {};
+    const { full_name, company, phone, website, timezone, is_owner } = req.body || {};
     const supabase = getService();
     const patch = {};
     if (full_name !== undefined) patch.full_name = (full_name && String(full_name).trim()) || null;
@@ -685,6 +691,7 @@ router.patch('/clients/:id', async (req, res) => {
     if (phone !== undefined) patch.phone = (phone && String(phone).trim()) || null;
     if (website !== undefined) patch.website = (website && String(website).trim()) || null;
     if (timezone !== undefined) patch.timezone = (timezone && String(timezone).trim()) || null;
+    if (is_owner !== undefined) patch.is_owner = Boolean(is_owner);
     if (Object.keys(patch).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }
@@ -741,18 +748,25 @@ router.post('/clients', async (req, res) => {
 
     const uid = created.user.id;
 
+    const body = req.body || {};
     const row = {
       id: uid,
       email: String(email).trim().toLowerCase(),
       full_name: (full_name && String(full_name).trim()) || null,
       company: (company && String(company).trim()) || null,
       role: 'client',
+      is_owner: body.is_owner != null ? Boolean(body.is_owner) : false,
     };
     if (phone !== undefined) row.phone = (phone && String(phone).trim()) || null;
     if (website !== undefined) row.website = (website && String(website).trim()) || null;
     if (timezone !== undefined) row.timezone = (timezone && String(timezone).trim()) || null;
 
-    const { error: uErr } = await supabase.from('users').insert(row);
+    let { error: uErr } = await supabase.from('users').insert(row);
+    if (uErr && /is_owner/.test(String(uErr.message))) {
+      delete row.is_owner;
+      const retry = await supabase.from('users').insert(row);
+      uErr = retry.error;
+    }
 
     if (uErr) {
       await supabase.auth.admin.deleteUser(uid);
@@ -773,6 +787,7 @@ router.post('/clients', async (req, res) => {
         full_name: full_name || null,
         company: company || null,
         role: 'client',
+        is_owner: Boolean(row.is_owner),
       },
     });
   } catch (e) {

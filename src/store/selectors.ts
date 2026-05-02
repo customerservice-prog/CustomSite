@@ -53,6 +53,16 @@ export function invoicesList(state: RootState): Invoice[] {
   return Object.values(state.invoices);
 }
 
+/** House / platform-owner clients — exclude from revenue and AR aggregates. */
+export function clientIsBillable(state: RootState, clientId: string): boolean {
+  const c = state.clients[clientId];
+  return !c?.isOwner;
+}
+
+export function billableInvoicesList(state: RootState): Invoice[] {
+  return invoicesList(state).filter((i) => clientIsBillable(state, i.clientId));
+}
+
 export function filesList(state: RootState): AgencyFile[] {
   return Object.values(state.files).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -180,7 +190,7 @@ export function getProjectCountForClient(state: RootState, clientId: string): nu
 }
 
 export function getOverdueInvoices(state: RootState): Invoice[] {
-  return invoicesList(state).filter((i) => i.status === 'Overdue');
+  return billableInvoicesList(state).filter((i) => i.status === 'Overdue');
 }
 
 export function getOverdueInvoicesAmount(state: RootState): number {
@@ -192,11 +202,11 @@ export function getPaymentsForInvoice(state: RootState, invoiceId: string) {
 }
 
 export function getRevenueFromPaidInvoices(state: RootState): number {
-  return invoicesList(state).filter((i) => i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
+  return billableInvoicesList(state).filter((i) => i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
 }
 
 export function getOutstandingInvoicesAmount(state: RootState): number {
-  return invoicesList(state)
+  return billableInvoicesList(state)
     .filter((i) => !['Paid', 'Void'].includes(i.status))
     .reduce((s, i) => s + i.amount, 0);
 }
@@ -228,12 +238,12 @@ export function getPipelineOpenValue(state: RootState): number {
 }
 
 export function getDraftInvoiceCount(state: RootState): number {
-  return invoicesList(state).filter((i) => i.status === 'Draft').length;
+  return billableInvoicesList(state).filter((i) => i.status === 'Draft').length;
 }
 
 /** Invoices that still need collection or follow-up (not closed). */
 export function getOpenInvoiceCount(state: RootState): number {
-  return invoicesList(state).filter((i) => i.status !== 'Paid' && i.status !== 'Void').length;
+  return billableInvoicesList(state).filter((i) => i.status !== 'Paid' && i.status !== 'Void').length;
 }
 
 export function getAttentionItemCount(state: RootState): number {

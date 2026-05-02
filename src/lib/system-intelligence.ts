@@ -378,7 +378,7 @@ export function buildAutomatedInsights(state: RootState): string[] {
     );
   }
 
-  const paid = sel.invoicesList(state).filter((i) => i.status === 'Paid');
+  const paid = sel.billableInvoicesList(state).filter((i) => i.status === 'Paid');
   const paidSum = paid.reduce((s, i) => s + i.amount, 0);
   const openLeads = sel.leadsList(state).filter((l) => l.stage !== 'Won' && l.stage !== 'Lost').length;
   if (paidSum > 0) {

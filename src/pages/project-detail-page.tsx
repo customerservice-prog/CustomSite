@@ -421,14 +421,16 @@ export function ProjectDetailPage() {
         tone: 'warning' as const,
       };
     }
-    const overdueInv = projectInvoices.find((i) => i.status === 'Overdue');
-    if (overdueInv) {
-      return {
-        title: 'Invoice overdue',
-        body: `${overdueInv.number} — follow up with ${client?.name ?? 'client'}.`,
-        href: `/invoices/${overdueInv.id}`,
-        tone: 'danger' as const,
-      };
+    if (!client?.isOwner) {
+      const overdueInv = projectInvoices.find((i) => i.status === 'Overdue');
+      if (overdueInv) {
+        return {
+          title: 'Invoice overdue',
+          body: `${overdueInv.number} — follow up with ${client?.name ?? 'client'}.`,
+          href: `/invoices/${overdueInv.id}`,
+          tone: 'danger' as const,
+        };
+      }
     }
     const milestones = milestoneRowsForProject(project);
     const nextMilestone = milestones.find((m) => !m.done);
@@ -447,7 +449,7 @@ export function ProjectDetailPage() {
       tone: 'neutral' as const,
       primaryAction: 'advance_lifecycle' as const,
     };
-  }, [projectId, project, projectTasks, projectContracts, projectInvoices, client?.name, store]);
+  }, [projectId, project, projectTasks, projectContracts, projectInvoices, client?.name, client?.isOwner, store]);
 
   const displayLiveHost = useMemo(() => {
     if (!project?.siteLiveUrl) return '';
@@ -516,7 +518,10 @@ export function ProjectDetailPage() {
     project.waitingOn !== 'client' &&
     ACTIVE_SITE_STAGES.includes(project.lifecycleStage) &&
     daysSinceIso(project.updatedAt) >= 6;
-  const invoiceToRemind = projectInvoices.find((i) => i.status === 'Overdue' || i.status === 'Sent' || i.status === 'Draft');
+  const ownerProject = Boolean(project.clientIsOwner ?? client?.isOwner);
+  const invoiceToRemind = ownerProject
+    ? undefined
+    : projectInvoices.find((i) => i.status === 'Overdue' || i.status === 'Sent' || i.status === 'Draft');
   const clientFacingStatus = clientDeliveryStatusLabel(project.lifecycleStage);
   const offerPhase = lifecycleStageToOfferPhase(project.lifecycleStage);
   const phaseTitle = OFFER_PHASE_CLIENT[offerPhase].title;
@@ -579,6 +584,11 @@ export function ProjectDetailPage() {
               <Badge variant={projectStatusBadgeVariant(project.status)}>{project.status}</Badge>
               <Badge variant={projectHealthBadgeVariant(ph)}>{projectHealthLabel(ph)}</Badge>
             </>
+          )}
+          {ownerProject && (
+            <Badge variant="neutral" className="border-indigo-300 bg-indigo-100 text-indigo-950">
+              Owner project
+            </Badge>
           )}
           {project.waitingOn === 'client' && <Badge variant="warning">Waiting on client</Badge>}
           {project.waitingOn === 'agency' && (
@@ -1441,9 +1451,18 @@ export function ProjectDetailPage() {
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Overview</h3>
             <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-slate-600">
               {project.deliveryFocus === 'client_site'
-                ? `Home for ${client?.company ?? 'the client'}'s website — what changed, how it looks, and what happens next. Budget and invoices stay here.`
-                : `Everything for ${client?.name ?? 'the client'} — scope, time, invoices, and files in one place.`}
+                ? ownerProject
+                  ? `Internal site under your platform owner account — not billed as client revenue. Track delivery and hosting like any other site.`
+                  : `Home for ${client?.company ?? 'the client'}'s website — what changed, how it looks, and what happens next. Budget and invoices stay here.`
+                : ownerProject
+                  ? `Internal platform owner engagement — not billed as client revenue.`
+                  : `Everything for ${client?.name ?? 'the client'} — scope, time, invoices, and files in one place.`}
             </p>
+            {ownerProject ? (
+              <p className="mt-4 rounded-xl border border-indigo-200/70 bg-indigo-50/50 px-4 py-3 text-sm leading-relaxed text-indigo-950">
+                Owner project — dashboard revenue and outstanding AR totals skip this engagement.
+              </p>
+            ) : (
             <div className="mt-6 max-w-xl">
               <div className="mb-1.5 flex justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                 <span>Budget consumed</span>
@@ -1457,6 +1476,7 @@ export function ProjectDetailPage() {
                 <span className="font-medium text-slate-700">{milestones.find((m) => !m.done)?.label ?? 'Complete'}</span>
               </p>
             </div>
+            )}
           </div>
           {client && (
             <div className="min-w-0 border-t border-slate-100 pt-8 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
@@ -1698,8 +1718,15 @@ export function ProjectDetailPage() {
           },
           {
             id: 'budget',
-            label: 'Budget & invoices',
-            content: (
+            label: ownerProject ? 'Invoices (owner)' : 'Budget & invoices',
+            content: ownerProject ? (
+              <Card className="border border-indigo-100 bg-indigo-50/30 p-6 text-center shadow-none ring-0">
+                <p className="text-sm font-medium text-indigo-950">Owner project</p>
+                <p className="mt-2 max-w-md mx-auto text-[13px] leading-relaxed text-slate-600">
+                  This engagement is tied to your platform owner account — invoice totals here do not count toward revenue or AR on the dashboard.
+                </p>
+              </Card>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>

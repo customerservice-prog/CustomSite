@@ -11,6 +11,7 @@ const {
 } = require('../lib/customsitePlatformHosts');
 const { injectSiteSettingsIntoHtml } = require('../lib/siteHeadInjector');
 const { applyClientHtmlVideoModalGuard } = require('../lib/clientSiteVideoModalGuard');
+const { rewriteYoutubeThumbnailUrlsInHtml } = require('../lib/rewriteYoutubeThumbnailUrlsInHtml');
 const {
   applyClientSiteTechnicalSeo,
   filePathToUrlPath,
@@ -295,7 +296,8 @@ function buildBody(row, filePath, req, siteSettings, projectName) {
     siteName: projectName || 'Site',
     canonicalOrigin: canonOrigin,
   });
-  return applyClientHtmlVideoModalGuard(String(afterSeo));
+  const thumbs = rewriteYoutubeThumbnailUrlsInHtml(String(afterSeo));
+  return applyClientHtmlVideoModalGuard(thumbs);
 }
 
 async function handleClientDomain(req, res) {

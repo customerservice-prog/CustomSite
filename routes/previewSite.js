@@ -4,6 +4,7 @@ const { getService, isSupabaseConfigured } = require('../lib/supabase');
 const devStore = require('../lib/devSiteFileStore');
 const { injectSiteSettingsIntoHtml } = require('../lib/siteHeadInjector');
 const { applyClientHtmlVideoModalGuard } = require('../lib/clientSiteVideoModalGuard');
+const { rewriteYoutubeThumbnailUrlsInHtml } = require('../lib/rewriteYoutubeThumbnailUrlsInHtml');
 
 function mimeForPath(p) {
   const lower = p.toLowerCase();
@@ -99,7 +100,8 @@ function buildPreviewResponseBody(data, filePath, projectId, req, siteSettings) 
   const base = previewBaseForFilePath(origin, projectId, filePath);
   const merged = injectHtmlBaseIfNeeded(raw, base);
   const wired = injectSiteSettingsIntoHtml(merged, filePath, siteSettings);
-  return applyClientHtmlVideoModalGuard(wired);
+  const thumbs = rewriteYoutubeThumbnailUrlsInHtml(wired);
+  return applyClientHtmlVideoModalGuard(thumbs);
 }
 
 async function handlePreview(req, res) {

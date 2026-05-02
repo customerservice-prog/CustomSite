@@ -87,6 +87,8 @@ export type ApiClientRow = {
   company?: string | null;
   phone?: string | null;
   created_at?: string;
+  /** From `users.is_owner` — house account, not billed via revenue KPIs */
+  is_owner?: boolean | null;
 };
 
 export function mapApiClientRowToClient(row: ApiClientRow, ownerId: string): Client {
@@ -102,6 +104,7 @@ export function mapApiClientRowToClient(row: ApiClientRow, ownerId: string): Cli
     phone: (row.phone && String(row.phone)) || '',
     status,
     ownerId,
+    isOwner: Boolean(row.is_owner),
     lifetimeValue: 0,
     balance: 0,
     createdAt: created,
@@ -282,6 +285,7 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
     spent: typeof meta.spent === 'number' ? meta.spent : 0,
     due: meta.due?.trim() || 'TBD',
     ownerId,
+    clientIsOwner: Boolean(clients[clientId]?.isOwner),
     createdAt,
     updatedAt,
     lifecycleStage,

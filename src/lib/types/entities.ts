@@ -38,6 +38,8 @@ export type Client = {
   phone: string;
   status: ClientStatus;
   ownerId: string;
+  /** House / platform-owner account — not included in revenue KPIs. */
+  isOwner?: boolean;
   lifetimeValue: number;
   balance: number;
   createdAt: string;
@@ -138,6 +140,8 @@ export type Project = {
   siteAnalyticsSnapshot?: { total: number; yesterday: number; live: number };
   /** When true, this project’s preview and files show in the client portal. */
   clientPortalVisible?: boolean;
+  /** Hydrated when client has `users.is_owner` — not a paying engagement. */
+  clientIsOwner?: boolean;
   /** Productized package sold to the client (conversion program tier). */
   servicePackage?: ServicePackageId | null;
   /** Concrete improvements already made on the site (perceived progress). */
