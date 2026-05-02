@@ -6,6 +6,7 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  ImagePlus,
   LayoutTemplate,
   Loader2,
   Maximize2,
@@ -37,6 +38,7 @@ import {
 } from '@/lib/site-builder/quick-html-insert';
 import { buildSectionByTemplateId } from '@/lib/site-templates/section-catalog';
 import type { SectionTemplateRow } from '@/lib/site-templates/section-catalog';
+import { collectMobileHtmlWarnings } from '@/lib/mobile-site-linter';
 import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
 import { createPreviewDebugEvent, type PreviewDebugEvent } from '@/lib/site-builder/preview-debug-events';
 import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
@@ -58,6 +60,7 @@ import { siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-
 import { useAppStore } from '@/store/useAppStore';
 import { useShallow } from 'zustand/shallow';
 import type { ApiProjectRow } from '@/lib/agency-api-map';
+import { fetchProjectSiteMedia, uploadProjectSiteImage, type SiteMediaItem } from '@/lib/project-site-media-api';
 
 const BASE_FILES = ['index.html', 'styles.css', 'script.js'] as const;
 
@@ -135,6 +138,7 @@ export function SiteBuilderFoundationPage() {
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
   const fullscreenFrameRef = useRef<HTMLIFrameElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const [showQuickPageBar, setShowQuickPageBar] = useState(false);
   const [newPageSlug, setNewPageSlug] = useState('');
   const [previewIframeKey, setPreviewIframeKey] = useState(0);
@@ -150,6 +154,10 @@ export function SiteBuilderFoundationPage() {
   const [visualEditorMode, setVisualEditorMode] = useState(false);
   const [domainDraft, setDomainDraft] = useState('');
   const [railwayServiceDraft, setRailwayServiceDraft] = useState('');
+  const [ga4MeasurementDraft, setGa4MeasurementDraft] = useState('');
+  const [mediaItems, setMediaItems] = useState<SiteMediaItem[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaUploadBusy, setMediaUploadBusy] = useState(false);
   const [hostingSaving, setHostingSaving] = useState(false);
   const [deployBusy, setDeployBusy] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
@@ -334,6 +342,10 @@ export function SiteBuilderFoundationPage() {
       toast('Sign in to save files to the server.', 'error');
       return;
     }
+    if (/\.html?$/i.test(activeFileId)) {
+      const mw = collectMobileHtmlWarnings(draftContent);
+      if (mw.length) toast(`Mobile: ${mw.slice(0, 2).join(' · ')}`, 'info');
+    }
     patchSiteFile(projectId, activeFileId, draftContent);
     setSavedContent(draftContent);
     optimisticPersist(projectId, { snapshot: true });
@@ -406,6 +418,9 @@ export function SiteBuilderFoundationPage() {
       const r = await patchAdminProject(projectId, {
         custom_domain: normalized || null,
         railway_service_id_production: railwayServiceDraft.trim() || null,
+        site_settings: {
+          ga4_measurement_id: ga4MeasurementDraft.trim() || null,
+        },
       });
       if (!r.ok) {
         toast(r.error, 'error');
@@ -413,11 +428,11 @@ export function SiteBuilderFoundationPage() {
       }
       const row = r.data?.project;
       if (row && typeof row === 'object') mergeProjectRowFromServer(row as ApiProjectRow);
-      toast('Hosting settings saved to the server.', 'success');
+      toast('Hosting settings and analytics ID saved to the server.', 'success');
     } finally {
       setHostingSaving(false);
     }
-  }, [projectId, domainDraft, railwayServiceDraft, mergeProjectRowFromServer, toast]);
+  }, [projectId, domainDraft, railwayServiceDraft, ga4MeasurementDraft, mergeProjectRowFromServer, toast]);
 
   const runAttachRailwayDomain = useCallback(async () => {
     if (!projectId) return;
@@ -476,6 +491,72 @@ export function SiteBuilderFoundationPage() {
       setDeployBusy(false);
     }
   }, [projectId, prodDomainReady, mergeProjectRowFromServer, toast]);
+
+  const refreshSiteMedia = useCallback(async () => {
+    if (!projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) return;
+    setMediaLoading(true);
+    try {
+      const r = await fetchProjectSiteMedia(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      setMediaItems(Array.isArray(r.data.items) ? r.data.items : []);
+    } finally {
+      setMediaLoading(false);
+    }
+  }, [projectId, toast]);
+
+  const onMediaFileSelected = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file || !projectId) return;
+      if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+        toast('Sign in with the live API to upload images.', 'error');
+        return;
+      }
+      setMediaUploadBusy(true);
+      try {
+        const r = await uploadProjectSiteImage(projectId, file);
+        if (!r.ok) {
+          toast(r.error, 'error');
+          return;
+        }
+        if (!r.data?.publicUrl) {
+          toast('Upload finished but no public URL returned.', 'error');
+          return;
+        }
+        toast('Image uploaded — use Copy URL below.', 'success');
+        await refreshSiteMedia();
+      } finally {
+        setMediaUploadBusy(false);
+      }
+    },
+    [projectId, toast, refreshSiteMedia]
+  );
+
+  useEffect(() => {
+    if (!projectId || site.files.length === 0) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) return;
+    void refreshSiteMedia();
+  }, [projectId, site.files.length, refreshSiteMedia]);
+
+  useEffect(() => {
+    if (!publishPanelOpen || !projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) return;
+    let cancelled = false;
+    void (async () => {
+      const r = await fetchAdminProject(projectId);
+      if (cancelled || !r.ok || !r.data?.project) return;
+      const p = r.data.project as Record<string, unknown>;
+      setGa4MeasurementDraft(readGa4FromProjectPayload(p));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [publishPanelOpen, projectId]);
 
   useEffect(() => {
     const save = () => saveCurrentToSite();
@@ -1174,6 +1255,68 @@ export function SiteBuilderFoundationPage() {
                       );
                     })}
                   </ul>
+                  <input ref={mediaInputRef} type="file" accept="image/*,.svg" className="hidden" onChange={onMediaFileSelected} aria-hidden />
+                  {serverWritesConfigured && signedInForApi ? (
+                    <div className="mt-3 border-t border-white/10 pt-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Media</p>
+                        <button
+                          type="button"
+                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-violet-300 hover:bg-white/5 hover:text-violet-200"
+                          disabled={mediaLoading}
+                          onClick={() => void refreshSiteMedia()}
+                        >
+                          Refresh
+                        </button>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="mb-2 h-7 w-full gap-1 border-white/10 bg-white/10 px-2 text-[10px] text-white hover:bg-white/15"
+                        disabled={mediaUploadBusy || mediaLoading}
+                        onClick={() => mediaInputRef.current?.click()}
+                      >
+                        {mediaUploadBusy ? (
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                        ) : (
+                          <ImagePlus className="h-3 w-3" aria-hidden />
+                        )}
+                        Upload image
+                      </Button>
+                      {mediaLoading ? (
+                        <div className="flex items-center gap-1 py-2 text-[10px] text-zinc-500">
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                          Loading…
+                        </div>
+                      ) : mediaItems.length === 0 ? (
+                        <p className="text-[10px] leading-relaxed text-zinc-600">
+                          Public URLs from project storage — paste into HTML or CSS.
+                        </p>
+                      ) : (
+                        <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-0.5">
+                          {mediaItems.map((item) => (
+                            <li key={item.path} className="flex gap-2 rounded-md bg-white/[0.04] p-1.5 ring-1 ring-white/10">
+                              <img src={item.url} alt="" className="h-10 w-10 shrink-0 rounded object-cover" loading="lazy" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-[10px] text-zinc-500">{item.name}</p>
+                                <button
+                                  type="button"
+                                  className="mt-0.5 text-[10px] font-semibold text-emerald-300 hover:text-emerald-200"
+                                  onClick={() => void copyPublishUrl('Public URL', item.url)}
+                                >
+                                  Copy URL
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : hasFiles ? (
+                    <p className="mt-3 border-t border-white/10 pt-3 text-[10px] leading-relaxed text-zinc-600">
+                      Sign in with the live API to upload images and copy public URLs.
+                    </p>
+                  ) : null}
                 </aside>
                 <section className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-white/10 p-2 lg:border-b-0">
                   <div className="mb-1 flex items-center justify-between gap-2">
@@ -1357,6 +1500,26 @@ export function SiteBuilderFoundationPage() {
                 ) : null}
               </section>
 
+              <section className="rounded-lg border border-emerald-500/20 bg-emerald-950/15 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/90">Analytics (GA4)</p>
+                <p className="mt-1.5 text-xs text-zinc-400">
+                  Optional — injected into HTML served on preview and production when{' '}
+                  <code className="text-zinc-300">site_settings.ga4_measurement_id</code> is set. Saves with the button below (same PATCH as hosting).
+                </p>
+                <label className="mt-3 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500" htmlFor="pub-ga4-id">
+                  Measurement ID
+                </label>
+                <Input
+                  id="pub-ga4-id"
+                  value={ga4MeasurementDraft}
+                  onChange={(e) => setGa4MeasurementDraft(e.target.value)}
+                  placeholder="G-XXXXXXXXXX"
+                  className="mt-1 h-9 border-white/10 bg-zinc-900 font-mono text-xs text-white"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </section>
+
               <section className="rounded-lg border border-violet-500/25 bg-violet-950/20 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-violet-300/90">1 · Production domain</p>
                 <p className="mt-1.5 text-xs text-zinc-400">
@@ -1391,7 +1554,7 @@ export function SiteBuilderFoundationPage() {
                   disabled={hostingSaving || !serverWritesConfigured || !signedInForApi}
                   onClick={() => void saveHostingFields()}
                 >
-                  {hostingSaving ? 'Saving…' : 'Save domain to server'}
+                  {hostingSaving ? 'Saving…' : 'Save domain, Railway & GA to server'}
                 </Button>
                 {!prodDomainReady ? (
                   <p className="mt-2 text-[11px] text-amber-200/90">
@@ -1549,6 +1712,14 @@ export function SiteBuilderFoundationPage() {
       </Modal>
     </div>
   );
+}
+
+function readGa4FromProjectPayload(p: Record<string, unknown>): string {
+  const ss = p.site_settings ?? p.siteSettings;
+  if (!ss || typeof ss !== 'object' || Array.isArray(ss)) return '';
+  const o = ss as Record<string, unknown>;
+  const id = o.ga4_measurement_id ?? o.ga4MeasurementId;
+  return typeof id === 'string' ? id.trim() : '';
 }
 
 function siteFilesToVersionPayload(site: ProjectSite) {

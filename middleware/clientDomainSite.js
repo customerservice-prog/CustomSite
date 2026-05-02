@@ -8,9 +8,10 @@ const {
   stripWww,
   customDomainLookupVariants,
 } = require('../lib/customsitePlatformHosts');
+const { injectSiteSettingsIntoHtml } = require('../lib/siteHeadInjector');
 
 const CACHE_TTL_MS = Math.min(Math.max(Number(process.env.CUSTOMSITE_DOMAIN_CACHE_MS) || 120000, 5000), 600000);
-/** @type {Map<string, { projectId: string | null; expires: number }>} */
+/** @type {Map<string, { projectId: string | null; siteSettings: unknown | null; expires: number }>} */
 const projectByHostCache = new Map();
 
 function mimeForPath(p) {
@@ -81,22 +82,28 @@ function resolveSiteFilePath(urlPath) {
   return rel;
 }
 
-async function lookupProjectIdByHost(supabase, hostKey) {
+/** @returns {Promise<{ projectId: string; siteSettings?: unknown | null } | null>} */
+async function lookupProjectMetaByHost(supabase, hostKey) {
   const now = Date.now();
   const hit = projectByHostCache.get(hostKey);
   if (hit && hit.expires > now) {
-    return hit.projectId;
+    return hit.projectId ? { projectId: hit.projectId, siteSettings: hit.siteSettings } : null;
   }
   const variants = customDomainLookupVariants(hostKey);
-  const { data: rows, error } = await supabase.from('projects').select('id').in('custom_domain', variants).limit(1);
+  let { data: rows, error } = await supabase.from('projects').select('id, site_settings').in('custom_domain', variants).limit(1);
+  if (error && /site_settings/.test(String(error.message))) {
+    ({ data: rows, error } = await supabase.from('projects').select('id').in('custom_domain', variants).limit(1));
+  }
   if (error) {
     console.error('[clientDomainSite] project lookup', error.message);
-    projectByHostCache.set(hostKey, { projectId: null, expires: now + 15000 });
+    projectByHostCache.set(hostKey, { projectId: null, siteSettings: null, expires: now + 15000 });
     return null;
   }
-  const id = rows && rows[0] && rows[0].id ? String(rows[0].id) : null;
-  projectByHostCache.set(hostKey, { projectId: id, expires: now + CACHE_TTL_MS });
-  return id;
+  const row0 = rows && rows[0];
+  const id = row0 && row0.id ? String(row0.id) : null;
+  const siteSettings = row0 && row0.site_settings !== undefined ? row0.site_settings : null;
+  projectByHostCache.set(hostKey, { projectId: id, siteSettings, expires: now + CACHE_TTL_MS });
+  return id ? { projectId: id, siteSettings } : null;
 }
 
 async function loadFileRow(supabase, projectId, filePath) {
@@ -124,7 +131,7 @@ async function loadFileRow(supabase, projectId, filePath) {
   return row;
 }
 
-function buildBody(row, filePath, req) {
+function buildBody(row, filePath, req, siteSettings) {
   const enc = row.content_encoding === 'base64' ? 'base64' : 'utf8';
   const isHtml = filePath.toLowerCase().endsWith('.html');
   if (enc === 'base64' && !isHtml) {
@@ -137,7 +144,8 @@ function buildBody(row, filePath, req) {
     enc === 'base64' ? Buffer.from(String(row.content), 'base64').toString('utf8') : String(row.content);
   const origin = originForClientSite(req);
   const baseHref = origin ? `${origin.replace(/\/$/, '')}/` : null;
-  return injectLiveBaseHref(raw, baseHref);
+  const withBase = injectLiveBaseHref(raw, baseHref);
+  return injectSiteSettingsIntoHtml(withBase, filePath, siteSettings);
 }
 
 async function handleClientDomain(req, res) {
@@ -180,7 +188,9 @@ async function handleClientDomain(req, res) {
 
   const host = hostIncoming;
   const supabase = getService();
-  const projectId = await lookupProjectIdByHost(supabase, host);
+  const meta = await lookupProjectMetaByHost(supabase, host);
+  const projectId = meta && meta.projectId;
+  const siteSettings = meta && meta.siteSettings;
   if (!projectId) {
     res.status(404).type('html').send(
       `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Not found</title></head><body style="font-family:system-ui;padding:2rem;color:#334155"><h1>Site not found</h1><p>No project is linked to <strong>${escapeHtml(
@@ -223,7 +233,7 @@ async function handleClientDomain(req, res) {
     res.end();
     return true;
   }
-  const out = buildBody(row, filePath, req);
+  const out = buildBody(row, filePath, req, siteSettings);
   if (Buffer.isBuffer(out)) {
     res.send(out);
   } else {

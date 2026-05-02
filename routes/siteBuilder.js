@@ -49,6 +49,23 @@ const upload = multer({
   limits: { fileSize: MAX_IMAGE_BYTES },
 });
 
+const STORAGE_BUCKET = 'project-files';
+
+async function uploadProjectImagePublicUrl(supabase, projectId, buffer, originalname, mimetype) {
+  const safeBase = String(originalname || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
+  const storagePath = `project-assets/${String(projectId).trim()}/${Date.now().toString(36)}_${safeBase}`;
+  const up = await supabase.storage.from(STORAGE_BUCKET).upload(storagePath, buffer, {
+    contentType: mimetype || 'application/octet-stream',
+    upsert: true,
+  });
+  if (up.error) {
+    throw new Error(up.error.message || 'storage upload failed');
+  }
+  const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
+  const publicUrl = pub?.publicUrl || null;
+  return { storagePath, publicUrl };
+}
+
 router.use(requireAuth, requireAdmin);
 
 function normalizePath(p) {
@@ -97,7 +114,6 @@ function hostingPatchFromBody(b) {
     const h = b.custom_domain == null || b.custom_domain === '' ? null : normalizeCustomDomainHost(b.custom_domain);
     patch.custom_domain = h;
   }
-  if (b.site_settings !== undefined) patch.site_settings = b.site_settings;
   return patch;
 }
 
@@ -310,7 +326,11 @@ router.post('/projects/:projectId/site/init', async (req, res) => {
     const templateId = (req.body && req.body.template) || 'basic';
     const files = getTemplateFiles(templateId);
     const now = new Date().toISOString();
-    for (const [path, content] of Object.entries(files)) {
+    for (const [path, raw] of Object.entries(files)) {
+      let content = raw;
+      if (typeof content === 'string') {
+        content = content.replace(/__CS_PROJECT_UUID__/g, projectId);
+      }
       const { data: row } = await supabase
         .from('site_files')
         .select('id')
@@ -464,6 +484,18 @@ async function patchAdminProjectById(req, res) {
     const b = req.body || {};
     const supabase = getService();
     const patch = hostingPatchFromBody(b);
+    if (b.site_settings !== undefined) {
+      if (b.site_settings && typeof b.site_settings === 'object' && !Array.isArray(b.site_settings)) {
+        const { data: cur } = await supabase.from('projects').select('site_settings').eq('id', projectId).maybeSingle();
+        const prev =
+          cur?.site_settings && typeof cur.site_settings === 'object' && !Array.isArray(cur.site_settings)
+            ? cur.site_settings
+            : {};
+        patch.site_settings = { ...prev, ...b.site_settings };
+      } else {
+        patch.site_settings = b.site_settings;
+      }
+    }
     if (b.name != null && String(b.name).trim()) patch.name = String(b.name).trim();
     if (b.status != null) {
       if (!PROJECT_STATUS_ALLOWED.includes(b.status)) {
@@ -546,10 +578,249 @@ router.post('/projects/:projectId/site/upload-asset', upload.single('file'), asy
     } else if (err) {
       return res.status(500).json({ error: err.message });
     }
-    return res.json({ success: true, path: rel, content_encoding: 'base64' });
+
+    /** Optional public CDN URL via Supabase Storage (bucket must exist + public read policy). */
+    let publicUrl = null;
+    try {
+      const up = await uploadProjectImagePublicUrl(supabase, projectId, buffer, originalname, mimetype);
+      publicUrl = up.publicUrl || null;
+    } catch (e) {
+      console.warn('[upload-asset] Storage URL skipped:', e.message);
+    }
+
+    return res.json({ success: true, path: rel, content_encoding: 'base64', publicUrl });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/** Storage-only upload (public URL); also updates site preview when same path mirrors assets/*. */
+router.post('/projects/:projectId/upload', upload.single('file'), async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'file required' });
+    const { originalname, buffer, mimetype } = req.file;
+    if (!/image\/(png|jpe?g|gif|webp|svg\+xml|svg)/i.test(mimetype) && !/\.svg$/i.test(originalname)) {
+      return res.status(400).json({ error: 'Only image uploads allowed' });
+    }
+    const supabase = getService();
+    const { storagePath, publicUrl } = await uploadProjectImagePublicUrl(supabase, projectId, buffer, originalname, mimetype);
+    return res.json({ success: true, path: storagePath, publicUrl, bucket: STORAGE_BUCKET });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({
+      error: e.message || 'Upload failed — ensure bucket "project-files" exists and Storage policies allow service role uploads + public reads.',
+    });
+  }
+});
+
+router.get('/projects/:projectId/site/media', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const prefix = `project-assets/${String(projectId).trim()}`;
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(prefix, { limit: 500 });
+    if (error) return res.status(500).json({ error: error.message });
+    const items = [];
+    for (const o of data || []) {
+      if (!o.name) continue;
+      const key = `${prefix}/${o.name}`;
+      const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(key);
+      if (pub?.publicUrl) items.push({ name: o.name, url: pub.publicUrl, path: key });
+    }
+    return res.json({ items });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/projects/:projectId/form-submissions', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const lim = Math.min(Number(req.query.limit) || 80, 200);
+    const { data, error } = await supabase
+      .from('form_submissions')
+      .select('id, fields, submitted_at, read_flag')
+      .eq('project_id', projectId)
+      .order('submitted_at', { ascending: false })
+      .limit(lim);
+    if (error) {
+      if (/form_submissions|does not exist/i.test(error.message)) {
+        return res.status(503).json({ error: 'Run migration 006_agency_extensions.sql for form submissions.' });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    return res.json({ submissions: data || [] });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.patch('/projects/:projectId/form-submissions/:submissionId/read', async (req, res) => {
+  try {
+    const { projectId, submissionId } = req.params;
+    const read = req.body?.read_flag !== undefined ? Boolean(req.body.read_flag) : true;
+    const supabase = getService();
+    const { error } = await supabase
+      .from('form_submissions')
+      .update({ read_flag: read })
+      .eq('id', submissionId)
+      .eq('project_id', projectId);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/projects/:projectId/site/snapshots', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const lim = Math.min(Number(req.query.limit) || 30, 100);
+    const { data, error } = await supabase
+      .from('project_site_snapshots')
+      .select('id, label, created_at')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(lim);
+    if (error) {
+      if (/project_site_snapshots|does not exist/i.test(error.message)) {
+        return res.json({ snapshots: [], hint: 'Run migration 006_agency_extensions.sql' });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    return res.json({ snapshots: data || [] });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/projects/:projectId/site/snapshot', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const label = ((req.body && req.body.label) || 'manual').slice(0, 200);
+    const supabase = getService();
+    const rows = await listProjectFileRows(supabase, projectId);
+    const { data, error } = await supabase
+      .from('project_site_snapshots')
+      .insert({ project_id: projectId, label, files: rows })
+      .select('id, label, created_at')
+      .single();
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ success: true, snapshot: data });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/projects/:projectId/site/snapshots/:snapshotId/restore', async (req, res) => {
+  try {
+    const { projectId, snapshotId } = req.params;
+    const supabase = getService();
+    const { data: snap, error: ge } = await supabase
+      .from('project_site_snapshots')
+      .select('id, files')
+      .eq('id', snapshotId)
+      .eq('project_id', projectId)
+      .maybeSingle();
+    if (ge) return res.status(500).json({ error: ge.message });
+    if (!snap || !Array.isArray(snap.files)) return res.status(404).json({ error: 'Snapshot not found' });
+    await supabase.from('site_files').delete().eq('project_id', projectId);
+    const now = new Date().toISOString();
+    let n = 0;
+    for (const r of snap.files) {
+      if (!r || !r.path || r.content === undefined || r.content === null) continue;
+      const insert = {
+        project_id: projectId,
+        path: r.path,
+        content: r.content,
+        updated_at: r.updated_at || now,
+        content_encoding: r.content_encoding === 'base64' ? 'base64' : 'utf8',
+      };
+      const { error: ie } = await supabase.from('site_files').insert(insert);
+      if (ie && /content_encoding/.test(String(ie.message))) {
+        delete insert.content_encoding;
+        await supabase.from('site_files').insert(insert);
+      }
+      n++;
+    }
+    return res.json({ success: true, restoredFileCount: n });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.message || 'Server error' });
+  }
+});
+
+router.post('/projects/:projectId/duplicate', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const { data: src, error: se } = await supabase.from('projects').select('*').eq('id', projectId).maybeSingle();
+    if (se) return res.status(500).json({ error: se.message });
+    if (!src) return res.status(404).json({ error: 'Project not found' });
+
+    const { randomUUID } = require('crypto');
+    const newId = randomUUID();
+    const baseName = `${String(src.name || 'Site')} (copy)`.slice(0, 240);
+    const ins = {
+      id: newId,
+      client_id: src.client_id,
+      name: baseName,
+      status: src.status || 'discovery',
+      launched_at: null,
+      railway_url_production: null,
+      railway_url_staging: null,
+      railway_project_id_production: null,
+      railway_project_id_staging: null,
+      railway_service_id_production: null,
+      railway_service_id_staging: null,
+      custom_domain: null,
+      site_settings: src.site_settings || null,
+      website_type: src.website_type || null,
+      internal_notes:
+        `${String(src.internal_notes || '').slice(0, 3800)}\nDuplicated from project ${projectId}`.slice(0, 8000),
+    };
+    let { error: ie } = await supabase.from('projects').insert(ins);
+    if (ie) {
+      const r2 = await supabase.from('projects').insert({
+        id: newId,
+        client_id: src.client_id,
+        name: baseName,
+        status: 'discovery',
+      });
+      if (r2.error) return res.status(500).json({ error: r2.error.message });
+    }
+
+    const rows = await listProjectFileRows(supabase, projectId);
+    for (const r of rows) {
+      if (!r || !r.path || r.content === undefined) continue;
+      const insert = {
+        project_id: newId,
+        path: r.path,
+        content: r.content,
+        updated_at: new Date().toISOString(),
+        content_encoding: r.content_encoding === 'base64' ? 'base64' : 'utf8',
+      };
+      const { error: fe } = await supabase.from('site_files').insert(insert);
+      if (fe && /content_encoding/.test(String(fe.message))) {
+        delete insert.content_encoding;
+        await supabase.from('site_files').insert(insert);
+      }
+    }
+
+    const { data: fresh } = await supabase.from('projects').select('*').eq('id', newId).maybeSingle();
+    return res.json({ success: true, project: fresh, id: newId });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.message || 'Server error' });
   }
 });
 
@@ -604,6 +875,19 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     if (!rows.length) {
       return res.status(400).json({ error: 'No site files to deploy. Init a starter or add files first.' });
     }
+
+    try {
+      const sl = `${environment === 'production' ? 'Pre-production deploy' : 'Pre-staging deploy'} • ${new Date().toISOString()}`;
+      const { error: sne } = await supabase.from('project_site_snapshots').insert({
+        project_id: projectId,
+        label: sl,
+        files: rows,
+      });
+      if (sne) console.warn('[deploy] snapshot insert', sne.message);
+    } catch (snapEx) {
+      console.warn('[deploy] snapshot insert', snapEx.message);
+    }
+
     const files = addServeBundle(rowsToBundleFiles(rows));
     const zipBuffer = await createZipBuffer(files);
     const steps = [];

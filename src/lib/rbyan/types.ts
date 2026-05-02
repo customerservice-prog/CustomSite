@@ -36,6 +36,10 @@ export type RbyanProjectContext = {
   /** From project record when set at project creation. */
   siteBuildArchetype?: SiteBuildArchetypeId | null;
   brandKit?: RbyanBrandKit | null;
+  /** e.g. restaurant, salon, ecommerce — steers template + copy. */
+  businessType?: string | null;
+  /** Comma-separated pages the site should include. */
+  keyPagesNeeded?: string | null;
 };
 
 /** Prompt routing for the generation pipeline (mock rules today; API can reuse). */

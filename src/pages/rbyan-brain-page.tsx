@@ -150,6 +150,8 @@ export function RbyanBrainPage() {
   const [fontVibe, setFontVibe] = useState('');
   const [voice, setVoice] = useState('');
   const [visualStyle, setVisualStyle] = useState('');
+  const [businessType, setBusinessType] = useState('');
+  const [keyPagesNeeded, setKeyPagesNeeded] = useState('');
 
   const clientProjects = useMemo(
     () => projects.filter((p) => p.deliveryFocus === 'client_site' && (!clientId || p.clientId === clientId)),
@@ -175,6 +177,8 @@ export function RbyanBrainPage() {
       setFontVibe('');
       setVoice('');
       setVisualStyle('');
+      setBusinessType('');
+      setKeyPagesNeeded('');
       return;
     }
     try {
@@ -187,6 +191,8 @@ export function RbyanBrainPage() {
         setFontVibe('');
         setVoice('');
         setVisualStyle('');
+        setBusinessType('');
+        setKeyPagesNeeded('');
         return;
       }
       const j = JSON.parse(raw) as Record<string, string>;
@@ -197,6 +203,8 @@ export function RbyanBrainPage() {
       setFontVibe(j.fontVibe ?? '');
       setVoice(j.voice ?? '');
       setVisualStyle(j.visualStyle ?? '');
+      setBusinessType(j.businessType ?? '');
+      setKeyPagesNeeded(j.keyPagesNeeded ?? '');
     } catch {
       /* */
     }
@@ -216,6 +224,8 @@ export function RbyanBrainPage() {
             fontVibe,
             voice,
             visualStyle,
+            businessType,
+            keyPagesNeeded,
           })
         );
       } catch {
@@ -223,7 +233,7 @@ export function RbyanBrainPage() {
       }
     }, 500);
     return () => window.clearTimeout(id);
-  }, [projectId, industryNiche, bizSummary, brandPrimary, brandAccent, fontVibe, voice, visualStyle]);
+  }, [projectId, industryNiche, bizSummary, brandPrimary, brandAccent, fontVibe, voice, visualStyle, businessType, keyPagesNeeded]);
 
   const projectContext: RbyanProjectContext | null = useMemo(() => {
     if (!projectId || !activeProject) return null;
@@ -255,6 +265,8 @@ export function RbyanBrainPage() {
       industryNiche: industryNiche.trim() || null,
       deliveryFocus: activeProject.deliveryFocus,
       siteBuildArchetype: activeProject.siteBuildArchetype ?? null,
+      businessType: businessType.trim() || null,
+      keyPagesNeeded: keyPagesNeeded.trim() || null,
       brandKit: hasBrand ? kit : null,
     };
   }, [
@@ -268,6 +280,8 @@ export function RbyanBrainPage() {
     fontVibe,
     voice,
     visualStyle,
+    businessType,
+    keyPagesNeeded,
   ]);
 
   const activeClientForAi = useMemo(() => {
@@ -281,8 +295,10 @@ export function RbyanBrainPage() {
     const hasCompany = Boolean(activeClientForAi.company?.trim());
     const hasNiche = Boolean(industryNiche.trim());
     const hasBiz = Boolean(bizSummary.trim());
-    return !(hasCompany || hasNiche || hasBiz);
-  }, [projectId, activeClientForAi, industryNiche, bizSummary]);
+    const hasBizType = Boolean(businessType.trim());
+    const hasKeyPages = Boolean(keyPagesNeeded.trim());
+    return !(hasCompany || hasNiche || hasBiz || hasBizType || hasKeyPages);
+  }, [projectId, activeClientForAi, industryNiche, bizSummary, businessType, keyPagesNeeded]);
 
   const hydrate = useProjectSiteWorkspaceStore((s) => s.hydrate);
   const workspaceRow = useProjectSiteWorkspaceStore((s) => (projectId ? s.byProjectId[projectId] : undefined));
@@ -624,6 +640,22 @@ export function RbyanBrainPage() {
                   is not guessing.
                 </p>
               ) : null}
+              <label className="mb-0.5 block text-[10px] text-zinc-400">Business type</label>
+              <Select
+                aria-label="Business type"
+                className="mb-2 h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                value={businessType}
+                onChange={(e) => setBusinessType(e.target.value)}
+              >
+                <option value="">Choose…</option>
+                <option value="restaurant">Restaurant / cafe</option>
+                <option value="salon">Salon / spa / beauty</option>
+                <option value="contractor">Contractor / trades</option>
+                <option value="ecommerce">E-commerce / product</option>
+                <option value="personal_brand">Personal brand</option>
+                <option value="professional_services">Professional services (legal, accounting)</option>
+                <option value="other">Other local business</option>
+              </Select>
               <label className="mb-0.5 block text-[10px] text-zinc-400">Industry / niche</label>
               <Input
                 className="mb-2 h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
@@ -638,6 +670,14 @@ export function RbyanBrainPage() {
                 onChange={(e) => setBizSummary(e.target.value)}
                 placeholder="What they sell, who it’s for, geography, proof…"
                 rows={2}
+              />
+              <label className="mb-0.5 block text-[10px] text-zinc-400">Key pages needed</label>
+              <Input
+                className="mb-2 h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                value={keyPagesNeeded}
+                onChange={(e) => setKeyPagesNeeded(e.target.value)}
+                placeholder="e.g. Home, Menu, Gallery, Reservations, Contact"
+                spellCheck={false}
               />
               <div className="mb-2 grid grid-cols-2 gap-2">
                 <div>

@@ -171,3 +171,46 @@ export async function adminFetchJson<T = unknown>(
 
   return parseFetchResult<T>(res);
 }
+
+/** POST `multipart/form-data` (file upload). Do not set Content-Type — the browser supplies the boundary. */
+export async function adminFetchMultipartJson<T = unknown>(
+  path: string,
+  formData: FormData,
+  init?: Omit<RequestInit, 'body'>
+): Promise<AdminJsonResult<T>> {
+  const buildHeaders = (accessToken: string | null) => {
+    const headers = new Headers(init?.headers);
+    if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+    return headers;
+  };
+
+  const run = async (accessToken: string | null): Promise<Response> =>
+    fetch(path, {
+      ...init,
+      method: init?.method || 'POST',
+      headers: buildHeaders(accessToken),
+      body: formData,
+    });
+
+  let res: Response;
+  try {
+    res = await run(getAccessToken());
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Network error';
+    return { ok: false, status: 0, error: msg };
+  }
+
+  if (res.status === 401 && getRefreshToken()?.trim()) {
+    const newTok = await tryRefreshAccessToken();
+    if (newTok) {
+      try {
+        res = await run(newTok);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Network error';
+        return { ok: false, status: 0, error: msg };
+      }
+    }
+  }
+
+  return parseFetchResult<T>(res);
+}

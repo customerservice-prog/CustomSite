@@ -1,6 +1,12 @@
 'use strict';
 
+const multer = require('multer');
 const { isSupabaseConfigured } = require('../lib/supabase');
+
+const demoMemUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 6 * 1024 * 1024 },
+}).single('file');
 const {
   verifyDevToken,
   extractBearerToken,
@@ -150,7 +156,10 @@ function tryRespondLocalDemoSite(req, res, m, p) {
         railway_url_production: host.railway_url_production || '',
         custom_domain: host.custom_domain || '',
         railway_service_id_production: host.railway_service_id_production || null,
-        site_settings: {},
+        site_settings:
+          host.site_settings && typeof host.site_settings === 'object' && !Array.isArray(host.site_settings)
+            ? host.site_settings
+            : {},
         created_at: demoProjectRow.created_at,
         client: { email: demoClient.email, full_name: demoClient.full_name, company: demoClient.company },
       },
@@ -165,11 +174,15 @@ function tryRespondLocalDemoSite(req, res, m, p) {
       project: {
         ...demoProjectRow,
         id: projectId,
-        railway_url_staging: host.railway_url_staging || null,
-        railway_url_production: host.railway_url_production || null,
-        custom_domain: host.custom_domain || null,
-        railway_project_id_production: host.railway_project_id_production || null,
-        railway_service_id_production: host.railway_service_id_production || null,
+        railway_url_staging: host.railway_url_staging ?? null,
+        railway_url_production: host.railway_url_production ?? null,
+        custom_domain: host.custom_domain ?? null,
+        railway_project_id_production: host.railway_project_id_production ?? null,
+        railway_service_id_production: host.railway_service_id_production ?? null,
+        site_settings:
+          host.site_settings && typeof host.site_settings === 'object' && !Array.isArray(host.site_settings)
+            ? host.site_settings
+            : {},
         client: demoClient,
       },
     });
@@ -186,10 +199,23 @@ function tryRespondLocalDemoSite(req, res, m, p) {
   if (m === 'PATCH' && /^\/api\/admin\/projects\/[^/]+$/.test(p)) {
     const projectId = p.split('/')[4];
     const body = req.body || {};
-    devProjectHostingById[projectId] = { ...(devProjectHostingById[projectId] || {}), ...body };
+    const prev = devProjectHostingById[projectId] || {};
+    const nextHost = { ...prev };
+    Object.keys(body).forEach((k) => {
+      if (k === 'site_settings' && body[k] && typeof body[k] === 'object' && !Array.isArray(body[k])) {
+        const pss =
+          prev.site_settings && typeof prev.site_settings === 'object' && !Array.isArray(prev.site_settings)
+            ? prev.site_settings
+            : {};
+        nextHost.site_settings = { ...pss, ...body[k] };
+      } else {
+        nextHost[k] = body[k];
+      }
+    });
+    devProjectHostingById[projectId] = nextHost;
     res.json({
       success: true,
-      project: { ...demoProjectRow, id: projectId, ...devProjectHostingById[projectId] },
+      project: { ...demoProjectRow, id: projectId, ...nextHost, client: demoClient },
     });
     return true;
   }
@@ -261,6 +287,9 @@ const demoProjectRow = {
 /** RAM merge for GET/PATCH /api/admin/projects/:id when Supabase is off. */
 const devProjectHostingById = {};
 
+/** In-memory uploads for GET /site/media demo (Supabase off). */
+const devProjectMediaStore = {};
+
 /**
  * When Supabase is not configured, serve API responses for the signed-in dev user
  * so the admin and site builder UIs load. Site files and preview use RAM.
@@ -272,6 +301,22 @@ function devModeApiStub(req, res, next) {
 
   const p = pathName(req);
   const m = req.method;
+
+  if (m === 'POST' && /^\/api\/admin\/projects\/[^/]+\/upload$/.test(p)) {
+    return demoMemUpload(req, res, (err) => {
+      if (err) return res.status(400).json({ error: String(err.message || err) });
+      const projectId = p.split('/')[4];
+      const f = req.file;
+      if (!f) return res.status(400).json({ error: 'file required' });
+      const safe = String(f.originalname || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
+      const fileName = `${Date.now()}-${safe}`;
+      const storagePath = `project-assets/${projectId}/${fileName}`;
+      const fakeUrl = `https://dev-media.local/${encodeURIComponent(projectId)}/${encodeURIComponent(fileName)}`;
+      if (!devProjectMediaStore[projectId]) devProjectMediaStore[projectId] = [];
+      devProjectMediaStore[projectId].push({ name: fileName, url: fakeUrl, path: storagePath });
+      res.json({ success: true, path: storagePath, publicUrl: fakeUrl, bucket: 'project-files' });
+    });
+  }
 
   if (m === 'POST' && p === '/api/contact') {
     const body = req.body || {};
@@ -299,6 +344,10 @@ function devModeApiStub(req, res, next) {
   const localSite = tryRespondLocalDemoSite(req, res, m, p);
   if (localSite !== false) {
     return localSite;
+  }
+
+  if (m === 'POST' && /^\/api\/forms\/[^/]+\/submit$/.test(p)) {
+    return res.json({ ok: true, thanks: true, id: 'demo-form-submission' });
   }
 
   const token = extractBearerToken(req);
@@ -508,6 +557,13 @@ function devModeApiStub(req, res, next) {
           .then((a) => res.json({ host: h, a, ok: true }))
           .catch(() => res.json({ host: h, ok: false }))
       );
+  }
+
+  if (m === 'GET' && /^\/api\/admin\/projects\/[^/]+\/form-submissions$/.test(p)) {
+    return res.json({ submissions: [] });
+  }
+  if (m === 'PATCH' && /^\/api\/admin\/projects\/[^/]+\/form-submissions\/[^/]+\/read$/.test(p)) {
+    return res.json({ success: true });
   }
 
   if (p.startsWith('/api/admin/')) {

@@ -2,6 +2,7 @@
 
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
 const devStore = require('../lib/devSiteFileStore');
+const { injectSiteSettingsIntoHtml } = require('../lib/siteHeadInjector');
 
 function mimeForPath(p) {
   const lower = p.toLowerCase();
@@ -75,8 +76,9 @@ function injectHtmlBaseIfNeeded(html, baseHref) {
 /**
  * @param {object} data - { content, content_encoding? }
  * @param {import('http').IncomingMessage} req
+ * @param {unknown} siteSettings
  */
-function buildPreviewResponseBody(data, filePath, projectId, req) {
+function buildPreviewResponseBody(data, filePath, projectId, req, siteSettings) {
   const enc = data.content_encoding === 'base64' ? 'base64' : 'utf8';
   const isHtml = filePath.toLowerCase().endsWith('.html');
 
@@ -94,7 +96,8 @@ function buildPreviewResponseBody(data, filePath, projectId, req) {
       : String(data.content);
   const origin = originFromRequest(req);
   const base = previewBaseForFilePath(origin, projectId, filePath);
-  return injectHtmlBaseIfNeeded(raw, base);
+  const merged = injectHtmlBaseIfNeeded(raw, base);
+  return injectSiteSettingsIntoHtml(merged, filePath, siteSettings);
 }
 
 async function handlePreview(req, res) {
@@ -130,7 +133,7 @@ async function handlePreview(req, res) {
       res.end();
       return;
     }
-    const out = buildPreviewResponseBody(data, filePath, projectId, req);
+    const out = buildPreviewResponseBody(data, filePath, projectId, req, null);
     if (Buffer.isBuffer(out)) {
       res.send(out);
       return;
@@ -140,26 +143,32 @@ async function handlePreview(req, res) {
   }
 
   const supabase = getService();
-  let row;
-  let err;
-  const q1 = await supabase
-    .from('site_files')
-    .select('content, content_encoding')
-    .eq('project_id', projectId)
-    .eq('path', filePath)
-    .maybeSingle();
-  row = q1.data;
-  err = q1.error;
-  if (err && /content_encoding/.test(String(err.message))) {
-    const q2 = await supabase
-      .from('site_files')
-      .select('content')
-      .eq('project_id', projectId)
-      .eq('path', filePath)
-      .maybeSingle();
-    row = q2.data;
-    err = q2.error;
-  }
+  const [qFile, qProj] = await Promise.all([
+    (async () => {
+      let q1 = await supabase
+        .from('site_files')
+        .select('content, content_encoding')
+        .eq('project_id', projectId)
+        .eq('path', filePath)
+        .maybeSingle();
+      if (q1.error && /content_encoding/.test(String(q1.error.message))) {
+        const q2 = await supabase
+          .from('site_files')
+          .select('content')
+          .eq('project_id', projectId)
+          .eq('path', filePath)
+          .maybeSingle();
+        return q2;
+      }
+      return q1;
+    })(),
+    supabase.from('projects').select('site_settings').eq('id', projectId).maybeSingle(),
+  ]);
+
+  let row = qFile.data;
+  let err = qFile.error;
+
+  const siteSettings = qProj?.error ? null : qProj?.data?.site_settings;
 
   if (err) {
     console.error(err);
@@ -179,7 +188,7 @@ async function handlePreview(req, res) {
     res.end();
     return;
   }
-  const out = buildPreviewResponseBody(row, filePath, projectId, req);
+  const out = buildPreviewResponseBody(row, filePath, projectId, req, siteSettings);
   if (Buffer.isBuffer(out)) {
     res.send(out);
     return;

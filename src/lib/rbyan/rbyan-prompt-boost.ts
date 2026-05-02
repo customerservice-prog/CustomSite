@@ -16,6 +16,12 @@ export function appendProjectContextToPrompt(prompt: string, ctx: RbyanProjectCo
   if (ctx.industryNiche?.trim()) {
     lines.push(`- Industry / niche: ${ctx.industryNiche.trim()}`);
   }
+  if (ctx.businessType?.trim()) {
+    lines.push(`- Business type: ${ctx.businessType.trim()}`);
+  }
+  if (ctx.keyPagesNeeded?.trim()) {
+    lines.push(`- Pages / sections to prioritize: ${ctx.keyPagesNeeded.trim()}`);
+  }
   if (ctx.siteBuildArchetype) {
     lines.push(`- Project site pattern: ${ctx.siteBuildArchetype.replace(/_/g, ' ')}`);
   }
@@ -39,7 +45,7 @@ export function appendProjectContextToPrompt(prompt: string, ctx: RbyanProjectCo
   }
   lines.push(
     '[/Client context]',
-    'Instruction: Reflect this business in headlines, section order, and visual tone. Never use generic labels like "Brand", "Primary CTA", or "Ship a premium client site" as if they were the client. Do not duplicate the same hero section twice.',
+    'Instruction: Reflect this business type in section order and copy (food service → menu/hours/reservations; ecommerce → product hero and trust; trades → services/guarantee/contact). Use the real company or project name everywhere — never "Your Brand". Do not duplicate identical hero blocks.',
     ''
   );
   return `${lines.join('\n')}${prompt.trim()}`;

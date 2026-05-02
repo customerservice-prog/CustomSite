@@ -45,8 +45,9 @@ import { useProject, useProjectActivities } from '@/store/hooks';
 import { useAppStore } from '@/store/useAppStore';
 import * as sel from '@/store/selectors';
 import { cn } from '@/lib/utils';
-import { normalizeCustomDomainInput, patchAdminProject, railwayHostnameFromUrl } from '@/lib/admin-project-hosting';
+import { normalizeCustomDomainInput, patchAdminProject, railwayHostnameFromUrl, fetchAdminProject } from '@/lib/admin-project-hosting';
 import type { ApiProjectRow } from '@/lib/agency-api-map';
+import { fetchProjectFormSubmissions, patchFormSubmissionReadFlag, type FormSubmissionRow } from '@/lib/project-form-submissions-api';
 import {
   CONVERSION_WORKSPACE_LABEL,
   DELIVERY_ADVANTAGE,
@@ -111,7 +112,10 @@ export function ProjectDetailPage() {
 
   const [hostDomainDraft, setHostDomainDraft] = useState('');
   const [hostSvcDraft, setHostSvcDraft] = useState('');
+  const [ga4WorkspaceDraft, setGa4WorkspaceDraft] = useState('');
   const [hostingSaveBusy, setHostingSaveBusy] = useState(false);
+  const [formSubmissions, setFormSubmissions] = useState<FormSubmissionRow[]>([]);
+  const [formSubmissionsLoading, setFormSubmissionsLoading] = useState(false);
 
   const client = useAppStore(useShallow((s) => (project ? s.clients[project.clientId] : undefined)));
   const owner = project ? users[project.ownerId] : undefined;
@@ -163,6 +167,76 @@ export function ProjectDetailPage() {
     setHostSvcDraft(project.railwayServiceIdProduction ?? '');
   }, [project?.id, project?.customDomainHost, project?.railwayServiceIdProduction]);
 
+  useEffect(() => {
+    if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return;
+    let cancelled = false;
+    void (async () => {
+      const r = await fetchAdminProject(projectId);
+      if (cancelled || !r.ok || !r.data?.project) return;
+      const p = r.data.project as Record<string, unknown>;
+      const ss = p.site_settings ?? p.siteSettings;
+      if (ss && typeof ss === 'object' && !Array.isArray(ss)) {
+        const o = ss as Record<string, unknown>;
+        const gid = o.ga4_measurement_id ?? o.ga4MeasurementId;
+        setGa4WorkspaceDraft(typeof gid === 'string' ? gid.trim() : '');
+      } else setGa4WorkspaceDraft('');
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, project?.deliveryFocus]);
+
+  useEffect(() => {
+    if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return;
+    let cancelled = false;
+    setFormSubmissionsLoading(true);
+    void (async () => {
+      const r = await fetchProjectFormSubmissions(projectId);
+      if (cancelled) return;
+      setFormSubmissionsLoading(false);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      setFormSubmissions(r.data.submissions ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, project?.deliveryFocus, toast]);
+
+  const reloadFormSubmissions = useCallback(async () => {
+    if (!projectId) return;
+    setFormSubmissionsLoading(true);
+    try {
+      const r = await fetchProjectFormSubmissions(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      setFormSubmissions(r.data.submissions ?? []);
+    } finally {
+      setFormSubmissionsLoading(false);
+    }
+  }, [projectId, toast]);
+
+  const markFormRead = useCallback(
+    async (submissionId: string, readFlag: boolean) => {
+      if (!projectId) return;
+      const r = await patchFormSubmissionReadFlag(projectId, submissionId, readFlag);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      setFormSubmissions((prev) =>
+        prev.map((row) => (row.id === submissionId ? { ...row, read_flag: readFlag } : row))
+      );
+    },
+    [projectId, toast]
+  );
+
   const saveProjectHosting = useCallback(async () => {
     if (!projectId) return;
     if (import.meta.env.VITE_USE_REAL_API !== '1') {
@@ -174,6 +248,7 @@ export function ProjectDetailPage() {
       const r = await patchAdminProject(projectId, {
         custom_domain: normalizeCustomDomainInput(hostDomainDraft) || null,
         railway_service_id_production: hostSvcDraft.trim() || null,
+        site_settings: { ga4_measurement_id: ga4WorkspaceDraft.trim() || null },
       });
       if (!r.ok) {
         toast(r.error, 'error');
@@ -181,11 +256,11 @@ export function ProjectDetailPage() {
       }
       const row = r.data?.project;
       if (row && typeof row === 'object') mergeProjectRowFromServer(row as ApiProjectRow);
-      toast('Hosting settings saved.', 'success');
+      toast('Hosting and analytics saved.', 'success');
     } finally {
       setHostingSaveBusy(false);
     }
-  }, [projectId, hostDomainDraft, hostSvcDraft, mergeProjectRowFromServer, toast]);
+  }, [projectId, hostDomainDraft, hostSvcDraft, ga4WorkspaceDraft, mergeProjectRowFromServer, toast]);
 
   const dnsCnameTarget = useMemo(
     () => railwayHostnameFromUrl(project?.railwayProductionUrl ?? null),
@@ -627,14 +702,33 @@ export function ProjectDetailPage() {
                     />
                   </div>
                 </div>
+                <div className="mt-3">
+                  <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-ga4-measure">
+                    GA4 measurement ID (optional)
+                  </label>
+                  <Input
+                    id="pd-ga4-measure"
+                    value={ga4WorkspaceDraft}
+                    onChange={(e) => setGa4WorkspaceDraft(e.target.value)}
+                    placeholder="G-XXXXXXXXXX"
+                    className="mt-1 h-9 font-mono text-xs"
+                    spellCheck={false}
+                    disabled={import.meta.env.VITE_USE_REAL_API !== '1'}
+                  />
+                  {import.meta.env.VITE_USE_REAL_API !== '1' ? (
+                    <p className="mt-1 text-[11px] text-slate-500">Enable real API mode to persist GA ID on this project.</p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-slate-500">Merged into project <code className="text-slate-700">site_settings</code> on save.</p>
+                  )}
+                </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     type="button"
                     className="h-9 px-3 text-xs"
-                    disabled={hostingSaveBusy}
+                    disabled={hostingSaveBusy || import.meta.env.VITE_USE_REAL_API !== '1'}
                     onClick={() => void saveProjectHosting()}
                   >
-                    {hostingSaveBusy ? 'Saving…' : 'Save to server'}
+                    {hostingSaveBusy ? 'Saving…' : 'Save domain, Railway & GA'}
                   </Button>
                   <Link to={`/projects/${project.id}/site`} className={buttonClassName('secondary', 'h-9 px-3 text-xs')}>
                     Open site builder
@@ -650,6 +744,58 @@ export function ProjectDetailPage() {
                     CNAME target appears once <code className="text-slate-700">railway_url_production</code> is set (e.g. after deploy with Railway credentials).
                   </p>
                 )}
+                {import.meta.env.VITE_USE_REAL_API === '1' ? (
+                  <div className="mt-5 border-t border-violet-200/50 pt-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-violet-800/90">Contact form inbox</p>
+                      <Button type="button" variant="ghost" className="h-auto p-0 text-xs font-semibold text-violet-700" onClick={() => void reloadFormSubmissions()}>
+                        Refresh
+                      </Button>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-600">Submissions from site HTML forms posting to /api/forms/… </p>
+                    {formSubmissionsLoading ? (
+                      <p className="mt-3 text-sm text-slate-500">Loading…</p>
+                    ) : formSubmissions.length === 0 ? (
+                      <p className="mt-3 text-xs text-slate-500">No submissions yet.</p>
+                    ) : (
+                      <ul className="mt-3 space-y-3">
+                        {formSubmissions.map((sub) => (
+                          <li
+                            key={sub.id}
+                            className={cn(
+                              'rounded-lg border bg-white px-3 py-2.5 text-xs ring-slate-900/[0.04]',
+                              sub.read_flag ? 'border-slate-200/80' : 'border-violet-200/70 ring-2 ring-violet-100/50'
+                            )}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-semibold text-slate-900">
+                                {new Date(sub.submitted_at).toLocaleString()}
+                              </span>
+                              {!sub.read_flag ? <Badge variant="info">New</Badge> : <Badge variant="neutral">Read</Badge>}
+                            </div>
+                            <pre className="mt-2 max-h-32 overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-700">
+                              {(() => {
+                                try {
+                                  return JSON.stringify(sub.fields ?? {}, null, 2);
+                                } catch {
+                                  return String(sub.fields);
+                                }
+                              })()}
+                            </pre>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="mt-2 h-auto p-0 text-xs font-semibold text-violet-700"
+                              onClick={() => void markFormRead(sub.id, !sub.read_flag)}
+                            >
+                              Mark {sub.read_flag ? 'unread' : 'read'}
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Pages in this site</p>

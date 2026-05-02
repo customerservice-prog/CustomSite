@@ -20,6 +20,7 @@ const previewSiteMiddleware = require('./routes/previewSite');
 const { devModeApiStub } = require('./middleware/devModeApiStub');
 const { router: paymentsRoutes, handleWebhook } = require('./routes/payments');
 const configPublicRoutes = require('./routes/configPublic');
+const formsPublicRoutes = require('./routes/formsPublic');
 const { isSupabaseConfigured } = require('./lib/supabase');
 const { isDevAuthEnabled } = require('./lib/devAuth');
 const { isPlatformHostname } = require('./lib/customsitePlatformHosts');
@@ -115,6 +116,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(devModeApiStub);
 
 app.use('/api/contact', contactRoutes);
+app.use('/api/forms', formsPublicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/messages', messagesRoutes);
