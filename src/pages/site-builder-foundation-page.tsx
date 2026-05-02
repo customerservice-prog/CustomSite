@@ -2372,12 +2372,17 @@ export function SiteBuilderFoundationPage() {
                       Railway may also show a TXT record for verification — use <strong>Register on Railway</strong> below, then follow the records Railway returns
                       (or the Railway dashboard).
                     </p>
+                    <p className="text-zinc-500">
+                      Save the apex as <code className="text-zinc-200">custom_domain</code> (no <code className="text-zinc-200">www</code>); this app redirects{' '}
+                      <code className="text-zinc-200">www</code> → apex. Point DNS using the hostname Railway shows — copy it into your registrar verbatim.
+                    </p>
                   </div>
                 ) : (
                   <p className="mt-2 text-xs text-zinc-400">
                     After a successful production deploy with <code className="text-zinc-200">RAILWAY_API_TOKEN</code> and <code className="text-zinc-200">RAILWAY_TEAM_ID</code> on the server, the
                     project gets a default <code className="text-zinc-200">*.up.railway.app</code> hostname — then this panel shows the exact CNAME target. Until then, open Railway and copy the
-                    service URL, or paste it into the project via the API as <code className="text-zinc-200">railway_url_production</code>.
+                    service URL, or paste it into the project via the API as <code className="text-zinc-200">railway_url_production</code>. Save the apex as your production domain —{' '}
+                    <code className="text-zinc-200">www</code> redirects to apex automatically once DNS resolves.
                   </p>
                 )}
               </section>

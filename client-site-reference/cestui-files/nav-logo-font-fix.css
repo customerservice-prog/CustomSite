@@ -1,0 +1,21 @@
+/* Paste into styles.css — fixes “CESTUI” missing when Share Tech Mono is slow/unavailable */
+
+.nav-logo,
+.nav-logo .cestui,
+.nav-logo .files {
+  font-family: "Share Tech Mono", ui-monospace, "Cascadia Code", Consolas,
+    "Liberation Mono", "Courier New", monospace !important;
+  font-synthesis: weight style;
+}
+
+.nav-logo .cestui {
+  color: var(--red) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.nav-logo .files {
+  color: var(--white) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}

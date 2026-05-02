@@ -939,6 +939,15 @@ export function ProjectDetailPage() {
                   <code className="rounded bg-white px-1 text-slate-800">site_files</code> (not the agency admin). At your DNS provider, point the apex with an{' '}
                   <strong>A record</strong> to the IP from <strong>Railway → Networking</strong>, or use a <strong>CNAME</strong> for <code className="text-slate-800">www</code> to your Railway hostname.
                 </p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                  <span className="font-semibold text-slate-800">Apex vs www · Railway</span>: Save the apex hostname here (example{' '}
+                  <code className="rounded bg-white px-1 text-slate-800">yourdomain.com</code>, not{' '}
+                  <code className="rounded bg-white px-1 text-slate-800">www</code>). Requests to{' '}
+                  <code className="rounded bg-white px-1 text-slate-800">www.yourdomain.com</code> are{' '}
+                  <strong>301-redirected</strong> to the apex. Add the domain in Railway on the production service — Railway displays the{' '}
+                  <strong>CNAME/A/TXT</strong> values to enter at your registrar; use those exact targets (Railway-supplied hostname or IP often ends in{' '}
+                  <code className="text-slate-800">railway.app</code>).
+                </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <div>
                     <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-host-domain">
