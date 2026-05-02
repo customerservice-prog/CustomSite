@@ -98,7 +98,58 @@ function safeSelectSiteFiles() {
   return 'path, content, updated_at, content_encoding';
 }
 
-const PROJECT_STATUS_ALLOWED = ['discovery', 'design', 'development', 'review', 'live'];
+async function querySiteFilesList(supabase, projectId) {
+  const attempts = [
+    'path, updated_at, content_encoding, size_bytes',
+    'path, updated_at, content_encoding',
+    'path, updated_at',
+  ];
+  let lastErr;
+  for (const sel of attempts) {
+    const { data, error } = await supabase.from('site_files').select(sel).eq('project_id', projectId).order('path');
+    if (!error) return { data: data || [] };
+    lastErr = error;
+  }
+  return { error: lastErr };
+}
+
+function mapSiteFileListPayload(data) {
+  return (data || []).map((row) => ({
+    path: row.path,
+    updated_at: row.updated_at,
+    content_encoding: row.content_encoding || 'utf8',
+    size: row.size_bytes != null ? Number(row.size_bytes) : null,
+  }));
+}
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+router.get('/projects/:projectId/site', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const { data, error } = await querySiteFilesList(supabase, projectId);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ files: mapSiteFileListPayload(data) });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/** Alias: clients expect plural `/site/files` — same payload as GET …/site (no heavy `content` column). */
+router.get('/projects/:projectId/site/files', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const supabase = getService();
+    const { data, error } = await querySiteFilesList(supabase, projectId);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ files: mapSiteFileListPayload(data) });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
 
 function hostingPatchFromBody(b) {
   const patch = {};
@@ -126,44 +177,7 @@ function hostingPatchFromBody(b) {
   return patch;
 }
 
-const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-router.get('/projects/:projectId/site', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    const supabase = getService();
-    let data;
-    let error;
-    const try1 = await supabase
-      .from('site_files')
-      .select(safeSelectSiteFiles())
-      .eq('project_id', projectId)
-      .order('path');
-    ({ data, error } = try1);
-    if (error) {
-      if (!/content_encoding/.test(String(error.message))) {
-        return res.status(500).json({ error: error.message });
-      }
-      const try2 = await supabase
-        .from('site_files')
-        .select('path, updated_at')
-        .eq('project_id', projectId)
-        .order('path');
-      data = try2.data;
-      error = try2.error;
-    }
-    if (error) return res.status(500).json({ error: error.message });
-    const files = (data || []).map((row) => ({
-      path: row.path,
-      updated_at: row.updated_at,
-      content_encoding: row.content_encoding || 'utf8',
-    }));
-    return res.json({ files });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
+const PROJECT_STATUS_ALLOWED = ['discovery', 'design', 'development', 'review', 'live'];
 
 router.get('/projects/:projectId/site/file', async (req, res) => {
   try {

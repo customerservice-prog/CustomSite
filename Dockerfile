@@ -4,7 +4,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build:admin
+# Same gates as CI — blocks broken TypeScript / tests from reaching production images.
+RUN npm run launch:check
 
 FROM node:20-alpine
 WORKDIR /app
