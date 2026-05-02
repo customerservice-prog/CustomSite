@@ -2,6 +2,8 @@
 
 const express = require('express');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
+const { probeYoutubeMqThumbnail } = require('../lib/youtubeMqThumbnailProbe');
+const { upsertEmbeddedYoutubeFromProjectSiteFiles } = require('../lib/projectVideosHtmlSync');
 
 const router = express.Router();
 
@@ -73,6 +75,102 @@ router.post('/internal/cron/rollup-site-analytics', async (req, res) => {
       date: dateStr,
       projects_touched: upserted,
       raw_rows: (rows || []).length,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * Nightly: sync YouTube IDs from HTML into project_videos, then mqdefault thumbnail probe.
+ * Flags dead ids (narrow ~120×90 “Video unavailable” thumb vs ~320×180 live).
+ */
+router.post('/internal/cron/check-video-health', async (_req, res) => {
+  try {
+    if (!requireCronSecret(_req, res)) return;
+    if (!isSupabaseConfigured()) return res.status(503).json({ error: 'Supabase not configured' });
+    const supabase = getService();
+
+    const { data: projectRows } = await supabase.from('projects').select('id').limit(500);
+    const projectIds = (projectRows || []).map((r) => r.id).filter(Boolean);
+    const embedded_upserts = { inserted: 0, skipped: 0, metadata_patched: 0, projects_scanned: 0 };
+
+    for (const pid of projectIds) {
+      try {
+        const r = await upsertEmbeddedYoutubeFromProjectSiteFiles(supabase, pid);
+        embedded_upserts.inserted += r.inserted || 0;
+        embedded_upserts.skipped += r.skipped || 0;
+        embedded_upserts.metadata_patched += r.metadata_patched || 0;
+        embedded_upserts.projects_scanned += 1;
+      } catch (e) {
+        console.warn('[cron video-health] embedded scan', pid, e.message || e);
+      }
+    }
+
+    let checked = 0;
+    let ok = 0;
+    let unavailable = 0;
+    /** Privacy-safe aggregate log only (no video titles / PII). */
+    const unhealthyByProject = {};
+
+    const pageSize = 80;
+    for (let off = 0; ; off += pageSize) {
+      const { data: batch, error: rngErr } = await supabase
+        .from('project_videos')
+        .select('id, project_id, youtube_id')
+        .order('created_at', { ascending: true })
+        .range(off, off + pageSize - 1);
+      if (rngErr) {
+        if (/health_status|health_checked|does not exist/i.test(String(rngErr.message))) {
+          return res.status(503).json({ error: 'Run migration 009_project_video_health.sql' });
+        }
+        return res.status(500).json({ error: rngErr.message });
+      }
+      if (!batch || batch.length === 0) break;
+
+      for (const row of batch) {
+        checked += 1;
+        await new Promise((r) => setTimeout(r, 40));
+        const probe = await probeYoutubeMqThumbnail(row.youtube_id);
+        const nowIso = new Date().toISOString();
+        const healthOk = probe.ok;
+        /** @type {Record<string, unknown>} */
+        const patch = {
+          health_status: healthOk ? 'ok' : 'unavailable',
+          health_checked_at: nowIso,
+          last_checked: nowIso,
+        };
+        if (!healthOk) {
+          patch.status = 'unavailable';
+          unavailable += 1;
+          unhealthyByProject[row.project_id] = (unhealthyByProject[row.project_id] || 0) + 1;
+        } else {
+          patch.status = 'active';
+          ok += 1;
+        }
+
+        let { error: uerr } = await supabase.from('project_videos').update(patch).eq('id', row.id).eq('project_id', row.project_id);
+        if (
+          uerr &&
+          (/health_status|health_checked/i.test(String(uerr.message)) || /column/i.test(String(uerr.message)))
+        ) {
+          const { health_status: _hs, health_checked_at: _hca, ...rest } = patch;
+          ({ error: uerr } = await supabase.from('project_videos').update(rest).eq('id', row.id).eq('project_id', row.project_id));
+        }
+        if (uerr) console.warn('[cron video-health] update', row.id, uerr.message);
+      }
+    }
+
+    for (const [pid, count] of Object.entries(unhealthyByProject)) {
+      console.warn('[video-health] project', pid, count, 'video(s) marked unavailable (thumbnail probe)');
+    }
+
+    return res.json({
+      checked,
+      ok,
+      unavailable,
+      embedded_upserts,
     });
   } catch (e) {
     console.error(e);

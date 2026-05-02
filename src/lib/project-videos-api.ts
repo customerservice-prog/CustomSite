@@ -12,9 +12,18 @@ export type ProjectVideoRow = {
   duration?: string | null;
   view_count?: string | null;
   status?: string | null;
+  /** Thumbnail mq probe: unchecked | ok | unavailable */
+  health_status?: string | null;
+  health_checked_at?: string | null;
   last_checked?: string | null;
   sort_order?: number | null;
   created_at?: string | null;
+  /** best_of_jm | podcast | custom — site HTML / .video-card lineage */
+  source?: string | null;
+  /** Matches data-category on site (podcast, religion, power, …) */
+  category?: string | null;
+  episode_number?: number | null;
+  playlist_id?: string | null;
 };
 
 export type CheckVideosSummary = {
@@ -75,6 +84,25 @@ export function cacheAdminProjectVideoThumbnails(projectId: string): Promise<
   });
 }
 
+export function replaceAdminProjectVideoYoutube(
+  projectId: string,
+  videoRowId: string,
+  body: { youtube_id?: string; replacement_youtube_id?: string; patch_site_html?: boolean }
+): Promise<
+  AdminJsonResult<{
+    video?: ProjectVideoRow;
+    pathsUpdated?: number;
+  }>
+> {
+  return adminFetchJson(
+    `/api/admin/projects/${encodeURIComponent(projectId)}/videos/${encodeURIComponent(videoRowId)}/replace-youtube`,
+    {
+      method: 'POST',
+      json: body,
+    }
+  );
+}
+
 export type PublicProjectVideoItem = {
   id: string;
   youtube_id: string;
@@ -82,6 +110,10 @@ export type PublicProjectVideoItem = {
   thumbnail: string;
   status: string;
   watchUrl?: string;
+  source?: string;
+  category?: string | null;
+  episode_number?: number | null;
+  playlist_id?: string | null;
 };
 
 /** Unauthenticated catalog for deployed client sites (`/api/public/...`). */

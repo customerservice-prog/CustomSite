@@ -636,10 +636,13 @@ function devModeApiStub(req, res, next) {
           if (typeof meta.thumbnail_url === 'string') row.thumbnail_url = meta.thumbnail_url;
           if (typeof meta.author_name === 'string') row.author_name = meta.author_name;
           row.status = 'active';
+          row.health_status = 'ok';
         } else {
           unavailable += 1;
           row.status = 'unavailable';
+          row.health_status = 'unavailable';
         }
+        row.health_checked_at = nowIso;
         row.last_checked = nowIso;
       }
       return res.json({
@@ -686,7 +689,7 @@ function devModeApiStub(req, res, next) {
       const row = devEnsVideos(projectId).find((r) => r.id === videoId);
       if (!row) return res.status(404).json({ error: 'Not found' });
       const b = req.body || {};
-      ['title', 'description', 'author_name', 'thumbnail_url', 'cached_thumbnail', 'duration', 'view_count', 'status', 'sort_order'].forEach(
+      ['title', 'description', 'author_name', 'thumbnail_url', 'cached_thumbnail', 'duration', 'view_count', 'status', 'sort_order', 'health_status', 'health_checked_at', 'source', 'category', 'episode_number', 'playlist_id'].forEach(
         (k) => {
           if (b[k] !== undefined) row[k] = b[k];
         }
@@ -728,9 +731,15 @@ function devModeApiStub(req, res, next) {
         duration: null,
         view_count: null,
         status: 'active',
+        health_status: 'unchecked',
+        health_checked_at: null,
         last_checked: new Date().toISOString(),
         sort_order: list.length,
         created_at: new Date().toISOString(),
+        source: 'best_of_jm',
+        category: null,
+        episode_number: null,
+        playlist_id: null,
       };
       list.push(row);
       if (row.thumbnail_url) {
@@ -738,6 +747,26 @@ function devModeApiStub(req, res, next) {
       }
       return res.status(201).json({ video: row });
     })();
+  }
+  const devVidReplace = /^\/api\/admin\/projects\/([^/]+)\/videos\/([^/]+)\/replace-youtube$/;
+  if (m === 'POST' && devVidReplace.test(p)) {
+    const [, projectId, videoId] = p.match(devVidReplace);
+    if (!devVideoRowId.test(videoId)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const row = devEnsVideos(projectId).find((r) => r.id === videoId);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    const newYt = extractYoutubeId(String((req.body && (req.body.youtube_id || req.body.replacement_youtube_id)) || ''));
+    if (!newYt) return res.status(400).json({ error: 'replacement youtube id required' });
+    if (devEnsVideos(projectId).some((r) => r.youtube_id === newYt && r.id !== videoId)) {
+      return res.status(409).json({ error: 'That video ID is already on this project' });
+    }
+    row.youtube_id = newYt;
+    row.cached_thumbnail = null;
+    row.status = 'active';
+    row.health_status = 'unchecked';
+    row.health_checked_at = new Date().toISOString();
+    return res.json({ video: row, pathsUpdated: 0 });
   }
 
   if (p.startsWith('/api/admin/')) {

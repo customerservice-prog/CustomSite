@@ -5,6 +5,8 @@ const { rateLimit } = require('express-rate-limit');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { extractYoutubeId, fetchYoutubeOembed, probeYoutubeAvailability } = require('../lib/youtubeUtils');
+const { probeYoutubeMqThumbnail } = require('../lib/youtubeMqThumbnailProbe');
+const { replaceYoutubeIdAcrossSiteHtmlFiles } = require('../lib/projectVideosHtmlSync');
 
 const STORAGE_BUCKET = String(process.env.CUSTOMSITE_STORAGE_BUCKET || 'project-assets').trim() || 'project-assets';
 
@@ -27,7 +29,7 @@ publicRouter.get('/public/projects/:projectId/videos', publicVideosLimiter, asyn
     const { data, error } = await supabase
       .from('project_videos')
       .select(
-        'id, youtube_id, title, description, author_name, thumbnail_url, cached_thumbnail, status, sort_order, last_checked'
+        'id, youtube_id, title, description, author_name, thumbnail_url, cached_thumbnail, status, sort_order, last_checked, source, category, episode_number, playlist_id'
       )
       .eq('project_id', projectId)
       .order('sort_order', { ascending: true })
@@ -56,6 +58,10 @@ publicRouter.get('/public/projects/:projectId/videos', publicVideosLimiter, asyn
         status: row.status || 'active',
         sort_order: row.sort_order,
         last_checked: row.last_checked,
+        source: row.source ?? 'best_of_jm',
+        category: row.category ?? null,
+        episode_number: row.episode_number ?? null,
+        playlist_id: row.playlist_id ?? null,
         watchUrl: `https://www.youtube.com/watch?v=${encodeURIComponent(row.youtube_id)}`,
       };
     });
@@ -174,11 +180,16 @@ adminRouter.post('/projects/:projectId/videos', express.json({ limit: '64kb' }),
       author_name,
       thumbnail_url,
       status: 'active',
+      health_status: 'unchecked',
       sort_order,
       last_checked: new Date().toISOString(),
     };
 
-    const { data: row, error } = await supabase.from('project_videos').insert(insertRow).select('*').maybeSingle();
+    let { data: row, error } = await supabase.from('project_videos').insert(insertRow).select('*').maybeSingle();
+    if (error && /health_status|health_checked/i.test(String(error.message))) {
+      delete insertRow.health_status;
+      ({ data: row, error } = await supabase.from('project_videos').insert(insertRow).select('*').maybeSingle());
+    }
     if (error) {
       if (migrationHint(error)) {
         return res.status(503).json({ error: 'Run migration 007_project_videos.sql' });
@@ -213,7 +224,7 @@ adminRouter.put('/projects/:projectId/videos/:videoId', express.json({ limit: '1
     const { projectId, videoId } = req.params;
     const b = req.body || {};
     const patch = {};
-    ['title', 'description', 'author_name', 'thumbnail_url', 'cached_thumbnail', 'duration', 'view_count', 'status', 'sort_order'].forEach(
+    ['title', 'description', 'author_name', 'thumbnail_url', 'cached_thumbnail', 'duration', 'view_count', 'status', 'sort_order', 'health_status', 'health_checked_at', 'source', 'category', 'episode_number', 'playlist_id'].forEach(
       (k) => {
         if (b[k] !== undefined) patch[k] = b[k];
       }
@@ -235,6 +246,126 @@ adminRouter.put('/projects/:projectId/videos/:videoId', express.json({ limit: '1
     }
     if (!data) return res.status(404).json({ error: 'Not found' });
     return res.json({ video: data });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/** POST → replace dead YouTube ID: update DB row + optional global find-replace in all site HTML files */
+adminRouter.post('/projects/:projectId/videos/:videoId/replace-youtube', express.json({ limit: '32kb' }), async (req, res) => {
+  try {
+    if (!isSupabaseConfigured()) return res.status(503).json({ error: 'Supabase not configured' });
+    const { projectId, videoId } = req.params;
+    const newRaw = req.body?.youtube_id || req.body?.replacement_youtube_id || req.body?.url;
+    const newId = extractYoutubeId(String(newRaw || ''));
+    if (!newId) return res.status(400).json({ error: 'replacement youtube_id or youtube URL required' });
+
+    const patchSiteHtml = req.body?.patch_site_html !== false && req.body?.replace_in_html !== false;
+
+    const supabase = getService();
+    const { data: cur, error: ferr } = await supabase.from('project_videos').select('*').eq('id', videoId).eq('project_id', projectId).maybeSingle();
+    if (ferr) {
+      if (migrationHint(ferr)) return res.status(503).json({ error: 'Run migration 007_project_videos.sql' });
+      return res.status(500).json({ error: ferr.message });
+    }
+    if (!cur) return res.status(404).json({ error: 'Not found' });
+    const oldId = String(cur.youtube_id || '').trim();
+    if (oldId === newId) return res.status(400).json({ error: 'New ID matches current' });
+
+    const { data: dup } = await supabase
+      .from('project_videos')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('youtube_id', newId)
+      .neq('id', videoId)
+      .maybeSingle();
+    if (dup?.id) return res.status(409).json({ error: 'That video ID is already on this project', id: dup.id });
+
+    let pathsUpdated = 0;
+    if (patchSiteHtml && oldId.length === 11) {
+      pathsUpdated = (await replaceYoutubeIdAcrossSiteHtmlFiles(supabase, projectId, oldId, newId)).pathsUpdated;
+    }
+
+    const meta = await fetchYoutubeOembed(newId);
+    const thumbProbe = await probeYoutubeMqThumbnail(newId);
+    const nowIso = new Date().toISOString();
+    /** @type {Record<string, unknown>} */
+    const upd = {
+      youtube_id: newId,
+      title: meta?.title?.trim() || cur.title || `YouTube ${newId}`,
+      author_name: meta?.author_name ?? cur.author_name,
+      thumbnail_url: meta?.thumbnail_url ?? cur.thumbnail_url,
+      cached_thumbnail: null,
+      status: thumbProbe.ok ? 'active' : 'unavailable',
+      last_checked: nowIso,
+      health_status: thumbProbe.ok ? 'ok' : 'unavailable',
+      health_checked_at: nowIso,
+      /** Keep catalog lineage when swapping a dead ID for a live one */
+      source: cur.source,
+      category: cur.category,
+      episode_number: cur.episode_number,
+      playlist_id: cur.playlist_id,
+    };
+
+    let { data: finalRow, error: uerr } = await supabase
+      .from('project_videos')
+      .update(upd)
+      .eq('id', videoId)
+      .eq('project_id', projectId)
+      .select('*')
+      .maybeSingle();
+
+    if (
+      uerr &&
+      /duplicate|unique/i.test(String(uerr.message)) &&
+      /youtube_id/i.test(String(uerr.message))
+    ) {
+      return res.status(409).json({ error: 'Could not apply new ID (duplicate unique constraint)' });
+    }
+
+    if (uerr && /health_status|health_checked/i.test(String(uerr.message))) {
+      delete upd.health_status;
+      delete upd.health_checked_at;
+      ({ data: finalRow, error: uerr } = await supabase
+        .from('project_videos')
+        .update(upd)
+        .eq('id', videoId)
+        .eq('project_id', projectId)
+        .select('*')
+        .maybeSingle());
+    }
+    if (
+      uerr &&
+      /\b(?:source|category|episode_number|playlist_id)\b/i.test(String(uerr.message || ''))
+    ) {
+      delete upd.source;
+      delete upd.category;
+      delete upd.episode_number;
+      delete upd.playlist_id;
+      ({ data: finalRow, error: uerr } = await supabase
+        .from('project_videos')
+        .update(upd)
+        .eq('id', videoId)
+        .eq('project_id', projectId)
+        .select('*')
+        .maybeSingle());
+    }
+    if (uerr) {
+      if (migrationHint(uerr)) return res.status(503).json({ error: 'Run migration 007_project_videos.sql' });
+      return res.status(500).json({ error: uerr.message });
+    }
+
+    if (finalRow?.thumbnail_url) {
+      try {
+        await cacheOneThumbnail(supabase, finalRow);
+        const { data: again } = await supabase.from('project_videos').select('*').eq('id', videoId).maybeSingle();
+        return res.json({ video: again || finalRow, pathsUpdated });
+      } catch (e) {
+        console.warn('[videos] replace cache', e.message || e);
+      }
+    }
+    return res.json({ video: finalRow, pathsUpdated });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
@@ -300,12 +431,16 @@ adminRouter.post('/projects/:projectId/videos/check', async (req, res) => {
 
     const nowIso = new Date().toISOString();
     for (const row of list) {
-      const probe = await probeYoutubeAvailability(row.youtube_id);
-      if (probe.ok) {
+      const mq = await probeYoutubeMqThumbnail(row.youtube_id);
+      if (mq.ok) {
         active += 1;
+        const probe = await probeYoutubeAvailability(row.youtube_id);
         const m = probe.meta || {};
+        /** @type {Record<string, unknown>} */
         const patch = {
           status: 'active',
+          health_status: 'ok',
+          health_checked_at: nowIso,
           last_checked: nowIso,
           title:
             typeof m.title === 'string' && String(m.title).trim()
@@ -316,14 +451,29 @@ adminRouter.post('/projects/:projectId/videos/check', async (req, res) => {
           thumbnail_url:
             typeof m.thumbnail_url === 'string' ? m.thumbnail_url : row.thumbnail_url,
         };
-        await supabase.from('project_videos').update(patch).eq('id', row.id).eq('project_id', projectId);
+        let { error: ue } = await supabase.from('project_videos').update(patch).eq('id', row.id).eq('project_id', projectId);
+        if (ue && /health_status|health_checked/i.test(String(ue.message))) {
+          delete patch.health_status;
+          delete patch.health_checked_at;
+          ({ error: ue } = await supabase.from('project_videos').update(patch).eq('id', row.id).eq('project_id', projectId));
+        }
+        if (ue) console.warn('[videos/check]', ue.message);
       } else {
         unavailable += 1;
-        await supabase
-          .from('project_videos')
-          .update({ status: 'unavailable', last_checked: nowIso })
-          .eq('id', row.id)
-          .eq('project_id', projectId);
+        /** @type {Record<string, unknown>} */
+        const patch = {
+          status: 'unavailable',
+          health_status: 'unavailable',
+          health_checked_at: nowIso,
+          last_checked: nowIso,
+        };
+        let { error: ue } = await supabase.from('project_videos').update(patch).eq('id', row.id).eq('project_id', projectId);
+        if (ue && /health_status|health_checked/i.test(String(ue.message))) {
+          delete patch.health_status;
+          delete patch.health_checked_at;
+          ({ error: ue } = await supabase.from('project_videos').update(patch).eq('id', row.id).eq('project_id', projectId));
+        }
+        if (ue) console.warn('[videos/check]', ue.message);
       }
     }
 

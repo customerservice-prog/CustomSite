@@ -14,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   Rocket,
+  Search,
   Sparkles,
   Trash2,
   Video,
@@ -72,6 +73,7 @@ import {
   deleteAdminProjectVideo,
   fetchAdminProjectVideos,
   reorderAdminProjectVideos,
+  replaceAdminProjectVideoYoutube,
   type ProjectVideoRow,
 } from '@/lib/project-videos-api';
 
@@ -148,6 +150,16 @@ const CLIENT_SITE_STATUS_LABEL: Record<'draft' | 'review' | 'live', string> = {
   review: 'Review — QA or stakeholder sign-off',
   live: 'Live — production URL in use',
 };
+
+function resolveVideoHealthTone(v: ProjectVideoRow): 'ok' | 'bad' | 'unknown' {
+  const h = String(v.health_status || '').toLowerCase();
+  if (h === 'ok') return 'ok';
+  if (h === 'unavailable') return 'bad';
+  if (h === 'unchecked') return 'unknown';
+  const st = String(v.status || '').toLowerCase();
+  if (st === 'unavailable') return 'bad';
+  return 'unknown';
+}
 
 export function SiteBuilderFoundationPage() {
   const { toast } = useShell();
@@ -251,6 +263,7 @@ export function SiteBuilderFoundationPage() {
   const [videosBusy, setVideosBusy] = useState(false);
   const [videoCheckBusy, setVideoCheckBusy] = useState(false);
   const [videoThumbWarmBusy, setVideoThumbWarmBusy] = useState(false);
+  const [replaceYoutubeDraft, setReplaceYoutubeDraft] = useState<Record<string, string>>({});
   const [youtubePaste, setYoutubePaste] = useState('');
   const [previewYoutubeId, setPreviewYoutubeId] = useState<string | null>(null);
   const [dragVideoId, setDragVideoId] = useState<string | null>(null);
@@ -735,6 +748,54 @@ export function SiteBuilderFoundationPage() {
     },
     [projectId, refreshProjectVideos, toast]
   );
+
+  const submitReplaceYoutube = useCallback(
+    async (videoRowId: string, draftRaw: string) => {
+      if (!projectId) return;
+      if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+        toast('Sign in with the live API to replace IDs.', 'error');
+        return;
+      }
+      const raw = String(draftRaw || '').trim();
+      if (!raw) {
+        toast('Enter a replacement YouTube URL or 11-character ID.', 'error');
+        return;
+      }
+      setVideosBusy(true);
+      try {
+        const r = await replaceAdminProjectVideoYoutube(projectId, videoRowId, {
+          youtube_id: raw,
+          patch_site_html: true,
+        });
+        if (!r.ok) {
+          toast(r.error, 'error');
+          return;
+        }
+        const pu = r.data.pathsUpdated ?? 0;
+        toast(
+          pu > 0
+            ? `Replaced everywhere — catalog + ${pu} HTML file(s).`
+            : `Catalog updated (${pu} HTML files matched this ID — check raw HTML paths).`,
+          'success'
+        );
+        setReplaceYoutubeDraft((m) => {
+          const next = { ...m };
+          delete next[videoRowId];
+          return next;
+        });
+        await refreshProjectVideos();
+      } finally {
+        setVideosBusy(false);
+      }
+    },
+    [projectId, refreshProjectVideos, toast]
+  );
+
+  const openYoutubeSearchForTitle = useCallback((title: string) => {
+    const q = encodeURIComponent((title || 'video').trim() || 'video');
+    const w = window.open(`https://www.youtube.com/results?search_query=${q}`, '_blank', 'noopener,noreferrer');
+    if (!w) toast('Allow pop-ups to search on YouTube.', 'error');
+  }, [toast]);
 
   const applyVideoReorderDrop = useCallback(
     async (targetId: string) => {
@@ -1698,7 +1759,10 @@ export function SiteBuilderFoundationPage() {
                               </Button>
                             </div>
                             <p className="text-[9px] leading-snug text-zinc-600">
-                              Drag rows to reorder. Public endpoint:{' '}
+                              Dots reflect thumbnail probes (grey until <span className="text-zinc-500">Refresh all</span>; red = replace). On save, YouTube IDs sync to the catalog; add{' '}
+                              <code className="rounded bg-black/40 px-0.5 font-mono text-[8px] text-zinc-500">data-category</code>,{' '}
+                              <code className="rounded bg-black/40 px-0.5 font-mono text-[8px] text-zinc-500">data-episode</code> on{' '}
+                              <code className="rounded bg-black/40 px-0.5 font-mono text-[8px] text-zinc-500">.video-card</code> for podcast vs channel metadata. Nightly cron can re-probe thumbnails. Drag to reorder. Public:{' '}
                               <code className="break-all rounded bg-black/40 px-0.5 text-[8px] text-zinc-500">
                                 GET /api/public/projects/&lt;projectId&gt;/videos
                               </code>
@@ -1716,65 +1780,143 @@ export function SiteBuilderFoundationPage() {
                             ) : (
                               <ul className="space-y-1.5 pb-2">
                                 {projectVideos.map((v) => {
-                                  const thumb = v.cached_thumbnail || v.thumbnail_url || '';
-                                  const ok = String(v.status || 'active').toLowerCase() === 'active';
+                                  const tone = resolveVideoHealthTone(v);
+                                  const thumb =
+                                    v.cached_thumbnail || v.thumbnail_url || `https://img.youtube.com/vi/${encodeURIComponent(v.youtube_id)}/mqdefault.jpg`;
                                   const lc = v.last_checked ? new Date(v.last_checked).toLocaleString() : '—';
+                                  const lh = v.health_checked_at ? new Date(v.health_checked_at).toLocaleString() : '—';
+                                  const dotColor =
+                                    tone === 'ok' ? '#22c55e' : tone === 'bad' ? '#ef4444' : '#a1a1aa';
+                                  const dotTitle =
+                                    tone === 'ok'
+                                      ? 'Thumbnail health: OK (live)'
+                                      : tone === 'bad'
+                                        ? 'Unavailable / dead thumbnail'
+                                        : 'Not checked yet — use Refresh all';
                                   return (
                                     <li key={v.id}>
-                                      <div
-                                        draggable
-                                        onDragStart={() => setDragVideoId(v.id)}
-                                        onDragEnd={() => setDragVideoId(null)}
-                                        onDragOver={(ev) => ev.preventDefault()}
-                                        onDrop={(ev) => {
-                                          ev.preventDefault();
-                                          void applyVideoReorderDrop(v.id);
-                                        }}
-                                        role="presentation"
-                                        className={cn(
-                                          'flex cursor-grab gap-1.5 rounded-md bg-white/[0.04] p-1.5 ring-1 ring-white/10 active:cursor-grabbing',
-                                          dragVideoId === v.id && 'opacity-75 ring-violet-500/40'
-                                        )}
-                                      >
-                                        <GripVertical className="mt-1 h-4 w-4 shrink-0 text-zinc-600" aria-hidden />
-                                        <button
-                                          type="button"
-                                          className="min-w-0 flex-1 text-left"
-                                          onClick={() => setPreviewYoutubeId(v.youtube_id)}
-                                        >
-                                          <div className="flex gap-2">
-                                            <img
-                                              src={thumb || '/assets/video-unavailable.png'}
-                                              alt=""
-                                              className="h-11 w-[4.85rem] shrink-0 rounded object-cover"
-                                              loading="lazy"
-                                              onError={(e) => {
-                                                e.currentTarget.src = '/assets/video-unavailable.png';
-                                              }}
-                                            />
-                                            <div className="min-w-0 flex-1">
-                                              <span
-                                                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"
-                                                style={{ backgroundColor: ok ? '#22c55e' : '#ef4444' }}
-                                                title={ok ? 'Active on YouTube' : 'Unavailable or removed'}
-                                                aria-hidden
-                                              />
-                                              <p className="line-clamp-2 text-[10px] font-medium leading-snug text-zinc-200">{v.title}</p>
-                                              <p className="mt-0.5 text-[8px] text-zinc-600">Checked: {lc}</p>
-                                            </div>
-                                          </div>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="shrink-0 self-start rounded p-1 text-zinc-500 hover:bg-red-950/40 hover:text-red-300"
-                                          aria-label="Remove video"
-                                          onClick={(ev) => {
-                                            ev.stopPropagation();
-                                            void deleteProjectVideoRow(v.id);
+                                      <div className="space-y-1">
+                                        <div
+                                          draggable
+                                          data-video-catalog-card
+                                          onDragStart={() => setDragVideoId(v.id)}
+                                          onDragEnd={() => setDragVideoId(null)}
+                                          onDragOver={(ev) => ev.preventDefault()}
+                                          onDrop={(ev) => {
+                                            ev.preventDefault();
+                                            void applyVideoReorderDrop(v.id);
                                           }}
+                                          role="presentation"
+                                          className={cn(
+                                            'flex cursor-grab gap-1.5 rounded-md bg-white/[0.04] p-1.5 ring-1 ring-white/10 active:cursor-grabbing',
+                                            dragVideoId === v.id && 'opacity-75 ring-violet-500/40'
+                                          )}
                                         >
-                                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                                        </button>
+                                          <GripVertical className="mt-1 h-4 w-4 shrink-0 text-zinc-600" aria-hidden />
+                                          <button
+                                            type="button"
+                                            className="min-w-0 flex-1 text-left"
+                                            onClick={() => setPreviewYoutubeId(v.youtube_id)}
+                                          >
+                                            <div className="flex gap-2">
+                                              <img
+                                                src={thumb}
+                                                alt=""
+                                                className="h-11 w-[4.85rem] shrink-0 rounded object-cover"
+                                                loading="lazy"
+                                                onError={(e) => {
+                                                  const shell = e.currentTarget.closest('[data-video-catalog-card]');
+                                                  if (shell instanceof HTMLElement) {
+                                                    shell.style.display = 'none';
+                                                    return;
+                                                  }
+                                                  e.currentTarget.style.opacity = '0';
+                                                }}
+                                              />
+                                              <div className="min-w-0 flex-1">
+                                                <span
+                                                  className={cn(
+                                                    'inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle',
+                                                    tone === 'unknown' && 'ring-1 ring-zinc-500/40'
+                                                  )}
+                                                  style={{ backgroundColor: dotColor }}
+                                                  title={dotTitle}
+                                                  aria-hidden
+                                                />
+                                                <p className="line-clamp-2 text-[10px] font-medium leading-snug text-zinc-200">
+                                                  {v.title}
+                                                </p>
+                                                {v.source || v.category || v.episode_number != null ? (
+                                                  <p className="mt-0.5 text-[8px] text-zinc-500">
+                                                    {v.source === 'podcast'
+                                                      ? 'Podcast'
+                                                      : v.source === 'best_of_jm'
+                                                        ? 'Best of channel'
+                                                        : v.source ?? '—'}
+                                                    {v.category ? ` · ${v.category}` : ''}
+                                                    {v.episode_number != null ? ` · ep ${v.episode_number}` : ''}
+                                                  </p>
+                                                ) : null}
+                                                <p className="mt-0.5 text-[8px] text-zinc-600">
+                                                  Health:{' '}
+                                                  <span className="font-semibold capitalize">{v.health_status ?? 'unchecked'}</span>{' '}
+                                                  · Checked: {lc}
+                                                  {v.health_checked_at ? <> · Thumb probe: {lh}</> : null}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="shrink-0 self-start rounded p-1 text-zinc-500 hover:bg-red-950/40 hover:text-red-300"
+                                            aria-label="Remove video"
+                                            onClick={(ev) => {
+                                              ev.stopPropagation();
+                                              void deleteProjectVideoRow(v.id);
+                                            }}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                                          </button>
+                                        </div>
+                                        {tone === 'bad' ? (
+                                          <div className="flex flex-wrap items-center gap-1 rounded-md bg-red-950/25 px-1.5 py-1 ring-1 ring-red-900/35">
+                                            <Input
+                                              value={replaceYoutubeDraft[v.id] ?? ''}
+                                              onChange={(e) =>
+                                                setReplaceYoutubeDraft((m) => ({ ...m, [v.id]: e.target.value }))
+                                              }
+                                              placeholder="Replacement URL or ID"
+                                              className="h-7 min-w-[140px] flex-1 border-white/10 bg-black/35 text-[10px] text-white"
+                                              spellCheck={false}
+                                              onClick={(ev) => ev.stopPropagation()}
+                                            />
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              className="h-7 shrink-0 gap-0.5 px-2 text-[9px] text-zinc-300 hover:bg-white/10 hover:text-white"
+                                              title="Find a live clip with the same topic"
+                                              onClick={(ev) => {
+                                                ev.stopPropagation();
+                                                openYoutubeSearchForTitle(v.title);
+                                              }}
+                                            >
+                                              <Search className="h-3 w-3" aria-hidden />
+                                              Find
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              variant="secondary"
+                                              className="h-7 shrink-0 px-2 text-[9px]"
+                                              disabled={videosBusy}
+                                              onClick={(ev) => {
+                                                ev.stopPropagation();
+                                                void submitReplaceYoutube(v.id, replaceYoutubeDraft[v.id] ?? '');
+                                              }}
+                                            >
+                                              Replace
+                                            </Button>
+                                          </div>
+                                        ) : null}
                                       </div>
                                     </li>
                                   );

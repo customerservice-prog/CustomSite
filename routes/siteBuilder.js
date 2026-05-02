@@ -10,6 +10,7 @@ const { addServeBundle, createZipBuffer } = require('../lib/bundleStaticSite');
 const { testToken, createCustomDomainForService } = require('../lib/railwayGql');
 const { provisionStaticDeploy } = require('../lib/railwayStaticDeploy');
 const { normalizeCustomDomainHost } = require('../lib/normalizeCustomDomainHost');
+const { upsertProjectVideosFromHtmlContent } = require('../lib/projectVideosHtmlSync');
 
 const router = express.Router();
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -261,6 +262,15 @@ router.put('/projects/:projectId/site/file', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     if (error) return res.status(500).json({ error: error.message });
+    if (encoding === 'utf8' && /\.html?$/i.test(filePath)) {
+      setImmediate(async () => {
+        try {
+          await upsertProjectVideosFromHtmlContent(getService(), projectId, text);
+        } catch (sy) {
+          console.warn('[site/file] youtube catalog sync skipped:', sy.message || sy);
+        }
+      });
+    }
     return res.json({ success: true, file: data });
   } catch (e) {
     console.error(e);
