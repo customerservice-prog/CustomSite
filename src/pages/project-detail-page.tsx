@@ -46,7 +46,9 @@ import { cn } from '@/lib/utils';
 import { normalizeCustomDomainInput, patchAdminProject, railwayHostnameFromUrl, fetchAdminProject } from '@/lib/admin-project-hosting';
 import type { ApiProjectRow } from '@/lib/agency-api-map';
 import { fetchProjectFormSubmissions, patchFormSubmissionReadFlag, type FormSubmissionRow } from '@/lib/project-form-submissions-api';
-import { siteBuilderListFiles } from '@/lib/site-builder/site-builder-site-api';
+import { siteBuilderListFiles, siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
+import { deleteProjectWithLiveConfirm } from '@/lib/admin-project-entity-api';
+import { getAccessToken } from '@/lib/admin-api';
 import {
   CONVERSION_WORKSPACE_LABEL,
   DELIVERY_ADVANTAGE,
@@ -112,6 +114,7 @@ export function ProjectDetailPage() {
   const users = useAppStore(useShallow((s) => s.users));
   const store = useAppStore((s) => s);
   const mergeProjectRowFromServer = useAppStore((s) => s.mergeProjectRowFromServer);
+  const hydrateAgencyFromServer = useAppStore((s) => s.hydrateAgencyFromServer);
 
   const [hostDomainDraft, setHostDomainDraft] = useState('');
   const [hostSvcDraft, setHostSvcDraft] = useState('');
@@ -128,6 +131,7 @@ export function ProjectDetailPage() {
   const [liveVisitorsNow, setLiveVisitorsNow] = useState(0);
   const [siteTypeDraft, setSiteTypeDraft] = useState<string>('portfolio');
   const [googleSiteVerificationDraft, setGoogleSiteVerificationDraft] = useState('');
+  const [projectDeleteBusy, setProjectDeleteBusy] = useState(false);
 
   const client = useAppStore(useShallow((s) => (project ? s.clients[project.clientId] : undefined)));
   const owner = project ? users[project.ownerId] : undefined;
@@ -167,6 +171,34 @@ export function ProjectDetailPage() {
     const w = openClientSitePreviewTab(site);
     if (!w) toast('Allow popups to open the preview tab.', 'error');
   }, [project?.id, hydrateWorkspaceSite, flushWorkspacePreview, navigate, toast]);
+
+  const confirmDeleteThisProject = useCallback(async () => {
+    if (!project?.id) return;
+    if (!siteFilesTargetLiveServer()) {
+      toast('Project delete requires the live API build.', 'error');
+      return;
+    }
+    if (!getAccessToken()?.trim()) {
+      toast('Sign in again to delete projects.', 'error');
+      return;
+    }
+    if (!window.confirm(`Delete "${project.name}"?\n\nThis removes the project and cascades related database records.`)) {
+      return;
+    }
+    setProjectDeleteBusy(true);
+    try {
+      const r = await deleteProjectWithLiveConfirm(project.id);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      toast('Project deleted.', 'success');
+      await hydrateAgencyFromServer();
+      navigate('/projects');
+    } finally {
+      setProjectDeleteBusy(false);
+    }
+  }, [project?.id, project?.name, toast, hydrateAgencyFromServer, navigate]);
 
   useEffect(() => {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
@@ -1785,6 +1817,25 @@ export function ProjectDetailPage() {
           },
         ]}
       />
+
+      {import.meta.env.VITE_USE_REAL_API === '1' ? (
+        <Card className="border-rose-200/70 bg-rose-50/40 p-6 ring-1 ring-rose-200/60 sm:p-8">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-rose-900/90">Danger zone</p>
+          <p className="mt-2 max-w-2xl text-sm text-slate-700">
+            Permanently delete this project from the database. Cascades remove related site files, messages, snapshots, and
+            other attached records.
+          </p>
+          <Button
+            type="button"
+            variant="destructive"
+            className="mt-4 h-9 px-3 text-xs"
+            disabled={projectDeleteBusy}
+            onClick={() => void confirmDeleteThisProject()}
+          >
+            {projectDeleteBusy ? 'Deleting…' : 'Delete project'}
+          </Button>
+        </Card>
+      ) : null}
     </DetailPageLayout>
   );
 }

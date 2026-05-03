@@ -3218,6 +3218,9 @@ function renderProjects() {
           </div>
           <button type="button" class="btn btn-outline" id="wsSetPh">Apply phase</button>
         </div>
+        <div class="form-group" style="margin-top:10px">
+          <button type="button" class="btn btn-outline adm-btn adm-btn--danger adm-btn--sm" id="wsDelProj">Delete selected project</button>
+        </div>
         </div>
         <div class="cs-ws-pan" data-wsp="up" style="display:none">
         <h4 style="font-size:14px;margin:0 0 8px 0" id="wsUpdH">Recent updates to client</h4>
@@ -3457,6 +3460,16 @@ function renderProjects() {
       })
       .catch((e) => toast(e.message, 'error'));
   });
+  p.querySelector('#wsDelProj')?.addEventListener('click', () => {
+    const pid = p.querySelector('#wsProject')?.value;
+    if (!pid) {
+      toast('Select a project first', 'error');
+      return;
+    }
+    confirmDialog('Delete project', 'Removes the project and related data. Continue?', () => {
+      deleteAdminProjectFlow(pid, () => void loadAll());
+    });
+  });
   const fi = p.querySelector('#wsFile');
   p.querySelector('#wsDrop')?.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -3643,14 +3656,6 @@ function renderProjects() {
             return loadAll();
           })
           .catch((e) => toast(e.message, 'error'));
-      });
-    });
-  });
-  p.querySelectorAll('[data-delp]').forEach((b) => {
-    b.addEventListener('click', () => {
-      const id = b.getAttribute('data-delp');
-      confirmDialog('Delete project', 'Removes the project and related data. Continue?', () => {
-        deleteAdminProjectFlow(id, () => void loadAll());
       });
     });
   });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, Clapperboard, Eye, FileText, LayoutGrid, Pencil, Plus, Radio, Search, Table2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
@@ -30,6 +30,10 @@ import { CONVERSION_WORKSPACE_LABEL } from '@/lib/offer-positioning';
 import { RecommendedNextAction, type NextActionItem } from '@/components/workspace/recommended-next-action';
 import { useTasks } from '@/store/hooks';
 import { fetchLiveAnalytics, fetchProjectAnalytics } from '@/lib/project-analytics-api';
+import { deleteProjectWithLiveConfirm } from '@/lib/admin-project-entity-api';
+import { getAccessToken } from '@/lib/admin-api';
+import { siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
+import { useShell } from '@/context/shell-context';
 
 import type { Project } from '@/lib/types/entities';
 
@@ -94,11 +98,13 @@ function formatSiteTrafficLine(p: {
 
 export function ProjectsPage() {
   const navigate = useNavigate();
+  const { toast } = useShell();
   const projects = useProjects();
   const clients = useClients();
   const users = useAppStore(useShallow((s) => s.users));
   const store = useAppStore((s) => s);
   const openModal = useAppStore((s) => s.openModal);
+  const hydrateAgencyFromServer = useAppStore((s) => s.hydrateAgencyFromServer);
   const tasks = useTasks();
   const [drawerProjectId, setDrawerProjectId] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -207,6 +213,31 @@ export function ProjectsPage() {
   const drawerFileCount = drawerProjectId
     ? Object.values(store.files).filter((f) => f.projectId === drawerProjectId).length
     : 0;
+
+  const confirmAndDeleteProject = useCallback(
+    async (p: Project, opts?: { closeDrawer?: boolean }) => {
+      if (!siteFilesTargetLiveServer()) {
+        toast('Project delete requires the live API build (VITE_USE_REAL_API=1).', 'error');
+        return;
+      }
+      if (!getAccessToken()?.trim()) {
+        toast('Sign in again to delete projects.', 'error');
+        return;
+      }
+      if (!window.confirm(`Delete "${p.name}"?\n\nThis removes the project and cascades related database records.`)) {
+        return;
+      }
+      const r = await deleteProjectWithLiveConfirm(p.id);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      toast('Project deleted.', 'success');
+      if (opts?.closeDrawer) setDrawerProjectId(null);
+      await hydrateAgencyFromServer();
+    },
+    [toast, hydrateAgencyFromServer],
+  );
 
   const healthCounts = useMemo(() => {
     let healthy = 0;
@@ -516,6 +547,11 @@ export function ProjectsPage() {
                             openModal('create-invoice');
                           },
                         },
+                        {
+                          label: 'Delete project',
+                          destructive: true,
+                          onClick: () => void confirmAndDeleteProject(p),
+                        },
                       ]}
                     />
                   </TableCell>
@@ -620,6 +656,14 @@ export function ProjectsPage() {
               </Button>
               <Button type="button" variant="secondary" onClick={() => openModal('create-invoice')}>
                 New invoice
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="h-9 px-3 text-xs"
+                onClick={() => drawerProject && void confirmAndDeleteProject(drawerProject, { closeDrawer: true })}
+              >
+                Delete project
               </Button>
             </div>
           ) : null
