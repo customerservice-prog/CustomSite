@@ -66,6 +66,7 @@ function ytThumbMq(id){ return 'https://i.ytimg.com/vi/'+id+'/mqdefault.jpg'; }
 function ytThumbHq(id){ return 'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg'; }
 
 function closeModal(){
+  videoModal.style.setProperty('display','none','important');
   videoModal.classList.remove('active');
   document.body.style.overflow='';
   var leg=document.getElementById('modalIframeLegacy'); if(leg) leg.src='';
@@ -104,6 +105,7 @@ function injectYT(cb){
 }
 
 function openModal(meta){
+  videoModal.style.setProperty('display','flex','important');
   document.getElementById('modalTitle').textContent=meta.title||meta.youtube_id;
   window.__currentArchive = meta;
   videoModal.classList.add('active');
