@@ -272,6 +272,24 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
           break;
         }
       }
+      /** When custom_domain was never saved but live_url holds the canonical host (bare or uncommon shape). */
+      const litForLw = want ? want.replace(/[%_\\]/g, '') : '';
+      if (!row0 && litForLw.length >= 3 && /^[\w.-]+$/i.test(litForLw)) {
+        let { data: lwRows, error: lwErr } = await supabase
+          .from('projects')
+          .select('id, site_settings, custom_domain, launched_at, name, live_url')
+          .not('live_url', 'is', null)
+          .ilike('live_url', `%${litForLw}%`)
+          .limit(48);
+        if (lwErr && /\blive_url\b/.test(String(lwErr.message))) {
+          lwErr = null;
+          lwRows = null;
+        }
+        if (!lwErr && lwRows && lwRows.length) {
+          const hit = lwRows.find((x) => normalizeCustomDomainHost(x.live_url) === want);
+          if (hit) row0 = hit;
+        }
+      }
     }
   }
   }
@@ -279,6 +297,15 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
   const siteSettings = row0 && row0.site_settings !== undefined ? row0.site_settings : null;
   const launchedAt = row0 && row0.launched_at ? String(row0.launched_at) : null;
   const projectName = row0 && row0.name != null ? String(row0.name) : null;
+  if (id && nh && row0 && !normalizeCustomDomainHost(row0.custom_domain)) {
+    console.info(
+      '[clientDomainSite] Matched live host via live_url / loose lookup — set Production domain (custom_domain) on project',
+      id,
+      'to',
+      nh,
+      'to avoid ambiguous routing.',
+    );
+  }
   projectByHostCache.set(hostKey, {
     projectId: id,
     siteSettings,
