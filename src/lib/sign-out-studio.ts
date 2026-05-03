@@ -35,3 +35,13 @@ export async function signOutStudio(supabase: SupabaseClient | null | undefined)
   clearAdminTokens();
   clearDefaultSupabaseAuthStorage();
 }
+
+/** After logout: production goes to portal sign-in so another account can authenticate; demo reloads SPA. */
+export function finalizeStudioSignOutNavigate(): void {
+  if (typeof window === 'undefined') return;
+  if (import.meta.env.VITE_USE_REAL_API === '1') {
+    window.location.replace('/client-portal.html?agency=1');
+    return;
+  }
+  window.location.reload();
+}

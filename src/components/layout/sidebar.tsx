@@ -7,7 +7,7 @@ import * as sel from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthSession } from '@/context/auth-session-context';
 import { useShell } from '@/context/shell-context';
-import { signOutStudio } from '@/lib/sign-out-studio';
+import { finalizeStudioSignOutNavigate, signOutStudio } from '@/lib/sign-out-studio';
 import { Avatar } from '@/components/ui/avatar';
 import { Dropdown, DropdownItem } from '@/components/ui/dropdown';
 import { IconButton } from '@/components/ui/icon-button';
@@ -164,7 +164,7 @@ function SidebarInner({
                 void (async () => {
                   await signOutStudio(supabaseBrowser);
                   onNavigate?.();
-                  window.location.reload();
+                  finalizeStudioSignOutNavigate();
                 })();
               }}
             >

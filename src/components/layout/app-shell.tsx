@@ -15,6 +15,7 @@ import { WorkflowGlobalHotkeys } from '@/components/workflow/workflow-global-hot
 import { BuildHelperDock } from '@/components/build-helper/build-helper-dock';
 import { BuildHelperProgressSync } from '@/components/build-helper/build-helper-progress-sync';
 import { useBuildHelperStore } from '@/store/use-build-helper-store';
+import { AgencySignedOutGate } from '@/components/auth/agency-signed-out-gate';
 import { cn } from '@/lib/utils';
 
 export { MobileNavTrigger } from '@/components/layout/sidebar';
@@ -56,6 +57,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-gray-50 to-slate-100 text-gray-900">
+      <AgencySignedOutGate />
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <DemoDatasetBanner />
