@@ -157,6 +157,9 @@ export function ProjectDetailPage() {
   const sectionsByBundle = useSiteProductionStore((s) => s.sectionsByBundle);
   const hydrateWorkspaceSite = useProjectSiteWorkspaceStore((s) => s.hydrate);
   const flushWorkspacePreview = useProjectSiteWorkspaceStore((s) => s.flushPreview);
+  const workspacePeekRow = useProjectSiteWorkspaceStore((s) =>
+    projectId ? s.byProjectId[projectId] : undefined,
+  );
 
   const openWorkspacePreviewInNewTab = useCallback(async () => {
     if (!project?.id) return;
