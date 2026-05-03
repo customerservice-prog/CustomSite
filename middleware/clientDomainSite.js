@@ -19,6 +19,7 @@ const {
   buildRobotsTxt,
 } = require('../lib/clientSiteSeo');
 const { insertSitePageview } = require('../lib/sitePageviewTrack');
+const { injectClientSiteMobileBaseline } = require('../lib/clientSiteMobileBaseline');
 
 const CACHE_TTL_MS = Math.min(Math.max(Number(process.env.CUSTOMSITE_DOMAIN_CACHE_MS) || 120000, 5000), 600000);
 /** @type {Map<string, { projectId: string | null; siteSettings: unknown | null; launchedAt: string | null; projectName: string | null; expires: number }>} */
@@ -358,7 +359,8 @@ function buildBody(row, filePath, req, siteSettings, projectName) {
     canonicalOrigin: canonOrigin,
   });
   const thumbs = rewriteYoutubeThumbnailUrlsInHtml(String(afterSeo));
-  return applyClientHtmlVideoModalGuard(thumbs);
+  const guarded = applyClientHtmlVideoModalGuard(thumbs);
+  return injectClientSiteMobileBaseline(guarded);
 }
 
 async function handleClientDomain(req, res) {

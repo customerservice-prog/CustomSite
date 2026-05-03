@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Video Archive — The Cestui Files (API + archive fallback)</title>
+<base href="./" />
+<meta name="robots" content="index,follow" />
+<style>
+:root{--gold:#c9a84c;--dark:#0a0a0f;--dark2:#111118;--dark3:#1a1a24;--dark4:#222230;--text:#e8e8f0;--muted:#888899;--border:rgba(201,168,76,0.15)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--dark);color:var(--text);font-family:Georgia,serif;line-height:1.7}
+nav{background:rgba(10,10,15,.97);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-logo{font-family:"Courier New",monospace;font-size:1.1rem;color:var(--gold);text-decoration:none;letter-spacing:3px;text-transform:uppercase}
+.nav-links{display:flex;gap:32px;list-style:none;font-family:"Courier New",monospace;font-size:.8rem;text-transform:uppercase}
+.nav-links a{color:var(--muted);text-decoration:none}
+.page-header{background:var(--dark2);border-bottom:1px solid var(--border);padding:48px 24px}
+.filters{background:var(--dark3);border-bottom:1px solid var(--border);padding:16px 24px;position:sticky;top:64px;z-index:90}
+.filter-btn{background:var(--dark4);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:"Courier New",monospace;font-size:.7rem;padding:8px 16px;text-transform:uppercase;border-radius:3px;margin:4px}
+.filter-btn.active,.filter-btn:hover{border-color:var(--gold);color:var(--gold)}
+.main,.filters-inner,.page-header-inner{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
+.video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
+.video-card{background:var(--dark3);border:1px solid var(--border);border-radius:6px;cursor:pointer}
+.video-thumb{aspect-ratio:16/9;background:var(--dark4);overflow:hidden}
+.video-thumb img{width:100%;height:100%;object-fit:cover}
+.video-info{padding:14px}
+.video-title{font-size:.88rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.video-meta{font-family:"Courier New",monospace;font-size:.68rem;color:var(--muted)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none}
+.modal-overlay.active{opacity:1;pointer-events:all}
+.modal-box{width:100%;max-width:900px;background:var(--dark2);border:1px solid var(--border)}
+.modal-video{aspect-ratio:16/9;background:#000;position:relative}
+#ytAnchor,#archivePlayer{position:absolute;inset:0;width:100%;height:100%}
+#archiveBadge{display:none;position:absolute;bottom:12px;left:12px;z-index:5;background:rgba(201,168,76,.96);color:var(--dark);font:.65rem "Courier New",monospace;padding:6px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:1px}
+#archivePlayer{display:none;width:100%;height:100%}
+</style>
+</head>
+<body>
+<nav><div class="nav-inner"><a href="index.html" class="nav-logo">CESTUI FILES</a>
+<ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="videos.html">Videos</a></li></ul></div></nav>
+<div class="page-header"><div class="page-header-inner"><h1>Research Videos</h1><p>Fetched from <code>/api/videos</code>. Thumbnails prefer Supabase; playback falls back to archive MP4 if YouTube errors.</p></div></div>
+<div class="filters"><div class="filters-inner" id="filterBar"></div></div>
+
+<main class="main videos-section" id="mainContent"><p style="margin:24px;color:var(--muted)">Loading library…</p></main>
+
+<div class="modal-overlay" id="videoModal"><div class="modal-box"><div style="padding:12px;display:flex;justify-content:space-between;font-family:&quot;Courier New&quot;,monospace;font-size:.8rem;color:var(--muted)"><span id="modalTitle">—</span><button type="button" style="border:0;background:0;color:inherit;cursor:pointer" onclick="closeModal()">✕</button></div><div class="modal-video videos-section"><div id="archiveBadge">Playing from archive — YouTube unavailable</div><iframe id="modalIframeLegacy" title="Unused" style="display:none;width:0;height:0;border:0"></iframe><div id="ytAnchor" style="width:100%;height:100%;position:absolute"></div><video id="archivePlayer" controls playsinline preload="metadata"></video></div></div></div>
+
+<script>
+/** Section labels when DB only has slug */
+var CAT_LOOKUP = {
+  cqv:{label:'Category 01',title:'Cestui Que Vie Trust'},
+  birth:{label:'Category 02',title:'Birth Certificate Theory'},
+  strawman:{label:'Category 03',title:'The Strawman Concept'},
+  sovereignty:{label:'Category 04',title:'Sovereignty & Freeman Philosophy'},
+  ucc:{label:'Category 05',title:'UCC & Commercial Law'},
+  counter:{label:'Category 06',title:'Counterarguments & Legal Rebuttals'}
+};
+var ORDER = ['cqv','birth','strawman','sovereignty','ucc','counter'];
+/** @type {Record<string,Object>} */
+var VIDEO_MAP = {};
+var videoModal = document.getElementById('videoModal');
+var ytPlayer = null;
+
+function ytThumbMq(id){ return 'https://i.ytimg.com/vi/'+id+'/mqdefault.jpg'; }
+function ytThumbHq(id){ return 'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg'; }
+
+function closeModal(){
+  videoModal.classList.remove('active');
+  var v = document.getElementById('archivePlayer'); v.pause(); v.removeAttribute('src'); v.style.display='none';
+  document.getElementById('archiveBadge').style.display='none';
+  if(ytPlayer && ytPlayer.destroy){ try{ ytPlayer.destroy(); }catch(e){} ytPlayer=null; }
+  document.getElementById('ytAnchor').style.display='none';
+}
+
+function archiveOnly(meta){
+  document.getElementById('archiveBadge').style.display='block';
+  var v=document.getElementById('archivePlayer'); v.style.display='block';
+  if(meta.video_url) v.src=meta.video_url; v.play().catch(function(){});
+}
+
+function onYtError(e,data){
+  var code = typeof data === 'number' ? data : (e && e.data);
+  /** 100/101/105/150/153-ish */
+  var bad=[2,100,101,105,150,153];
+  if(bad.indexOf(code)===-1) return;
+  if(window.__currentArchive && window.__currentArchive.video_url){ archiveOnly(window.__currentArchive); }
+}
+
+window.onYouTubeIframeAPIReady=function(){
+  window.__YT_API_READY=true;
+};
+
+function injectYT(cb){
+  if(window.YT && YT.Player) return cb();
+  if(window.__YT_API_READY) return cb();
+  if(document.querySelector('script[src*="iframe_api"]')) return setTimeout(function(){ injectYT(cb); },120);
+  var s=document.createElement('script'); s.src='https://www.youtube.com/iframe_api';
+  document.head.appendChild(s);
+  setTimeout(function(){ injectYT(cb); },350);
+}
+
+function openModal(meta){
+  document.getElementById('modalTitle').textContent=meta.title||meta.youtube_id;
+  window.__currentArchive = meta;
+  videoModal.classList.add('active');
+  document.body.style.overflow='hidden';
+  var arch=document.getElementById('archivePlayer'); arch.pause(); arch.removeAttribute('src'); arch.style.display='none';
+  document.getElementById('archiveBadge').style.display='none';
+
+  injectYT(function(){
+    if(ytPlayer && ytPlayer.destroy){ try{ ytPlayer.destroy(); }catch(e){} }
+    ytPlayer=null;
+    var box=document.getElementById('ytAnchor');
+    box.style.display='block';
+    box.style.position='relative';
+    box.innerHTML='<div style="padding-bottom:56.25%;width:100%;height:0;position:relative"><div id="__ytEmbed" style="position:absolute;top:0;left:0;width:100%;height:100%"></div></div>';
+    ytPlayer=new YT.Player('__ytEmbed',{
+      videoId:meta.youtube_id,
+      playerVars:{autoplay:1,rel:0,modestbranding:1},
+      events:{
+        onError:function(ev){ onYtError(ev,ev.data); },
+        onStateChange:function(st){
+          /** -1 UNSTARTED, 0 ENDED … */
+          if(st.data===YT.PlayerState.PLAYING && window.__currentArchive===meta && meta.youtube_status==='unavailable' && meta.video_url){ archiveOnly(meta); }
+        }
+      }
+    });
+  });
+}
+
+function filterCat(catId, btn){
+  document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  document.querySelectorAll('.category-section').forEach(function(sec){
+    sec.style.display=(catId==='all' || sec.dataset.cat===catId) ? '' : 'none';
+  });
+}
+
+function thumbSrc(v){
+  if(v.thumbnail_url) return v.thumbnail_url;
+  return ytThumbMq(v.youtube_id);
+}
+
+function renderCategories(groups){
+  var main=document.getElementById('mainContent');
+  main.innerHTML='';
+  ORDER.forEach(function(slug){
+    var arr=groups[slug]; if(!arr||!arr.length) return;
+    var meta=CAT_LOOKUP[slug]||{label:slug,title:slug};
+    var sec=document.createElement('section');
+    sec.className='category-section';
+    sec.dataset.cat=slug;
+    var html='<div class="cat-label" style="font-family:&quot;Courier New&quot;,monospace;font-size:.65rem;color:var(--gold)">'+meta.label+'</div>'+
+             '<div style="margin:16px 0 12px;display:flex;border-bottom:1px solid rgba(201,168,76,0.15);padding-bottom:12px;align-items:baseline">'+
+             '<h2 style="font-size:1.25rem">'+meta.title+'</h2>'+
+             '<span style="margin-left:auto;color:var(--muted);font-size:.72rem">&nbsp;'+arr.length+'</span></div><div class="video-grid">';
+    arr.forEach(function(v){
+      var id=v.youtube_id;
+      html+='<div class="video-card" data-yt="'+id+'">'+
+              '<div class="video-thumb"><img alt="" loading="lazy" src="'+thumbSrc(v)+'" data-fallback="'+ytThumbHq(id)+'" /></div>'+
+              '<div class="video-info"><div class="video-title">'+(v.title||id)+'</div><div class="video-meta">'+(v.channel||'')+' — '+(v.youtube_status||'?')+'</div></div></div>';
+    });
+    html+='</div>';
+    sec.innerHTML=html;
+    main.appendChild(sec);
+  });
+  main.querySelectorAll('.video-thumb img').forEach(function(img){
+    img.onerror=function(){ img.onerror=null; img.src=img.getAttribute('data-fallback')||ytThumbMq(img.closest('.video-card').getAttribute('data-yt')); };
+  });
+  main.querySelectorAll('.video-card').forEach(function(card){
+    card.onclick=function(){
+      var id=card.getAttribute('data-yt');
+      var meta=VIDEO_MAP[id];
+      if(meta) openModal(meta);
+      else fetch('/api/videos').then(function(r){return r.json();}).then(function(d){ var r=(d.videos||[]).find(function(x){return x.youtube_id===id;}); openModal(r||{youtube_id:id,title:id}); }).catch(function(){ openModal({youtube_id:id,title:id}); });
+    };
+  });
+}
+
+function buildFilters(){
+  var bar=document.getElementById('filterBar');
+  var cats=[{id:'all',label:'All'}].concat(ORDER.map(function(s){var m=CAT_LOOKUP[s]||{}; return {id:s,label:m.title||s};}));
+  bar.innerHTML=cats.map(function(c,i){return'<button type="button" class="filter-btn '+(i===0?'active':'')+'">'+c.label+'</button>';}).join('');
+  Array.prototype.slice.call(bar.querySelectorAll('.filter-btn')).forEach(function(btn,i){
+    btn.onclick=function(){ filterCat(cats[i].id, btn); };
+  });
+}
+
+function groupVideos(rows){
+  var g={}, i, r;
+  for(i=0;i<ORDER.length;i++) g[ORDER[i]]=[];
+  for(i=0;i<rows.length;i++){
+    r=rows[i]; var slug=(r.category&&ORDER.indexOf(String(r.category))>=0)?String(r.category):'cqv';
+    if(!g[slug]) g[slug]=[];
+    g[slug].push(r);
+  }
+  return g;
+}
+
+async function init(){
+  buildFilters();
+  var main=document.getElementById('mainContent'); main.innerHTML='<p style="margin:24px;color:#888899">Loading /api/videos …</p>';
+  try{
+    var res=await fetch('/api/videos');
+    var data=await res.json();
+    if(!res.ok) throw new Error(data.error||'HTTP');
+    var rows=data.videos||[];
+    VIDEO_MAP={};
+    rows.forEach(function(row){ VIDEO_MAP[row.youtube_id]=row; });
+    renderCategories(groupVideos(rows));
+  }catch(e){
+    main.innerHTML='<p style="padding:48px;color:#c84444">Could not load /api/videos — export seed + run migrations.</p>';
+  }
+}
+
+init();
+videoModal.addEventListener('click',function(e){ if(e.target===videoModal) closeModal(); });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeModal(); });
+
+/** Keep legacy selectors present for platform guards */
+window.openModalFallback = openModal;
+
+</script>
+</body>
+</html>

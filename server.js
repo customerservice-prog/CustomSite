@@ -29,6 +29,7 @@ const {
 } = require('./routes/projectVideos');
 const { siteAnalyticsAdminRouter } = require('./routes/siteAnalyticsAdmin');
 const { internalCronRouter } = require('./routes/internalCron');
+const { videoArchiveRouter } = require('./routes/videoArchive');
 const { isSupabaseConfigured } = require('./lib/supabase');
 const { isDevAuthEnabled } = require('./lib/devAuth');
 const { isPlatformHostname } = require('./lib/customsitePlatformHosts');
@@ -151,6 +152,7 @@ app.use('/api/admin', projectVideosAdminRouter);
 app.use('/api/admin', siteAnalyticsAdminRouter);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api', internalCronRouter);
+app.use('/api', videoArchiveRouter);
 app.use('/api', projectVideosCronRouter);
 app.use('/api', projectVideosPublicRouter);
 app.use('/api', configPublicRoutes);
@@ -395,6 +397,28 @@ if (require.main === module) {
       console.log(
         `  Local dev login: email=${process.env.DEV_ADMIN_EMAIL} (set in .env; no Supabase on this run)`
       );
+    }
+
+    /** Optional daily yt-dlp mirror + oEmbed health (Railway cron alternative: scripts/archive-videos.js + CRON_SECRET). */
+    try {
+      if (/^1|true$/i.test(String(process.env.VIDEO_ARCHIVE_CRON_ENABLED || '').trim())) {
+        const cron = require('node-cron');
+        const schedRaw = String(process.env.VIDEO_ARCHIVE_CRON || '0 4 * * *').trim();
+        cron.schedule(schedRaw, () => {
+          console.log('[VIDEO_ARCHIVE_CRON] tick', schedRaw);
+          if (!isSupabaseConfigured()) {
+            console.warn('[VIDEO_ARCHIVE_CRON] Supabase not configured — skipping');
+            return;
+          }
+          const { runArchiveCycle } = require('./lib/videoArchive/runArchiveCycle');
+          runArchiveCycle(require('./lib/supabase').getService(), {})
+            .then((sum) => console.log('[VIDEO_ARCHIVE_CRON]', sum))
+            .catch((err) => console.error('[VIDEO_ARCHIVE_CRON]', err));
+        });
+        console.log(`  VIDEO_ARCHIVE cron: ${schedRaw} (VIDEO_ARCHIVE_CRON_ENABLED=1)`);
+      }
+    } catch (e) {
+      console.warn('[VIDEO_ARCHIVE_CRON] not scheduled:', e.message || e);
     }
   });
   server.on('error', (err) => {

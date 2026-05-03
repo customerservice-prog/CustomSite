@@ -7,11 +7,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test test/api.test.js test/calendlyUrl.test.js test/customsite-platform-hosts.test.js test/youtube-thumb-logic.test.js",
+    "test": "node --test test/api.test.js test/calendlyUrl.test.js test/clientSiteMobileBaseline.test.js test/customsite-platform-hosts.test.js test/youtube-thumb-logic.test.js",
     "lint": "npm run typecheck",
     "typecheck": "npx tsc --noEmit",
     "launch:check": "npm run typecheck && npm test && npm run build:admin",
     "deploy:railway": "npx @railway/cli@latest up",
+    "video-archive:seed": "node scripts/seed-video-archive.js",
+    "video-archive:run": "node scripts/archive-videos.js",
     "ops:apply-cestui-domain": "node scripts/apply-cestui-custom-domain.js",
     "admin:dev": "npx vite",
     "build": "npm run build:admin",
@@ -39,6 +41,7 @@
     "ioredis": "^5.10.1",
     "lucide-react": "^0.468.0",
     "multer": "^2.1.1",
+    "node-cron": "^3.0.3",
     "rate-limit-redis": "^4.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -46,6 +49,7 @@
     "resend": "^4.0.1",
     "stripe": "^17.5.0",
     "tailwind-merge": "^2.6.0",
+    "youtube-dl-exec": "^3.1.5",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

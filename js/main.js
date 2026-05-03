@@ -129,10 +129,31 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
     });
   }
 
+  /** If CSS hero keyframes never finish (GPU / WebView quirks), never leave headline at opacity 0. */
+  function ensureHeroAnimationsVisible() {
+    const selectors =
+      '.hero-pain-h1, .hero-pain-h1--sub, .hero-founder, .hero-subtext, .hero-subtext--lead, .hero-immersive .hero-ctas, .macbook-wrap, .hero-trust-bar, .hero-proof-rail, .hero-proof-rail__note';
+    const bump = () => {
+      document.querySelectorAll(selectors).forEach((el) => {
+        const opacity = parseFloat(window.getComputedStyle(el).opacity);
+        if (!Number.isFinite(opacity) || opacity < 0.98) {
+          el.style.setProperty('opacity', '1', 'important');
+          el.style.setProperty('transform', 'none', 'important');
+          el.style.setProperty('animation', 'none', 'important');
+        }
+      });
+    };
+    window.setTimeout(bump, 2000);
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', runFadeIn);
+    document.addEventListener('DOMContentLoaded', () => {
+      runFadeIn();
+      ensureHeroAnimationsVisible();
+    });
   } else {
     runFadeIn();
+    ensureHeroAnimationsVisible();
   }
 })();
 

@@ -275,6 +275,13 @@ export const CS_STYLES = `<style id="cs-pro-structure">
 .cs-problem{background:linear-gradient(180deg,#fff7ed,#fff);}
 .cs-process .cs-step{display:flex;gap:.75rem;margin-bottom:1rem;align-items:flex-start;}
 .cs-process .cs-step-num{flex-shrink:0;width:1.75rem;height:1.75rem;border-radius:999px;background:var(--cs-accent);color:#fff;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;}
+@media (max-width:640px){
+.cs-nav-inner{flex-wrap:wrap;align-items:flex-start;row-gap:.5rem;}
+.cs-logo{min-width:0;flex:1 1 auto;}
+.cs-nav-links{width:100%;justify-content:flex-start;gap:.5rem .85rem;font-size:.75rem;line-height:1.35;}
+.cs-nav-links .cs-btn{margin-left:auto;flex-shrink:0;}
+.cs-block{padding:2.25rem 1rem;}
+}
 </style>`;
 
 export function escapeHtml(s: string): string {
