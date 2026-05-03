@@ -2,7 +2,7 @@ import { LogOut, Menu, PanelLeft, PanelLeftClose, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { navGroups, studioPulseNavItem, type NavItem } from '@/lib/nav-config';
+import { isNavExternalLink, navGroups, studioPulseNavItem, type NavItemInternalLink } from '@/lib/nav-config';
 import * as sel from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthSession } from '@/context/auth-session-context';
@@ -11,7 +11,7 @@ import { finalizeStudioSignOutNavigate, signOutStudio } from '@/lib/sign-out-stu
 import { Avatar } from '@/components/ui/avatar';
 import { Dropdown, DropdownItem } from '@/components/ui/dropdown';
 import { IconButton } from '@/components/ui/icon-button';
-import { SidebarGroupLabel, SidebarNavLink } from '@/components/layout/sidebar-item';
+import { SidebarGroupLabel, SidebarExternalNavLink, SidebarNavLink } from '@/components/layout/sidebar-item';
 
 const SIDEBAR_COLLAPSED_KEY = 'customsite_sidebar_desktop_collapsed';
 
@@ -32,7 +32,7 @@ function writeSidebarDesktopCollapsed(collapsed: boolean): void {
 }
 
 function navBadgeCount(
-  badgeFromStore: NavItem['badgeFromStore'],
+  badgeFromStore: NavItemInternalLink['badgeFromStore'],
   unread: number,
   pendingContracts: number,
   openInvoices: number
@@ -123,17 +123,29 @@ function SidebarInner({
           <div key={group.label} className="border-b border-gray-100 py-2 last:border-0">
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <div className="space-y-1">
-              {group.items.map((item) => (
-                <SidebarNavLink
-                  key={item.label}
-                  to={item.to}
-                  icon={item.icon}
-                  label={item.label}
-                  navTitle={item.navTitle}
-                  badge={navBadgeCount(item.badgeFromStore, unreadThreads, pendingContracts, openInvoices)}
-                  onNavigate={onNavigate}
-                />
-              ))}
+              {group.items.map((item) =>
+                isNavExternalLink(item) ? (
+                  <SidebarExternalNavLink
+                    key={item.label}
+                    href={item.externalHref}
+                    icon={item.icon}
+                    label={item.label}
+                    navTitle={item.navTitle}
+                    showNewBadge={item.showNewBadge}
+                    onNavigate={onNavigate}
+                  />
+                ) : (
+                  <SidebarNavLink
+                    key={item.label}
+                    to={item.to}
+                    icon={item.icon}
+                    label={item.label}
+                    navTitle={item.navTitle}
+                    badge={navBadgeCount(item.badgeFromStore, unreadThreads, pendingContracts, openInvoices)}
+                    onNavigate={onNavigate}
+                  />
+                )
+              )}
             </div>
           </div>
         ))}

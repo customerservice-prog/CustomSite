@@ -11,6 +11,7 @@ import {
   FolderKanban,
   Inbox,
   LayoutDashboard,
+  MapPin,
   MessageSquare,
   Receipt,
   Settings,
@@ -20,17 +21,32 @@ import {
   Wand2,
 } from 'lucide-react';
 
-export interface NavItem {
+/** React Router sidebar row — same styling as legacy `NavItem` internal links. */
+export type NavItemInternalLink = {
   label: string;
   icon: LucideIcon;
   to: string;
-  /** Native tooltip — especially for AI Builder subtitle. */
   navTitle?: string;
   badgeFromStore?: 'unread-messages' | 'pending-contracts' | 'open-invoices';
+};
+
+/** External URL — opens in a new tab; no SPA route. */
+export type NavItemExternalLink = {
+  label: string;
+  icon: LucideIcon;
+  externalHref: string;
+  showNewBadge?: boolean;
+  navTitle?: string;
+};
+
+export type NavItem = NavItemInternalLink | NavItemExternalLink;
+
+export function isNavExternalLink(item: NavItem): item is NavItemExternalLink {
+  return 'externalHref' in item && typeof item.externalHref === 'string';
 }
 
 /** Single home item — rendered above grouped nav (always visible). */
-export const studioPulseNavItem: NavItem = {
+export const studioPulseNavItem: NavItemInternalLink = {
   label: 'Studio Pulse',
   to: '/dashboard',
   icon: LayoutDashboard,
@@ -46,6 +62,13 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Clients', to: '/clients', icon: Users },
       { label: 'Messages', to: '/messages', icon: MessageSquare, badgeFromStore: 'unread-messages' },
       { label: 'Message Center', to: '/messages-center', icon: Inbox, navTitle: 'Contact form submissions — public leads API' },
+      {
+        label: '📍 Local SEO Hub',
+        icon: MapPin,
+        externalHref: 'https://theeyeisi.com/local-seo.html',
+        showNewBadge: true,
+        navTitle: 'Local SEO & Google Business Profile dashboard (theeyeisi.com)',
+      },
       { label: 'Files', to: '/files', icon: Files },
       { label: 'Invoices', to: '/invoices', icon: Receipt, badgeFromStore: 'open-invoices' },
     ],

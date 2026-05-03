@@ -70,22 +70,38 @@ export function SidebarNavLink({
   );
 }
 
-export function SidebarExternalLink({
+export function SidebarExternalNavLink({
   href,
   icon: Icon,
   label,
+  navTitle,
+  showNewBadge,
+  onNavigate,
 }: {
   href: string;
   icon: LucideIcon;
   label: string;
+  navTitle?: string;
+  showNewBadge?: boolean;
+  onNavigate?: () => void;
 }) {
   return (
     <a
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={navTitle ?? label}
+      aria-label={navTitle ? `${label}: ${navTitle}` : label}
+      onClick={() => onNavigate?.()}
       className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
     >
       <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-      <span className="truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {showNewBadge ? (
+        <span className="ml-auto shrink-0 rounded-full border border-purple-200 bg-purple-100 px-2 py-0.5 text-xs font-bold text-purple-700">
+          NEW
+        </span>
+      ) : null}
     </a>
   );
 }
