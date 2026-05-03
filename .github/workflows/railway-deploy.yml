@@ -1,9 +1,23 @@
-# Manual deploy: GitHub → Actions → "Railway deploy" → Run workflow
-# Requires repo secret: RAILWAY_TOKEN (Project token from Railway: Project → Settings → Tokens)
-# If the repo is already connected in Railway, pushes to main deploy automatically — skip this job.
+# Deploy this repo's Dockerfile from GitHub Actions (manual or push).
+#
+# Prerequisites (GitHub → repo → Settings → Secrets and variables → Actions):
+#   RAILWAY_TOKEN        — Railway project token (Railway dashboard → Project → Settings → Tokens)
+#   RAILWAY_PROJECT_ID   — UUID from the URL: railway.com/project/<THIS>/…
+#   RAILWAY_ENVIRONMENT  — e.g. production (required by CLI whenever --project is set)
+#
+# Optional:
+#   RAILWAY_SERVICE      — Service name or ID if the project has more than one service (e.g. CustomSite).
+#
+# If the same repo is connected in Railway ("Deploy via GitHub"), pushes already trigger a Railway build —
+# skip this workflow for pushes to avoid two builds per commit. Use workflow_dispatch, or uncomment push below
+# ONLY after disconnecting redundant GitHub deploy in Railway UI.
+#
+# Local one-off: npm run deploy:railway
 name: Railway deploy
+
 on:
   workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -13,16 +27,36 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-      - run: npm ci
-      - name: Check Railway token
+      - name: npm ci (validates lockfile ahead of Dockerfile builder stage)
+        run: npm ci
+      - name: Check Railway secrets
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
         run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "::error::GitHub secret RAILWAY_TOKEN is not set. In Railway: Project → Settings → Tokens → create a project token, then in GitHub: Settings → Secrets → Actions → New secret → name RAILWAY_TOKEN, paste the token. Re-run this workflow."
+          if [ -z "${RAILWAY_TOKEN:-}" ]; then
+            echo "::error::GitHub secret RAILWAY_TOKEN is missing. Railway → your project → Settings → Tokens → create a project token, then add secret RAILWAY_TOKEN."
             exit 1
           fi
-      - name: Upload and deploy
+          if [ -z "${RAILWAY_PROJECT_ID:-}" ] || [ -z "${RAILWAY_ENVIRONMENT:-}" ]; then
+            echo "::error::Set GitHub secrets RAILWAY_PROJECT_ID and RAILWAY_ENVIRONMENT."
+            echo "  RAILWAY_PROJECT_ID — UUID in the Railway URL (…/project/<uuid>/…)."
+            echo "  RAILWAY_ENVIRONMENT — usually production (exact name shown in Railway's environment picker)."
+            echo "Optional: RAILWAY_SERVICE — service name when multiple services exist."
+            exit 1
+          fi
+      - name: Railway up (CI)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: npx @railway/cli@latest up --ci
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE }}
+        run: |
+          set -euo pipefail
+          ARGS=(--ci --no-gitignore --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT")
+          if [ -n "${RAILWAY_SERVICE:-}" ]; then
+            ARGS+=(--service "$RAILWAY_SERVICE")
+          fi
+          echo "railway up ${ARGS[*]}"
+          npx @railway/cli@latest up "${ARGS[@]}"

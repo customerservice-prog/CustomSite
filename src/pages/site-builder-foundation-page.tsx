@@ -6,6 +6,7 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  FolderArchive,
   GripVertical,
   ImagePlus,
   LayoutTemplate,
@@ -65,7 +66,7 @@ import {
   patchAdminProject,
   railwayHostnameFromUrl,
 } from '@/lib/admin-project-hosting';
-import { siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
+import { siteFilesTargetLiveServer, fetchProjectSiteSourceExportZip } from '@/lib/site-builder/site-builder-site-api';
 import { useAppStore } from '@/store/useAppStore';
 import { useShallow } from 'zustand/shallow';
 import type { ApiProjectRow } from '@/lib/agency-api-map';
@@ -76,6 +77,7 @@ import {
   checkAdminProjectVideos,
   deleteAdminProjectVideo,
   fetchAdminProjectVideos,
+  fetchProjectVideosArchiveZip,
   reorderAdminProjectVideos,
   replaceAdminProjectVideoYoutube,
   type ProjectVideoRow,
@@ -371,6 +373,8 @@ export function SiteBuilderFoundationPage() {
   const [videosBusy, setVideosBusy] = useState(false);
   const [videoCheckBusy, setVideoCheckBusy] = useState(false);
   const [videoThumbWarmBusy, setVideoThumbWarmBusy] = useState(false);
+  const [videoArchiveZipBusy, setVideoArchiveZipBusy] = useState(false);
+  const [siteHandoffZipBusy, setSiteHandoffZipBusy] = useState(false);
   const [replaceYoutubeDraft, setReplaceYoutubeDraft] = useState<Record<string, string>>({});
   const [youtubePaste, setYoutubePaste] = useState('');
   const [previewYoutubeId, setPreviewYoutubeId] = useState<string | null>(null);
@@ -598,6 +602,15 @@ export function SiteBuilderFoundationPage() {
     saveCurrentToSite();
     setPublishPanelOpen(true);
   }, [saveCurrentToSite]);
+
+  useEffect(() => {
+    if (searchParams.get('publish') !== '1') return;
+    openPublishPanel();
+    toast('Publish & hosting is open — save your domain, then use Save & deploy in the top bar.', 'info');
+    const next = new URLSearchParams(searchParams);
+    next.delete('publish');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, openPublishPanel, toast]);
 
   const openProjectWorkspaceNewTab = useCallback(() => {
     if (!projectId) return;
@@ -882,6 +895,68 @@ export function SiteBuilderFoundationPage() {
     }
   }, [projectId, refreshProjectVideos, toast]);
 
+  const downloadProjectVideoArchiveZip = useCallback(async () => {
+    if (!projectId) return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1' || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in with the live API to download archived MP4s.', 'error');
+      return;
+    }
+    setVideoArchiveZipBusy(true);
+    try {
+      const r = await fetchProjectVideosArchiveZip(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const u = URL.createObjectURL(r.blob);
+      try {
+        const a = document.createElement('a');
+        a.href = u;
+        a.download = r.filename;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } finally {
+        URL.revokeObjectURL(u);
+      }
+      toast('Download started.', 'success');
+    } finally {
+      setVideoArchiveZipBusy(false);
+    }
+  }, [projectId, toast]);
+
+  const downloadSiteHandoffZip = useCallback(async () => {
+    if (!projectId) return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1' || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in with the live API to download the client handoff ZIP.', 'error');
+      return;
+    }
+    setSiteHandoffZipBusy(true);
+    try {
+      const r = await fetchProjectSiteSourceExportZip(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const u = URL.createObjectURL(r.blob);
+      try {
+        const a = document.createElement('a');
+        a.href = u;
+        a.download = r.filename;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } finally {
+        URL.revokeObjectURL(u);
+      }
+      toast('Site handoff ZIP downloading.', 'success');
+    } finally {
+      setSiteHandoffZipBusy(false);
+    }
+  }, [projectId, toast]);
+
   const deleteProjectVideoRow = useCallback(
     async (videoId: string) => {
       if (!projectId) return;
@@ -1109,6 +1184,23 @@ export function SiteBuilderFoundationPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [publishPanelOpen, fullscreenPreviewOpen]);
+
+  /** Save shortcut: Cmd/Ctrl+S (not Shift+S — avoids clobbering browser "Save as"). */
+  useEffect(() => {
+    if (!projectId || site.files.length === 0) return;
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.repeat || e.altKey || e.shiftKey) return;
+      if (String(e.key).toLowerCase() !== 's') return;
+      if (fullscreenPreviewOpen) return;
+      const el = document.activeElement;
+      if (el instanceof HTMLElement && el.closest('[data-skip-mod-s-save]')) return;
+      e.preventDefault();
+      saveCurrentToSite();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [projectId, site.files.length, fullscreenPreviewOpen, saveCurrentToSite]);
 
   useEffect(() => {
     if (searchParams.get('fullscreen') !== '1') return;
@@ -1510,9 +1602,34 @@ export function SiteBuilderFoundationPage() {
               <Button
                 type="button"
                 variant="secondary"
+                className="h-8 gap-1.5 border-zinc-500 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+                disabled={
+                  serverWritesConfigured && !signedInForApi ? true : siteHandoffZipBusy
+                }
+                title={
+                  serverWritesConfigured && !signedInForApi
+                    ? 'Sign in to download the full site ZIP for client handoff'
+                    : 'Download all site files — same as cloning from GitHub (includes readme + summary JSON)'
+                }
+                onClick={() => void downloadSiteHandoffZip()}
+              >
+                {siteHandoffZipBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <FolderArchive className="h-3.5 w-3.5 shrink-0 opacity-95" aria-hidden />
+                )}
+                Client ZIP
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
                 className="h-8 border-zinc-600 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
                 disabled={serverWritesConfigured && !signedInForApi}
-                title={serverWritesConfigured && !signedInForApi ? 'Sign in to save to the server' : undefined}
+                title={
+                  serverWritesConfigured && !signedInForApi
+                    ? 'Sign in to save to the server'
+                    : `Save all files to the server (${modKey}+S)`
+                }
                 onClick={() => saveCurrentToSite()}
               >
                 Save
@@ -1527,8 +1644,8 @@ export function SiteBuilderFoundationPage() {
                   serverWritesConfigured && !signedInForApi
                     ? 'Sign in to save and deploy'
                     : !prodDomainReady
-                      ? 'Saves workspace, opens Publish — set and save domain to deploy production'
-                      : 'Save workspace to server, wait for confirmation, then production deploy'
+                      ? `Saves site files, opens Publish (${modKey}+S saves without opening)`
+                      : '1) Saves site files to the server  2) Waits until the server confirms  3) Runs production ZIP deploy (Railway when API credentials are configured)'
                 }
                 onClick={() => void runSaveAndDeploy()}
               >
@@ -1934,6 +2051,20 @@ export function SiteBuilderFoundationPage() {
                                   <ImagePlus className="h-3 w-3" aria-hidden />
                                 )}
                                 Warm thumbs
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="h-7 shrink-0 gap-1 px-2 text-[10px] text-emerald-400/95 hover:bg-white/5 hover:text-emerald-200"
+                                disabled={videoArchiveZipBusy || projectVideos.length === 0}
+                                onClick={() => void downloadProjectVideoArchiveZip()}
+                              >
+                                {videoArchiveZipBusy ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                ) : (
+                                  <Video className="h-3 w-3" aria-hidden />
+                                )}
+                                MP4 ZIP
                               </Button>
                             </div>
                             <p className="text-[9px] leading-snug text-zinc-600">
@@ -2343,6 +2474,68 @@ export function SiteBuilderFoundationPage() {
                 ) : null}
               </section>
 
+              <section className="rounded-lg border border-amber-500/30 bg-gradient-to-br from-amber-950/40 to-zinc-950/80 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-amber-100/95">GitHub → Railway · client-owned repo</p>
+                <p className="mt-1.5 text-xs text-zinc-400">
+                  Gives the client a folder they control: push it to Git, then Railway builds from GitHub (<code className="text-zinc-300">package.json</code> in{' '}
+                  <strong className="text-zinc-200">Client ZIP</strong> runs <code className="text-zinc-300">serve</code> on Railway&apos;s <code className="text-zinc-300">PORT</code>). Distinct from
+                  this app&apos;s <strong className="text-zinc-200">Deploy production</strong> below (direct ZIP/API deploy).
+                </p>
+                <ol className="mt-3 list-decimal space-y-2 pl-5 text-[11px] leading-relaxed text-zinc-300">
+                  <li>
+                    Toolbar <strong className="text-white">Client ZIP</strong> (or Publish → download below) → unzip.
+                  </li>
+                  <li>
+                    <code className="rounded bg-black/35 px-1 font-mono text-[10px] text-amber-100/95">git init && git add -A && git commit -m &quot;Site&quot;</code>
+                  </li>
+                  <li>Create repo on GitHub (empty); add <code className="font-mono text-[10px] text-zinc-200">origin</code> and push <code className="font-mono text-[10px] text-zinc-200">main</code>.</li>
+                  <li>
+                    Railway dashboard → <strong className="text-white">New</strong> → <strong className="text-white">Deploy from GitHub repo</strong> → select repo → deploy (root directory).
+                  </li>
+                  <li>Attach DNS / custom hostname in Railway when ready — same apex you store in Publish above.</li>
+                </ol>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-9 border-amber-500/40 bg-amber-950/50 text-xs font-semibold text-amber-50 hover:bg-amber-900/50"
+                    disabled={serverWritesConfigured && !signedInForApi ? true : siteHandoffZipBusy}
+                    title={serverWritesConfigured && !signedInForApi ? 'Sign in to download' : undefined}
+                    onClick={() => void downloadSiteHandoffZip()}
+                  >
+                    {siteHandoffZipBusy ? (
+                      <>
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" aria-hidden />
+                        Zipping…
+                      </>
+                    ) : (
+                      <>
+                        <FolderArchive className="mr-2 h-3.5 w-3.5" aria-hidden />
+                        Download Client ZIP
+                      </>
+                    )}
+                  </Button>
+                  <a
+                    href="https://github.com/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonClassName('secondary', 'inline-flex h-9 items-center border-white/15 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15')}
+                  >
+                    New repo on GitHub
+                    <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-90" aria-hidden />
+                  </a>
+                  <a
+                    href="https://railway.app/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonClassName('secondary', 'inline-flex h-9 items-center border-white/15 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15')}
+                  >
+                    Railway new project
+                    <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-90" aria-hidden />
+                  </a>
+                </div>
+              </section>
+
               <section className="rounded-lg border border-emerald-500/20 bg-emerald-950/15 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/90">Analytics (GA4)</p>
                 <p className="mt-1.5 text-xs text-zinc-400">
@@ -2651,8 +2844,9 @@ export function SiteBuilderFoundationPage() {
                     {deployBusy ? 'Deploying…' : 'Deploy production (ZIP / Railway)'}
                   </Button>
                   <p className="text-[10px] leading-relaxed text-zinc-500">
-                    Or use <strong className="text-zinc-300">Save &amp; deploy</strong> in the builder top bar to write site files, confirm the save, then deploy
-                    automatically.
+                    Use <strong className="text-zinc-300">Save &amp; deploy</strong> in the top bar to write site files out, wait until the API confirms{' '}
+                    <span className="text-zinc-400">({modKey}+S saves only).</span>
+                    Then production deploy runs the same ZIP path as below.
                   </p>
                 </div>
               </section>

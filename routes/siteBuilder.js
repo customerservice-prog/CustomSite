@@ -533,15 +533,116 @@ function rowsToBundleFiles(rows) {
   }));
 }
 
+/** ASCII-ish slug for safe ZIP filenames in Content-Disposition. */
+function asciiSlugForZipBasename(raw) {
+  const s = String(raw || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s-]/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  const out = s.slice(0, 56);
+  return out.length > 0 ? out : 'site';
+}
+
 router.get('/projects/:projectId/site/export', async (req, res) => {
   try {
     const { projectId } = req.params;
     const supabase = getService();
     const rows = await listProjectFileRows(supabase, projectId);
-    const files = addServeBundle(rowsToBundleFiles(rows));
+    const bundled = rowsToBundleFiles(rows);
+    const files = [...addServeBundle(bundled)];
+
+    let downloadBase = asciiSlugForZipBasename(projectId.slice(0, 8));
+
+    try {
+      const pick =
+        'name, custom_domain, railway_url_production, railway_url_staging, website_type, site_settings, published_at';
+      let proj;
+      ({ data: proj } = await supabase.from('projects').select(pick).eq('id', projectId).maybeSingle());
+      if (!proj || typeof proj !== 'object') {
+        ({ data: proj } = await supabase.from('projects').select('name, custom_domain').eq('id', projectId).maybeSingle());
+      }
+      const nameOk = proj && typeof proj.name === 'string' && proj.name.trim();
+      if (nameOk) downloadBase = asciiSlugForZipBasename(proj.name);
+
+      const exportedAt = new Date().toISOString();
+      const summary = {
+        exported_at: exportedAt,
+        customsite_export_kind: 'static_site_repo_style',
+        project_id: projectId,
+        project_name: proj?.name ?? null,
+        custom_domain: proj?.custom_domain ?? null,
+        railway_url_production: proj?.railway_url_production ?? null,
+        railway_url_staging: proj?.railway_url_staging ?? null,
+        website_type: proj?.website_type ?? null,
+        published_at: proj?.published_at ?? null,
+        site_settings:
+          proj?.site_settings && typeof proj.site_settings === 'object' && !Array.isArray(proj.site_settings)
+            ? proj.site_settings
+            : {},
+        site_file_count: rows.length,
+      };
+
+      files.push({
+        path: 'project-export-summary.json',
+        encoding: 'utf8',
+        content: JSON.stringify(summary, null, 2),
+      });
+
+      const readme = [
+        'CustomSite — static site source export (repo-style)',
+        '====================================================',
+        '',
+        `This ZIP is the HTML/CSS/JS we store as your hosted site (${rows.length} file paths), `,
+        'plus Railway starter helpers (package.json, railway.json) so you can run or redeploy elsewhere.',
+        '',
+        'Quick local preview:',
+        '  npm install && npm start',
+        'You can instead open index.html directly (some browsers block module/SW features on file:// URLs).',
+        '',
+        `Metadata: project-export-summary.json (exported_at: ${exportedAt}).`,
+        'Catalog mirror videos (.mp4) are not inlined here — use Admin → download MP4 ZIP for archived copies.',
+        '',
+        '--- Save to GitHub, deploy on Railway (client-owned repo)',
+        '',
+        '1. Unzip this folder locally.',
+        '2. Initialize git and push to a new GitHub repository (main branch):',
+        '     git init',
+        '     git add -A',
+        '     git commit -m "Site export"',
+        '     (optional) gh repo create my-site --private --source=. --push',
+        '   …or create an empty repo at github.com/new, then:',
+        '     git remote add origin https://github.com/OWNER/REPO.git',
+        '     git branch -M main',
+        '     git push -u origin main',
+        '3. In Railway (railway.app): New project → Deploy from GitHub repo → pick this repo.',
+        '   Nixpacks uses npm install; npm start serves static files (see package.json in this ZIP).',
+        '4. Attach your domain in Railway (and/or keep using the default *.railway.app URL).',
+        '',
+        '--- Hosted from CustomSite (no GitHub)',
+        '',
+        'From the Site builder Publish panel use Save & deploy when the agency server has',
+        'RAILWAY_API_TOKEN + RAILWAY_TEAM_ID configured (direct ZIP/API deploy).',
+        '',
+        '',
+      ].join('\n');
+
+      files.push({ path: 'EXPORT_README.txt', encoding: 'utf8', content: readme });
+    } catch (metaErr) {
+      console.warn('[site/export] attach metadata skipped', metaErr?.message || metaErr);
+    }
+
+    const safeFilename = `${downloadBase}-site-source.zip`;
     const buf = await createZipBuffer(files);
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="project-${projectId}.zip"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`
+    );
     return res.send(buf);
   } catch (e) {
     console.error(e);

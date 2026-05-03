@@ -42,6 +42,7 @@ import { CONVERSION_WORKSPACE_LABEL } from '@/lib/offer-positioning';
 import { RecommendedNextAction, type NextActionItem } from '@/components/workspace/recommended-next-action';
 import { useTasks } from '@/store/hooks';
 import { fetchLiveAnalytics, fetchProjectAnalytics } from '@/lib/project-analytics-api';
+import { fetchProjectVideosArchiveZip } from '@/lib/project-videos-api';
 import { deleteProjectWithLiveConfirm } from '@/lib/admin-project-entity-api';
 import { getAccessToken } from '@/lib/admin-api';
 import { compileSectionsToPreviewHtml } from '@/lib/site-production/compile-preview-html';
@@ -49,7 +50,7 @@ import { applyInlinePreviewYoutubeThumbnailPlaceholders } from '@/lib/site-build
 import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
 import { siteProductionBundleKey, useSiteProductionStore } from '@/store/useSiteProductionStore';
 import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
-import { siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
+import { fetchProjectSiteSourceExportZip, siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
 import { useShell } from '@/context/shell-context';
 
 import type { Project } from '@/lib/types/entities';
@@ -129,6 +130,8 @@ export function ProjectsPage() {
   const hydrateAgencyFromServer = useAppStore((s) => s.hydrateAgencyFromServer);
   const tasks = useTasks();
   const [drawerProjectId, setDrawerProjectId] = useState<string | null>(null);
+  const [videoZipBusyProjectId, setVideoZipBusyProjectId] = useState<string | null>(null);
+  const [siteHandoffZipBusyProjectId, setSiteHandoffZipBusyProjectId] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
   const [view, setView] = useState<'table' | 'cards'>(() => {
@@ -297,6 +300,65 @@ export function ProjectsPage() {
     toast,
   ]);
 
+  const triggerVideoArchiveBlobDownload = useCallback((blob: Blob, filename: string) => {
+    const u = URL.createObjectURL(blob);
+    try {
+      const a = document.createElement('a');
+      a.href = u;
+      a.download = filename;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      URL.revokeObjectURL(u);
+    }
+  }, []);
+
+  const downloadProjectVideoArchiveZip = useCallback(
+    async (pid: string) => {
+      if (import.meta.env.VITE_USE_REAL_API !== '1' || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+        toast('Sign in with the live API to download archived MP4s.', 'error');
+        return;
+      }
+      setVideoZipBusyProjectId(pid);
+      try {
+        const r = await fetchProjectVideosArchiveZip(pid);
+        if (!r.ok) {
+          toast(r.error, 'error');
+          return;
+        }
+        triggerVideoArchiveBlobDownload(r.blob, r.filename);
+        toast('Download started.', 'success');
+      } finally {
+        setVideoZipBusyProjectId(null);
+      }
+    },
+    [toast, triggerVideoArchiveBlobDownload],
+  );
+
+  const downloadProjectSiteHandoffZip = useCallback(
+    async (pid: string) => {
+      if (import.meta.env.VITE_USE_REAL_API !== '1' || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+        toast('Sign in with the live API to download the site export.', 'error');
+        return;
+      }
+      setSiteHandoffZipBusyProjectId(pid);
+      try {
+        const r = await fetchProjectSiteSourceExportZip(pid);
+        if (!r.ok) {
+          toast(r.error, 'error');
+          return;
+        }
+        triggerVideoArchiveBlobDownload(r.blob, r.filename);
+        toast('Download started.', 'success');
+      } finally {
+        setSiteHandoffZipBusyProjectId(null);
+      }
+    },
+    [toast, triggerVideoArchiveBlobDownload],
+  );
+
   const confirmAndDeleteProject = useCallback(
     async (p: Project, opts?: { closeDrawer?: boolean }) => {
       if (!siteFilesTargetLiveServer()) {
@@ -329,6 +391,24 @@ export function ProjectsPage() {
       ...(p.deliveryFocus === 'client_site'
         ? [{ label: CONVERSION_WORKSPACE_LABEL, onClick: () => navigate(`/projects/${p.id}/site`) }]
         : []),
+      ...(p.deliveryFocus === 'client_site'
+        ? [
+            {
+              label:
+                siteHandoffZipBusyProjectId === p.id ? 'Zipping site…' : 'Download site folder (client handoff ZIP)',
+              onClick: () => void downloadProjectSiteHandoffZip(p.id),
+            },
+          ]
+        : []),
+      ...(p.deliveryFocus === 'client_site' && (p.siteVideoCount ?? 0) > 0
+        ? [
+            {
+              label:
+                videoZipBusyProjectId === p.id ? 'Building video ZIP…' : 'Download all videos (MP4 ZIP)',
+              onClick: () => void downloadProjectVideoArchiveZip(p.id),
+            },
+          ]
+        : []),
       { label: 'New task', onClick: () => { navigate('/tasks'); } },
       {
         label: 'New invoice',
@@ -342,7 +422,15 @@ export function ProjectsPage() {
         onClick: () => void confirmAndDeleteProject(p),
       },
     ],
-    [navigate, openModal, confirmAndDeleteProject],
+    [
+      navigate,
+      openModal,
+      confirmAndDeleteProject,
+      downloadProjectVideoArchiveZip,
+      downloadProjectSiteHandoffZip,
+      videoZipBusyProjectId,
+      siteHandoffZipBusyProjectId,
+    ],
   );
 
   const healthCounts = useMemo(() => {
@@ -591,6 +679,42 @@ export function ProjectsPage() {
                         >
                           {CONVERSION_WORKSPACE_LABEL} →
                         </Link>
+                        <div
+                          role="group"
+                          aria-label={`Downloads for ${p.name}`}
+                          className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100/90 pt-1.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="text-[10px] font-semibold text-emerald-800 underline-offset-2 hover:underline disabled:opacity-50"
+                            disabled={siteHandoffZipBusyProjectId === p.id}
+                            title={
+                              import.meta.env.VITE_USE_REAL_API !== '1'
+                                ? 'Enable VITE_USE_REAL_API'
+                                : 'Full site folder ZIP (client handoff readme inside)'
+                            }
+                            onClick={() => void downloadProjectSiteHandoffZip(p.id)}
+                          >
+                            {siteHandoffZipBusyProjectId === p.id ? 'Zipping…' : 'Site ZIP'}
+                          </button>
+                          {(p.siteVideoCount ?? 0) > 0 ? (
+                            <>
+                              <span className="text-slate-300" aria-hidden>
+                                ·
+                              </span>
+                              <button
+                                type="button"
+                                className="text-[10px] font-semibold text-indigo-800 underline-offset-2 hover:underline disabled:opacity-50"
+                                disabled={videoZipBusyProjectId === p.id}
+                                title="Mirrored MP4 catalog (requires archive sync)"
+                                onClick={() => void downloadProjectVideoArchiveZip(p.id)}
+                              >
+                                {videoZipBusyProjectId === p.id ? 'Videos…' : 'Videos ZIP'}
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
                     ) : (
                       <span className="text-xs text-slate-400">Retainer / app</span>
@@ -725,6 +849,31 @@ export function ProjectsPage() {
                   ) : null}
                   </div>
                 </Link>
+                {p.deliveryFocus === 'client_site' ? (
+                  <div className="relative z-10 border-t border-slate-200/80 px-4 pb-3 pt-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Exports</p>
+                    <div className="mt-1.5 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="rounded-md border border-emerald-200 bg-emerald-50/80 px-2 py-1 text-[10px] font-semibold text-emerald-900 hover:bg-emerald-100/90 disabled:opacity-50"
+                        disabled={siteHandoffZipBusyProjectId === p.id}
+                        onClick={() => void downloadProjectSiteHandoffZip(p.id)}
+                      >
+                        {siteHandoffZipBusyProjectId === p.id ? 'Zipping…' : 'Site ZIP'}
+                      </button>
+                      {(p.siteVideoCount ?? 0) > 0 ? (
+                        <button
+                          type="button"
+                          className="rounded-md border border-indigo-200 bg-indigo-50/90 px-2 py-1 text-[10px] font-semibold text-indigo-900 hover:bg-indigo-100/90 disabled:opacity-50"
+                          disabled={videoZipBusyProjectId === p.id}
+                          onClick={() => void downloadProjectVideoArchiveZip(p.id)}
+                        >
+                          {videoZipBusyProjectId === p.id ? 'Videos…' : 'Videos ZIP'}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
               </Card>
             );
           })}
@@ -748,6 +897,30 @@ export function ProjectsPage() {
               <Button type="button" variant="secondary" onClick={() => openModal('create-invoice')}>
                 New invoice
               </Button>
+              {drawerProject.deliveryFocus === 'client_site' ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-9 px-3 text-xs border-emerald-200 text-emerald-900 hover:bg-emerald-50"
+                    disabled={siteHandoffZipBusyProjectId === drawerProject.id}
+                    onClick={() => void downloadProjectSiteHandoffZip(drawerProject.id)}
+                  >
+                    {siteHandoffZipBusyProjectId === drawerProject.id ? 'Zipping…' : 'Site ZIP'}
+                  </Button>
+                  {(drawerProject.siteVideoCount ?? 0) > 0 ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-9 px-3 text-xs border-indigo-200 text-indigo-900 hover:bg-indigo-50"
+                      disabled={videoZipBusyProjectId === drawerProject.id}
+                      onClick={() => void downloadProjectVideoArchiveZip(drawerProject.id)}
+                    >
+                      {videoZipBusyProjectId === drawerProject.id ? 'Videos…' : 'Videos ZIP'}
+                    </Button>
+                  ) : null}
+                </>
+              ) : null}
               <Button
                 type="button"
                 variant="destructive"
@@ -846,6 +1019,30 @@ export function ProjectsPage() {
                   Status <span className="font-semibold capitalize">{drawerProject.siteStatus ?? 'draft'}</span> ·{' '}
                   {drawerProject.sitePageCount ?? '—'} pages · Last: {drawerProject.lastSiteUpdateLabel ?? '—'}
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-8 px-3 text-xs font-semibold"
+                    disabled={siteHandoffZipBusyProjectId === drawerProject.id}
+                    onClick={() => void downloadProjectSiteHandoffZip(drawerProject.id)}
+                  >
+                    {siteHandoffZipBusyProjectId === drawerProject.id
+                      ? 'Zipping site…'
+                      : 'Site folder (ZIP handoff)'}
+                  </Button>
+                  {(drawerProject.siteVideoCount ?? 0) > 0 ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-8 px-3 text-xs font-semibold"
+                      disabled={videoZipBusyProjectId === drawerProject.id}
+                      onClick={() => void downloadProjectVideoArchiveZip(drawerProject.id)}
+                    >
+                      {videoZipBusyProjectId === drawerProject.id ? 'Building ZIP…' : 'Videos (MP4 ZIP)'}
+                    </Button>
+                  ) : null}
+                </div>
                 {formatSiteTrafficLine({
                   project: drawerProject,
                   analyticsByProject,

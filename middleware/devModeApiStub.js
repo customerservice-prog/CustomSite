@@ -142,10 +142,31 @@ function tryRespondLocalDemoSite(req, res, m, p) {
         encoding: f.content_encoding === 'base64' ? 'base64' : 'utf8',
       };
     });
-    return createZipBuffer(addServeBundle(files))
+    return createZipBuffer([
+      ...addServeBundle(files),
+      {
+        path: 'EXPORT_README.txt',
+        encoding: 'utf8',
+        content:
+          'Local demo export — static site files plus starter package.json / railway.json.\n\n' +
+          'GitHub → Railway: unzip, git init / commit / push to GitHub; Railway → New → Deploy from GitHub repo.',
+      },
+      {
+        path: 'project-export-summary.json',
+        encoding: 'utf8',
+        content: JSON.stringify(
+          { customsite_export_kind: 'static_site_repo_style', exported_at: new Date().toISOString(), project_id: projectId },
+          null,
+          2
+        ),
+      },
+    ])
       .then((buf) => {
         res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename="project-${projectId}.zip"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="site-source-${projectId.slice(0, 8)}.zip"; filename*=UTF-8''${encodeURIComponent(`site-source-${projectId.slice(0, 8)}.zip`)}`
+        );
         return res.send(buf);
       })
       .catch((e) => res.status(500).json({ error: e.message }));
@@ -626,6 +647,16 @@ function devModeApiStub(req, res, next) {
     const projectId = p.match(devVidList)[1];
     const rows = [...devEnsVideos(projectId)].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     return res.json({ videos: rows });
+  }
+  const devVidArchiveZip = /^\/api\/admin\/projects\/([^/]+)\/videos\/archive-zip$/;
+  if (m === 'GET' && devVidArchiveZip.test(p)) {
+    const pid = p.match(devVidArchiveZip)[1];
+    const n = devEnsVideos(pid).length;
+    return res.status(422).json({
+      error:
+        'Local dev has no mirrored MP4 bucket. Deploy with Supabase, run migration 017, sync archive (POST /api/videos/sync), then download from production.',
+      catalog_count: n,
+    });
   }
   if (m === 'POST' && devVidCheck.test(p)) {
     const projectId = p.match(devVidCheck)[1];

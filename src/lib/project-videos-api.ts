@@ -1,4 +1,4 @@
-import { adminFetchJson, type AdminJsonResult } from '@/lib/admin-api';
+import { adminFetchJson, getAccessToken, tryRefreshAccessToken, type AdminJsonResult } from '@/lib/admin-api';
 import { LIVE_DESTRUCT_CONFIRM, LIVE_DESTRUCT_CONFIRM_HEADER } from '@/lib/live-destructive-confirm';
 
 export type ProjectVideoRow = {
@@ -89,6 +89,55 @@ export function cacheAdminProjectVideoThumbnails(projectId: string): Promise<
   return adminFetchJson(`/api/admin/projects/${encodeURIComponent(projectId)}/videos/cache-thumbnails`, {
     method: 'POST',
   });
+}
+
+/** Mirrored MP4 (or yt-dlp output) from global `videos` archive, keyed by catalog YouTube IDs. Requires migration 017 + archive sync. */
+export type VideoArchiveZipResult =
+  | { ok: true; blob: Blob; filename: string }
+  | { ok: false; status: number; error: string };
+
+export async function fetchProjectVideosArchiveZip(projectId: string): Promise<VideoArchiveZipResult> {
+  const path = `/api/admin/projects/${encodeURIComponent(projectId)}/videos/archive-zip`;
+
+  async function fetchOnce(bearer: string | null): Promise<Response> {
+    const headers: HeadersInit = {};
+    if (bearer?.trim()) headers.Authorization = `Bearer ${bearer.trim()}`;
+    return fetch(path, { headers });
+  }
+
+  let token = getAccessToken()?.trim() ?? '';
+  let res = await fetchOnce(token || null);
+  if (res.status === 401) {
+    const next = await tryRefreshAccessToken();
+    if (next?.trim()) res = await fetchOnce(next.trim());
+  }
+
+  if (!res.ok) {
+    try {
+      const j = (await res.json()) as { error?: string };
+      return { ok: false, status: res.status, error: String(j?.error || res.statusText) };
+    } catch {
+      const t = await res.text().catch(() => '');
+      return { ok: false, status: res.status, error: t.slice(0, 400) || res.statusText };
+    }
+  }
+
+  const blob = await res.blob();
+  let filename = `project-${projectId.slice(0, 8)}-videos-mp4.zip`;
+  const cd = res.headers.get('Content-Disposition') || '';
+  const mStar = cd.match(/filename\*=UTF-8''([^;]+)/i);
+  const mPlain = cd.match(/filename="([^"]+)"/i) || cd.match(/filename=([^;\s]+)/);
+  if (mStar?.[1]) {
+    try {
+      filename = decodeURIComponent(mStar[1]);
+    } catch {
+      filename = mStar[1];
+    }
+  } else if (mPlain?.[1]) {
+    filename = mPlain[1].replace(/^["']|["']$/g, '');
+  }
+
+  return { ok: true, blob, filename };
 }
 
 export function replaceAdminProjectVideoYoutube(

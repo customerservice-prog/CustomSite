@@ -48,7 +48,7 @@ import { normalizeCustomDomainInput, patchAdminProject, railwayHostnameFromUrl, 
 import type { ApiProjectRow } from '@/lib/agency-api-map';
 import { mergeSpaProjectMetaIntoInternalNotes } from '@/lib/agency-api-map';
 import { fetchProjectFormSubmissions, patchFormSubmissionReadFlag, type FormSubmissionRow } from '@/lib/project-form-submissions-api';
-import { siteBuilderListFiles, siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
+import { fetchProjectSiteSourceExportZip, siteBuilderListFiles, siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
 import { deleteProjectWithLiveConfirm } from '@/lib/admin-project-entity-api';
 import { getAccessToken } from '@/lib/admin-api';
 import { normalizeClientSourceRepoUrl } from '@/lib/client-source-repo';
@@ -63,6 +63,7 @@ import {
 } from '@/lib/offer-positioning';
 import { Radio, Smartphone, TrendingUp, Monitor, Maximize2, Activity, Calendar } from 'lucide-react';
 import { fetchLiveAnalytics, fetchProjectAnalytics, type ProjectAnalyticsPayload } from '@/lib/project-analytics-api';
+import { fetchProjectVideosArchiveZip } from '@/lib/project-videos-api';
 import { useWorkspacePeekRow } from '@/hooks/use-workspace-peek-row';
 
 const ACTIVE_SITE_STAGES: ProjectLifecycleStage[] = ['discovery', 'proposal_contract', 'build', 'review'];
@@ -152,6 +153,8 @@ export function ProjectDetailPage() {
   const [siteTypeDraft, setSiteTypeDraft] = useState<string>('portfolio');
   const [googleSiteVerificationDraft, setGoogleSiteVerificationDraft] = useState('');
   const [projectDeleteBusy, setProjectDeleteBusy] = useState(false);
+  const [videoZipBusy, setVideoZipBusy] = useState(false);
+  const [siteSourceZipBusy, setSiteSourceZipBusy] = useState(false);
   const [peekViewport, setPeekViewport] = useState<ProjectPeekViewport>(() => readProjectPeekViewport());
   const [clientRepoDraft, setClientRepoDraft] = useState('');
   const [clientRepoSaving, setClientRepoSaving] = useState(false);
@@ -231,6 +234,68 @@ export function ProjectDetailPage() {
       setProjectDeleteBusy(false);
     }
   }, [project?.id, project?.name, toast, hydrateAgencyFromServer, navigate]);
+
+  const downloadProjectVideoArchiveZip = useCallback(async () => {
+    if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1' || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in with the live API to download archived MP4s.', 'error');
+      return;
+    }
+    setVideoZipBusy(true);
+    try {
+      const r = await fetchProjectVideosArchiveZip(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const u = URL.createObjectURL(r.blob);
+      try {
+        const a = document.createElement('a');
+        a.href = u;
+        a.download = r.filename;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } finally {
+        URL.revokeObjectURL(u);
+      }
+      toast('Download started.', 'success');
+    } finally {
+      setVideoZipBusy(false);
+    }
+  }, [projectId, project, toast]);
+
+  const downloadProjectSiteSourceHandoffZip = useCallback(async () => {
+    if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1' || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in with the live API to download the site export.', 'error');
+      return;
+    }
+    setSiteSourceZipBusy(true);
+    try {
+      const r = await fetchProjectSiteSourceExportZip(projectId);
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const u = URL.createObjectURL(r.blob);
+      try {
+        const a = document.createElement('a');
+        a.href = u;
+        a.download = r.filename;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } finally {
+        URL.revokeObjectURL(u);
+      }
+      toast('Download started.', 'success');
+    } finally {
+      setSiteSourceZipBusy(false);
+    }
+  }, [projectId, project, toast]);
 
   useEffect(() => {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
@@ -670,12 +735,21 @@ export function ProjectDetailPage() {
               </a>
             ) : null}
             {projectId ? (
-              <Link
-                to={`/projects/${projectId}/site`}
-                className="text-xs font-semibold text-violet-800 hover:text-violet-950"
-              >
-                Site builder →
-              </Link>
+              <>
+                <Link
+                  to={`/projects/${projectId}/site`}
+                  className="text-xs font-semibold text-violet-800 hover:text-violet-950"
+                >
+                  Site builder →
+                </Link>
+                <Link
+                  to={`/projects/${projectId}/site?publish=1`}
+                  className="text-xs font-semibold text-emerald-800 hover:text-emerald-950"
+                  title="Opens Publish & hosting — then use Save & deploy in the builder"
+                >
+                  Save & deploy →
+                </Link>
+              </>
             ) : null}
           </span>
         ) : (
@@ -724,6 +798,16 @@ export function ProjectDetailPage() {
           {project.deliveryFocus !== 'client_site' && (
             <Button type="button" variant="secondary" onClick={() => projectId && advanceProjectPhase(projectId)}>
               Advance legacy phase
+            </Button>
+          )}
+          {project.deliveryFocus === 'client_site' && (
+            <Button
+              type="button"
+              variant="secondary"
+              title="Opens Site builder Publish panel — then Save & deploy in the top bar"
+              onClick={() => projectId && navigate(`/projects/${projectId}/site?publish=1`)}
+            >
+              Save &amp; deploy
             </Button>
           )}
           {project.deliveryFocus === 'client_site' && (
@@ -1158,6 +1242,92 @@ export function ProjectDetailPage() {
 
       {project.deliveryFocus === 'client_site' && (
         <>
+        <div className="mb-6 flex flex-col gap-2 rounded-2xl border border-emerald-200/90 bg-emerald-50/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-900">Client handoff · site folder</p>
+            <p className="mt-1 text-sm text-slate-700">
+              Full ZIP of HTML/CSS/JS as stored on the server — like cloning from GitHub. Includes{' '}
+              <code className="rounded bg-emerald-100/90 px-1 text-[11px]">EXPORT_README.txt</code> and{' '}
+              <code className="rounded bg-emerald-100/90 px-1 text-[11px]">project-export-summary.json</code>.
+            </p>
+            <p className="mt-2 text-[12px] leading-relaxed text-slate-600">
+              Typical path: unzip → <code className="rounded bg-emerald-50 px-1 font-mono text-[11px]">git push</code> to GitHub → Railway &quot;Deploy from GitHub repo.&quot; Or use Site builder → Publish for direct deploy.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-9 shrink-0 border-emerald-300/70 bg-white text-xs font-semibold text-emerald-950 hover:bg-emerald-50 sm:self-center"
+            disabled={siteSourceZipBusy}
+            onClick={() => void downloadProjectSiteSourceHandoffZip()}
+          >
+            {siteSourceZipBusy ? 'Zipping…' : 'Download site ZIP'}
+          </Button>
+        </div>
+        {(project.siteVideoCount ?? 0) > 0 ? (
+          <div className="mb-6 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-700">
+              <span className="font-semibold text-slate-900">{project.siteVideoCount}</span>{' '}
+              catalog video{project.siteVideoCount === 1 ? '' : 's'} — fetch mirrored MP4s as one ZIP (requires archive sync).
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-9 shrink-0 text-xs font-semibold sm:self-center"
+              disabled={videoZipBusy}
+              onClick={() => void downloadProjectVideoArchiveZip()}
+            >
+              {videoZipBusy ? 'Building ZIP…' : 'Download all videos (ZIP)'}
+            </Button>
+          </div>
+        ) : null}
+        <div className="mb-6 rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-50/95 to-white px-4 py-4 sm:px-5">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-900">Save to GitHub · deploy on Railway</p>
+          <p className="mt-1.5 text-sm text-slate-700">
+            Client-owned hosting: push the site source to Git, then Railway builds from that repo (<code className="rounded bg-amber-100/80 px-1 font-mono text-[11px]">npm start</code> in the ZIP serves static files).
+          </p>
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-[13px] leading-relaxed text-slate-800">
+            <li>
+              Download <strong className="font-semibold text-slate-900">Site ZIP</strong> above (or Projects list / Site builder <strong className="font-semibold">Client ZIP</strong>) and unzip locally.
+            </li>
+            <li>
+              <code className="rounded bg-white px-1 font-mono text-xs ring-1 ring-slate-200">git init</code>,{' '}
+              <code className="rounded bg-white px-1 font-mono text-xs ring-1 ring-slate-200">git add -A</code>,{' '}
+              <code className="rounded bg-white px-1 font-mono text-xs ring-1 ring-slate-200">git commit</code>, create an empty repo on GitHub, add{' '}
+              <code className="rounded bg-white px-1 font-mono text-xs ring-1 ring-slate-200">origin</code>, push{' '}
+              <code className="rounded bg-white px-1 font-mono text-xs ring-1 ring-slate-200">main</code>.
+            </li>
+            <li>
+              Railway: <strong>New project</strong> → <strong>Deploy from GitHub repo</strong> → pick that repo → deploy (root directory; Nixpacks reads <code className="font-mono text-xs">package.json</code>).
+            </li>
+          </ol>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <a
+              href="https://github.com/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonClassName('secondary', 'inline-flex h-9 items-center px-3 text-xs font-semibold')}
+            >
+              New GitHub repo
+            </a>
+            <a
+              href="https://railway.app/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonClassName('secondary', 'inline-flex h-9 items-center px-3 text-xs font-semibold')}
+            >
+              New Railway project
+            </a>
+            {projectId ? (
+              <Link
+                to={`/projects/${projectId}/site`}
+                className={buttonClassName('secondary', 'inline-flex h-9 items-center px-3 text-xs font-semibold text-violet-900 ring-violet-200 hover:bg-violet-50')}
+              >
+                Site builder (Client ZIP + Publish)
+              </Link>
+            ) : null}
+          </div>
+        </div>
         <div className="mb-10 overflow-hidden rounded-3xl bg-white shadow-md shadow-slate-900/[0.04] ring-1 ring-slate-900/[0.06]">
           <div className="grid gap-0 lg:grid-cols-2">
             <div className="space-y-6 p-6 sm:p-8 lg:bg-slate-50/35">

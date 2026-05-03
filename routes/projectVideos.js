@@ -1,5 +1,6 @@
 'use strict';
 
+const archiver = require('archiver');
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
@@ -137,6 +138,168 @@ adminRouter.get('/projects/:projectId/videos', async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+function safeZipEntryBase(raw) {
+  const s = String(raw || '')
+    .replace(/[/\\?%*:|"<>']/g, '-')
+    .replace(/\s+/g, '-')
+    .trim();
+  return s.slice(0, 96) || 'video';
+}
+
+function extFromMirrorUrl(videoUrl) {
+  try {
+    const pathname = new URL(videoUrl).pathname;
+    const m = /\.([a-z0-9]+)$/i.exec(pathname);
+    if (!m) return 'mp4';
+    const e = m[1].toLowerCase();
+    if (e === 'jpeg') return 'jpg';
+    return e;
+  } catch {
+    return 'mp4';
+  }
+}
+
+/**
+ * ZIP of mirrored files from global `videos` archive (migration 017) for each catalog YouTube ID.
+ * Entries use sort order + youtube_id + title. Run POST /api/videos/sync so rows have video_url before downloading.
+ */
+adminRouter.get('/projects/:projectId/videos/archive-zip', async (req, res) => {
+  try {
+    if (!isSupabaseConfigured()) {
+      return res.status(503).json({ error: 'Supabase not configured' });
+    }
+    const { projectId } = req.params;
+    const supabase = getService();
+    const timeoutMs =
+      Number(process.env.PROJECT_VIDEO_ZIP_FETCH_TIMEOUT_MS) > 5000 ? Number(process.env.PROJECT_VIDEO_ZIP_FETCH_TIMEOUT_MS) : 120000;
+    const maxBytesPerFileRaw = Number(process.env.PROJECT_VIDEO_ZIP_MAX_BYTES_PER_FILE);
+    const maxBytesPerFile =
+      Number.isFinite(maxBytesPerFileRaw) && maxBytesPerFileRaw > 1_048_576
+        ? Math.min(maxBytesPerFileRaw, 2 * 1024 * 1024 * 1024)
+        : 900 * 1024 * 1024;
+
+    const { data: projRows, error: pe } = await supabase
+      .from('project_videos')
+      .select('id, youtube_id, title, sort_order')
+      .eq('project_id', projectId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (pe) {
+      if (migrationHint(pe)) return res.status(503).json({ error: 'Run migration 007_project_videos.sql' });
+      return res.status(500).json({ error: pe.message });
+    }
+    if (!projRows?.length) return res.status(404).json({ error: 'This project has no videos in the catalog.' });
+
+    const yids = [
+      ...new Set(projRows.map((r) => String(r.youtube_id || '').trim()).filter((id) => /^[-_\w]{11}$/.test(id))),
+    ];
+    if (!yids.length) return res.status(400).json({ error: 'No valid YouTube IDs on project videos.' });
+
+    const { data: mirrorRows, error: me } = await supabase
+      .from('videos')
+      .select('youtube_id, video_url')
+      .in('youtube_id', yids);
+    if (me) {
+      if (/does not exist|could not find|videos/i.test(String(me.message || ''))) {
+        return res.status(503).json({
+          error:
+            'Global video archive is not available. Run migration 017_global_video_archive.sql and sync mirrored files (POST /api/videos/sync).',
+        });
+      }
+      return res.status(500).json({ error: me.message });
+    }
+
+    const urlByYt = new Map();
+    for (const row of mirrorRows || []) {
+      const id = String(row.youtube_id || '').trim();
+      const u = row.video_url && String(row.video_url).trim();
+      if (id && u) urlByYt.set(id, u);
+    }
+
+    const manifestLines = [`# CustomSite archive for project ${projectId}`, `# Generated ${new Date().toISOString()}`];
+    const entries = [];
+    for (const r of projRows) {
+      const yt = String(r.youtube_id || '').trim();
+      if (!/^[-_\w]{11}$/.test(yt)) continue;
+      const u = urlByYt.get(yt);
+      const idx = typeof r.sort_order === 'number' ? r.sort_order : entries.length;
+      if (u) entries.push({ youtube_id: yt, title: r.title, sort_order: idx, url: u });
+      else manifestLines.push(`missing_mirror ${yt} ${safeZipEntryBase(r.title)}`);
+    }
+
+    entries.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+    if (!entries.length) {
+      return res.status(422).json({
+        error:
+          'None of these catalog videos have archived files yet. Mirror them first with the global archive (POST /api/videos/sync with admin auth), which stores MP4 URLs on the videos table keyed by YouTube ID.',
+        catalog_count: projRows.length,
+        mirrored_count: 0,
+      });
+    }
+
+    const fetchSignal =
+      typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(timeoutMs)
+        : undefined;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="project-${String(projectId).slice(0, 8)}-videos-mp4.zip"`
+    );
+
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.on('error', (err) => {
+      console.warn('[videos/archive-zip]', err.message || err);
+      if (!res.headersSent) res.status(500).end();
+    });
+    archive.pipe(res);
+
+    const fetchErrors = [];
+    for (let i = 0; i < entries.length; i += 1) {
+      const e = entries[i];
+      const ext = extFromMirrorUrl(e.url);
+      const base = `${String(i + 1).padStart(3, '0')}_${e.youtube_id}_${safeZipEntryBase(e.title)}.${ext}`;
+      try {
+        const resp = await fetch(e.url, {
+          redirect: 'follow',
+          signal: fetchSignal,
+          headers: { 'User-Agent': 'CustomSite-VideoZip/1.0' },
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const len = resp.headers.get('content-length');
+        if (len && Number(len) > maxBytesPerFile) {
+          throw new Error(`File too large (${len} bytes > cap)`);
+        }
+        const buf = Buffer.from(await resp.arrayBuffer());
+        if (buf.length > maxBytesPerFile) throw new Error(`File too large (${buf.length} bytes > cap)`);
+        archive.append(buf, { name: base });
+      } catch (err) {
+        const msg = String(err.message || err);
+        fetchErrors.push(`${e.youtube_id}: ${msg}`);
+        manifestLines.push(`fetch_failed ${e.youtube_id} ${msg}`);
+      }
+    }
+
+    if (fetchErrors.length || manifestLines.length > 3) {
+      archive.append(Buffer.from(`${manifestLines.join('\n')}\n${fetchErrors.length ? `\n--- fetch errors ---\n${fetchErrors.join('\n')}\n` : ''}`, 'utf8'), {
+        name: '_archive_readme.txt',
+      });
+    }
+
+    await new Promise((resolve, reject) => {
+      archive.once('error', reject);
+      archive.once('end', resolve);
+      archive.finalize();
+    });
+  } catch (e) {
+    console.error(e);
+    if (!res.headersSent) return res.status(500).json({ error: e.message || 'Server error' });
   }
 });
 
