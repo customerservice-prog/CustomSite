@@ -21,7 +21,7 @@ import { Dropdown, DropdownChevronTrigger, DropdownItem } from '@/components/ui/
 import { IconButton } from '@/components/ui/icon-button';
 import type { Crumb } from '@/components/layout/breadcrumbs';
 import { useAuthSession } from '@/context/auth-session-context';
-import { clearAdminTokens } from '@/lib/admin-api';
+import { signOutStudio } from '@/lib/sign-out-studio';
 import { useAppStore } from '@/store/useAppStore';
 import { useBuildHelperStore } from '@/store/use-build-helper-store';
 import { useUnreadNotificationCount, useNotifications } from '@/store/hooks';
@@ -197,12 +197,7 @@ export function TopHeader({ breadcrumbs, highlightQuickCreate = false }: TopHead
       <DropdownItem onClick={() => navigate('/dashboard')}>Studio Pulse</DropdownItem>
       <DropdownItem
         onClick={async () => {
-          try {
-            await supabaseBrowser?.auth.signOut();
-          } catch {
-            /* ignore */
-          }
-          clearAdminTokens();
+          await signOutStudio(supabaseBrowser);
           window.location.reload();
         }}
       >

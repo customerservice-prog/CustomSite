@@ -5,7 +5,9 @@ import { cn } from '@/lib/utils';
 import { navGroups, studioPulseNavItem, type NavItem } from '@/lib/nav-config';
 import * as sel from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
+import { useAuthSession } from '@/context/auth-session-context';
 import { useShell } from '@/context/shell-context';
+import { signOutStudio } from '@/lib/sign-out-studio';
 import { Avatar } from '@/components/ui/avatar';
 import { Dropdown, DropdownItem } from '@/components/ui/dropdown';
 import { IconButton } from '@/components/ui/icon-button';
@@ -58,6 +60,7 @@ function SidebarInner({
   const openInvoices = useAppStore((s) => sel.getOpenInvoiceCount(s));
   const navScrollRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
+  const { supabaseBrowser } = useAuthSession();
 
   useEffect(() => {
     const el = navScrollRef.current;
@@ -155,7 +158,18 @@ function SidebarInner({
               </button>
             }
           >
-            <DropdownItem onClick={() => {}}>Sign out</DropdownItem>
+            <DropdownItem
+              destructive
+              onClick={() => {
+                void (async () => {
+                  await signOutStudio(supabaseBrowser);
+                  onNavigate?.();
+                  window.location.reload();
+                })();
+              }}
+            >
+              Sign out
+            </DropdownItem>
           </Dropdown>
         </div>
       </div>
