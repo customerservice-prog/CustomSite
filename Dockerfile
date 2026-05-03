@@ -1,8 +1,9 @@
 # Multi-stage: build admin SPA (needs devDependencies), then run with production deps only.
 FROM node:20-alpine AS builder
+# youtube-dl-exec preinstall requires python3>=3.9 on PATH; plain node:20-alpine has none.
+RUN apk add --no-cache python3 \
+  && ln -sf "$(command -v python3)" /usr/local/bin/python
 WORKDIR /app
-# Builder has no yt-dlp; youtube-dl-exec preinstall only checks for Python. Skip on this stage only.
-ENV YOUTUBE_DL_SKIP_PYTHON_CHECK=1
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
