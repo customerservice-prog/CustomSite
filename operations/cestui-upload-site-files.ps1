@@ -2,7 +2,7 @@
 # Usage (PowerShell): run when API is reachable and you have your bearer token.
 #
 #   $env:CUSTOMSITE_BASE = 'https://customsite.online'
-#   .\operations\cestui-upload-site-files.ps1 -Token 'YOUR_ACCESS_TOKEN' -IndexPath 'C:\path\to\index.html' -VideosPath 'C:\path\to\videos.html'
+#   .\operations\cestui-upload-site-files.ps1 -Token 'YOUR_ACCESS_TOKEN' -IndexPath '...' -VideosPath 'c:\...\CustomSite\client-site-reference\cestui-files\videos.html'
 
 param(
     [Parameter(Mandatory=$true)][string]$Token,
