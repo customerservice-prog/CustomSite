@@ -3,8 +3,8 @@
 export function collectMobileHtmlWarnings(html: string): string[] {
   const warnings: string[] = [];
   const s = html || '';
-  if (!/\bviewport\b/i.test(s)) {
-    warnings.push('Missing viewport meta — mobile scaling may look wrong.');
+  if (!/name\s*=\s*["']viewport["']/i.test(s)) {
+    warnings.push('Missing viewport meta tag — layouts may look zoomed wrong on phones and tablets.');
   }
   const pxSizes = [...s.matchAll(/font-size\s*:\s*([0-9]+)\s*px/gi)].map((m) => Number(m[1]));
   const smallFonts = pxSizes.filter((n) => n > 0 && n < 14);
@@ -16,7 +16,11 @@ export function collectMobileHtmlWarnings(html: string): string[] {
     for (const m of s.matchAll(/\bmin-width\s*:\s*(\d+)px\b/gi)) {
       maxMin = Math.max(maxMin, Number(m[1]));
     }
-    if (maxMin > 560) warnings.push(`Very large min-width (${maxMin}px) may cause horizontal scrolling on phones.`);
+    if (maxMin > 560) {
+      warnings.push(
+        `Very large CSS min-width (${maxMin}px) may force horizontal scrolling on phones and portrait tablets.`,
+      );
+    }
   }
   if (/height\s*:\s*(?:[12][0-9]|30|32|34|36)px/i.test(s) && /<button\b/i.test(s)) {
     warnings.push('Some controls may use short tap heights — aim for ≥ 44px for primary actions.');

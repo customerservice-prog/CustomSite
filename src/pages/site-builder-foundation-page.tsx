@@ -151,6 +151,59 @@ const CLIENT_SITE_STATUS_LABEL: Record<'draft' | 'review' | 'live', string> = {
   live: 'Live — production URL in use',
 };
 
+type PreviewFrameWidthPreset = 'full' | 'mobile' | 'tablet' | 'desktop';
+
+const PREVIEW_FRAME_WIDTH_LS_KEY = 'site-builder:preview-frame-width';
+
+const PREVIEW_FRAME_WIDTH_OPTIONS: readonly { id: PreviewFrameWidthPreset; label: string; title: string }[] = [
+  { id: 'full', label: 'Fit', title: 'Use full preview width' },
+  { id: 'mobile', label: '390', title: 'Narrow phone (~390px)' },
+  { id: 'tablet', label: '768', title: 'Tablet portrait (~768px)' },
+  { id: 'desktop', label: '1200', title: 'Small laptop (~1200px)' },
+];
+
+function readStoredPreviewFramePreset(): PreviewFrameWidthPreset {
+  if (typeof window === 'undefined') return 'full';
+  const raw = window.localStorage.getItem(PREVIEW_FRAME_WIDTH_LS_KEY);
+  if (raw === 'mobile' || raw === 'tablet' || raw === 'desktop' || raw === 'full') return raw;
+  return 'full';
+}
+
+function PreviewViewportWidthToggle({
+  preset,
+  onChange,
+  className,
+}: {
+  preset: PreviewFrameWidthPreset;
+  onChange: (next: PreviewFrameWidthPreset) => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn('inline-flex shrink-0 flex-wrap rounded-md border border-white/10 p-0.5', className)}
+      role="group"
+      aria-label="Preview viewport width"
+    >
+      {PREVIEW_FRAME_WIDTH_OPTIONS.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          title={opt.title}
+          onClick={() => onChange(opt.id)}
+          className={cn(
+            'rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
+            preset === opt.id
+              ? 'bg-violet-600 text-white'
+              : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function resolveVideoHealthTone(v: ProjectVideoRow): 'ok' | 'bad' | 'unknown' {
   const h = String(v.health_status || '').toLowerCase();
   if (h === 'ok') return 'ok';
@@ -240,6 +293,8 @@ export function SiteBuilderFoundationPage() {
   const [previewDebugEvents, setPreviewDebugEvents] = useState<PreviewDebugEvent[]>([]);
   const [builderDebugExpanded, setBuilderDebugExpanded] = useState(false);
   const [fullscreenPreviewOpen, setFullscreenPreviewOpen] = useState(false);
+  const [previewFrameWidthPreset, setPreviewFrameWidthPreset] =
+    useState<PreviewFrameWidthPreset>(readStoredPreviewFramePreset);
   const [publishPanelOpen, setPublishPanelOpen] = useState(false);
   const [importBundleOpen, setImportBundleOpen] = useState(false);
   const [importPaste, setImportPaste] = useState('');
@@ -330,6 +385,11 @@ export function SiteBuilderFoundationPage() {
     prevLoadErrRef.current = null;
     prevSaveErrRef.current = null;
   }, [projectId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(PREVIEW_FRAME_WIDTH_LS_KEY, previewFrameWidthPreset);
+  }, [previewFrameWidthPreset]);
 
   useEffect(() => {
     if (!loadError || loadError === prevLoadErrRef.current) return;
@@ -1978,8 +2038,11 @@ export function SiteBuilderFoundationPage() {
                 previewPulse && 'ring-2 ring-violet-500/60 ring-offset-2 ring-offset-zinc-950'
               )}
             >
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Preview</p>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Preview</p>
+                <PreviewViewportWidthToggle preset={previewFrameWidthPreset} onChange={setPreviewFrameWidthPreset} />
+              </div>
               <Button
                 type="button"
                 variant="ghost"
@@ -1989,22 +2052,43 @@ export function SiteBuilderFoundationPage() {
                 Reset preview
               </Button>
             </div>
-            <SiteBuilderPreviewErrorBoundary
-              key={previewIframeKey}
-              onError={(msg) =>
-                setPreviewDebugEvents((prev) => [...prev.slice(-119), createPreviewDebugEvent('react-preview-boundary', msg)])
-              }
-            >
-              <iframe
-                id="preview"
-                ref={previewFrameRef}
-                title="Site preview"
-                className="box-border min-h-[200px] w-full min-w-0 flex-1 rounded-md bg-white"
-                style={{ width: '100%', height: '100%', border: 'none' }}
-                sandbox="allow-scripts"
-                referrerPolicy="no-referrer"
-              />
-            </SiteBuilderPreviewErrorBoundary>
+            <div
+            className={cn(
+              'flex min-h-0 flex-1 flex-col',
+              previewFrameWidthPreset !== 'full' ? 'overflow-auto rounded-md bg-zinc-950/90 py-2 ring-1 ring-white/[0.08]' : ''
+            )}
+          >
+              <SiteBuilderPreviewErrorBoundary
+                key={previewIframeKey}
+                onError={(msg) =>
+                  setPreviewDebugEvents((prev) => [...prev.slice(-119), createPreviewDebugEvent('react-preview-boundary', msg)])
+                }
+              >
+                <iframe
+                  id="preview"
+                  ref={previewFrameRef}
+                  title="Site preview"
+                  className={cn(
+                    'box-border min-w-0 rounded-md bg-white',
+                    previewFrameWidthPreset === 'full'
+                      ? 'min-h-[200px] h-full w-full flex-1'
+                      : 'mx-auto min-h-[280px] shadow-lg shadow-black/35'
+                  )}
+                  style={
+                    previewFrameWidthPreset === 'full'
+                      ? { width: '100%', height: '100%', border: 'none' }
+                      : {
+                          width: '100%',
+                          border: 'none',
+                          maxWidth: previewFrameWidthPreset === 'mobile' ? 390 : previewFrameWidthPreset === 'tablet' ? 768 : 1200,
+                          height: 'min(78vh, 900px)',
+                        }
+                  }
+                  sandbox="allow-scripts"
+                  referrerPolicy="no-referrer"
+                />
+              </SiteBuilderPreviewErrorBoundary>
+            </div>
           </aside>
           </div>
           {!fullscreenPreviewOpen ? (
@@ -2036,9 +2120,14 @@ export function SiteBuilderFoundationPage() {
           aria-modal="true"
           aria-label="Full-screen site preview"
         >
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
             <p className="truncate text-sm font-semibold text-white">{project?.name ?? 'Site'} — preview</p>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <PreviewViewportWidthToggle
+                preset={previewFrameWidthPreset}
+                onChange={setPreviewFrameWidthPreset}
+                className="border-white/15"
+              />
               <Button
                 type="button"
                 variant="secondary"
@@ -2053,14 +2142,35 @@ export function SiteBuilderFoundationPage() {
               </Button>
             </div>
           </div>
-          <iframe
-            ref={fullscreenFrameRef}
-            title="Full-screen site preview"
-            className="min-h-0 w-full flex-1 bg-white"
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            sandbox="allow-scripts"
-            referrerPolicy="no-referrer"
-          />
+          <div
+            className={cn(
+              'flex min-h-0 flex-1 flex-col',
+              previewFrameWidthPreset !== 'full' ? 'overflow-auto bg-zinc-900 py-3' : 'overflow-hidden bg-zinc-900'
+            )}
+          >
+            <iframe
+              ref={fullscreenFrameRef}
+              title="Full-screen site preview"
+              className={cn(
+                'box-border shrink-0 bg-white',
+                previewFrameWidthPreset === 'full'
+                  ? 'min-h-0 h-full w-full flex-1'
+                  : 'mx-auto min-h-[320px] rounded-md shadow-2xl shadow-black/45 ring-1 ring-white/10'
+              )}
+              style={
+                previewFrameWidthPreset === 'full'
+                  ? { width: '100%', height: '100%', border: 'none' }
+                  : {
+                      width: '100%',
+                      border: 'none',
+                      maxWidth: previewFrameWidthPreset === 'mobile' ? 390 : previewFrameWidthPreset === 'tablet' ? 768 : 1200,
+                      height: 'min(88vh, 960px)',
+                    }
+              }
+              sandbox="allow-scripts"
+              referrerPolicy="no-referrer"
+            />
+          </div>
           {hasFiles ? (
             <SiteBuilderPreviewDebugPanel
               events={previewDebugEvents}

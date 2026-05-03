@@ -1,4 +1,5 @@
 import type { ProjectSite } from '@/lib/site-builder/project-site-model';
+import { injectPreviewResponsiveBaseline } from '@/lib/site-builder/preview-responsive-baseline';
 import { PREVIEW_ISOLATION_SCRIPT } from '@/lib/site-builder/preview-isolation';
 
 /** @param isolate When true (default), injects iframe harness for the admin builder. Set false for blob URL / new-tab preview. */
@@ -50,8 +51,9 @@ export function composePreviewDocument(site: ProjectSite, options?: ComposePrevi
   const js = site.files.find((f) => f.name === 'script.js')?.content ?? '';
 
   if (!html.trim()) {
-    let stub = `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body><p>Add ${entryFile}</p></body></html>`;
+    let stub = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/></head><body><p>Add ${entryFile}</p></body></html>`;
     if (isolate) stub = injectPreviewBaseHref(stub);
+    stub = injectPreviewResponsiveBaseline(stub);
     return isolate ? injectBeforeCloseBody(stub, PREVIEW_ISOLATION_SCRIPT) : stub;
   }
 
@@ -69,6 +71,8 @@ export function composePreviewDocument(site: ProjectSite, options?: ComposePrevi
   } else if (js.trim() && /<\/body>/i.test(out)) {
     out = out.replace(/<\/body>/i, `<script>\n${escapeScript(js)}\n</script>\n</body>`);
   }
+
+  out = injectPreviewResponsiveBaseline(out);
 
   return isolate ? injectBeforeCloseBody(out, PREVIEW_ISOLATION_SCRIPT) : out;
 }
