@@ -363,9 +363,12 @@ app.use((req, res) => {
     return res.status(404).end();
   }
   res.status(404).sendFile(path.join(__dirname, '404.html'), (err) => {
-    if (err) {
-      res.status(404).type('text/plain').send('Not found');
+    if (!err) return;
+    if (res.headersSent) {
+      console.warn('[404] fallback sendFile failed after headers sent:', err.code || err.message);
+      return;
     }
+    res.status(404).type('text/plain').send('Not found');
   });
 });
 
