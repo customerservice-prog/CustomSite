@@ -249,6 +249,12 @@ function hostingPatchFromBody(b) {
       b.published_at === null || b.published_at === '' ? null : String(b.published_at).trim().slice(0, 120);
   if (b.stage !== undefined && b.stage != null && String(b.stage).trim())
     patch.stage = String(b.stage).trim().slice(0, 80);
+  if (b.internal_notes !== undefined) {
+    patch.internal_notes =
+      b.internal_notes === null || b.internal_notes === ''
+        ? null
+        : String(b.internal_notes).trim().slice(0, 8000);
+  }
   return patch;
 }
 

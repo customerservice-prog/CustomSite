@@ -142,6 +142,8 @@ export type Project = {
   clientPortalVisible?: boolean;
   /** Hydrated when client has `users.is_owner` — not a paying engagement. */
   clientIsOwner?: boolean;
+  /** If set at create time, site builder shows import hints (ZIP / paste) for this URL. */
+  clientSourceRepoUrl?: string | null;
   /** Productized package sold to the client (conversion program tier). */
   servicePackage?: ServicePackageId | null;
   /** Concrete improvements already made on the site (perceived progress). */

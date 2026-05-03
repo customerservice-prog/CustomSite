@@ -11,6 +11,7 @@ import { PROJECT_TEMPLATES, getProjectTemplate } from '@/lib/project-templates';
 import { SERVICE_PACKAGES } from '@/lib/service-offer';
 import type { ServicePackageId, SiteBuildArchetypeId, TaskPriority } from '@/lib/types/entities';
 import { SITE_BUILD_ARCHETYPE_OPTIONS } from '@/lib/site-builder/archetypes';
+import { normalizeClientSourceRepoUrl } from '@/lib/client-source-repo';
 
 const CS_RESUME_CREATE_PROJECT_DRAFT = 'cs_resume_create_project_draft';
 const CS_RESUME_CREATE_INVOICE_DRAFT = 'cs_resume_create_invoice_draft';
@@ -54,6 +55,7 @@ export function CreateEntityModals() {
     templateId: '' as string,
     servicePackage: '' as '' | ServicePackageId,
     siteBuildArchetype: '' as '' | SiteBuildArchetypeId,
+    clientSourceRepo: '',
   });
   const [invoiceForm, setInvoiceForm] = useState({
     clientId: '',
@@ -441,6 +443,12 @@ export function CreateEntityModals() {
               title={!canCreateProject ? 'Choose a client and enter the site / project name' : undefined}
               onClick={async () => {
                 if (!canCreateProject) return;
+                const rawRepo = projectForm.clientSourceRepo.trim();
+                const repoNormalized = normalizeClientSourceRepoUrl(projectForm.clientSourceRepo);
+                if (rawRepo && !repoNormalized) {
+                  toast('That client repo URL is not valid — leave blank or use https://…', 'error');
+                  return;
+                }
                 const tmpl = projectForm.templateId ? getProjectTemplate(projectForm.templateId) : undefined;
                 const pid = await addProject({
                   name: projectForm.name,
@@ -454,6 +462,7 @@ export function CreateEntityModals() {
                     tmpl?.deliveryFocus === 'client_site'
                       ? projectForm.siteBuildArchetype || 'service_business'
                       : undefined,
+                  clientSourceRepoUrl: repoNormalized,
                 });
                 if (!pid) return;
                 setProjectForm({
@@ -465,6 +474,7 @@ export function CreateEntityModals() {
                   templateId: '',
                   servicePackage: '',
                   siteBuildArchetype: '',
+                  clientSourceRepo: '',
                 });
                 closeModal();
                 const created = useAppStore.getState().projects[pid];

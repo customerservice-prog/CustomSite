@@ -11,11 +11,14 @@ import {
   LayoutTemplate,
   Loader2,
   Maximize2,
+  Monitor,
   Plus,
   RefreshCw,
   Rocket,
+  Smartphone,
   Search,
   Sparkles,
+  Tablet,
   Trash2,
   Video,
 } from 'lucide-react';
@@ -48,6 +51,7 @@ import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-pr
 import { createPreviewDebugEvent, type PreviewDebugEvent } from '@/lib/site-builder/preview-debug-events';
 import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
 import { SectionLibraryPopover } from '@/components/site-builder/section-library-popover';
+import { ClientRepoImportHint } from '@/components/site-builder/client-repo-import-hint';
 import { SiteBuilderPreviewDebugPanel } from '@/components/site-builder/site-builder-preview-debug-panel';
 import { SiteBuilderPreviewErrorBoundary } from '@/components/site-builder/site-builder-preview-error-boundary';
 import { useShell } from '@/context/shell-context';
@@ -156,10 +160,10 @@ type PreviewFrameWidthPreset = 'full' | 'mobile' | 'tablet' | 'desktop';
 const PREVIEW_FRAME_WIDTH_LS_KEY = 'site-builder:preview-frame-width';
 
 const PREVIEW_FRAME_WIDTH_OPTIONS: readonly { id: PreviewFrameWidthPreset; label: string; title: string }[] = [
-  { id: 'full', label: 'Fit', title: 'Use full preview width' },
-  { id: 'mobile', label: '390', title: 'Narrow phone (~390px)' },
-  { id: 'tablet', label: '768', title: 'Tablet portrait (~768px)' },
-  { id: 'desktop', label: '1200', title: 'Small laptop (~1200px)' },
+  { id: 'mobile', label: 'Mobile', title: 'Phone (~390px wide)' },
+  { id: 'tablet', label: 'Tablet', title: 'Tablet portrait (~768px)' },
+  { id: 'desktop', label: 'Desktop', title: 'Desktop (~1200px)' },
+  { id: 'full', label: 'Full', title: 'Use full preview width' },
 ];
 
 function readStoredPreviewFramePreset(): PreviewFrameWidthPreset {
@@ -168,6 +172,13 @@ function readStoredPreviewFramePreset(): PreviewFrameWidthPreset {
   if (raw === 'mobile' || raw === 'tablet' || raw === 'desktop' || raw === 'full') return raw;
   return 'full';
 }
+
+const PREVIEW_WIDTH_ICON: Record<PreviewFrameWidthPreset, typeof Smartphone> = {
+  mobile: Smartphone,
+  tablet: Tablet,
+  desktop: Monitor,
+  full: Maximize2,
+};
 
 function PreviewViewportWidthToggle({
   preset,
@@ -182,26 +193,68 @@ function PreviewViewportWidthToggle({
     <div
       className={cn('inline-flex shrink-0 flex-wrap rounded-md border border-white/10 p-0.5', className)}
       role="group"
-      aria-label="Preview viewport width"
+      aria-label="Preview as mobile, tablet, desktop, or full width"
     >
-      {PREVIEW_FRAME_WIDTH_OPTIONS.map((opt) => (
-        <button
-          key={opt.id}
-          type="button"
-          title={opt.title}
-          onClick={() => onChange(opt.id)}
-          className={cn(
-            'rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
-            preset === opt.id
-              ? 'bg-violet-600 text-white'
-              : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
+      {PREVIEW_FRAME_WIDTH_OPTIONS.map((opt) => {
+        const Icon = PREVIEW_WIDTH_ICON[opt.id];
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            title={opt.title}
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              'flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
+              preset === opt.id
+                ? 'bg-violet-600 text-white'
+                : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
+            )}
+          >
+            <Icon className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+            <span className="hidden sm:inline">{opt.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
+}
+
+function waitForWorkspaceManualSave(
+  projectId: string,
+  baselineLastSaved: number | null,
+  timeoutMs = 120_000
+): Promise<'saved' | 'error' | 'timeout'> {
+  const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  return new Promise((resolve) => {
+    const done = (r: 'saved' | 'error' | 'timeout') => resolve(r);
+    const tick = () => {
+      const row = useProjectSiteWorkspaceStore.getState().byProjectId[projectId];
+      const elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
+      if (!row) {
+        if (elapsed > timeoutMs) done('timeout');
+        else requestAnimationFrame(tick);
+        return;
+      }
+      if (row.saveStatus === 'error') {
+        done('error');
+        return;
+      }
+      if (
+        row.saveStatus === 'saved' &&
+        row.lastSavedAt != null &&
+        (baselineLastSaved === null || row.lastSavedAt > baselineLastSaved)
+      ) {
+        done('saved');
+        return;
+      }
+      if (elapsed > timeoutMs) {
+        done('timeout');
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }
 
 function resolveVideoHealthTone(v: ProjectVideoRow): 'ok' | 'bad' | 'unknown' {
@@ -324,6 +377,7 @@ export function SiteBuilderFoundationPage() {
   const [dragVideoId, setDragVideoId] = useState<string | null>(null);
   const [hostingSaving, setHostingSaving] = useState(false);
   const [deployBusy, setDeployBusy] = useState(false);
+  const [saveAndDeployBusy, setSaveAndDeployBusy] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
   /** When true, POST /railway/attach-custom-domain also registers www.<apex> at Railway (TLS + routing). */
   const [attachIncludeWww, setAttachIncludeWww] = useState(true);
@@ -689,6 +743,37 @@ export function SiteBuilderFoundationPage() {
       setDeployBusy(false);
     }
   }, [projectId, prodDomainReady, mergeProjectRowFromServer, toast]);
+
+  const runSaveAndDeploy = useCallback(async () => {
+    if (!projectId) return;
+    if (!siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
+      toast('Sign in with the live API to save site files and deploy.', 'error');
+      return;
+    }
+    if (!prodDomainReady) {
+      saveCurrentToSite();
+      setPublishPanelOpen(true);
+      toast('Save a production domain in Publish & deploy, then use Save & deploy again.', 'info');
+      return;
+    }
+    const baseline = useProjectSiteWorkspaceStore.getState().byProjectId[projectId]?.lastSavedAt ?? null;
+    saveCurrentToSite();
+    setSaveAndDeployBusy(true);
+    try {
+      const outcome = await waitForWorkspaceManualSave(projectId, baseline);
+      if (outcome === 'timeout') {
+        toast('Save is still running or timed out — check the save status, then deploy from Publish.', 'error');
+        return;
+      }
+      if (outcome === 'error') {
+        toast('Fix save errors before deploying production.', 'error');
+        return;
+      }
+      await runDeployProduction();
+    } finally {
+      setSaveAndDeployBusy(false);
+    }
+  }, [projectId, prodDomainReady, saveCurrentToSite, runDeployProduction, toast]);
 
   const refreshSiteMedia = useCallback(async () => {
     if (!projectId) return;
@@ -1313,6 +1398,7 @@ export function SiteBuilderFoundationPage() {
           )}
         </div>
       ) : null}
+      {project?.clientSourceRepoUrl ? <ClientRepoImportHint repoUrl={project.clientSourceRepoUrl} /> : null}
       <header className="flex min-h-11 shrink-0 flex-col gap-1 border-b border-white/10 px-3 py-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -1420,16 +1506,40 @@ export function SiteBuilderFoundationPage() {
             </span>
           ) : null}
           {hasFiles ? (
-            <Button
-              type="button"
-              variant="secondary"
-              className="h-8 border-zinc-600 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
-              disabled={serverWritesConfigured && !signedInForApi}
-              title={serverWritesConfigured && !signedInForApi ? 'Sign in to save to the server' : undefined}
-              onClick={() => saveCurrentToSite()}
-            >
-              Save
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-8 border-zinc-600 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 hover:bg-zinc-700"
+                disabled={serverWritesConfigured && !signedInForApi}
+                title={serverWritesConfigured && !signedInForApi ? 'Sign in to save to the server' : undefined}
+                onClick={() => saveCurrentToSite()}
+              >
+                Save
+              </Button>
+              <Button
+                type="button"
+                className="h-8 gap-1.5 bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-600"
+                disabled={
+                  serverWritesConfigured && !signedInForApi ? true : saveAndDeployBusy || deployBusy
+                }
+                title={
+                  serverWritesConfigured && !signedInForApi
+                    ? 'Sign in to save and deploy'
+                    : !prodDomainReady
+                      ? 'Saves workspace, opens Publish — set and save domain to deploy production'
+                      : 'Save workspace to server, wait for confirmation, then production deploy'
+                }
+                onClick={() => void runSaveAndDeploy()}
+              >
+                {saveAndDeployBusy || deployBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <Rocket className="h-3.5 w-3.5 shrink-0 opacity-95" aria-hidden />
+                )}
+                Save & deploy
+              </Button>
+            </>
           ) : null}
         </div>
         {hasFiles ? (
@@ -2540,6 +2650,10 @@ export function SiteBuilderFoundationPage() {
                   >
                     {deployBusy ? 'Deploying…' : 'Deploy production (ZIP / Railway)'}
                   </Button>
+                  <p className="text-[10px] leading-relaxed text-zinc-500">
+                    Or use <strong className="text-zinc-300">Save &amp; deploy</strong> in the builder top bar to write site files, confirm the save, then deploy
+                    automatically.
+                  </p>
                 </div>
               </section>
 

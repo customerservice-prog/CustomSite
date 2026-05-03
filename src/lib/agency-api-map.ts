@@ -24,6 +24,8 @@ export type SpaProjectMeta = {
   siteBuildArchetype?: SiteBuildArchetypeId | null;
   servicePackage?: string | null;
   clientStatus?: ClientStatus;
+  /** Optional “already have a repo” URL — UX only (ZIP / paste), not cloned server-side. */
+  clientSourceRepoUrl?: string | null;
 };
 
 export function buildProjectInternalNotes(meta: SpaProjectMeta, existingRaw?: string | null): string {
@@ -52,6 +54,15 @@ export function parseSpaProjectMeta(internalNotes: string | null | undefined): S
   } catch {
     return {};
   }
+}
+
+/** Merge fields into embedded SPA meta and re-stringify — preserves unrelated `internal_notes` JSON keys when possible. */
+export function mergeSpaProjectMetaIntoInternalNotes(
+  patch: Partial<SpaProjectMeta>,
+  existingRaw: string | null | undefined
+): string {
+  const cur = parseSpaProjectMeta(existingRaw);
+  return buildProjectInternalNotes({ ...cur, ...patch }, existingRaw);
 }
 
 /** DB `projects.status` → SPA lifecycle */
@@ -310,6 +321,10 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
     studioFocusLine,
     siteAnalyticsSnapshot,
     clientPortalVisible: deliveryFocus === 'client_site' ? true : undefined,
+    clientSourceRepoUrl:
+      typeof meta.clientSourceRepoUrl === 'string' && meta.clientSourceRepoUrl.trim()
+        ? meta.clientSourceRepoUrl.trim()
+        : null,
     servicePackage: (meta.servicePackage as Project['servicePackage']) ?? null,
   };
 }

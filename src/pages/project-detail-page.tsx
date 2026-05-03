@@ -46,10 +46,13 @@ import * as sel from '@/store/selectors';
 import { cn } from '@/lib/utils';
 import { normalizeCustomDomainInput, patchAdminProject, railwayHostnameFromUrl, fetchAdminProject } from '@/lib/admin-project-hosting';
 import type { ApiProjectRow } from '@/lib/agency-api-map';
+import { mergeSpaProjectMetaIntoInternalNotes } from '@/lib/agency-api-map';
 import { fetchProjectFormSubmissions, patchFormSubmissionReadFlag, type FormSubmissionRow } from '@/lib/project-form-submissions-api';
 import { siteBuilderListFiles, siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
 import { deleteProjectWithLiveConfirm } from '@/lib/admin-project-entity-api';
 import { getAccessToken } from '@/lib/admin-api';
+import { normalizeClientSourceRepoUrl } from '@/lib/client-source-repo';
+import { ClientRepoImportHint } from '@/components/site-builder/client-repo-import-hint';
 import {
   CONVERSION_WORKSPACE_LABEL,
   DELIVERY_ADVANTAGE,
@@ -58,13 +61,28 @@ import {
   PROCESS_STEPS,
   RISK_REVERSAL,
 } from '@/lib/offer-positioning';
-import { Radio, TrendingUp } from 'lucide-react';
+import { Radio, Smartphone, TrendingUp, Monitor, Maximize2, Activity, Calendar } from 'lucide-react';
 import { fetchLiveAnalytics, fetchProjectAnalytics, type ProjectAnalyticsPayload } from '@/lib/project-analytics-api';
 import { useWorkspacePeekRow } from '@/hooks/use-workspace-peek-row';
 
 const ACTIVE_SITE_STAGES: ProjectLifecycleStage[] = ['discovery', 'proposal_contract', 'build', 'review'];
 
 const SITE_TYPE_OPTIONS = ['person', 'restaurant', 'local_business', 'ecommerce', 'portfolio'] as const;
+
+const PROJECT_DETAIL_PEEK_VIEWPORT_LS = 'customsite:project-detail-site-peek-viewport';
+
+type ProjectPeekViewport = 'mobile' | 'desktop' | 'full';
+
+function readProjectPeekViewport(): ProjectPeekViewport {
+  if (typeof window === 'undefined') return 'desktop';
+  try {
+    const raw = window.localStorage.getItem(PROJECT_DETAIL_PEEK_VIEWPORT_LS);
+    if (raw === 'mobile' || raw === 'desktop' || raw === 'full') return raw;
+  } catch {
+    /* */
+  }
+  return 'desktop';
+}
 
 function lifecycleStageIndex(project: Project): number {
   const i = LIFECYCLE_ORDER.indexOf(project.lifecycleStage);
@@ -134,6 +152,17 @@ export function ProjectDetailPage() {
   const [siteTypeDraft, setSiteTypeDraft] = useState<string>('portfolio');
   const [googleSiteVerificationDraft, setGoogleSiteVerificationDraft] = useState('');
   const [projectDeleteBusy, setProjectDeleteBusy] = useState(false);
+  const [peekViewport, setPeekViewport] = useState<ProjectPeekViewport>(() => readProjectPeekViewport());
+  const [clientRepoDraft, setClientRepoDraft] = useState('');
+  const [clientRepoSaving, setClientRepoSaving] = useState(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PROJECT_DETAIL_PEEK_VIEWPORT_LS, peekViewport);
+    } catch {
+      /* */
+    }
+  }, [peekViewport]);
 
   const client = useAppStore(useShallow((s) => (project ? s.clients[project.clientId] : undefined)));
   const owner = project ? users[project.ownerId] : undefined;
@@ -213,7 +242,8 @@ export function ProjectDetailPage() {
     if (!project) return;
     setHostDomainDraft(project.customDomainHost ?? '');
     setHostSvcDraft(project.railwayServiceIdProduction ?? '');
-  }, [project?.id, project?.customDomainHost, project?.railwayServiceIdProduction]);
+    setClientRepoDraft(project.clientSourceRepoUrl?.trim() ?? '');
+  }, [project?.id, project?.customDomainHost, project?.railwayServiceIdProduction, project?.clientSourceRepoUrl]);
 
   useEffect(() => {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
@@ -380,6 +410,45 @@ export function ProjectDetailPage() {
       setHostingSaveBusy(false);
     }
   }, [projectId, hostDomainDraft, hostSvcDraft, ga4WorkspaceDraft, siteTypeDraft, googleSiteVerificationDraft, mergeProjectRowFromServer, toast]);
+
+  const saveClientSourceRepoDraft = useCallback(async () => {
+    if (!projectId) return;
+    if (import.meta.env.VITE_USE_REAL_API !== '1') {
+      toast('Turn on VITE_USE_REAL_API to save the repo link on this project.', 'error');
+      return;
+    }
+    if (!getAccessToken()?.trim()) {
+      toast('Sign in again to save project meta.', 'error');
+      return;
+    }
+    const raw = clientRepoDraft.trim();
+    const norm = normalizeClientSourceRepoUrl(clientRepoDraft);
+    if (raw && !norm) {
+      toast('That URL does not look valid — use https://… or leave blank.', 'error');
+      return;
+    }
+    setClientRepoSaving(true);
+    try {
+      const ref = await fetchAdminProject(projectId);
+      if (!ref.ok) {
+        toast(ref.error ?? 'Could not load project.', 'error');
+        return;
+      }
+      const pr = ref.data?.project as Record<string, unknown> | undefined;
+      const notes = typeof pr?.internal_notes === 'string' ? pr.internal_notes : '';
+      const internal_notes = mergeSpaProjectMetaIntoInternalNotes({ clientSourceRepoUrl: norm }, notes || undefined);
+      const r = await patchAdminProject(projectId, { internal_notes });
+      if (!r.ok) {
+        toast(r.error, 'error');
+        return;
+      }
+      const row = r.data?.project;
+      if (row && typeof row === 'object') mergeProjectRowFromServer(row as ApiProjectRow);
+      toast(norm ? 'Client repo URL saved — import hints show in Site builder.' : 'Client repo URL cleared.', 'success');
+    } finally {
+      setClientRepoSaving(false);
+    }
+  }, [projectId, clientRepoDraft, mergeProjectRowFromServer, toast]);
 
   const dnsCnameTarget = useMemo(
     () => railwayHostnameFromUrl(project?.railwayProductionUrl ?? null),
@@ -789,6 +858,35 @@ export function ProjectDetailPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <div
+                    className="flex shrink-0 flex-wrap gap-1 rounded-md border border-slate-300/25 bg-white/95 p-0.5 shadow-sm"
+                    role="group"
+                    aria-label="Site preview viewport"
+                  >
+                    {(
+                      [
+                        ['mobile', Smartphone, 'Mobile'] as const,
+                        ['desktop', Monitor, 'Desktop'] as const,
+                        ['full', Maximize2, 'Full width'] as const,
+                      ] as const
+                    ).map(([id, Icon, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        title={label}
+                        onClick={() => setPeekViewport(id)}
+                        className={cn(
+                          'flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
+                          peekViewport === id
+                            ? 'bg-violet-600 text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" aria-hidden />
+                        <span className="hidden sm:inline">{label === 'Full width' ? 'Full' : label}</span>
+                      </button>
+                    ))}
+                  </div>
                   <Button type="button" variant="ghost" className="h-8 px-2 text-xs font-semibold" onClick={() => void hydrateWorkspaceSite(project.id)}>
                     Refresh
                   </Button>
@@ -810,16 +908,26 @@ export function ProjectDetailPage() {
                   </Button>
                 </div>
               </div>
-              <div className="bg-slate-950 p-2 sm:p-3">
+              <div className="flex justify-center overflow-x-auto bg-slate-950 p-3 sm:p-4">
                 <iframe
                   key={`peek-${project.id}-${workspacePeekRow?.previewNonce ?? 0}`}
                   title={`${project.name} — site preview`}
                   srcDoc={quickPeekSiteIframeSrcDoc}
-                  className="h-[min(400px,55vh)] w-full rounded-lg bg-white"
+                  className={cn(
+                    'h-[min(400px,55vh)] w-full shrink-0 rounded-lg bg-white shadow-md ring-1 ring-white/10',
+                    peekViewport === 'mobile' && 'max-w-[390px]',
+                    peekViewport === 'desktop' && 'max-w-[1200px]',
+                    peekViewport === 'full' && 'max-w-none'
+                  )}
                   sandbox="allow-scripts"
                   referrerPolicy="no-referrer"
                 />
               </div>
+              {project.clientSourceRepoUrl?.trim() ? (
+                <div className="border-t border-white/10">
+                  <ClientRepoImportHint repoUrl={project.clientSourceRepoUrl.trim()} />
+                </div>
+              ) : null}
             </section>
           ) : null}
           {clientFacingStatus === 'Live' ? (
@@ -915,6 +1023,64 @@ export function ProjectDetailPage() {
           </section>
           ) : (
           <section className="mb-8 rounded-3xl bg-gradient-to-b from-white via-violet-50/[0.35] to-slate-50/30 px-6 py-8 shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.06] sm:px-8 sm:py-9">
+            {import.meta.env.VITE_USE_REAL_API === '1' ? (
+              <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl bg-white/95 px-4 py-3 ring-1 ring-slate-900/[0.06] shadow-sm">
+                  <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    <TrendingUp className="h-3 w-3" aria-hidden />
+                    Total views
+                  </p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                    {siteTrafficAnalyticsLoading && !siteTrafficAnalytics
+                      ? '…'
+                      : (siteTrafficAnalytics?.total_views ??
+                          project.siteAnalyticsSnapshot?.total ??
+                          0
+                        ).toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/95 px-4 py-3 ring-1 ring-slate-900/[0.06] shadow-sm">
+                  <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    <Activity className="h-3 w-3" aria-hidden />
+                    Today
+                  </p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                    {siteTrafficAnalyticsLoading && !siteTrafficAnalytics
+                      ? '…'
+                      : (siteTrafficAnalytics?.today_views ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/95 px-4 py-3 ring-1 ring-slate-900/[0.06] shadow-sm">
+                  <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    <Calendar className="h-3 w-3" aria-hidden />
+                    Yesterday
+                  </p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                    {siteTrafficAnalyticsLoading && !siteTrafficAnalytics
+                      ? '…'
+                      : (
+                          siteTrafficAnalytics?.yesterday_views ??
+                          project.siteAnalyticsSnapshot?.yesterday ??
+                          0
+                        ).toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/95 px-4 py-3 ring-1 ring-slate-900/[0.06] shadow-sm">
+                  <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    <Radio className="h-3 w-3" aria-hidden />
+                    Live now
+                  </p>
+                  <p
+                    className={cn(
+                      'mt-1 text-xl font-bold tabular-nums',
+                      liveVisitorsNow > 0 ? 'text-emerald-700' : 'text-slate-600',
+                    )}
+                  >
+                    {liveVisitorsNow.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ) : null}
             <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700/90">Current focus</p>
             <p className="mt-3 text-[13px] font-medium text-slate-500">Right now we&apos;re working on</p>
             <p className="mt-1 text-2xl font-bold leading-[1.15] tracking-tight text-slate-900 sm:text-3xl">{focusHeadline}</p>
@@ -1033,6 +1199,39 @@ export function ProjectDetailPage() {
                 })}
               </div>
               <div className="rounded-xl border border-violet-200/60 bg-violet-50/50 p-4">
+                <div className="mb-4 rounded-lg border border-violet-300/35 bg-white/80 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-violet-900/90">Client source repository</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                    If the client already has a public repo URL, save it here — the site builder shows ZIP and paste steps. Nothing is cloned automatically.
+                  </p>
+                  <label className="mt-2 block text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-client-repo">
+                    Repo URL (optional)
+                  </label>
+                  <Input
+                    id="pd-client-repo"
+                    value={clientRepoDraft}
+                    onChange={(e) => setClientRepoDraft(e.target.value)}
+                    placeholder="https://github.com/org/site"
+                    className="mt-1 h-9 text-sm"
+                    inputMode="url"
+                    autoComplete="off"
+                    disabled={import.meta.env.VITE_USE_REAL_API !== '1'}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-2 h-8 text-xs font-semibold"
+                    disabled={
+                      clientRepoSaving || import.meta.env.VITE_USE_REAL_API !== '1' || !getAccessToken()?.trim()
+                    }
+                    onClick={() => void saveClientSourceRepoDraft()}
+                  >
+                    {clientRepoSaving ? 'Saving…' : 'Save repo link'}
+                  </Button>
+                  {import.meta.env.VITE_USE_REAL_API !== '1' ? (
+                    <p className="mt-1 text-[10px] text-slate-500">Enable real API mode to persist this on the project.</p>
+                  ) : null}
+                </div>
                 <p className="text-[11px] font-bold uppercase tracking-wide text-violet-800/90">Production domain & DNS</p>
                 <p className="mt-1 text-xs leading-relaxed text-slate-600">
                   Stored on the project via <code className="text-slate-800">PATCH /api/admin/projects/:id</code>. Production deploy requires a saved domain.
@@ -1352,7 +1551,9 @@ export function ProjectDetailPage() {
                   <h3 className="text-lg font-bold tracking-tight text-slate-900">Site analytics</h3>
                 </div>
                 <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-slate-500">
-                  Page views counted on the mapped custom domain after the project launches. Visitor IDs are one-way hashes (IP fragment + UA) — no PII retained.
+                  Page views are recorded when visitors load HTML on the hostname matched to this project (production or preview). Visitor IDs are short
+                  hashes (IP fragment + browser) — no PII. Zeros are normal until traffic hits the mapped domain or before the daily rollup cron fills the
+                  chart.
                 </p>
               </div>
               {import.meta.env.VITE_USE_REAL_API === '1' ? (

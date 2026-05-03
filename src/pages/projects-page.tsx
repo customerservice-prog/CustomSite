@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, Clapperboard, Eye, FileText, LayoutGrid, Pencil, Plus, Radio, Search, Table2 } from 'lucide-react';
+import {
+  Activity,
+  Calendar,
+  Clapperboard,
+  Eye,
+  FileText,
+  LayoutGrid,
+  Pencil,
+  Plus,
+  Radio,
+  Search,
+  Table2,
+} from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
 import { PageHeader } from '@/components/ui/page-header';
@@ -44,7 +56,7 @@ import type { Project } from '@/lib/types/entities';
 
 function formatSiteTrafficLine(p: {
   project: Project;
-  analyticsByProject: Record<string, { total: number; yesterday: number }>;
+  analyticsByProject: Record<string, { total: number; yesterday: number; today: number }>;
   liveByProject: Record<string, number>;
 }) {
   if (import.meta.env.VITE_USE_REAL_API !== '1' || p.project.deliveryFocus !== 'client_site') return null;
@@ -53,51 +65,56 @@ function formatSiteTrafficLine(p: {
   const snap = pr.siteAnalyticsSnapshot;
   const total = a?.total ?? snap?.total ?? 0;
   const yest = a?.yesterday ?? snap?.yesterday ?? 0;
+  const today = a?.today ?? 0;
   const live = p.liveByProject[pr.id] ?? snap?.live ?? 0;
-  const hasAnalytics = total > 0 || yest > 0 || live > 0;
 
-  if (hasAnalytics) {
-    return (
-      <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] font-medium tabular-nums text-slate-500">
-        <span className="inline-flex items-center gap-1">
+  return (
+    <>
+      <p className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] font-semibold tabular-nums text-slate-700">
+        <span className="inline-flex items-center gap-1" title="All-time views (since launch, server)">
           <Eye className="h-3 w-3 text-slate-400" aria-hidden />
           {(total ?? 0).toLocaleString()} total
         </span>
-        <span className="inline-flex items-center gap-1">
-          <Calendar className="h-3 w-3 text-slate-400" aria-hidden />
-          {(yest ?? 0).toLocaleString()} yesterday
+        <span className="inline-flex items-center gap-1 text-slate-300">·</span>
+        <span className="inline-flex items-center gap-1" title="Views today (UTC midnight boundary on server)">
+          <Activity className="h-3 w-3 text-slate-400" aria-hidden />
+          {(today ?? 0).toLocaleString()} today
         </span>
+        <span className="inline-flex items-center gap-1 text-slate-300">·</span>
+        <span className="inline-flex items-center gap-1" title="Yesterday (daily rollup)">
+          <Calendar className="h-3 w-3 text-slate-400" aria-hidden />
+          {(yest ?? 0).toLocaleString()} y&apos;day
+        </span>
+        <span className="inline-flex items-center gap-1 text-slate-300">·</span>
         <span
           className={cn(
             'inline-flex items-center gap-1',
-            live > 0 ? 'text-emerald-700' : 'text-slate-400',
+            live > 0 ? 'text-emerald-700' : 'text-slate-500',
             live > 0 && 'animate-pulse',
           )}
+          title="Distinct visitors seen in roughly the last 5 minutes"
         >
-          <Radio className="h-3 w-3" aria-hidden />
+          <Radio className="h-3 w-3 shrink-0" aria-hidden />
           {live.toLocaleString()} live
         </span>
       </p>
-    );
-  }
-
-  return (
-    <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] font-medium tabular-nums text-slate-600">
-      <span className="inline-flex items-center gap-1">
-        <FileText className="h-3 w-3 text-slate-400" aria-hidden />
-        {pr.sitePageCount != null ? `${pr.sitePageCount} pages` : '— pages'}
-      </span>
-      <span className="inline-flex items-center gap-1 text-slate-400">|</span>
-      <span className="inline-flex items-center gap-1">
-        <Clapperboard className="h-3 w-3 text-slate-400" aria-hidden />
-        {pr.siteVideoCount != null ? `${pr.siteVideoCount} videos` : '— videos'}
-      </span>
-      <span className="inline-flex items-center gap-1 text-slate-400">|</span>
-      <span className="inline-flex items-center gap-1">
-        <Pencil className="h-3 w-3 text-slate-400" aria-hidden />
-        Last saved: {pr.lastSiteUpdateLabel ?? '—'}
-      </span>
-    </p>
+      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-medium tabular-nums text-slate-400">
+        <span className="inline-flex items-center gap-1">
+          <FileText className="h-3 w-3 text-slate-300" aria-hidden />
+          {pr.sitePageCount != null ? `${pr.sitePageCount} pages` : '— pages'}
+        </span>
+        <span className="text-slate-300">·</span>
+        <span className="inline-flex items-center gap-1">
+          <Clapperboard className="h-3 w-3 text-slate-300" aria-hidden />
+          {pr.siteVideoCount != null ? `${pr.siteVideoCount} videos` : '— videos'}
+        </span>
+        <span className="text-slate-300">·</span>
+        <span className="inline-flex items-center gap-1">
+          <Pencil className="h-3 w-3 text-slate-300" aria-hidden />
+          {pr.lastSiteUpdateLabel ?? '—'}
+        </span>
+      </p>
+    </>
   );
 }
 
@@ -157,7 +174,9 @@ export function ProjectsPage() {
   const clientSiteProjectIdsKey = useMemo(() => rows.filter((p) => p.deliveryFocus === 'client_site').map((p) => p.id).join(','), [rows]);
 
   const [liveByProject, setLiveByProject] = useState<Record<string, number>>({});
-  const [analyticsByProject, setAnalyticsByProject] = useState<Record<string, { total: number; yesterday: number }>>({});
+  const [analyticsByProject, setAnalyticsByProject] = useState<
+    Record<string, { total: number; yesterday: number; today: number }>
+  >({});
 
   useEffect(() => {
     if (import.meta.env.VITE_USE_REAL_API !== '1') return;
@@ -188,7 +207,7 @@ export function ProjectsPage() {
     }
     let cancelled = false;
     void (async () => {
-      const next: Record<string, { total: number; yesterday: number }> = {};
+      const next: Record<string, { total: number; yesterday: number; today: number }> = {};
       await Promise.all(
         ids.map(async (id) => {
           const r = await fetchProjectAnalytics(id);
@@ -196,6 +215,7 @@ export function ProjectsPage() {
             next[id] = {
               total: r.data.total_views ?? 0,
               yesterday: r.data.yesterday_views ?? 0,
+              today: r.data.today_views ?? 0,
             };
           }
         }),
@@ -826,6 +846,11 @@ export function ProjectsPage() {
                   Status <span className="font-semibold capitalize">{drawerProject.siteStatus ?? 'draft'}</span> ·{' '}
                   {drawerProject.sitePageCount ?? '—'} pages · Last: {drawerProject.lastSiteUpdateLabel ?? '—'}
                 </p>
+                {formatSiteTrafficLine({
+                  project: drawerProject,
+                  analyticsByProject,
+                  liveByProject,
+                })}
                 {drawerProject.siteLiveUrl && (
                   <p className="mt-1 truncate text-xs text-purple-800">{drawerProject.siteLiveUrl}</p>
                 )}

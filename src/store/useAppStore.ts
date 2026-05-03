@@ -132,6 +132,8 @@ export interface AppStore extends RootState {
       siteBuildArchetype?: SiteBuildArchetypeId | null;
       deliveryFocus?: ProjectDeliveryFocus;
       servicePackage?: ServicePackageId | null;
+      /** Canonical repo URL saved in project meta — site builder shows import hints. */
+      clientSourceRepoUrl?: string | null;
     },
     options?: { silent?: boolean; skipStarterTasks?: boolean }
   ) => Promise<string>;
@@ -622,6 +624,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         lifecycleStage,
         siteBuildArchetype: input.siteBuildArchetype ?? null,
         servicePackage: input.servicePackage ?? null,
+        clientSourceRepoUrl: input.clientSourceRepoUrl ?? null,
         spent: 0,
       };
       const internal_notes = buildProjectInternalNotes(metaPayload, null);
@@ -663,6 +666,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         templateId: tmpl ? tmpl.id : null,
         siteBuildArchetype: input.siteBuildArchetype ?? null,
         servicePackage: input.servicePackage ?? null,
+        clientSourceRepoUrl: input.clientSourceRepoUrl ?? null,
       };
       const stubTasks: Task[] = starterStubs.map((stub) => ({
         id: newId('task'),
@@ -713,6 +717,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       sitePageCount: deliveryFocus === 'client_site' ? 5 : undefined,
       clientPortalVisible: deliveryFocus === 'client_site' ? true : undefined,
       servicePackage: input.servicePackage ?? null,
+      clientSourceRepoUrl: input.clientSourceRepoUrl ?? null,
     };
     const stubTasks: Task[] = starterStubs.map((stub) => ({
       id: newId('task'),
