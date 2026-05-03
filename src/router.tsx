@@ -11,6 +11,7 @@ import { ProjectDetailPage } from '@/pages/project-detail-page';
 import { InvoicesPage } from '@/pages/invoices-page';
 import { InvoiceDetailPage } from '@/pages/invoice-detail-page';
 import { MessagesPage } from '@/pages/messages-page';
+import { MessagesCenterPage } from '@/pages/messages-center-page';
 import { SettingsPage } from '@/pages/settings-page';
 import { SettingsRouteErrorBoundary } from '@/components/settings/settings-route-error-boundary';
 import { AccountPage } from '@/pages/account-page';
@@ -71,6 +72,7 @@ export const router = createHashRouter([
       { path: 'billable-hours', element: <Navigate to="/time-tracking" replace /> },
       { path: 'expenses', element: <ExpensesPage /> },
       { path: 'messages', element: <MessagesPage /> },
+      { path: 'messages-center', element: <MessagesCenterPage /> },
       { path: 'contracts', element: <ContractsPage /> },
       { path: 'proposals', element: <ProposalsPage /> },
       { path: 'forms', element: <FormsPage /> },

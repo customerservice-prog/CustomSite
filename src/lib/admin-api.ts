@@ -1,6 +1,8 @@
 /** Matches `js/site-builder/config.js` — same keys the legacy admin and site-builder.html use. */
 export const ADMIN_ACCESS_TOKEN_KEY = 'customsite_access_token';
 export const ADMIN_REFRESH_TOKEN_KEY = 'customsite_refresh_token';
+/** Parallel key used by Message Center / refresh parity with portal login (`js/main.js`). */
+export const CS_REFRESH_TOKEN_KEY = 'cs_refresh_token';
 export const RAILWAY_TOKEN_KEY = 'customsite_railway_api_token';
 export const RAILWAY_TEAM_KEY = 'customsite_railway_team_id';
 
@@ -12,9 +14,12 @@ export function getAccessToken(): string | null {
   }
 }
 
+/** Prefer dedicated Message Center refresh slot, fall back to shared admin key (both stay in sync on refresh/login). */
 export function getRefreshToken(): string | null {
   try {
-    return localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY);
+    const cs = localStorage.getItem(CS_REFRESH_TOKEN_KEY)?.trim();
+    if (cs) return cs;
+    return localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY)?.trim() || null;
   } catch {
     return null;
   }
@@ -27,6 +32,7 @@ export function syncTokensFromSupabaseSession(session: { access_token: string; r
     localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, session.access_token);
     if (session.refresh_token) {
       localStorage.setItem(ADMIN_REFRESH_TOKEN_KEY, session.refresh_token);
+      localStorage.setItem(CS_REFRESH_TOKEN_KEY, session.refresh_token);
     }
   } catch {
     /* */
@@ -37,6 +43,7 @@ export function clearAdminTokens() {
   try {
     localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
     localStorage.removeItem(ADMIN_REFRESH_TOKEN_KEY);
+    localStorage.removeItem(CS_REFRESH_TOKEN_KEY);
   } catch {
     /* */
   }
@@ -83,6 +90,7 @@ export async function tryRefreshAccessToken(): Promise<string | null> {
         localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, data.access_token);
         if (data.refresh_token) {
           localStorage.setItem(ADMIN_REFRESH_TOKEN_KEY, data.refresh_token);
+          localStorage.setItem(CS_REFRESH_TOKEN_KEY, data.refresh_token);
         }
       } catch {
         /* */
@@ -213,4 +221,41 @@ export async function adminFetchMultipartJson<T = unknown>(
   }
 
   return parseFetchResult<T>(res);
+}
+
+const JWT_PAD = '===';
+
+/** Returns access token JWT `exp * 1000` when parseable (Supabase / standard JWT shape). */
+function accessTokenExpiryMs(token: string | null | undefined): number | null {
+  if (!token?.trim()) return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    let b64 = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
+    b64 += JWT_PAD.slice((b64.length + 3) % 4);
+    const payload = JSON.parse(atob(b64));
+    const exp = payload?.exp;
+    return typeof exp === 'number' ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * When a refresh token is stored (`cs_refresh_token` or `customsite_refresh_token`), proactively
+ * exchanges it if there is no access token or JWT `exp` is within `skewSeconds`.
+ */
+export async function proactivelyRefreshAdminTokenIfStale(skewSeconds = 90): Promise<void> {
+  const rt = getRefreshToken();
+  if (!rt?.trim()) return;
+  const at = getAccessToken();
+  if (!at?.trim()) {
+    await tryRefreshAccessToken();
+    return;
+  }
+  const expMs = accessTokenExpiryMs(at);
+  if (expMs == null) return;
+  if (expMs <= Date.now() + skewSeconds * 1000) {
+    await tryRefreshAccessToken();
+  }
 }

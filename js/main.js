@@ -327,6 +327,7 @@ const AUTH_REFRESH_KEY = 'customsite_refresh_token';
       }
       if (data.refresh_token) {
         localStorage.setItem(AUTH_REFRESH_KEY, data.refresh_token);
+        localStorage.setItem('cs_refresh_token', data.refresh_token);
         try {
           sessionStorage.setItem(AUTH_REFRESH_KEY, data.refresh_token);
         } catch {

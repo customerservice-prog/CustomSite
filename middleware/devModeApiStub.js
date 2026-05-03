@@ -420,7 +420,39 @@ function devModeApiStub(req, res, next) {
   }
 
   if (m === 'GET' && p === '/api/admin/leads') {
-    return res.json({ leads: [] });
+    return res.json({
+      leads: [
+        {
+          id: '00000000-0000-4000-a000-00000000e101',
+          name: 'Jordan Blake',
+          email: 'jordan.blake@example-event.com',
+          phone: null,
+          company: null,
+          service_type: 'public_contact',
+          budget: null,
+          timeline: null,
+          message:
+            'Subject: Tent rental for June wedding\n\nHi — looking for pole tents for ~120 guests in Syracuse on June 14.',
+          current_url: 'https://demo-client-site.example/contact.html',
+          status: 'New',
+          created_at: new Date(Date.now() - 7200000).toISOString(),
+        },
+        {
+          id: '00000000-0000-4000-a000-00000000e102',
+          name: 'Priya Sharma',
+          email: 'priya@syracuse-shop.co',
+          phone: null,
+          company: 'Syracuse Boutique',
+          service_type: 'manual',
+          budget: null,
+          timeline: null,
+          message: 'Quick note without subject line — can we schedule a callback next week?',
+          current_url: 'customsite.online/contact.html',
+          status: 'Contacted',
+          created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
+        },
+      ],
+    });
   }
   if (m === 'PATCH' && /^\/api\/admin\/leads\/[^/]+$/.test(p) && p.indexOf('convert') === -1) {
     return res.json({ lead: { id: p.split('/').pop() } });

@@ -12,6 +12,7 @@ export const routeMeta: Record<string, { title: string; segment: string }> = {
   'time-tracking': { title: 'Billable hours', segment: 'time-tracking' },
   expenses: { title: 'Expenses', segment: 'expenses' },
   messages: { title: 'Messages', segment: 'messages' },
+  'messages-center': { title: 'Message Center', segment: 'messages-center' },
   contracts: { title: 'Contracts', segment: 'contracts' },
   proposals: { title: 'Proposals', segment: 'proposals' },
   forms: { title: 'Forms', segment: 'forms' },
