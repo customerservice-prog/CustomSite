@@ -15,6 +15,7 @@
     "video-archive:seed": "node scripts/seed-video-archive.js",
     "video-archive:run": "node scripts/archive-videos.js",
     "ops:apply-cestui-domain": "node scripts/apply-cestui-custom-domain.js",
+    "cestui:upload-videos": "node scripts/cestui-upload-videos-service.js",
     "admin:dev": "npx vite",
     "build": "npm run build:admin",
     "build:admin": "npx vite build && npx vite build --config vite.conversion-demo.config.ts",
