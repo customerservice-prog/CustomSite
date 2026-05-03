@@ -60,6 +60,7 @@ import {
 } from '@/lib/offer-positioning';
 import { Radio, TrendingUp } from 'lucide-react';
 import { fetchLiveAnalytics, fetchProjectAnalytics, type ProjectAnalyticsPayload } from '@/lib/project-analytics-api';
+import { useWorkspacePeekRow } from '@/hooks/use-workspace-peek-row';
 
 const ACTIVE_SITE_STAGES: ProjectLifecycleStage[] = ['discovery', 'proposal_contract', 'build', 'review'];
 
@@ -157,9 +158,7 @@ export function ProjectDetailPage() {
   const sectionsByBundle = useSiteProductionStore((s) => s.sectionsByBundle);
   const hydrateWorkspaceSite = useProjectSiteWorkspaceStore((s) => s.hydrate);
   const flushWorkspacePreview = useProjectSiteWorkspaceStore((s) => s.flushPreview);
-  const workspacePeekRow = useProjectSiteWorkspaceStore((s) =>
-    projectId ? s.byProjectId[projectId] : undefined,
-  );
+  const workspacePeekRow = useWorkspacePeekRow(projectId);
 
   const openWorkspacePreviewInNewTab = useCallback(async () => {
     if (!project?.id) return;
