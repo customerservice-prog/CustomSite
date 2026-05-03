@@ -32,6 +32,11 @@ import { useTasks } from '@/store/hooks';
 import { fetchLiveAnalytics, fetchProjectAnalytics } from '@/lib/project-analytics-api';
 import { deleteProjectWithLiveConfirm } from '@/lib/admin-project-entity-api';
 import { getAccessToken } from '@/lib/admin-api';
+import { compileSectionsToPreviewHtml } from '@/lib/site-production/compile-preview-html';
+import { applyInlinePreviewYoutubeThumbnailPlaceholders } from '@/lib/site-builder/preview-youtube-thumbnail-placeholder';
+import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
+import { siteProductionBundleKey, useSiteProductionStore } from '@/store/useSiteProductionStore';
+import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
 import { siteFilesTargetLiveServer } from '@/lib/site-builder/site-builder-site-api';
 import { useShell } from '@/context/shell-context';
 
@@ -214,6 +219,64 @@ export function ProjectsPage() {
     ? Object.values(store.files).filter((f) => f.projectId === drawerProjectId).length
     : 0;
 
+  const ensurePagesForProject = useSiteProductionStore((s) => s.ensurePagesForProject);
+  const sectionsByBundle = useSiteProductionStore((s) => s.sectionsByBundle);
+  const hydrateSiteWorkspace = useProjectSiteWorkspaceStore((s) => s.hydrate);
+  const flushWorkspacePreview = useProjectSiteWorkspaceStore((s) => s.flushPreview);
+  const drawerWorkspaceRow = useProjectSiteWorkspaceStore((s) =>
+    drawerProjectId ? s.byProjectId[drawerProjectId] : undefined,
+  );
+
+  useEffect(() => {
+    if (!drawerProjectId || !drawerProject || drawerProject.deliveryFocus !== 'client_site') return;
+    ensurePagesForProject(drawerProjectId);
+    void hydrateSiteWorkspace(drawerProjectId);
+  }, [
+    drawerProjectId,
+    drawerProject?.deliveryFocus,
+    drawerProject?.id,
+    ensurePagesForProject,
+    hydrateSiteWorkspace,
+  ]);
+
+  const drawerSectionPreviewHtml = useMemo(() => {
+    if (!drawerProjectId || !drawerProject || drawerProject.deliveryFocus !== 'client_site') return '';
+    const k = siteProductionBundleKey(drawerProjectId, '/');
+    const secs = [...(sectionsByBundle[k] ?? [])].sort((a, b) => a.order - b.order);
+    return compileSectionsToPreviewHtml(secs, { pageTitle: 'Home', viewport: 'desktop' });
+  }, [drawerProjectId, drawerProject, sectionsByBundle]);
+
+  const drawerSiteIframeSrcDoc = useMemo(() => {
+    if (!drawerProject || drawerProject.deliveryFocus !== 'client_site') return '';
+    const row = drawerWorkspaceRow;
+    const preferBuilt =
+      row &&
+      row.loadStatus === 'ready' &&
+      row.site.files.length > 0 &&
+      row.previewHtml.trim().length > 0;
+    if (preferBuilt) return applyInlinePreviewYoutubeThumbnailPlaceholders(row.previewHtml);
+    return drawerSectionPreviewHtml;
+  }, [drawerProject, drawerWorkspaceRow, drawerSectionPreviewHtml]);
+
+  const openDrawerSitePreviewTab = useCallback(async () => {
+    if (!drawerProjectId || !drawerProject || drawerProject.deliveryFocus !== 'client_site') return;
+    await hydrateSiteWorkspace(drawerProjectId);
+    flushWorkspacePreview(drawerProjectId);
+    const row = useProjectSiteWorkspaceStore.getState().byProjectId[drawerProjectId];
+    if (!row?.site.files.length) {
+      toast('No saved site files yet — open the workspace to add HTML.', 'info');
+      return;
+    }
+    const w = openClientSitePreviewTab(row.site);
+    if (!w) toast('Allow popups to open the preview tab.', 'error');
+  }, [
+    drawerProjectId,
+    drawerProject,
+    hydrateSiteWorkspace,
+    flushWorkspacePreview,
+    toast,
+  ]);
+
   const confirmAndDeleteProject = useCallback(
     async (p: Project, opts?: { closeDrawer?: boolean }) => {
       if (!siteFilesTargetLiveServer()) {
@@ -237,6 +300,29 @@ export function ProjectsPage() {
       await hydrateAgencyFromServer();
     },
     [toast, hydrateAgencyFromServer],
+  );
+
+  const projectActionMenuItems = useCallback(
+    (p: Project) => [
+      { label: 'View details', onClick: () => setDrawerProjectId(p.id) },
+      { label: 'Open project page', onClick: () => navigate(`/projects/${p.id}`) },
+      ...(p.deliveryFocus === 'client_site'
+        ? [{ label: CONVERSION_WORKSPACE_LABEL, onClick: () => navigate(`/projects/${p.id}/site`) }]
+        : []),
+      { label: 'New task', onClick: () => { navigate('/tasks'); } },
+      {
+        label: 'New invoice',
+        onClick: () => {
+          openModal('create-invoice');
+        },
+      },
+      {
+        label: 'Delete project',
+        destructive: true,
+        onClick: () => void confirmAndDeleteProject(p),
+      },
+    ],
+    [navigate, openModal, confirmAndDeleteProject],
   );
 
   const healthCounts = useMemo(() => {
@@ -532,28 +618,7 @@ export function ProjectsPage() {
                   <TableCell className="text-slate-500">{p.due}</TableCell>
                   <TableCell className="text-slate-600">{owner?.name}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <ActionMenu
-                      label={`Actions for ${p.name}`}
-                      items={[
-                        { label: 'View details', onClick: () => setDrawerProjectId(p.id) },
-                        { label: 'Open project page', onClick: () => navigate(`/projects/${p.id}`) },
-                        ...(p.deliveryFocus === 'client_site'
-                          ? [{ label: CONVERSION_WORKSPACE_LABEL, onClick: () => navigate(`/projects/${p.id}/site`) }]
-                          : []),
-                        { label: 'New task', onClick: () => { navigate('/tasks'); } },
-                        {
-                          label: 'New invoice',
-                          onClick: () => {
-                            openModal('create-invoice');
-                          },
-                        },
-                        {
-                          label: 'Delete project',
-                          destructive: true,
-                          onClick: () => void confirmAndDeleteProject(p),
-                        },
-                      ]}
-                    />
+                    <ActionMenu label={`Actions for ${p.name}`} items={projectActionMenuItems(p)} />
                   </TableCell>
                 </TableRow>
               );
@@ -574,14 +639,20 @@ export function ProjectsPage() {
               (p.lifecycleStage === 'post_launch' || p.siteStatus === 'live');
             const hl = healthByProjectId[p.id] ?? 'healthy';
             return (
-              <Link key={p.id} to={`/projects/${p.id}`} className="block">
-                <Card className="relative h-full overflow-hidden border-slate-200/80 p-4 transition hover:border-indigo-200 hover:shadow-md">
-                  {p.thumbnailUrl ? (
-                    <div className="pointer-events-none absolute inset-0 opacity-[0.2]">
-                      <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                    </div>
-                  ) : null}
-                  <div className="relative">
+              <Card
+                key={p.id}
+                className="relative h-full border-slate-200/80 p-4 transition hover:border-indigo-200 hover:shadow-md"
+              >
+                {p.thumbnailUrl ? (
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl opacity-[0.2]">
+                    <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  </div>
+                ) : null}
+                <div className="absolute right-2 top-2 z-20 rounded-lg bg-white/90 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-sm">
+                  <ActionMenu label={`Actions for ${p.name}`} items={projectActionMenuItems(p)} />
+                </div>
+                <Link to={`/projects/${p.id}`} className="relative block outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-indigo-500">
+                  <div className="pr-10">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-bold text-slate-900">{p.name}</h3>
                     <span className="flex shrink-0 flex-col items-end gap-1">
@@ -633,8 +704,8 @@ export function ProjectsPage() {
                     </div>
                   ) : null}
                   </div>
-                </Card>
-              </Link>
+                </Link>
+              </Card>
             );
           })}
         </div>
@@ -671,6 +742,52 @@ export function ProjectsPage() {
       >
         {drawerProject && drawerClient ? (
           <div className="space-y-6">
+            {drawerProject.deliveryFocus === 'client_site' && drawerSiteIframeSrcDoc ? (
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/[0.04]">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Site preview</p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-7 px-2 text-[11px] font-semibold text-slate-700"
+                      onClick={() =>
+                        drawerProjectId && drawerProject?.deliveryFocus === 'client_site' && void hydrateSiteWorkspace(drawerProjectId)
+                      }
+                    >
+                      Refresh
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-7 px-2 text-[11px] font-semibold"
+                      onClick={() => void openDrawerSitePreviewTab()}
+                    >
+                      New tab
+                    </Button>
+                    <Link
+                      to={`/projects/${drawerProject.id}/site`}
+                      className="inline-flex h-7 items-center rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-semibold text-violet-800 hover:bg-slate-50"
+                    >
+                      Workspace
+                    </Link>
+                  </div>
+                </div>
+                <iframe
+                  key={`${drawerProjectId}-${drawerWorkspaceRow?.previewNonce ?? 0}`}
+                  title={`Preview of ${drawerProject.name}`}
+                  srcDoc={drawerSiteIframeSrcDoc}
+                  className="h-[280px] w-full bg-white"
+                  sandbox="allow-scripts"
+                  referrerPolicy="no-referrer"
+                />
+                <p className="border-t border-slate-100 bg-slate-50/80 px-3 py-1.5 text-[10px] leading-relaxed text-slate-500">
+                  {drawerWorkspaceRow?.loadStatus === 'ready' && drawerWorkspaceRow.site.files.length > 0
+                    ? 'Rendered from saved site files — same compose as Site builder.'
+                    : 'Shows the conversions section preview until workspace files finish loading.'}
+                </p>
+              </div>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Delivery</p>

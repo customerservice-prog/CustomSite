@@ -35,6 +35,7 @@ import { formatCurrency } from '@/lib/format-display';
 import { liveBuildNextLines } from '@/lib/live-build-status';
 import { buildProjectLiveActivityFeed } from '@/lib/project-live-feed';
 import { openClientSitePreviewTab } from '@/lib/site-builder/open-client-site-preview';
+import { applyInlinePreviewYoutubeThumbnailPlaceholders } from '@/lib/site-builder/preview-youtube-thumbnail-placeholder';
 import { siteProductionBundleKey, useSiteProductionStore } from '@/store/useSiteProductionStore';
 import { useProjectSiteWorkspaceStore } from '@/store/use-project-site-workspace-store';
 import type { Project, ProjectLifecycleStage } from '@/lib/types/entities';
@@ -203,7 +204,8 @@ export function ProjectDetailPage() {
   useEffect(() => {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
     ensurePagesForProject(projectId);
-  }, [projectId, project, ensurePagesForProject]);
+    void hydrateWorkspaceSite(projectId);
+  }, [projectId, project, ensurePagesForProject, hydrateWorkspaceSite]);
 
   useEffect(() => {
     if (!project) return;
@@ -504,6 +506,19 @@ export function ProjectDetailPage() {
     return compileSectionsToPreviewHtml(secs, { pageTitle: 'Home', viewport: 'desktop' });
   }, [projectId, project, sectionsByBundle]);
 
+  /** Same compose as Site builder inline preview once workspace files hydrate; fallback is portal-style sections. */
+  const quickPeekSiteIframeSrcDoc = useMemo(() => {
+    if (!project || project.deliveryFocus !== 'client_site') return '';
+    const row = workspacePeekRow;
+    const preferBuilt =
+      row &&
+      row.loadStatus === 'ready' &&
+      row.site.files.length > 0 &&
+      row.previewHtml.trim().length > 0;
+    if (preferBuilt) return applyInlinePreviewYoutubeThumbnailPlaceholders(row.previewHtml);
+    return homePreviewHtml;
+  }, [project, workspacePeekRow, homePreviewHtml]);
+
   const primaryFocusLine = useMemo(() => {
     if (!project) return null;
     if (project.deliveryFocus === 'client_site' && project.studioFocusLine) {
@@ -760,6 +775,51 @@ export function ProjectDetailPage() {
     >
       {project.deliveryFocus === 'client_site' && (
         <>
+          {quickPeekSiteIframeSrcDoc ? (
+            <section className="mb-8 overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.05]" id="project-site-peek-anchor">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/90 px-5 py-3 sm:px-6">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Site preview</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    {workspacePeekRow?.loadStatus === 'ready' && workspacePeekRow.site.files.length > 0
+                      ? 'Saved workspace HTML — no need to open the builder to peek.'
+                      : 'Section layout preview while files load.'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="ghost" className="h-8 px-2 text-xs font-semibold" onClick={() => void hydrateWorkspaceSite(project.id)}>
+                    Refresh
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-8 px-2 text-xs font-semibold"
+                    onClick={() => void openWorkspacePreviewInNewTab()}
+                  >
+                    New tab
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-8 px-2 text-xs font-semibold text-violet-900"
+                    onClick={() => navigate(`/projects/${project.id}/site`)}
+                  >
+                    {CONVERSION_WORKSPACE_LABEL}
+                  </Button>
+                </div>
+              </div>
+              <div className="bg-slate-950 p-2 sm:p-3">
+                <iframe
+                  key={`peek-${project.id}-${workspacePeekRow?.previewNonce ?? 0}`}
+                  title={`${project.name} — site preview`}
+                  srcDoc={quickPeekSiteIframeSrcDoc}
+                  className="h-[min(400px,55vh)] w-full rounded-lg bg-white"
+                  sandbox="allow-scripts"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </section>
+          ) : null}
           {clientFacingStatus === 'Live' ? (
           <section className="mb-8 rounded-3xl border border-emerald-200/70 bg-gradient-to-b from-emerald-50/90 via-white to-slate-50/30 px-6 py-8 shadow-[var(--app-shadow-card)] ring-1 ring-slate-900/[0.06] sm:px-8 sm:py-9">
             <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/90">
@@ -1248,21 +1308,35 @@ export function ProjectDetailPage() {
                 </Link>
               </div>
             </div>
-            <div className="flex flex-col bg-slate-950 p-6 text-white sm:p-7 lg:min-h-[320px]">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Live conversion preview — Home</p>
-                <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white">{clientFacingStatus}</span>
+            <div className="flex flex-col justify-between gap-5 bg-slate-950 p-6 text-white sm:p-8 lg:min-h-[280px]">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Home preview location</p>
+                <p className="mt-3 text-[13px] leading-relaxed text-white/80">
+                  The site renders at the <span className="font-semibold text-white">top of this page</span> when you land here — workspace HTML when saved, otherwise the same conversions preview as your client portal.
+                </p>
               </div>
-              <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-xl bg-white shadow-inner ring-1 ring-white/10">
-                <iframe
-                  title="Live conversion preview"
-                  srcDoc={homePreviewHtml}
-                  className="h-[min(520px,62vh)] w-full bg-white"
-                  sandbox="allow-scripts"
-                />
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full border-white/20 bg-white/10 text-white hover:bg-white/20"
+                  onClick={() => document.getElementById('project-site-peek-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                >
+                  Jump to site preview
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full border-white/20 bg-white/10 text-white hover:bg-white/20"
+                  onClick={() => void openWorkspacePreviewInNewTab()}
+                >
+                  Open preview in new tab
+                </Button>
+                <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-center text-[11px] font-bold text-white/90">
+                  {clientFacingStatus}
+                </span>
               </div>
-              <p className="mt-2 text-[10px] text-white/55">Same preview the client sees in their portal.</p>
-              <p className="mt-2 text-[10px] text-white/50">Last studio touch: {project.lastSiteUpdateLabel ?? '—'}</p>
+              <p className="text-[10px] text-white/50">Last studio touch: {project.lastSiteUpdateLabel ?? '—'}</p>
             </div>
           </div>
         </div>

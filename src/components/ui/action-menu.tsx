@@ -16,12 +16,7 @@ export function ActionMenu({ label = 'Row actions', items }: { label?: string; i
       className="relative"
       menuClassName="w-44 rounded-lg py-0"
       trigger={
-        <IconButton
-          type="button"
-          className="h-9 w-9 text-gray-600"
-          aria-label={label}
-          onClick={(e) => e.stopPropagation()}
-        >
+        <IconButton type="button" className="h-9 w-9 text-gray-600" aria-label={label}>
           <MoreHorizontal className="h-4 w-4" />
         </IconButton>
       }
