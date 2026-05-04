@@ -66,7 +66,7 @@ function formatSiteTrafficLine(p: {
   const snap = pr.siteAnalyticsSnapshot;
   const total = a?.total ?? snap?.total ?? 0;
   const yest = a?.yesterday ?? snap?.yesterday ?? 0;
-  const today = a?.today ?? 0;
+  const today = a?.today ?? snap?.today ?? 0;
   const live = p.liveByProject[pr.id] ?? snap?.live ?? 0;
 
   return (

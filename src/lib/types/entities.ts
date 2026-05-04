@@ -141,7 +141,7 @@ export type Project = {
   /** One-line studio focus from dashboard (live / deploy copy). */
   studioFocusLine?: string | null;
   /** Hydrated from GET /projects list `dashboard` — used when per-project analytics fetch is still loading. */
-  siteAnalyticsSnapshot?: { total: number; yesterday: number; live: number };
+  siteAnalyticsSnapshot?: { total: number; yesterday: number; today: number; live: number };
   /** When true, this project’s preview and files show in the client portal. */
   clientPortalVisible?: boolean;
   /** Hydrated when client has `users.is_owner` — not a paying engagement. */

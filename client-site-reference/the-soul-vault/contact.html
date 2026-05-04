@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Contact — The Soul Vault</title><link rel="stylesheet" href="site.css"/></head>
+<body>
+  <nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="index.html">The Soul Vault</a><button type="button" class="nav-toggle" onclick="this.closest('.site-nav').classList.toggle('open')" aria-label="Menu">Menu</button><ul class="nav-links"><li><a href="index.html" onclick="this.closest('nav').classList.remove('open')">Home</a></li><li><a href="the-three-kingdoms.html" onclick="this.closest('nav').classList.remove('open')">Three Kingdoms</a></li><li><a href="cestui-que-vie.html" onclick="this.closest('nav').classList.remove('open')">Cestui Que Vie</a></li><li><a href="papal-bulls.html" onclick="this.closest('nav').classList.remove('open')">Papal Bulls</a></li><li><a href="reclaim.html" onclick="this.closest('nav').classList.remove('open')">Reclaim</a></li><li><a href="videos.html" onclick="this.closest('nav').classList.remove('open')">Videos</a></li><li><a href="contact.html" onclick="this.closest('nav').classList.remove('open')">Contact</a></li></ul></div></nav>
+  <header class="page-header-vs reveal-section"><h1>Contact</h1><p>Wire this page to your CustomSite form or inbox when deployed.</p></header>
+  <section class="content-section reveal-section"><div class="content-inner prose-lg"><p>Email and social placeholders — replace with production links.</p></div></section>
+  <footer class="footer-site"><div class="footer-inner"><div><h3>Site</h3><a href="index.html">Home</a><a href="videos.html">Videos</a></div></div></footer>
+  <div id="vidModalOverlay" class="vid-modal" aria-hidden="true" role="dialog"><div class="vid-modal-box"><div class="vid-modal-head"><span id="vidModalTitle">—</span><button type="button" onclick="closeVidModal()">✕</button></div><div class="vid-frame-wrap"><iframe id="vidModalIframe" title="Video" allowfullscreen></iframe><div id="vidModalArchived" class="vid-archived-msg"></div></div></div></div>
+  <script src="site-ui.js" defer></script><script src="vid-modal.js" defer></script>
+</body></html>

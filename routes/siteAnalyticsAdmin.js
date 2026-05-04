@@ -53,6 +53,21 @@ router.get('/projects/:projectId/analytics', async (req, res) => {
     const todayStartUtc = y.toISOString();
     const todayCutoff =
       launchIso && new Date(launchIso) > new Date(todayStartUtc) ? launchIso : todayStartUtc;
+
+    let yesterday_views = Number(yRow?.pageviews ?? 0) || 0;
+    if (yRow == null) {
+      let yestQ = supabase
+        .from('site_pageviews')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', projectId)
+        .gte('viewed_at', yesterdayStart.toISOString())
+        .lt('viewed_at', todayStartUtc);
+      if (launchIso) yestQ = yestQ.gte('viewed_at', launchIso);
+      const { count: yc, error: ye } = await yestQ;
+      if (ye && !mig(ye)) return res.status(500).json({ error: ye.message });
+      if (!ye) yesterday_views = yc || 0;
+    }
+
     let todayQ = supabase
       .from('site_pageviews')
       .select('*', { count: 'exact', head: true })
@@ -105,7 +120,7 @@ router.get('/projects/:projectId/analytics', async (req, res) => {
 
     return res.json({
       total_views: total_views || 0,
-      yesterday_views: yRow?.pageviews ?? 0,
+      yesterday_views,
       yesterday_unique_visitors: yRow?.unique_visitors ?? 0,
       today_views: today_views || 0,
       last_30_days: (dailyRows || []).map((r) => ({

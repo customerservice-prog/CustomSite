@@ -1068,7 +1068,11 @@ export function ProjectDetailPage() {
                   {import.meta.env.VITE_USE_REAL_API === '1'
                     ? siteTrafficAnalyticsLoading && !siteTrafficAnalytics
                       ? '…'
-                      : (siteTrafficAnalytics?.today_views ?? 0).toLocaleString()
+                      : (
+                          siteTrafficAnalytics?.today_views ??
+                          project.siteAnalyticsSnapshot?.today ??
+                          0
+                        ).toLocaleString()
                     : '—'}
                 </p>
               </div>
@@ -1173,7 +1177,10 @@ export function ProjectDetailPage() {
                   <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
                     {siteTrafficAnalyticsLoading && !siteTrafficAnalytics
                       ? '…'
-                      : (siteTrafficAnalytics?.today_views ?? 0).toLocaleString()}
+                      : (siteTrafficAnalytics?.today_views ??
+                          project.siteAnalyticsSnapshot?.today ??
+                          0
+                        ).toLocaleString()}
                   </p>
                 </div>
                 <div className="rounded-2xl bg-white/95 px-4 py-3 ring-1 ring-slate-900/[0.06] shadow-sm">

@@ -138,6 +138,7 @@ export type ApiProjectDashboard = {
   focus_line?: string | null;
   pageviews_total?: number;
   pageviews_yesterday?: number;
+  pageviews_today?: number;
   live_visitors?: number;
 };
 
@@ -298,6 +299,7 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
       ? {
           total: Number(dash.pageviews_total ?? 0),
           yesterday: Number(dash.pageviews_yesterday ?? 0),
+          today: Number(dash.pageviews_today ?? 0),
           live: Number(dash.live_visitors ?? 0),
         }
       : undefined;

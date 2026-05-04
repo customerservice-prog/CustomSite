@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cestui Que Vie — The Soul Vault</title>
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body class="page-cestui-que-vie">
+  <nav class="site-nav"><div class="nav-inner"><a class="nav-brand" href="index.html">The Soul Vault</a>
+    <button type="button" class="nav-toggle" aria-label="Menu" onclick="this.closest('.site-nav').classList.toggle('open')">Menu</button>
+    <ul class="nav-links"><li><a href="index.html" onclick="this.closest('nav').classList.remove('open')">Home</a></li><li><a href="the-three-kingdoms.html" onclick="this.closest('nav').classList.remove('open')">Three Kingdoms</a></li><li><a href="cestui-que-vie.html" onclick="this.closest('nav').classList.remove('open')">Cestui Que Vie</a></li><li><a href="papal-bulls.html" onclick="this.closest('nav').classList.remove('open')">Papal Bulls</a></li><li><a href="reclaim.html" onclick="this.closest('nav').classList.remove('open')">Reclaim</a></li><li><a href="videos.html" onclick="this.closest('nav').classList.remove('open')">Videos</a></li><li><a href="contact.html" onclick="this.closest('nav').classList.remove('open')">Contact</a></li></ul></div></nav>
+
+  <header class="page-header-vs reveal-section"><div class="section-cap">Statute</div><h1>Cestui Que Vie</h1><p>1666 and the trust metaphor as it appears in sovereign theory — read the act, not only the commentary.</p></header>
+  <article class="content-section reveal-section"><div class="content-inner prose-lg"><h2>Your notes</h2><p>Add case law, registry mechanics, and skeptical rebuttals here.</p></div>
+    <div class="content-inner"><div class="vid-strip"><h2>Starter playlist</h2><div class="vid-row">
+      <div class="vid-tile" data-ytid="xo5a17Gjaig"><div class="vid-thumb-wrap" onclick="openVidModal('xo5a17Gjaig')"><img alt="" decoding="async" loading="lazy" src="/thumbs/xo5a17Gjaig.jpg" data-ytid="xo5a17Gjaig" onerror="onSoulVaultThumbError(this)" /><span class="vid-playing-badge">▶ Playing</span><div class="vid-play-overlay"><span class="vid-disc">▶</span></div></div><p class="vid-cap">Cestui Que Vie Act 1666 Explained</p></div>
+      <div class="vid-tile" data-ytid="JB5RFjlF7E4"><div class="vid-thumb-wrap" onclick="openVidModal('JB5RFjlF7E4')"><img alt="" decoding="async" loading="lazy" src="/thumbs/JB5RFjlF7E4.jpg" data-ytid="JB5RFjlF7E4" onerror="onSoulVaultThumbError(this)" /><span class="vid-playing-badge">▶ Playing</span><div class="vid-play-overlay"><span class="vid-disc">▶</span></div></div><p class="vid-cap">Great Fire of London — 1666 Context</p></div>
+      <div class="vid-tile" data-ytid="tznokGS9FVk"><div class="vid-thumb-wrap" onclick="openVidModal('tznokGS9FVk')"><img alt="" decoding="async" loading="lazy" src="/thumbs/tznokGS9FVk.jpg" data-ytid="tznokGS9FVk" onerror="onSoulVaultThumbError(this)" /><span class="vid-playing-badge">▶ Playing</span><div class="vid-play-overlay"><span class="vid-disc">▶</span></div></div><p class="vid-cap">The Birth Certificate — Detailed Talk</p></div>
+      <div class="vid-tile" data-ytid="ME7K6P7hlko"><div class="vid-thumb-wrap" onclick="openVidModal('ME7K6P7hlko')"><img alt="" decoding="async" loading="lazy" src="/thumbs/ME7K6P7hlko.jpg" data-ytid="ME7K6P7hlko" onerror="onSoulVaultThumbError(this)" /><span class="vid-playing-badge">▶ Playing</span><div class="vid-play-overlay"><span class="vid-disc">▶</span></div></div><p class="vid-cap">Meet Your Strawman — Introduction</p></div>
+    </div></div></div></article>
+  <footer class="footer-site"><div class="footer-inner"><div><h3>Videos</h3><a href="videos.html">Full library</a></div></div></footer>
+  <div id="vidModalOverlay" class="vid-modal" aria-hidden="true" role="dialog"><div class="vid-modal-box"><div class="vid-modal-head"><span id="vidModalTitle">—</span><button type="button" onclick="closeVidModal()" aria-label="Close">✕</button></div><div class="vid-frame-wrap"><iframe id="vidModalIframe" title="Video" allowfullscreen="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"></iframe><div id="vidModalArchived" class="vid-archived-msg"></div></div></div></div>
+  <script src="site-ui.js" defer=""></script><script src="vid-modal.js" defer=""></script>
+</body>
+</html>

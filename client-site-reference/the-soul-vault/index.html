@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Soul Vault — Reclaim Your Legal Identity</title>
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body class="page-home">
+  <nav class="site-nav" id="topNav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html">The Soul Vault</a>
+      <button type="button" class="nav-toggle" aria-expanded="false" aria-label="Open menu" onclick="this.closest('.site-nav').classList.toggle('open')">Menu</button>
+      <ul class="nav-links">
+        <li><a href="index.html" onclick="this.closest('nav').classList.remove('open')">Home</a></li>
+        <li><a href="the-three-kingdoms.html" onclick="this.closest('nav').classList.remove('open')">Three Kingdoms</a></li>
+        <li><a href="cestui-que-vie.html" onclick="this.closest('nav').classList.remove('open')">Cestui Que Vie</a></li>
+        <li><a href="papal-bulls.html" onclick="this.closest('nav').classList.remove('open')">Papal Bulls</a></li>
+        <li><a href="reclaim.html" onclick="this.closest('nav').classList.remove('open')">Reclaim</a></li>
+        <li><a href="videos.html" onclick="this.closest('nav').classList.remove('open')">Videos</a></li>
+        <li><a href="contact.html" onclick="this.closest('nav').classList.remove('open')">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="hero-logo-wrap hero-figure-float">
+        <object data="hero-soul.svg" type="image/svg+xml" width="460" height="740" style="display:block;max-width:460px;width:100%;height:auto;margin:0 auto" aria-label="Figure with soul eruption">Hero animation</object>
+      </div>
+      <h1 class="reveal-section">The Soul Vault</h1>
+      <p class="lead reveal-section">Evidence and language for understanding how legal identity, ecclesiastical claims, and admiralty commerce interlock — and sober paths to reclaim agency.</p>
+    </div>
+  </header>
+
+  <section class="content-section reveal-section">
+    <div class="content-inner prose-lg">
+      <h2>Navigation</h2>
+      <p>Explore the Three City States, Cestui Que Vie, papal bulls, and practical reclaim topics. The video library curates long-form talks and counterpoints so you can pause, verify, and share.</p>
+      <p class="pull-quote">This site is for research and education — verify every claim against primary sources.</p>
+    </div>
+  </section>
+
+  <footer class="footer-site reveal-section">
+    <div class="footer-inner">
+      <div>
+        <h3>Sections</h3>
+        <a href="the-three-kingdoms.html">Three Kingdoms</a>
+        <a href="cestui-que-vie.html">Cestui Que Vie</a>
+        <a href="papal-bulls.html">Papal Bulls</a>
+        <a href="reclaim.html">Reclaim</a>
+      </div>
+      <div>
+        <h3>Library</h3>
+        <a href="videos.html">Videos</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <div id="vidModalOverlay" class="vid-modal" aria-hidden="true" role="dialog">
+    <div class="vid-modal-box">
+      <div class="vid-modal-head">
+        <span id="vidModalTitle">—</span>
+        <button type="button" onclick="closeVidModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="vid-frame-wrap">
+        <iframe id="vidModalIframe" title="Video" allowfullscreen="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        <div id="vidModalArchived" class="vid-archived-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="site-ui.js" defer=""></script>
+  <script src="vid-modal.js" defer=""></script>
+</body>
+</html>

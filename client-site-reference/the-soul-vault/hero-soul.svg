@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 740" width="460" height="740" role="img" aria-label="Human figure with soul energy from the solar plexus">
+  <defs>
+    <radialGradient id="skin" cx="38%" cy="28%" r="55%">
+      <stop offset="0%" stop-color="#f2d6c2"/><stop offset="45%" stop-color="#c09078"/><stop offset="100%" stop-color="#5c3e36"/>
+    </radialGradient>
+    <radialGradient id="orb" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#fff"/><stop offset="20%" stop-color="#c5edff"/><stop offset="45%" stop-color="#4397ff"/>
+      <stop offset="72%" stop-color="#1a42d4"/><stop offset="100%" stop-color="rgba(26,66,212,0)"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="rim" x="-10%" y="-8%" width="120%" height="115%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="z"/>
+      <feFlood flood-color="#6ec6ff" flood-opacity="0.5" result="f"/>
+      <feComposite in="f" in2="z" operator="in" result="g"/>
+      <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="rayF"><feGaussianBlur stdDeviation="2.2"/></filter>
+  </defs>
+  <style>
+    @keyframes op{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.06);opacity:.92}}
+    @keyframes rp{0%{opacity:.5;r:40}100%{opacity:0;r:105}}
+    .orbG{animation:op 3.1s ease-in-out infinite;transform-origin:230px 302px}
+    .rp1{animation:rp 2.3s ease-out infinite}.rp2{animation:rp 2.3s ease-out .75s infinite}.rp3{animation:rp 2.3s ease-out 1.5s infinite}
+  </style>
+  <g>
+    <g opacity=".5" aria-hidden="true">
+      <circle cx="154" cy="690" r="2.5" fill="#9fd6ff"><animate attributeName="cy" values="690;440" dur="5.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.55;0" dur="5.4s" repeatCount="indefinite"/></circle>
+      <circle cx="312" cy="688" r="2.2" fill="#d4f2ff"><animate attributeName="cy" values="688;430" dur="6s" repeatCount="indefinite" begin=".5s"/><animate attributeName="opacity" values="0;.5;0" dur="6s" repeatCount="indefinite" begin=".5s"/></circle>
+      <circle cx="230" cy="702" r="3" fill="#fff"><animate attributeName="cy" values="702;452" dur="7s" repeatCount="indefinite" begin=".2s"/><animate attributeName="opacity" values="0;.45;0" dur="7s" repeatCount="indefinite" begin=".2s"/></circle>
+      <circle cx="196" cy="696" r="2" fill="#7ec8ff"><animate attributeName="cy" values="696;458" dur="5.9s" repeatCount="indefinite" begin="1.2s"/><animate attributeName="opacity" values="0;.4;0" dur="5.9s" repeatCount="indefinite" begin="1.2s"/></circle>
+      <circle cx="274" cy="698" r="2.5" fill="#b8eaff"><animate attributeName="cy" values="698;466" dur="6.6s" repeatCount="indefinite" begin="1.9s"/><animate attributeName="opacity" values="0;.42;0" dur="6.6s" repeatCount="indefinite" begin="1.9s"/></circle>
+    </g>
+    <g fill="none" stroke="#7ad4ff" stroke-linecap="round" aria-hidden="true">
+      <circle class="rp1" cx="230" cy="302" r="44"/><circle class="rp2" cx="230" cy="302" r="44"/><circle class="rp3" cx="230" cy="302" r="44"/>
+    </g>
+    <g filter="url(#rayF)" stroke="#bfeaff" stroke-width="2.6" opacity=".88" aria-hidden="true">
+      <line x1="230" y1="302" x2="112" y2="204"/><line x1="230" y1="302" x2="352" y2="210"/><line x1="230" y1="302" x2="396" y2="302"/>
+      <line x1="230" y1="302" x2="346" y2="414"/><line x1="230" y1="302" x2="230" y2="484"/><line x1="230" y1="302" x2="114" y2="416"/>
+      <line x1="230" y1="302" x2="78" y2="308"/><line x1="230" y1="302" x2="188" y2="168"/><line x1="230" y1="302" x2="276" y2="162"/>
+      <line x1="230" y1="302" x2="318" y2="252"/><line x1="230" y1="302" x2="168" y2="262"/>
+    </g>
+    <g opacity=".28" fill="#d8f2ff" stroke="#9fe0ff" stroke-width=".6" aria-hidden="true">
+      <path d="M230 118 C272 128 288 168 288 212 C288 252 282 288 282 324 L288 412 L282 502 L272 588 L234 652 L226 652 L188 588 L176 502 L168 412 L168 324 C168 276 168 248 182 204 C196 160 222 128 230 118 Z"/>
+      <ellipse cx="230" cy="156" rx="28" ry="36" fill="#eaf8ff" opacity=".85"/>
+      <path fill="none" stroke="#eaf8ff" stroke-width="2.8" opacity=".9"
+            d="M142 294 C158 274 174 294 218 356 C274 392 344 394 392 446"/>
+      <path fill="none" stroke="#eaf8ff" stroke-width="2.8" opacity=".9"
+            d="M318 296 C376 294 394 394 394 478"/>
+      <ellipse cx="218" cy="148" rx="4.2" ry="2.6" transform="rotate(-8 218 148)" fill="#395a74"/>
+      <ellipse cx="244" cy="150" rx="4.2" ry="2.6" transform="rotate(10 244 150)" fill="#395a74"/>
+      <ellipse cx="230" cy="174" rx="10" ry="7" opacity=".35"/>
+    </g>
+    <path d="M230 270 C231 246 229 226 229 204 C229 176 229 154 229 138" stroke="#b5e8ff"
+          stroke-dasharray="4 7" stroke-width="1.8" fill="none" opacity=".4"/>
+    <g class="orbG" filter="url(#glow)"><circle cx="230" cy="302" r="34" fill="url(#orb)"/><circle cx="230" cy="302" r="18" fill="rgba(255,255,255,.45)"/></g>
+    <g filter="url(#rim)" stroke="#3d2822" stroke-width=".85">
+      <path fill="url(#skin)" d="
+        M230 168
+        C264 174 294 214 294 258
+        C302 346 294 482 294 598
+        C294 666 294 724 294 736
+        L166 736
+        C172 684 174 632 174 586
+        C174 478 174 368 174 258
+        C174 216 206 174 238 164
+        C242 174 266 218 294 274
+      "/>
+      <path fill="url(#skin)"
+            d="M184 274 C154 392 154 514 218 694
+               C246 694 274 694 294 694
+               L294 544 C284 464 258 336 232 272
+               C224 264 192 264 184 274 Z"/>
+      <path fill="url(#skin)"
+            d="M276 272 C328 402 358 528 358 694
+               L334 706 C302 696 282 656 268 612
+               C254 528 244 432 244 344
+               C244 304 250 282 268 272 Z"/>
+      <ellipse cx="230" cy="124" rx="46" ry="52" fill="url(#skin)"/>
+      <path fill="#141018" d="M186 98 C210 72 250 68 282 86 C302 98 308 124 302 146 C282 124 260 112 230 110 C200 108 176 124 166 142 C160 114 168 92 186 98 Z"/>
+      <path fill="none" stroke="#2a1e1c" stroke-width=".6" opacity=".6"
+            d="M204 174 C218 206 246 216 274 206"/>
+    </g>
+    <ellipse cx="230" cy="124" rx="40" ry="46" fill="url(#skin)" opacity=".15"/>
+    <g fill="none" stroke="#c9dcb8" stroke-width="1.1" aria-hidden="false">
+      <path d="M382 132 L294 154"/><path d="M382 310 L274 342"/><path d="M382 548 L294 548"/><path d="M382 394 L344 478"/><path d="M72 322 L236 318"/>
+      <path d="M78 394 L218 394"/>
+      <circle cx="386" cy="132" r="3" fill="#c9dcb8"/>
+      <circle cx="386" cy="310" r="3" fill="#c9dcb8"/>
+      <circle cx="386" cy="548" r="3" fill="#c9dcb8"/>
+      <circle cx="386" cy="394" r="3" fill="#c9dcb8"/>
+      <circle cx="74" cy="394" r="3" fill="#c9dcb8"/>
+      <circle cx="74" cy="322" r="3" fill="#c9dcb8"/>    </g>    <rect x="-20" y="-20" width="500" height="780" fill="none"/>
+    <text x="394" y="124" fill="#dcb882" font-family="Courier New,monospace" font-size="13" letter-spacing=".08em">MIND</text>
+    <text x="8" y="302" fill="#dcb882" font-family="Courier New,monospace" font-size="10" letter-spacing=".06em">SOLAR </text>
+    <text x="8" y="318" fill="#dcb882" font-family="Courier New,monospace" font-size="10" letter-spacing=".06em">PLEXUS</text>    <text x="394" y="542" fill="#dcb882" font-family="Courier New,monospace" font-size="13" letter-spacing=".08em">BODY</text>
+    <text x="12" y="398" fill="#dcb882" font-family="Courier New,monospace" font-size="13" letter-spacing=".08em">SOUL</text>
+  </g></svg>
