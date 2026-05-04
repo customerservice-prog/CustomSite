@@ -150,6 +150,11 @@ export type Project = {
   clientSourceRepoUrl?: string | null;
   /** Productized package sold to the client (conversion program tier). */
   servicePackage?: ServicePackageId | null;
+  /**
+   * Merged from Supabase `projects.site_settings` (GA, page_seo, `aiBuilder` prefs, etc.).
+   * Present when the API returns the column (see `mapApiProjectRowToProject`).
+   */
+  siteSettings?: Record<string, unknown> | null;
   /** Concrete improvements already made on the site (perceived progress). */
   siteImprovements?: SiteImprovement[];
   /** Plain-language fixes (weak → strong) for client-facing views. */

@@ -294,6 +294,12 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
   const publishedAt =
     publishedAtDb && String(publishedAtDb).trim() ? String(publishedAtDb).trim() : null;
 
+  const rawSiteSettings = pick<unknown>(row, 'site_settings', 'siteSettings');
+  const siteSettings =
+    rawSiteSettings && typeof rawSiteSettings === 'object' && !Array.isArray(rawSiteSettings)
+      ? (rawSiteSettings as Record<string, unknown>)
+      : null;
+
   const siteAnalyticsSnapshot =
     deliveryFocus === 'client_site' && dash
       ? {
@@ -341,5 +347,6 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
         ? meta.clientSourceRepoUrl.trim()
         : null,
     servicePackage: (meta.servicePackage as Project['servicePackage']) ?? null,
+    siteSettings,
   };
 }

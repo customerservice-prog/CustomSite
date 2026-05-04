@@ -60,6 +60,7 @@ router.get('/integrations', (req, res) => {
   return res.json({
     resend: Boolean(process.env.RESEND_API_KEY),
     stripe: Boolean(process.env.STRIPE_SECRET_KEY),
+    anthropic: Boolean(String(process.env.ANTHROPIC_API_KEY || '').trim()),
     fromEmail: process.env.FROM_EMAIL || '',
     adminEmail: process.env.ADMIN_EMAIL || '',
     publicUrl: publicSiteUrl(),

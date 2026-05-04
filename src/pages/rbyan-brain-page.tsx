@@ -10,6 +10,9 @@ import type { ProjectSite } from '@/lib/site-builder/project-site-model';
 import { saveProjectSite } from '@/lib/site-builder/project-site-storage';
 import { composePreviewDocument } from '@/lib/site-builder/compose-preview-document';
 import { generateSiteWithRbyan } from '@/lib/rbyan/generate-site-with-rbyan';
+import { postRbyanAnthropicGenerate } from '@/lib/rbyan-api';
+import type { ApiProjectRow } from '@/lib/agency-api-map';
+import { adminFetchJson } from '@/lib/admin-api';
 import {
   rbyanFilesToProjectFiles,
   type RbyanBrandKit,
@@ -28,8 +31,44 @@ import { useShell } from '@/context/shell-context';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
 import { RBYAN_PREFILL_STORAGE_KEY } from '@/store/use-build-helper-store';
+import { inferAiBuilderBrandDefaults } from '@/lib/rbyan/infer-ai-builder-from-project';
 
 const RBYAN_BRAND_STORAGE = (projectId: string) => `cs_rbyan_brand:${projectId}`;
+
+const BRAND_SIDECAR_FIELDS = [
+  'industryNiche',
+  'bizSummary',
+  'brandPrimary',
+  'brandAccent',
+  'fontVibe',
+  'voice',
+  'visualStyle',
+  'businessType',
+  'keyPagesNeeded',
+  'city',
+] as const;
+
+function parseAiBuilderBlob(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const o = raw as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const k of BRAND_SIDECAR_FIELDS) {
+    const v = o[k];
+    out[k] = typeof v === 'string' ? v : '';
+  }
+  return out;
+}
+
+/** Server-stored prefs win when non-empty over session-local cache for the same keys. */
+function mergeBrandPreferServer(sess: Record<string, string>, srv: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of BRAND_SIDECAR_FIELDS) {
+    const a = srv[k]?.trim?.() ?? '';
+    const b = sess[k]?.trim?.() ?? '';
+    out[k] = a || b || '';
+  }
+  return out;
+}
 
 type ChatMsg = {
   id: string;
@@ -152,6 +191,13 @@ export function RbyanBrainPage() {
   const [visualStyle, setVisualStyle] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [keyPagesNeeded, setKeyPagesNeeded] = useState('');
+  const [city, setCity] = useState('');
+  const [anthropicEnabled, setAnthropicEnabled] = useState(false);
+  const mergeProjectRowFromServer = useAppStore((s) => s.mergeProjectRowFromServer);
+  /** Run sidebar hydration once per project selection (avoids resets when store refreshes after PATCH). */
+  const brandHydratePidRef = useRef<string>('');
+  /** Block Supabase PATCH until hydration has flushed into React state (avoids wiping aiBuilder). */
+  const skipAiBuilderPatchRef = useRef(true);
 
   const clientProjects = useMemo(
     () => projects.filter((p) => p.deliveryFocus === 'client_site' && (!clientId || p.clientId === clientId)),
@@ -169,7 +215,29 @@ export function RbyanBrainPage() {
   const activeClient = useMemo(() => clients.find((c) => c.id === clientId), [clients, clientId]);
 
   useEffect(() => {
+    if (import.meta.env.VITE_USE_REAL_API !== '1') return undefined;
+    let cancelled = false;
+    void adminFetchJson<{ anthropic?: boolean }>('/api/admin/integrations').then((r) => {
+      if (!cancelled && r.ok && r.data && typeof r.data === 'object') {
+        setAnthropicEnabled(Boolean((r.data as { anthropic?: boolean }).anthropic));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    skipAiBuilderPatchRef.current = true;
+    const unlock = window.setTimeout(() => {
+      skipAiBuilderPatchRef.current = false;
+    }, 900);
+    return () => window.clearTimeout(unlock);
+  }, [projectId]);
+
+  useEffect(() => {
     if (!projectId) {
+      brandHydratePidRef.current = '';
       setIndustryNiche('');
       setBizSummary('');
       setBrandPrimary('');
@@ -179,61 +247,104 @@ export function RbyanBrainPage() {
       setVisualStyle('');
       setBusinessType('');
       setKeyPagesNeeded('');
+      setCity('');
       return;
     }
+
+    const proj = projects.find((p) => p.id === projectId);
+    if (!proj) return;
+
+    if (brandHydratePidRef.current === projectId) return;
+    brandHydratePidRef.current = projectId;
+
+    const srv = parseAiBuilderBlob(
+      proj.siteSettings && typeof proj.siteSettings === 'object'
+        ? (proj.siteSettings as Record<string, unknown>).aiBuilder ?? null
+        : null
+    );
+
+    let sess: Record<string, string> = {};
     try {
       const raw = sessionStorage.getItem(RBYAN_BRAND_STORAGE(projectId));
-      if (!raw) {
-        setIndustryNiche('');
-        setBizSummary('');
-        setBrandPrimary('');
-        setBrandAccent('');
-        setFontVibe('');
-        setVoice('');
-        setVisualStyle('');
-        setBusinessType('');
-        setKeyPagesNeeded('');
-        return;
-      }
-      const j = JSON.parse(raw) as Record<string, string>;
-      setIndustryNiche(j.industryNiche ?? '');
-      setBizSummary(j.bizSummary ?? '');
-      setBrandPrimary(j.brandPrimary ?? '');
-      setBrandAccent(j.brandAccent ?? '');
-      setFontVibe(j.fontVibe ?? '');
-      setVoice(j.voice ?? '');
-      setVisualStyle(j.visualStyle ?? '');
-      setBusinessType(j.businessType ?? '');
-      setKeyPagesNeeded(j.keyPagesNeeded ?? '');
+      if (raw) sess = JSON.parse(raw) as Record<string, string>;
     } catch {
       /* */
     }
-  }, [projectId]);
+
+    const m = mergeBrandPreferServer(sess, srv);
+    const companyRow = clients.find((c) => c.id === proj.clientId);
+    const inferred = inferAiBuilderBrandDefaults({
+      projectName: proj.name,
+      clientCompany: companyRow?.company ?? undefined,
+      mergedIndustry: m.industryNiche,
+      mergedBusinessType: m.businessType,
+    });
+
+    const pick = (saved: string, guess: string, fallback = '') => {
+      const t = (saved ?? '').trim();
+      if (t) return t;
+      const g = (guess ?? '').trim();
+      return g || fallback;
+    };
+
+    setIndustryNiche(pick(m.industryNiche, inferred.industryNiche, proj.name.trim()));
+    setBizSummary(pick(m.bizSummary, ''));
+    setBrandPrimary(pick(m.brandPrimary, inferred.brandPrimary));
+    setBrandAccent(pick(m.brandAccent, inferred.brandAccent));
+    setFontVibe(pick(m.fontVibe, inferred.fontVibe));
+    setVoice(pick(m.voice, inferred.voice ?? ''));
+    setVisualStyle(pick(m.visualStyle, inferred.visualStyle));
+    setBusinessType(pick(m.businessType, inferred.businessType));
+    setKeyPagesNeeded(m.keyPagesNeeded ?? '');
+    setCity(m.city ?? '');
+  }, [projectId, projects, clients]);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) return undefined;
     const id = window.setTimeout(() => {
+      const aiBuilder: Record<string, string> = {
+        industryNiche,
+        bizSummary,
+        brandPrimary,
+        brandAccent,
+        fontVibe,
+        voice,
+        visualStyle,
+        businessType,
+        keyPagesNeeded,
+        city,
+      };
       try {
-        sessionStorage.setItem(
-          RBYAN_BRAND_STORAGE(projectId),
-          JSON.stringify({
-            industryNiche,
-            bizSummary,
-            brandPrimary,
-            brandAccent,
-            fontVibe,
-            voice,
-            visualStyle,
-            businessType,
-            keyPagesNeeded,
-          })
-        );
+        sessionStorage.setItem(RBYAN_BRAND_STORAGE(projectId), JSON.stringify(aiBuilder));
       } catch {
         /* */
       }
-    }, 500);
+
+      if (import.meta.env.VITE_USE_REAL_API !== '1' || skipAiBuilderPatchRef.current) return;
+      void adminFetchJson<{ project?: ApiProjectRow }>(`/api/admin/projects/${encodeURIComponent(projectId)}`, {
+        method: 'PATCH',
+        json: { site_settings: { aiBuilder } },
+      }).then((r) => {
+        if (r.ok && r.data && typeof r.data === 'object' && r.data.project) {
+          mergeProjectRowFromServer(r.data.project);
+        }
+      });
+    }, 700);
     return () => window.clearTimeout(id);
-  }, [projectId, industryNiche, bizSummary, brandPrimary, brandAccent, fontVibe, voice, visualStyle, businessType, keyPagesNeeded]);
+  }, [
+    projectId,
+    industryNiche,
+    bizSummary,
+    brandPrimary,
+    brandAccent,
+    fontVibe,
+    voice,
+    visualStyle,
+    businessType,
+    keyPagesNeeded,
+    city,
+    mergeProjectRowFromServer,
+  ]);
 
   const projectContext: RbyanProjectContext | null = useMemo(() => {
     if (!projectId || !activeProject) return null;
@@ -262,6 +373,7 @@ export function RbyanBrainPage() {
       clientContactName: companyRow?.name ?? null,
       clientEmail: companyRow?.email?.trim() || null,
       clientPhone: companyRow?.phone?.trim() || null,
+      city: city.trim() || null,
       industryNiche: industryNiche.trim() || null,
       deliveryFocus: activeProject.deliveryFocus,
       siteBuildArchetype: activeProject.siteBuildArchetype ?? null,
@@ -282,6 +394,7 @@ export function RbyanBrainPage() {
     visualStyle,
     businessType,
     keyPagesNeeded,
+    city,
   ]);
 
   const activeClientForAi = useMemo(() => {
@@ -297,8 +410,11 @@ export function RbyanBrainPage() {
     const hasBiz = Boolean(bizSummary.trim());
     const hasBizType = Boolean(businessType.trim());
     const hasKeyPages = Boolean(keyPagesNeeded.trim());
-    return !(hasCompany || hasNiche || hasBiz || hasBizType || hasKeyPages);
-  }, [projectId, activeClientForAi, industryNiche, bizSummary, businessType, keyPagesNeeded]);
+    const hasCity = Boolean(city.trim());
+    return !(hasCompany || hasNiche || hasBiz || hasBizType || hasKeyPages || hasCity);
+  }, [projectId, activeClientForAi, industryNiche, bizSummary, businessType, keyPagesNeeded, city]);
+
+  const blockSendThinContext = aiContextThin && import.meta.env.VITE_USE_REAL_API !== '1';
 
   const hydrate = useProjectSiteWorkspaceStore((s) => s.hydrate);
   const workspaceRow = useProjectSiteWorkspaceStore((s) => (projectId ? s.byProjectId[projectId] : undefined));
@@ -335,6 +451,7 @@ export function RbyanBrainPage() {
   }, [refreshWorkspace]);
 
   useEffect(() => {
+    brandHydratePidRef.current = '';
     setSessionMemory(null);
     setRbyanSession({
       mode: 'idle',
@@ -370,6 +487,20 @@ export function RbyanBrainPage() {
   const previewDoc = useMemo(() => composePreviewDocument(previewSite), [previewSite]);
   const hasPreviewableSite = previewSite.files.length > 0;
 
+  const openFullPreviewTab = useCallback(() => {
+    try {
+      if (!previewSite.files.length) return;
+      const doc = composePreviewDocument(previewSite, { isolate: false });
+      const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!w) toast('Popup blocked — allow pop-ups for this site to preview in a tab.', 'error');
+      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    } catch {
+      toast('Could not open preview in a new tab.', 'error');
+    }
+  }, [previewSite, toast]);
+
   const undoLast = useCallback(() => {
     setUndoStack((stack) => {
       if (!stack.length) return stack;
@@ -397,9 +528,9 @@ export function RbyanBrainPage() {
         if (!projectContext) toast('Select a project first.', 'info');
         return;
       }
-      if (aiContextThin) {
+      if (blockSendThinContext) {
         toast(
-          'Add the client company on their CRM record, or fill Industry / Offer below, before generating — otherwise output stays generic.',
+          'Offline / demo mode needs sidebar context (company, niche, offer, or city). Turn on the live API and add ANTHROPIC_API_KEY to use Claude from your prompt alone.',
           'error'
         );
         return;
@@ -432,7 +563,50 @@ export function RbyanBrainPage() {
 
       try {
         const focus = rbyanSession.currentSection.trim();
-        const completed = await generateSiteWithRbyan(text, projectContext, existing, sessionMemory, focus || null);
+        const mode = existing?.length ? 'update-site' : 'new-site';
+
+        let completed: RbyanGenerateResult;
+
+        if (import.meta.env.VITE_USE_REAL_API === '1' && projectId) {
+          const ant = await postRbyanAnthropicGenerate(projectId, {
+            prompt: text,
+            mode,
+            focusedSection: focus || null,
+            existingFiles: existing,
+            projectContext,
+          });
+          if (ant.ok) {
+            const d = ant.data;
+            const mem =
+              d.sessionMemory ??
+              ({
+                lastPlan: null,
+                lastCopy: null,
+                lastDesign: null,
+                lastPrompt: text,
+              } satisfies RbyanSessionMemory);
+            completed = {
+              assistantMessage: d.assistantMessage,
+              plan: d.plan,
+              files: d.files,
+              sections: d.sections.length ? d.sections : ['Homepage'],
+              versionLabel: d.versionLabel,
+              source: d.source === 'api' ? 'api' : 'mock',
+              classification: 'build-site',
+              updatedFiles: d.updatedFiles,
+              sessionMemory: mem,
+              changelog: d.changelog,
+            };
+          } else if (ant.status === 503 && ant.code === 'ANTHROPIC_DISABLED') {
+            setAnthropicEnabled(false);
+            toast('Anthropic API not configured on the server — using the local preview engine.', 'info');
+            completed = await generateSiteWithRbyan(text, projectContext, existing, sessionMemory, focus || null);
+          } else {
+            throw new Error(ant.error || 'Generation failed');
+          }
+        } else {
+          completed = await generateSiteWithRbyan(text, projectContext, existing, sessionMemory, focus || null);
+        }
 
         setBuildSteps([{ label: 'Synthesizing layout and code…', done: true }]);
 
@@ -471,9 +645,11 @@ export function RbyanBrainPage() {
           },
         ]);
         setPreviewNonce((n) => n + 1);
-      } catch {
+      } catch (e) {
         if (pushedUndo) setUndoStack((u) => u.slice(0, -1));
-        toast('AI Builder could not finish that request. Try again.', 'error');
+        const msg =
+          e instanceof Error ? e.message : 'AI Builder could not finish that request. Try again.';
+        toast(msg, 'error');
         setBuildSteps([]);
       } finally {
         setGenerating(false);
@@ -482,7 +658,7 @@ export function RbyanBrainPage() {
         if (projectId) useProjectSiteWorkspaceStore.getState().setRbyanBusy(projectId, false);
       }
     },
-    [projectContext, projectId, lastResult, sessionMemory, toast, rbyanSession.currentSection, aiContextThin]
+    [projectContext, projectId, lastResult, sessionMemory, toast, rbyanSession.currentSection, blockSendThinContext]
   );
 
   const sendPromptRef = useRef(sendPrompt);
@@ -561,7 +737,9 @@ export function RbyanBrainPage() {
               Bryan the Brain
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              Select a client and project, add business &amp; brand notes in the sidebar, then prompt. The mock engine uses that context to vary structure, copy, and colors—swap in a real model later without changing your workflow.
+              {anthropicEnabled
+                ? 'With ANTHROPIC_API_KEY on the server, prompts go to Claude and return a full bespoke homepage HTML. Sidebar adds extra brand control — it’s saved under project site settings.'
+                : 'Production: add ANTHROPIC_API_KEY on Railway → Bryan the Brain generates real pages from your prompt (Claude). Without it, we fall back to a local template preview engine.'}
             </p>
             <ol className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-zinc-500">
               <li className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-zinc-300">
@@ -583,7 +761,7 @@ export function RbyanBrainPage() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-12">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:h-[calc(100dvh-10rem)] lg:grid-cols-12">
         {/* LEFT — context */}
         <aside className="border-b border-white/10 p-4 lg:col-span-3 lg:border-b-0 lg:border-r">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Context</p>
@@ -633,11 +811,16 @@ export function RbyanBrainPage() {
           {projectId ? (
             <div className="mb-4 rounded-lg border border-violet-500/25 bg-violet-950/25 p-3">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-violet-300/90">Business &amp; brand</p>
-              <p className="mb-2 text-[10px] leading-snug text-zinc-500">Used on every generation pass (stored with this project in your session).</p>
-              {aiContextThin ? (
+              <p className="mb-2 text-[10px] leading-snug text-zinc-500">
+                Used every generation · auto-saved on this project (Supabase <code className="text-zinc-400">site_settings.aiBuilder</code>).
+              </p>
+              {blockSendThinContext ? (
                 <p className="mb-2 rounded border border-amber-600/40 bg-amber-950/40 px-2 py-1.5 text-[10px] leading-snug text-amber-100">
-                  Add <strong>company</strong> on the client record, or fill <strong>Industry</strong> / <strong>Offer</strong> here — send is blocked until at least one is set so the AI
-                  is not guessing.
+                  Offline / demo: add <strong>company</strong>, <strong>Industry</strong>, <strong>Offer</strong>, or <strong>City</strong> before sending — or connect the live API + Anthropic key for prompt-only generations.
+                </p>
+              ) : aiContextThin ? (
+                <p className="mb-2 rounded border border-emerald-600/35 bg-emerald-950/30 px-2 py-1.5 text-[10px] leading-snug text-emerald-100">
+                  Claude can infer niche from your prompt; filling the sidebar still tightens copy and palette.
                 </p>
               ) : null}
               <label className="mb-0.5 block text-[10px] text-zinc-400">Business type</label>
@@ -677,6 +860,14 @@ export function RbyanBrainPage() {
                 value={keyPagesNeeded}
                 onChange={(e) => setKeyPagesNeeded(e.target.value)}
                 placeholder="e.g. Home, Menu, Gallery, Reservations, Contact"
+                spellCheck={false}
+              />
+              <label className="mb-0.5 block text-[10px] text-zinc-400">City / service area</label>
+              <Input
+                className="mb-2 h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-100"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Syracuse, NY"
                 spellCheck={false}
               />
               <div className="mb-2 grid grid-cols-2 gap-2">
@@ -1034,8 +1225,8 @@ export function RbyanBrainPage() {
               <Button
                 type="button"
                 className="h-11 w-11 shrink-0 self-end rounded-lg bg-violet-600 p-0 hover:bg-violet-500 disabled:opacity-40"
-                disabled={generating || !input.trim() || !projectContext || aiContextThin}
-                title={aiContextThin ? 'Add client company or industry/offer context first' : undefined}
+                disabled={generating || !input.trim() || !projectContext || blockSendThinContext}
+                title={blockSendThinContext ? 'Add sidebar context first (offline), or enable live API + Anthropic.' : undefined}
                 aria-label="Send"
                 onClick={() => void sendPrompt(input)}
               >
@@ -1046,15 +1237,27 @@ export function RbyanBrainPage() {
         </section>
 
         {/* RIGHT — output */}
-        <aside className="flex min-h-[280px] flex-col p-4 lg:col-span-4 lg:min-h-0">
+        <aside className="flex min-h-[400px] flex-col overflow-hidden p-4 lg:col-span-4 lg:max-h-[calc(100dvh-10rem)] lg:min-h-0">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Output</p>
           {hasPreviewableSite || previewVersionId ? (
             <>
-              <div className="mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/40">
-                <p className="shrink-0 border-b border-white/5 px-2 py-1.5 text-[10px] text-zinc-500">
-                  Live preview
-                  {stagingFiles ? <span className="text-violet-400"> · updating</span> : null}
-                </p>
+              <div className="mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/40 lg:min-h-0">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/5 px-2 py-1.5">
+                  <p className="text-[10px] text-zinc-500">
+                    Live preview
+                    {stagingFiles ? <span className="text-violet-400"> · updating</span> : null}
+                  </p>
+                  {(hasPreviewableSite || previewVersionId) && previewSite.files.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => openFullPreviewTab()}
+                      className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-violet-200 transition hover:bg-white/10"
+                    >
+                      Open full preview
+                      <ExternalLink className="h-3 w-3 opacity-90" aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
                 {generating ? (
                   <p className="shrink-0 border-b border-violet-500/20 bg-violet-950/40 px-2 py-1.5 text-[11px] text-violet-200">
                     AI Builder is updating your site — watch sections appear in the preview.
@@ -1063,8 +1266,8 @@ export function RbyanBrainPage() {
                 <iframe
                   title="AI Builder preview"
                   srcDoc={previewDoc}
-                  className="h-full min-h-[200px] w-full flex-1 border-0 bg-white"
-                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  className="min-h-[min(70vh,640px)] w-full flex-1 border-0 bg-white lg:min-h-[560px]"
+                  style={{ width: '100%', border: 'none' }}
                   sandbox="allow-scripts"
                   referrerPolicy="no-referrer"
                 />

@@ -22,6 +22,7 @@
     "preview:admin": "npx vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.11",
     "@codemirror/lang-javascript": "^6.2.5",

@@ -40,6 +40,8 @@ export type RbyanProjectContext = {
   businessType?: string | null;
   /** Comma-separated pages the site should include. */
   keyPagesNeeded?: string | null;
+  /** City or service area for local businesses (AI Builder + Claude). */
+  city?: string | null;
 };
 
 /** Prompt routing for the generation pipeline (mock rules today; API can reuse). */

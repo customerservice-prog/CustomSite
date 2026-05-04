@@ -20,6 +20,7 @@ const { upsertProjectVideosFromHtmlContent } = require('../lib/projectVideosHtml
 const { extractYoutubeIdsFromHtml } = require('../lib/extractYoutubeIdsFromHtml');
 const { checkYoutubeOembed } = require('../lib/youtubeOembedCheck');
 const { normalizeStagingSiteSlug } = require('../lib/normalizeStagingSiteSlug');
+const { generateSiteWithClaude, isAnthropicConfigured } = require('../lib/aiBuilder/generateWithClaude');
 
 const router = express.Router();
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -862,6 +863,132 @@ async function patchAdminProjectById(req, res) {
 
 router.patch('/projects/:projectId', patchAdminProjectById);
 router.put('/projects/:projectId', patchAdminProjectById);
+
+/**
+ * POST /api/admin/projects/:projectId/rbyan/generate
+ * Claude-backed full homepage HTML (requires ANTHROPIC_API_KEY).
+ */
+router.post('/projects/:projectId/rbyan/generate', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isUuidParam(projectId)) return res.status(400).json({ error: 'Invalid project id' });
+    if (!isAnthropicConfigured()) {
+      return res.status(503).json({
+        error: 'ANTHROPIC_API_KEY is not configured on server',
+        code: 'ANTHROPIC_DISABLED',
+      });
+    }
+
+    const body = req.body || {};
+    const prompt = String(body.prompt || '').trim();
+    if (!prompt) return res.status(400).json({ error: 'prompt is required' });
+
+    const supabase = getService();
+    const { data: proj, error: pe } = await supabase
+      .from('projects')
+      .select('id, name, client_id')
+      .eq('id', projectId)
+      .maybeSingle();
+    if (pe) return res.status(500).json({ error: pe.message });
+    if (!proj) return res.status(404).json({ error: 'Project not found' });
+
+    let clientRow = null;
+    if (proj.client_id) {
+      const u = await supabase
+        .from('users')
+        .select('company, full_name, phone')
+        .eq('id', proj.client_id)
+        .maybeSingle();
+      if (!u.error) clientRow = u.data;
+    }
+
+    const pc = body.projectContext && typeof body.projectContext === 'object' ? body.projectContext : {};
+    const ctxProjectId = pc.projectId && String(pc.projectId).trim();
+    if (ctxProjectId && ctxProjectId !== projectId) {
+      return res.status(400).json({ error: 'projectContext.projectId does not match URL' });
+    }
+
+    const ctxProjectName = String(pc.projectName || proj.name || '').trim();
+    const companyName = String(pc.clientCompany ?? clientRow?.company ?? '').trim() || '';
+    const clientPhone =
+      typeof pc.clientPhone === 'string' && pc.clientPhone.trim()
+        ? pc.clientPhone.trim()
+        : String(clientRow?.phone || '').trim() || '';
+
+    const existingFiles = Array.isArray(body.existingFiles) ? body.existingFiles : [];
+    const ixRow = existingFiles.find((f) => f && String(f.name || '') === 'index.html');
+    const existingIndexHtml = ixRow?.content ? String(ixRow.content) : null;
+    const mode = body.mode === 'update-site' ? 'update-site' : 'new-site';
+
+    const bk = pc.brandKit && typeof pc.brandKit === 'object' ? pc.brandKit : {};
+    const primary = bk.primaryHex && String(bk.primaryHex).trim();
+    const accent = bk.accentHex && String(bk.accentHex).trim();
+    const brandColors = [primary && `primary ${primary}`, accent && `accent ${accent}`].filter(Boolean).join(', ');
+    const offerAudience =
+      typeof bk.businessSummary === 'string' && bk.businessSummary.trim()
+        ? bk.businessSummary.trim()
+        : '';
+
+    let city = '';
+    if (typeof pc.city === 'string' && pc.city.trim()) city = pc.city.trim();
+    else if (typeof body.city === 'string' && body.city.trim()) city = body.city.trim();
+
+    try {
+      const out = await generateSiteWithClaude({
+        prompt,
+        businessType: typeof pc.businessType === 'string' ? pc.businessType : '',
+        niche: typeof pc.industryNiche === 'string' ? pc.industryNiche : '',
+        offerAudience,
+        clientName: ctxProjectName || 'Website',
+        companyName: companyName || '',
+        city,
+        brandColors,
+        voice: typeof bk.voice === 'string' ? bk.voice : '',
+        visualStyle: typeof bk.visualStyle === 'string' ? bk.visualStyle : '',
+        fontVibe: typeof bk.fontVibe === 'string' ? bk.fontVibe : '',
+        keyPagesNeeded: typeof pc.keyPagesNeeded === 'string' ? pc.keyPagesNeeded : '',
+        existingIndexHtml: mode === 'update-site' ? existingIndexHtml : null,
+        mode,
+        focusedSection:
+          typeof body.focusedSection === 'string'
+            ? body.focusedSection
+            : pc.focusedSection != null
+              ? String(pc.focusedSection)
+              : null,
+        contactPhone: clientPhone || null,
+      });
+
+      /** Optional tweak: substitute real tel when model used placeholder — keep simple regex */
+      const files = [{ name: 'index.html', type: 'html', content: out.html }];
+
+      return res.json({
+        assistantMessage: `Generated homepage with Claude (${out.model}). Sections detected: ${out.sections.slice(0, 6).join(', ')}.${clientPhone ? ' Client phone available — confirm it appears correctly in HTML.' : ''}`,
+        plan: ['Claude rendered full homepage (single-file HTML)', 'Review preview, then Apply to project'],
+        files,
+        sections: out.sections,
+        versionLabel: 'Claude · homepage',
+        source: 'api',
+        classification: 'build-site',
+        updatedFiles: ['index.html'],
+        sessionMemory: {
+          lastPlan: null,
+          lastCopy: null,
+          lastDesign: null,
+          lastPrompt: prompt,
+        },
+        changelog: [`Model ${out.model} — regenerated index.html`],
+      });
+    } catch (e) {
+      console.error('[rbyan/generate]', e);
+      return res.status(500).json({
+        error: e instanceof Error ? e.message : 'Generation failed',
+      });
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
 
 router.post('/projects/:projectId/site/upload-asset', upload.single('file'), async (req, res) => {
   try {
