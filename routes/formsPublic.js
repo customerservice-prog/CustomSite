@@ -3,7 +3,8 @@
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
-const { sendFormSubmissionNotification } = require('../lib/email');
+const { sendFormSubmissionNotification, sendLeadConfirmation } = require('../lib/email');
+const { extractStructuredLeadFromFormFields } = require('../lib/leadFromFormFields');
 
 const router = express.Router();
 
@@ -46,6 +47,7 @@ router.post('/:projectId/submit', formSubmitLimiter, express.json({ limit: '256k
     ) {
       return res.status(400).json({ ok: false, error: 'Invalid project' });
     }
+    const referer = String(req.get('referer') || '').trim().slice(0, 2048);
     const supabase = getService();
     const { data: proj, error: pe } = await supabase
       .from('projects')
@@ -62,6 +64,12 @@ router.post('/:projectId/submit', formSubmitLimiter, express.json({ limit: '256k
     }
 
     const fields = safeFields(req.body);
+
+    /** Mirror contact-style URL into searchable fields for extractor + previews. */
+    if (referer && !fields.current_url && !fields.page_url) {
+      fields.current_url = referer;
+    }
+
     const { data: row, error: insErr } = await supabase
       .from('form_submissions')
       .insert({ project_id: projectId, fields })
@@ -86,11 +94,39 @@ router.post('/:projectId/submit', formSubmitLimiter, express.json({ limit: '256k
       clientEmail,
     }).catch(() => {});
 
+    const draft = extractStructuredLeadFromFormFields(fields);
+    if (draft && draft.email) {
+      const leadPayload = Object.assign({}, draft, {
+        project_id: projectId,
+        status: 'New',
+        current_url:
+          normalizeReferer(fields.current_url) || normalizeReferer(fields.page_url) || normalizeReferer(referer) || null,
+        service_type: draft.service_type && String(draft.service_type).trim() ? draft.service_type : 'Site form',
+      });
+
+      /** Admin already got `sendFormSubmissionNotification`; fan out confirmation to the visitor here. */
+      const { error: leadErr } = await supabase.from('leads').insert(leadPayload);
+      if (leadErr && /project_id|column|schema|migration/i.test(String(leadErr.message || ''))) {
+        console.warn('[forms] leads insert unavailable — apply migration 018_leads_project_id.sql', leadErr.message);
+      } else if (leadErr && !/duplicate|unique/i.test(String(leadErr.message || ''))) {
+        console.warn('[forms] twin lead insert skipped', leadErr.message);
+      } else if (!leadErr) {
+        sendLeadConfirmation(leadPayload.email, leadPayload.name).catch(() => {});
+      }
+    }
+
     return res.status(200).json({ ok: true, thanks: true, id: row.id });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ ok: false, error: 'Server error' });
   }
 });
+
+function normalizeReferer(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  return s.length <= 2000 ? s : s.slice(0, 2000);
+}
 
 module.exports = router;

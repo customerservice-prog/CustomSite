@@ -20,6 +20,7 @@ const {
   sendProjectMessageToClient,
 } = require('../lib/email');
 const { attachDashboardToProject, attachDashboardToProjects } = require('../lib/projectDashboard');
+const { runContactPageBackfill } = require('../lib/backfillContactPages');
 
 const router = express.Router();
 
@@ -85,6 +86,25 @@ router.get('/db-health', async (req, res) => {
       code: 'EXCEPTION',
       message: e && e.message ? e.message : String(e),
     });
+  }
+});
+
+/**
+ * Ensures Site builder projects that still lack contact wiring get a routed `contact.html`.
+ * Runs from admin Studio (Sign in → call via API explorer) or scripted fetch.
+ *
+ * POST /api/admin/backfill-contact-pages  { dryRun?: boolean }
+ */
+router.post('/backfill-contact-pages', async (req, res) => {
+  try {
+    const supabase = getService();
+    const dryRun = Boolean(req.body && req.body.dryRun);
+    const summary = await runContactPageBackfill(supabase, { dryRun });
+    await logActivity(supabase, req.profile.id, 'site.backfill_contact', 'site', null, summary);
+    return res.json({ success: true, summary });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -186,7 +206,21 @@ router.get('/leads', async (_req, res) => {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
-    return res.json({ leads: data || [] });
+    const rows = data || [];
+    const pids = [...new Set(rows.map((r) => r.project_id).filter(Boolean))];
+    let nameById = {};
+    if (pids.length) {
+      const pr = await supabase.from('projects').select('id, name').in('id', pids);
+      if (!pr.error && pr.data) {
+        nameById = Object.fromEntries(pr.data.map((p) => [p.id, p.name]));
+      }
+    }
+    const leads = rows.map((r) =>
+      Object.assign({}, r, {
+        project_name: r.project_id ? nameById[r.project_id] || null : null,
+      })
+    );
+    return res.json({ leads });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Server error' });

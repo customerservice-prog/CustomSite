@@ -29,6 +29,8 @@ interface ContactLeadApiRow {
   current_url?: string | null;
   created_at?: string | null;
   company?: string | null;
+  project_id?: string | null;
+  project_name?: string | null;
 }
 
 const BG = '#070502';
@@ -222,7 +224,7 @@ export function MessagesCenterPage() {
             const replySubject =
               parsed.inferredSubject?.trim() ||
               `Re: Message from ${host === '—' ? 'contact form' : host}`;
-            const mailto = `mailto:${encodeURIComponent(lead.email)}?subject=${encodeURIComponent(replySubject)}`;
+            const mailto = `mailto:${lead.email}?subject=${encodeURIComponent(replySubject)}`;
 
             return (
               <li key={lead.id}>
@@ -279,6 +281,14 @@ export function MessagesCenterPage() {
                         className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]"
                         style={{ color: `${GOLD}aa`, fontFamily: '"EB Garamond", Georgia, serif' }}
                       >
+                        {lead.project_name ? (
+                          <span className="inline-flex max-w-[10rem] items-center gap-1 truncate sm:max-w-xs">
+                            <span aria-hidden style={{ fontSize: '0.68rem', fontWeight: 700, opacity: 0.75 }}>◇</span>
+                            <span className="truncate" title={lead.project_name || undefined}>
+                              {lead.project_name}
+                            </span>
+                          </span>
+                        ) : null}
                         <span className="inline-flex items-center gap-1">
                           <Globe className="h-3.5 w-3.5" aria-hidden />
                           {host}
