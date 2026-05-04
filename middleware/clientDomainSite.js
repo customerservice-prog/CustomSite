@@ -9,6 +9,7 @@ const {
   stripWww,
   customDomainLookupVariants,
 } = require('../lib/customsitePlatformHosts');
+const { stagingSlugFromHost, getStagingSitesParentHost } = require('../lib/customsiteStagingSiteHost');
 const { injectSiteSettingsIntoHtml } = require('../lib/siteHeadInjector');
 const { applyClientHtmlVideoModalGuard } = require('../lib/clientSiteVideoModalGuard');
 const { rewriteYoutubeThumbnailUrlsInHtml } = require('../lib/rewriteYoutubeThumbnailUrlsInHtml');
@@ -160,6 +161,34 @@ async function loadProjectRowById(supabase, id) {
   return data || null;
 }
 
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} slug
+ */
+async function loadProjectRowByStagingSlug(supabase, slug) {
+  if (!slug) return null;
+  let projSelect = 'id, site_settings, custom_domain, launched_at, name, live_url';
+  let { data, error } = await supabase.from('projects').select(projSelect).eq('staging_site_slug', slug).maybeSingle();
+  if (error && /\bstaging_site_slug\b/.test(String(error.message))) return null;
+  if (error && /\blive_url\b/.test(String(error.message))) {
+    projSelect = 'id, site_settings, custom_domain, launched_at, name';
+    ({ data, error } = await supabase.from('projects').select(projSelect).eq('staging_site_slug', slug).maybeSingle());
+  }
+  if (error && /site_settings/.test(String(error.message))) {
+    ({ data, error } = await supabase
+      .from('projects')
+      .select('id, custom_domain, launched_at, name')
+      .eq('staging_site_slug', slug)
+      .maybeSingle());
+  }
+  if (error) {
+    if (/\bstaging_site_slug\b/.test(String(error.message))) return null;
+    console.error('[clientDomainSite] staging slug lookup', error.message);
+    return null;
+  }
+  return data || null;
+}
+
 /** @returns {Promise<{ projectId: string; siteSettings?: unknown | null; launchedAt: string | null; projectName: string | null } | null>} */
 async function lookupProjectMetaByHost(supabase, hostKey) {
   const now = Date.now();
@@ -174,6 +203,10 @@ async function lookupProjectMetaByHost(supabase, hostKey) {
   let row0 = forcedProjectId ? await loadProjectRowById(supabase, forcedProjectId) : null;
   if (forcedProjectId && !row0) {
     console.warn('[clientDomainSite] CUSTOMSITE_DOMAIN_PROJECT_MAP: project not found', forcedProjectId);
+  }
+  if (!row0) {
+    const stag = stagingSlugFromHost(hostKey);
+    if (stag) row0 = await loadProjectRowByStagingSlug(supabase, stag);
   }
   /** Match DB values pasted as URLs or with stray whitespace/trailing slashes. */
   let variantSet = [];
@@ -436,12 +469,22 @@ async function handleClientDomain(req, res) {
   const projectName = meta && meta.projectName;
   if (!projectId) {
     setClientSecurityHeaders(res);
+    const parent = getStagingSitesParentHost();
+    const slugTry = stagingSlugFromHost(host);
+    const stagingHint =
+      parent && slugTry
+        ? `<p style="margin-top:1rem">This hostname matches your platform staging pattern (<code>${escapeHtml(
+            parent,
+          )}</code>) but no project uses <strong>staging subdomain</strong> <code>${escapeHtml(slugTry)}</code>.</p>`
+        : parent
+          ? `<p style="margin-top:1rem">Staging URLs use <code>your-slug.${escapeHtml(
+              parent,
+            )}</code> once you set <strong>Staging subdomain</strong> on the project and point a DNS <strong>wildcard</strong> (or this host) at the same deployment as CustomSite.</p>`
+          : '';
     res.status(404).type('html').send(
-      `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Not found</title></head><body style="font-family:system-ui;max-width:36rem;margin:3rem auto;padding:0 1.25rem;color:#334155;line-height:1.5"><h1 style="font-size:1.25rem;color:#0f172a">Site not found</h1><p>No project has <strong>Production domain</strong> set to <strong>${escapeHtml(
-        host
-      )}</strong> in CustomSite, so traffic with this hostname cannot load <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">site_files</code>.</p><p style="margin-top:1rem"><strong>Fix:</strong></p><ol style="margin:0.75rem 0 0;padding-left:1.25rem"><li>Sign in → <strong>Projects</strong> → open the site → <strong>Hosting / production domain</strong>.</li><li>Put <code style="background:#f1f5f9">${escapeHtml(
-        host
-      )}</code> in the domain field only (no <code style="background:#f1f5f9">https://</code>), click save.</li><li>Confirm DNS for this hostname targets your CustomSite deployment (Railway custom domain / CNAME).</li></ol><p style="margin-top:1rem;font-size:0.9rem;color:#64748b">If you saved the domain elsewhere (only in Railway, or typo like <code style="background:#fef3c7">www.</code> only in DB), set it explicitly on the project row <code style="background:#f1f5f9">custom_domain</code> — it takes up to ~2 minutes to pick up.</p></body></html>`
+      `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Not found</title></head><body style="font-family:system-ui;max-width:36rem;margin:3rem auto;padding:0 1.25rem;color:#334155;line-height:1.5"><h1 style="font-size:1.25rem;color:#0f172a">Site not found</h1><p>No published site matches hostname <strong>${escapeHtml(
+        host,
+      )}</strong> (either <strong>custom_domain</strong> or a configured <strong>staging subdomain</strong>).</p>${stagingHint}<p>For a vanity domain, studio routing matches <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">custom_domain</code> and serves <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">site_files</code>.</p><p style="margin-top:1rem"><strong>Fix:</strong></p><ol style="margin:0.75rem 0 0;padding-left:1.25rem"><li>Sign in → <strong>Projects</strong> → open the site → <strong>Hosting</strong>.</li><li>Set a <strong>Staging subdomain</strong> (${parent ? `parent <code>${escapeHtml(parent)}</code>` : 'requires <code>CUSTOMSITE_STAGING_SITES_HOST</code> on the server'}), or set <strong>Custom domain</strong> to <code>${escapeHtml(host)}</code> without <code style="background:#f1f5f9">https://</code>.</li><li>DNS: wildcard (e.g. <code>*.${parent ? escapeHtml(parent) : 'sites.example.com'}</code>) or the exact hostname must target this CustomSite deployment.</li></ol><p style="margin-top:1rem;font-size:0.9rem;color:#64748b">Cache updates within ~2 minutes after saving.</p></body></html>`
     );
     return true;
   }

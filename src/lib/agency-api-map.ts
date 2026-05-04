@@ -158,6 +158,7 @@ export type ApiProjectRow = Record<string, unknown> & {
   launched_at?: string | null;
   thumbnail_url?: string | null;
   live_url?: string | null;
+  staging_site_slug?: string | null;
   stage?: string | null;
   dashboard?: ApiProjectDashboard | null;
 };
@@ -228,6 +229,11 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
   const railwayProductionUrl = pick<string>(row, 'railway_url_production', 'railwayUrlProduction') ?? null;
   const railwayServiceIdProduction =
     pick<string>(row, 'railway_service_id_production', 'railwayServiceIdProduction') ?? null;
+  const rawStagingSlug = pick<string | null>(row, 'staging_site_slug', 'stagingSiteSlug');
+  const stagingSiteSlug =
+    rawStagingSlug != null && String(rawStagingSlug).trim()
+      ? String(rawStagingSlug).trim().toLowerCase()
+      : null;
 
   const liveResolved = dash?.live_url_resolved?.trim();
   const explicitLiveUrl = pick<string | null>(row, 'live_url', 'liveUrl')?.trim();
@@ -326,6 +332,7 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
     deliverableProgressPercent,
     studioFocusLine,
     siteAnalyticsSnapshot,
+    stagingSiteSlug,
     clientPortalVisible: deliveryFocus === 'client_site' ? true : undefined,
     clientSourceRepoUrl:
       typeof meta.clientSourceRepoUrl === 'string' && meta.clientSourceRepoUrl.trim()

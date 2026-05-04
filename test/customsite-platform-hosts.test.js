@@ -30,4 +30,14 @@ describe('customsitePlatformHosts', () => {
   test('isPlatformHostname treats unknown client host as non-platform', () => {
     assert.equal(isPlatformHostname('jordanmaxwell.org'), false);
   });
+
+  test('staging sites parent apex is platform when env is set', () => {
+    process.env.CUSTOMSITE_STAGING_SITES_HOST = 'sites.example.com';
+    try {
+      assert.equal(isPlatformHostname('sites.example.com'), true);
+      assert.equal(isPlatformHostname('slug.sites.example.com'), false);
+    } finally {
+      delete process.env.CUSTOMSITE_STAGING_SITES_HOST;
+    }
+  });
 });

@@ -65,6 +65,8 @@ import { Radio, Smartphone, TrendingUp, Monitor, Maximize2, Activity, Calendar }
 import { fetchLiveAnalytics, fetchProjectAnalytics, type ProjectAnalyticsPayload } from '@/lib/project-analytics-api';
 import { fetchProjectVideosArchiveZip } from '@/lib/project-videos-api';
 import { useWorkspacePeekRow } from '@/hooks/use-workspace-peek-row';
+import { useStagingSitesParentHost } from '@/hooks/use-staging-sites-parent-host';
+import { normalizeStagingSiteSlugInput } from '@/lib/staging-site-slug';
 
 const ACTIVE_SITE_STAGES: ProjectLifecycleStage[] = ['discovery', 'proposal_contract', 'build', 'review'];
 
@@ -138,6 +140,8 @@ export function ProjectDetailPage() {
   const hydrateAgencyFromServer = useAppStore((s) => s.hydrateAgencyFromServer);
 
   const [hostDomainDraft, setHostDomainDraft] = useState('');
+  const [stagingSlugDraft, setStagingSlugDraft] = useState('');
+  const stagingSitesParentHost = useStagingSitesParentHost();
   const [hostSvcDraft, setHostSvcDraft] = useState('');
   const [ga4WorkspaceDraft, setGa4WorkspaceDraft] = useState('');
   const [hostingSaveBusy, setHostingSaveBusy] = useState(false);
@@ -310,9 +314,10 @@ export function ProjectDetailPage() {
   useEffect(() => {
     if (!project) return;
     setHostDomainDraft(project.customDomainHost ?? '');
+    setStagingSlugDraft(project.stagingSiteSlug ?? '');
     setHostSvcDraft(project.railwayServiceIdProduction ?? '');
     setClientRepoDraft(project.clientSourceRepoUrl?.trim() ?? '');
-  }, [project?.id, project?.customDomainHost, project?.railwayServiceIdProduction, project?.clientSourceRepoUrl]);
+  }, [project?.id, project?.customDomainHost, project?.stagingSiteSlug, project?.railwayServiceIdProduction, project?.clientSourceRepoUrl]);
 
   useEffect(() => {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
@@ -341,6 +346,12 @@ export function ProjectDetailPage() {
       const rawDom = p.custom_domain ?? p.customDomain;
       if (typeof rawDom === 'string' && rawDom.trim()) {
         setHostDomainDraft(normalizeCustomDomainInput(rawDom));
+      }
+      const rawStaging = (p.staging_site_slug ?? p.stagingSiteSlug) as string | undefined;
+      if (typeof rawStaging === 'string' && rawStaging.trim()) {
+        setStagingSlugDraft(String(rawStaging).trim().toLowerCase());
+      } else if (rawStaging === null || rawStaging === '') {
+        setStagingSlugDraft('');
       }
       const svc = p.railway_service_id_production ?? p.railwayServiceIdProduction;
       if (typeof svc === 'string') setHostSvcDraft(svc);
@@ -459,8 +470,19 @@ export function ProjectDetailPage() {
     }
     setHostingSaveBusy(true);
     try {
+      const normalizedStaging = stagingSlugDraft.trim()
+        ? normalizeStagingSiteSlugInput(stagingSlugDraft)
+        : null;
+      if (stagingSlugDraft.trim() && !normalizedStaging) {
+        toast(
+          'Staging subdomain invalid: use 3–48 letters, numbers, hyphens — not reserved names (www, api, …).',
+          'error',
+        );
+        return;
+      }
       const r = await patchAdminProject(projectId, {
         custom_domain: normalizeCustomDomainInput(hostDomainDraft) || null,
+        staging_site_slug: normalizedStaging,
         railway_service_id_production: hostSvcDraft.trim() || null,
         site_settings: {
           ga4_measurement_id: ga4WorkspaceDraft.trim() || null,
@@ -478,7 +500,17 @@ export function ProjectDetailPage() {
     } finally {
       setHostingSaveBusy(false);
     }
-  }, [projectId, hostDomainDraft, hostSvcDraft, ga4WorkspaceDraft, siteTypeDraft, googleSiteVerificationDraft, mergeProjectRowFromServer, toast]);
+  }, [
+    projectId,
+    hostDomainDraft,
+    stagingSlugDraft,
+    hostSvcDraft,
+    ga4WorkspaceDraft,
+    siteTypeDraft,
+    googleSiteVerificationDraft,
+    mergeProjectRowFromServer,
+    toast,
+  ]);
 
   const saveClientSourceRepoDraft = useCallback(async () => {
     if (!projectId) return;
@@ -523,6 +555,12 @@ export function ProjectDetailPage() {
     () => railwayHostnameFromUrl(project?.railwayProductionUrl ?? null),
     [project?.railwayProductionUrl]
   );
+
+  const stagingPreviewUrl = useMemo(() => {
+    const slug = normalizeStagingSiteSlugInput(stagingSlugDraft);
+    if (!slug || !stagingSitesParentHost) return null;
+    return `https://${slug}.${stagingSitesParentHost}`;
+  }, [stagingSlugDraft, stagingSitesParentHost]);
 
   useEffect(() => {
     if (!projectId || project?.deliveryFocus !== 'client_site') return;
@@ -1444,6 +1482,64 @@ export function ProjectDetailPage() {
                   <strong>CNAME/A/TXT</strong> values to enter at your registrar; use those exact targets (Railway-supplied hostname or IP often ends in{' '}
                   <code className="text-slate-800">railway.app</code>).
                 </p>
+                <div className="mt-4 rounded-lg border border-sky-200/80 bg-sky-50/60 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-sky-900">Platform staging URL (subdomain)</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                    Serve the same <code className="rounded bg-white px-1 text-slate-800">site_files</code> at{' '}
+                    <code className="rounded bg-white px-1 font-mono text-[11px] text-slate-800">
+                      {'{slug}.' + (stagingSitesParentHost || 'your-parent-host')}
+                    </code>{' '}
+                    until the client&apos;s production domain goes live. Set <code className="rounded bg-white px-1 font-mono text-[11px]">CUSTOMSITE_STAGING_SITES_HOST</code>{' '}
+                    on Railway (hostname only, e.g. <code className="font-mono text-[11px]">sites.customsite.online</code>), point a wildcard DNS record at this same app, apply migration{' '}
+                    <code className="font-mono text-[11px]">020_project_staging_site_slug.sql</code>, then save a unique slug.
+                  </p>
+                  <label className="mt-2 block text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-staging-slug">
+                    Staging subdomain (single label)
+                  </label>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <Input
+                      id="pd-staging-slug"
+                      value={stagingSlugDraft}
+                      onChange={(e) => setStagingSlugDraft(e.target.value.toLowerCase())}
+                      placeholder={stagingSitesParentHost ? 'e.g. acme-client' : 'sites parent not configured'}
+                      className="h-9 max-w-xs font-mono text-sm"
+                      spellCheck={false}
+                      autoComplete="off"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-8 text-xs font-semibold"
+                      disabled={!project?.name?.trim()}
+                      onClick={() => {
+                        const base = project?.name
+                          ?.toLowerCase()
+                          .replace(/[^a-z0-9]+/g, '-')
+                          .replace(/^-+|-+$/g, '')
+                          .slice(0, 48);
+                        const s = base ? normalizeStagingSiteSlugInput(base) : null;
+                        if (s) setStagingSlugDraft(s);
+                        else toast('Could not derive a valid slug — type one manually.', 'info');
+                      }}
+                    >
+                      From project name
+                    </Button>
+                  </div>
+                  {stagingPreviewUrl ? (
+                    <p className="mt-2 text-xs text-sky-950">
+                      Preview:{' '}
+                      <a href={stagingPreviewUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline-offset-2 hover:underline">
+                        {stagingPreviewUrl}
+                      </a>
+                    </p>
+                  ) : stagingSitesParentHost ? (
+                    <p className="mt-2 text-[11px] text-slate-500">Enter a valid slug (3–48 chars) to see the full HTTPS URL.</p>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-amber-800/90">
+                      Configure <code className="rounded bg-white/80 px-1">CUSTOMSITE_STAGING_SITES_HOST</code> on the server to enable staging links.
+                    </p>
+                  )}
+                </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <div>
                     <label className="text-[10px] font-semibold uppercase text-slate-500" htmlFor="pd-host-domain">

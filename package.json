@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test test/api.test.js test/leadFromFormFields.test.js test/calendlyUrl.test.js test/clientSiteMobileBaseline.test.js test/clientSiteVideoModalGuard.test.js test/customsite-platform-hosts.test.js test/youtube-thumb-logic.test.js",
+    "test": "node --test test/api.test.js test/leadFromFormFields.test.js test/calendlyUrl.test.js test/clientSiteMobileBaseline.test.js test/clientSiteVideoModalGuard.test.js test/customsite-platform-hosts.test.js test/normalizeStagingSiteSlug.test.js test/youtube-thumb-logic.test.js",
     "lint": "npm run typecheck",
     "typecheck": "npx tsc --noEmit",
     "launch:check": "npm run typecheck && npm test && npm run build:admin",

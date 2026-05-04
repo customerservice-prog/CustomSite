@@ -118,6 +118,10 @@ export type Project = {
   siteLiveUrl?: string | null;
   /** Normalized hostname from DB `custom_domain` (no protocol). */
   customDomainHost?: string | null;
+  /**
+   * Subdomain label served at `{stagingSiteSlug}.{CUSTOMSITE_STAGING_SITES_HOST}` when server env + DNS wildcard are configured.
+   */
+  stagingSiteSlug?: string | null;
   /** Default Railway / hosting URL for static bundle (HTTPS). */
   railwayProductionUrl?: string | null;
   /** Railway service UUID for production — required to attach custom domains via API. */

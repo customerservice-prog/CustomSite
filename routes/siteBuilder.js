@@ -19,6 +19,7 @@ const {
 const { upsertProjectVideosFromHtmlContent } = require('../lib/projectVideosHtmlSync');
 const { extractYoutubeIdsFromHtml } = require('../lib/extractYoutubeIdsFromHtml');
 const { checkYoutubeOembed } = require('../lib/youtubeOembedCheck');
+const { normalizeStagingSiteSlug } = require('../lib/normalizeStagingSiteSlug');
 
 const router = express.Router();
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -155,17 +156,26 @@ async function siteProjectHasIndexHtml(supabase, projectId) {
  */
 async function syncProjectAutomationStatus(supabase, projectId) {
   try {
-    const { data: p, error } = await supabase
+    let { data: p, error } = await supabase
       .from('projects')
-      .select('id, status, custom_domain')
+      .select('id, status, custom_domain, staging_site_slug')
       .eq('id', projectId)
       .maybeSingle();
+    if (error && /\bstaging_site_slug\b/.test(String(error.message))) {
+      ({
+        data: p,
+        error,
+      } = await supabase.from('projects').select('id, status, custom_domain').eq('id', projectId).maybeSingle());
+    }
     if (error || !p) return;
 
     let s = String(p.status || 'discovery').toLowerCase();
     if (['live', 'ready', 'review'].includes(s)) return;
 
-    const hasDom = Boolean(normalizeCustomDomainHost(p.custom_domain));
+    const stagingEnv = Boolean(String(process.env.CUSTOMSITE_STAGING_SITES_HOST || '').trim());
+    const stagingSlug = String(('staging_site_slug' in (p || {}) ? p.staging_site_slug : '') || '').trim();
+    const hasStaging = stagingEnv && stagingSlug.length > 0;
+    const hasDom = Boolean(normalizeCustomDomainHost(p.custom_domain)) || hasStaging;
 
     const { count, error: ce } = await supabase
       .from('site_files')
@@ -256,6 +266,30 @@ function hostingPatchFromBody(b) {
         : String(b.internal_notes).trim().slice(0, 8000);
   }
   return patch;
+}
+
+/**
+ * Applies `staging_site_slug` onto `patch` when present on `body`.
+ * Mutates patch; responds with 400 on invalid slug shape.
+ * @returns {boolean} false when `res` already sent.
+ */
+function applyStagingSiteSlugFromBody(body, patch, res) {
+  if (!Object.prototype.hasOwnProperty.call(body || {}, 'staging_site_slug')) return true;
+  const raw = body.staging_site_slug;
+  if (raw === null || raw === undefined || String(raw).trim() === '') {
+    patch.staging_site_slug = null;
+    return true;
+  }
+  const slug = normalizeStagingSiteSlug(raw);
+  if (!slug) {
+    res.status(400).json({
+      error:
+        'Invalid staging_site_slug. Use 3–48 characters: lowercase letters, numbers, hyphen; cannot be reserved (www, api, admin, …).',
+    });
+    return false;
+  }
+  patch.staging_site_slug = slug;
+  return true;
 }
 
 const PROJECT_STATUS_ALLOWED = ['discovery', 'design', 'development', 'in_progress', 'ready', 'review', 'live'];
@@ -654,12 +688,19 @@ router.get('/projects/:projectId/builder', async (req, res) => {
   try {
     const { projectId } = req.params;
     const supabase = getService();
-    const pick = 'id, name, status, client_id, railway_url_staging, railway_url_production, custom_domain, site_settings, created_at, website_type';
+    let pick =
+      'id, name, status, client_id, railway_url_staging, railway_url_production, custom_domain, staging_site_slug, site_settings, created_at, website_type';
     let { data, error } = await supabase.from('projects').select(pick).eq('id', projectId).maybeSingle();
-    if (error && /railway_|custom_domain|site_settings|website_type/.test(String(error.message))) {
-      const r2 = await supabase.from('projects').select('id, name, status, client_id, created_at').eq('id', projectId).maybeSingle();
-      data = r2.data;
-      error = r2.error;
+    if (error && /\brailway_|custom_domain|site_settings|website_type/.test(String(error.message))) {
+      pick = 'id, name, status, client_id, created_at';
+      ({ data, error } = await supabase.from('projects').select(pick).eq('id', projectId).maybeSingle());
+    }
+    if (error && /\bstaging_site_slug\b/.test(String(error.message))) {
+      ({ data, error } = await supabase
+        .from('projects')
+        .select('id, name, status, client_id, railway_url_staging, railway_url_production, custom_domain, site_settings, created_at, website_type')
+        .eq('id', projectId)
+        .maybeSingle());
     }
     if (error) return res.status(500).json({ error: error.message });
     if (!data) return res.status(404).json({ error: 'Not found' });
@@ -681,6 +722,7 @@ router.patch('/projects/:projectId/builder', async (req, res) => {
     const b = req.body || {};
     const supabase = getService();
     const patch = hostingPatchFromBody(b);
+    if (!applyStagingSiteSlugFromBody(b, patch, res)) return;
     if (Object.keys(patch).length === 0) {
       return res.status(400).json({ error: 'No valid fields' });
     }
@@ -691,6 +733,9 @@ router.patch('/projects/:projectId/builder', async (req, res) => {
       .select()
       .single();
     if (error) {
+      if (/duplicate key|unique constraint/i.test(String(error.message)) && patch.staging_site_slug) {
+        return res.status(409).json({ error: 'That staging subdomain is already in use.' });
+      }
       if (/railway_/.test(String(error.message)) || /site_settings/.test(String(error.message))) {
         return res.status(400).json({
           error: 'Run migration migration_site_builder_v2.sql in Supabase to enable these fields.',
@@ -736,6 +781,7 @@ async function patchAdminProjectById(req, res) {
     const b = req.body || {};
     const supabase = getService();
     const patch = hostingPatchFromBody(b);
+    if (!applyStagingSiteSlugFromBody(b, patch, res)) return;
     if (b.client_id !== undefined && b.client_id !== null && String(b.client_id).trim()) {
       const cid = String(b.client_id).trim().toLowerCase();
       if (!UUID_V4.test(cid)) {
@@ -787,7 +833,10 @@ async function patchAdminProjectById(req, res) {
       .select()
       .single();
     if (error) {
-      if (/railway_|site_settings|custom_domain/.test(String(error.message))) {
+      if (/duplicate key|unique constraint/i.test(String(error.message)) && patch.staging_site_slug) {
+        return res.status(409).json({ error: 'That staging subdomain is already in use.' });
+      }
+      if (/railway_|site_settings|custom_domain|staging_site_slug/.test(String(error.message))) {
         return res.status(400).json({
           error: 'Run migration migration_site_builder_v2.sql in Supabase to enable these fields.',
         });
@@ -798,7 +847,10 @@ async function patchAdminProjectById(req, res) {
     try {
       payload = await attachDashboardToProject(supabase, data);
     } catch (_) {}
-    if (Object.prototype.hasOwnProperty.call(patch, 'custom_domain')) {
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'custom_domain') ||
+      Object.prototype.hasOwnProperty.call(patch, 'staging_site_slug')
+    ) {
       void bumpProjectStatusWhenDomainAndFiles(supabase, projectId);
     }
     return res.json({ success: true, project: payload });

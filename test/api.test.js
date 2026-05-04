@@ -10,6 +10,7 @@ describe('HTTP API', () => {
     const res = await request(app).get('/api/config/public').expect(200);
     assert.ok(res.body && typeof res.body === 'object');
     assert.ok('configured' in res.body);
+    assert.ok('stagingSitesParentHost' in res.body);
   });
 
   test('POST /api/contact without required fields returns 400', async () => {

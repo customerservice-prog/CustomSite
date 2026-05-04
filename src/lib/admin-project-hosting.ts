@@ -32,6 +32,7 @@ export async function fetchAdminProject(projectId: string) {
 
 export type ProjectHostingPatch = {
   custom_domain?: string | null;
+  staging_site_slug?: string | null;
   /** Team-only blobs; SPA meta lives under embedded JSON keyed by agency-api-map. */
   internal_notes?: string | null;
   railway_url_production?: string | null;

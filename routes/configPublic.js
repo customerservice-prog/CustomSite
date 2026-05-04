@@ -17,23 +17,26 @@ router.get('/config/public', (req, res) => {
   const hasRailwayTeam = Boolean(String(process.env.RAILWAY_TEAM_ID || '').trim());
   /** Server-side env only; enables POST .../deploy without passing token in the body. */
   const railwayServerDeployReady = hasRailwayToken && hasRailwayTeam;
+  const { getStagingSitesParentHost } = require('../lib/customsiteStagingSiteHost');
+  const stagingSitesParentHost = getStagingSitesParentHost();
+  const base = {
+    calendly20Min,
+    railwayServerDeployReady,
+    railwayServerHasToken: hasRailwayToken,
+    railwayServerHasTeamId: hasRailwayTeam,
+    stagingSitesParentHost,
+  };
   if (!isSupabaseAnonReady()) {
     return res.json({
       configured: false,
-      calendly20Min,
-      railwayServerDeployReady,
-      railwayServerHasToken: hasRailwayToken,
-      railwayServerHasTeamId: hasRailwayTeam,
+      ...base,
     });
   }
   return res.json({
     configured: true,
     supabaseUrl: process.env.SUPABASE_URL,
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
-    calendly20Min,
-    railwayServerDeployReady,
-    railwayServerHasToken: hasRailwayToken,
-    railwayServerHasTeamId: hasRailwayTeam,
+    ...base,
   });
 });
 
