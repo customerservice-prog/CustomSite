@@ -237,6 +237,10 @@ export function ProjectDetailPage() {
 
   const downloadProjectVideoArchiveZip = useCallback(async () => {
     if (!projectId || !project || project.deliveryFocus !== 'client_site') return;
+    if ((project.siteVideoCount ?? 0) === 0) {
+      toast('No catalog videos yet. Open Site builder → Videos to add YouTube IDs; mirrored MP4s appear after archive sync.', 'info');
+      return;
+    }
     if (import.meta.env.VITE_USE_REAL_API !== '1' || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
       toast('Sign in with the live API to download archived MP4s.', 'error');
       return;
@@ -1264,23 +1268,41 @@ export function ProjectDetailPage() {
             {siteSourceZipBusy ? 'Zipping…' : 'Download site ZIP'}
           </Button>
         </div>
-        {(project.siteVideoCount ?? 0) > 0 ? (
-          <div className="mb-6 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-700">
-              <span className="font-semibold text-slate-900">{project.siteVideoCount}</span>{' '}
-              catalog video{project.siteVideoCount === 1 ? '' : 's'} — fetch mirrored MP4s as one ZIP (requires archive sync).
+        <div className="mb-6 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Archived videos · MP4 bundle</p>
+            <p className="mt-1 text-sm text-slate-700">
+              {(project.siteVideoCount ?? 0) === 0 ? (
+                <>
+                  Catalog is empty — add videos in{' '}
+                  <Link to={`/projects/${project.id}/site`} className="font-semibold text-indigo-700 underline-offset-2 hover:underline">
+                    Site builder → Videos
+                  </Link>
+                  . The ZIP includes mirrored MP4s per catalog entry after archive sync.
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-slate-900">{project.siteVideoCount}</span> catalog video
+                  {(project.siteVideoCount ?? 0) === 1 ? '' : 's'} — one ZIP of mirrored MP4s (requires archive sync).
+                </>
+              )}
             </p>
-            <Button
-              type="button"
-              variant="secondary"
-              className="h-9 shrink-0 text-xs font-semibold sm:self-center"
-              disabled={videoZipBusy}
-              onClick={() => void downloadProjectVideoArchiveZip()}
-            >
-              {videoZipBusy ? 'Building ZIP…' : 'Download all videos (ZIP)'}
-            </Button>
           </div>
-        ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-9 shrink-0 text-xs font-semibold sm:self-center"
+            disabled={videoZipBusy || (project.siteVideoCount ?? 0) === 0}
+            title={
+              (project.siteVideoCount ?? 0) === 0
+                ? 'Add at least one video in Site builder → Videos first'
+                : 'Download ZIP of archived MP4s for every catalog entry'
+            }
+            onClick={() => void downloadProjectVideoArchiveZip()}
+          >
+            {videoZipBusy ? 'Building ZIP…' : 'Download all videos (ZIP)'}
+          </Button>
+        </div>
         <div className="mb-6 rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-50/95 to-white px-4 py-4 sm:px-5">
           <p className="text-[11px] font-bold uppercase tracking-wide text-amber-900">Save to GitHub · deploy on Railway</p>
           <p className="mt-1.5 text-sm text-slate-700">
@@ -1288,7 +1310,8 @@ export function ProjectDetailPage() {
           </p>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-[13px] leading-relaxed text-slate-800">
             <li>
-              Download <strong className="font-semibold text-slate-900">Site ZIP</strong> above (or Projects list / Site builder <strong className="font-semibold">Client ZIP</strong>) and unzip locally.
+              Download <strong className="font-semibold text-slate-900">Site ZIP</strong> and (when you have catalog videos){' '}
+              <strong className="font-semibold text-slate-900">Download all videos (ZIP)</strong> above — or use Projects / Site builder <strong className="font-semibold">Client ZIP</strong> for the site folder — and unzip locally.
             </li>
             <li>
               <code className="rounded bg-white px-1 font-mono text-xs ring-1 ring-slate-200">git init</code>,{' '}

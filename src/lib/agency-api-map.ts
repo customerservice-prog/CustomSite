@@ -256,8 +256,14 @@ export function mapApiProjectRowToProject(row: ApiProjectRow, clients: Record<st
         : undefined
       : undefined;
 
+  /** Always a finite number for client_site so list/detail UIs never hide ZIP actions when dash is sparse. */
   const siteVideoCount =
-    deliveryFocus === 'client_site' && typeof dash?.video_count === 'number' ? dash.video_count : undefined;
+    deliveryFocus === 'client_site'
+      ? (() => {
+          const n = Number(dash?.video_count ?? 0);
+          return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+        })()
+      : undefined;
 
   const fileCount = dash?.site_file_count ?? 0;
   const lastTouch = dash?.last_studio_touch && String(dash.last_studio_touch).trim();

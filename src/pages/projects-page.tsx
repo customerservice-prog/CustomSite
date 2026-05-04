@@ -321,6 +321,15 @@ export function ProjectsPage() {
         toast('Sign in with the live API to download archived MP4s.', 'error');
         return;
       }
+      const pr = projects.find((x) => x.id === pid);
+      if (!pr || pr.deliveryFocus !== 'client_site') return;
+      if ((pr.siteVideoCount ?? 0) === 0) {
+        toast(
+          'No catalog videos yet. Open Site builder → Videos on this project; after mirrored MP4s sync, download the ZIP.',
+          'info',
+        );
+        return;
+      }
       setVideoZipBusyProjectId(pid);
       try {
         const r = await fetchProjectVideosArchiveZip(pid);
@@ -334,7 +343,7 @@ export function ProjectsPage() {
         setVideoZipBusyProjectId(null);
       }
     },
-    [toast, triggerVideoArchiveBlobDownload],
+    [toast, triggerVideoArchiveBlobDownload, projects],
   );
 
   const downloadProjectSiteHandoffZip = useCallback(
@@ -400,7 +409,7 @@ export function ProjectsPage() {
             },
           ]
         : []),
-      ...(p.deliveryFocus === 'client_site' && (p.siteVideoCount ?? 0) > 0
+      ...(p.deliveryFocus === 'client_site'
         ? [
             {
               label:
@@ -698,22 +707,24 @@ export function ProjectsPage() {
                           >
                             {siteHandoffZipBusyProjectId === p.id ? 'Zipping…' : 'Site ZIP'}
                           </button>
-                          {(p.siteVideoCount ?? 0) > 0 ? (
-                            <>
-                              <span className="text-slate-300" aria-hidden>
-                                ·
-                              </span>
-                              <button
-                                type="button"
-                                className="text-[10px] font-semibold text-indigo-800 underline-offset-2 hover:underline disabled:opacity-50"
-                                disabled={videoZipBusyProjectId === p.id}
-                                title="Mirrored MP4 catalog (requires archive sync)"
-                                onClick={() => void downloadProjectVideoArchiveZip(p.id)}
-                              >
-                                {videoZipBusyProjectId === p.id ? 'Videos…' : 'Videos ZIP'}
-                              </button>
-                            </>
-                          ) : null}
+                          <span className="text-slate-300" aria-hidden>
+                            ·
+                          </span>
+                          <button
+                            type="button"
+                            className="text-[10px] font-semibold text-indigo-800 underline-offset-2 hover:underline disabled:opacity-50"
+                            disabled={
+                              videoZipBusyProjectId === p.id || (p.siteVideoCount ?? 0) === 0
+                            }
+                            title={
+                              (p.siteVideoCount ?? 0) === 0
+                                ? 'Add videos in Site builder → Videos first'
+                                : 'Mirrored MP4 catalog (requires archive sync)'
+                            }
+                            onClick={() => void downloadProjectVideoArchiveZip(p.id)}
+                          >
+                            {videoZipBusyProjectId === p.id ? 'Videos…' : 'Videos ZIP'}
+                          </button>
                         </div>
                       </div>
                     ) : (
@@ -908,17 +919,23 @@ export function ProjectsPage() {
                   >
                     {siteHandoffZipBusyProjectId === drawerProject.id ? 'Zipping…' : 'Site ZIP'}
                   </Button>
-                  {(drawerProject.siteVideoCount ?? 0) > 0 ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-9 px-3 text-xs border-indigo-200 text-indigo-900 hover:bg-indigo-50"
-                      disabled={videoZipBusyProjectId === drawerProject.id}
-                      onClick={() => void downloadProjectVideoArchiveZip(drawerProject.id)}
-                    >
-                      {videoZipBusyProjectId === drawerProject.id ? 'Videos…' : 'Videos ZIP'}
-                    </Button>
-                  ) : null}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-9 px-3 text-xs border-indigo-200 text-indigo-900 hover:bg-indigo-50"
+                    disabled={
+                      videoZipBusyProjectId === drawerProject.id ||
+                      (drawerProject.siteVideoCount ?? 0) === 0
+                    }
+                    title={
+                      (drawerProject.siteVideoCount ?? 0) === 0
+                        ? 'Add videos in Site builder → Videos first'
+                        : undefined
+                    }
+                    onClick={() => void downloadProjectVideoArchiveZip(drawerProject.id)}
+                  >
+                    {videoZipBusyProjectId === drawerProject.id ? 'Videos…' : 'Videos ZIP'}
+                  </Button>
                 </>
               ) : null}
               <Button
@@ -1031,17 +1048,23 @@ export function ProjectsPage() {
                       ? 'Zipping site…'
                       : 'Site folder (ZIP handoff)'}
                   </Button>
-                  {(drawerProject.siteVideoCount ?? 0) > 0 ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-8 px-3 text-xs font-semibold"
-                      disabled={videoZipBusyProjectId === drawerProject.id}
-                      onClick={() => void downloadProjectVideoArchiveZip(drawerProject.id)}
-                    >
-                      {videoZipBusyProjectId === drawerProject.id ? 'Building ZIP…' : 'Videos (MP4 ZIP)'}
-                    </Button>
-                  ) : null}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-8 px-3 text-xs font-semibold"
+                    disabled={
+                      videoZipBusyProjectId === drawerProject.id ||
+                      (drawerProject.siteVideoCount ?? 0) === 0
+                    }
+                    title={
+                      (drawerProject.siteVideoCount ?? 0) === 0
+                        ? 'Add videos in Site builder → Videos first'
+                        : undefined
+                    }
+                    onClick={() => void downloadProjectVideoArchiveZip(drawerProject.id)}
+                  >
+                    {videoZipBusyProjectId === drawerProject.id ? 'Building ZIP…' : 'Videos (MP4 ZIP)'}
+                  </Button>
                 </div>
                 {formatSiteTrafficLine({
                   project: drawerProject,

@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   Code2,
   Copy,
+  Download,
   ExternalLink,
   Eye,
   FolderArchive,
@@ -897,6 +898,13 @@ export function SiteBuilderFoundationPage() {
 
   const downloadProjectVideoArchiveZip = useCallback(async () => {
     if (!projectId) return;
+    if (projectVideos.length === 0) {
+      toast(
+        'Add videos to the catalog first (YouTube URLs above). The ZIP contains mirrored MP4s per entry after archive sync.',
+        'info',
+      );
+      return;
+    }
     if (import.meta.env.VITE_USE_REAL_API !== '1' || !siteFilesTargetLiveServer() || !getAccessToken()?.trim()) {
       toast('Sign in with the live API to download archived MP4s.', 'error');
       return;
@@ -924,7 +932,7 @@ export function SiteBuilderFoundationPage() {
     } finally {
       setVideoArchiveZipBusy(false);
     }
-  }, [projectId, toast]);
+  }, [projectId, projectVideos.length, toast]);
 
   const downloadSiteHandoffZip = useCallback(async () => {
     if (!projectId) return;
@@ -2052,26 +2060,32 @@ export function SiteBuilderFoundationPage() {
                                 )}
                                 Warm thumbs
                               </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                className="h-7 shrink-0 gap-1 px-2 text-[10px] text-emerald-400/95 hover:bg-white/5 hover:text-emerald-200"
-                                disabled={videoArchiveZipBusy || projectVideos.length === 0}
-                                onClick={() => void downloadProjectVideoArchiveZip()}
-                              >
-                                {videoArchiveZipBusy ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                                ) : (
-                                  <Video className="h-3 w-3" aria-hidden />
-                                )}
-                                MP4 ZIP
-                              </Button>
                             </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="h-9 w-full gap-2 border-emerald-500/35 bg-emerald-950/40 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-900/45"
+                              disabled={videoArchiveZipBusy || projectVideos.length === 0}
+                              title={
+                                projectVideos.length === 0
+                                  ? 'Add at least one YouTube-backed video above first'
+                                  : 'ZIP of mirrored MP4 files for each catalog entry (needs archive sync on the server)'
+                              }
+                              onClick={() => void downloadProjectVideoArchiveZip()}
+                            >
+                              {videoArchiveZipBusy ? (
+                                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+                              ) : (
+                                <Download className="h-3.5 w-3.5 shrink-0 opacity-95" aria-hidden />
+                              )}
+                              Download all videos (ZIP)
+                            </Button>
                             <p className="text-[9px] leading-snug text-zinc-600">
                               Dots reflect thumbnail probes (grey until <span className="text-zinc-500">Refresh all</span>; red = replace). On save, YouTube IDs sync to the catalog; add{' '}
                               <code className="rounded bg-black/40 px-0.5 font-mono text-[8px] text-zinc-500">data-category</code>,{' '}
                               <code className="rounded bg-black/40 px-0.5 font-mono text-[8px] text-zinc-500">data-episode</code> on{' '}
-                              <code className="rounded bg-black/40 px-0.5 font-mono text-[8px] text-zinc-500">.video-card</code> for podcast vs channel metadata. Nightly cron can re-probe thumbnails. Drag to reorder. Public:{' '}
+                              <code className="rounded bg-black/40 px-0.5 font-mono text-[8px] text-zinc-500">.video-card</code> for podcast vs channel metadata. Use{' '}
+                              <span className="text-zinc-500">Download all videos (ZIP)</span> for mirrored MP4s when the server has finished archiving. Nightly cron can re-probe thumbnails. Drag to reorder. Public:{' '}
                               <code className="break-all rounded bg-black/40 px-0.5 text-[8px] text-zinc-500">
                                 GET /api/public/projects/&lt;projectId&gt;/videos
                               </code>
