@@ -28,6 +28,7 @@ const {
   projectVideosCronRouter,
 } = require('./routes/projectVideos');
 const { siteAnalyticsAdminRouter } = require('./routes/siteAnalyticsAdmin');
+const { seoHubRouter } = require('./routes/seoHub');
 const { internalCronRouter } = require('./routes/internalCron');
 const { videoArchiveRouter } = require('./routes/videoArchive');
 const { isSupabaseConfigured } = require('./lib/supabase');
@@ -150,6 +151,7 @@ app.use('/api/admin', siteBuilderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', projectVideosAdminRouter);
 app.use('/api/admin', siteAnalyticsAdminRouter);
+app.use('/api/admin', seoHubRouter);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api', internalCronRouter);
 app.use('/api', videoArchiveRouter);

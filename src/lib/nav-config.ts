@@ -28,6 +28,7 @@ export type NavItemInternalLink = {
   to: string;
   navTitle?: string;
   badgeFromStore?: 'unread-messages' | 'pending-contracts' | 'open-invoices';
+  showNewBadge?: boolean;
 };
 
 /** External URL — opens in a new tab; no SPA route. */
@@ -65,9 +66,9 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
       {
         label: '📍 Local SEO Hub',
         icon: MapPin,
-        externalHref: 'https://theeyeisi.com/local-seo.html',
+        to: '/seo-hub',
         showNewBadge: true,
-        navTitle: 'Local SEO & Google Business Profile dashboard (theeyeisi.com)',
+        navTitle: 'Google Business Profile + map pack — Supabase-backed hub',
       },
       { label: 'Files', to: '/files', icon: Files },
       { label: 'Invoices', to: '/invoices', icon: Receipt, badgeFromStore: 'open-invoices' },

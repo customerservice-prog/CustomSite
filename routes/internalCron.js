@@ -5,6 +5,7 @@
  * - Never DELETE or overwrite `site_files` from these routes.
  * - `rollup-site-analytics`: reads site_pageviews; writes only `site_analytics_daily` upserts.
  * - `check-video-health`: reads site HTML via sync helper; UPDATE/INSERT `project_videos` metadata only.
+ * - `cron/seo-collect`: Local SEO Hub — Places reviews, DataForSEO ranks, GBP stub; needs `SEO_CRON_ENABLED=1`.
  * - Use `DRY_RUN=true` env in future batch tools; these endpoints log per-project failures and continue.
  */
 
@@ -12,6 +13,7 @@ const express = require('express');
 const { getService, isSupabaseConfigured } = require('../lib/supabase');
 const { probeYoutubeMqThumbnail } = require('../lib/youtubeMqThumbnailProbe');
 const { upsertEmbeddedYoutubeFromProjectSiteFiles } = require('../lib/projectVideosHtmlSync');
+const { collectAllSeoProjects } = require('../lib/seoHub/collectAll');
 
 const router = express.Router();
 
@@ -28,6 +30,39 @@ function requireCronSecret(req, res) {
   }
   return true;
 }
+
+/**
+ * Scheduled SEO collection (reviews via Places API, rankings via DataForSEO, GBP stub).
+ * Headers: X-Cron-Secret matching CRON_SECRET. Env SEO_CRON_ENABLED=1 required.
+ *
+ * Railway: POST https://YOUR_HOST/api/cron/seo-collect with secret header daily/weekly as needed.
+ */
+router.post('/cron/seo-collect', async (req, res) => {
+  try {
+    if (!requireCronSecret(req, res)) return;
+    if (!/^1|true|yes$/i.test(String(process.env.SEO_CRON_ENABLED || '').trim())) {
+      return res.status(503).json({ error: 'SEO_CRON_ENABLED is not ON (set to 1 on Railway).' });
+    }
+    if (!isSupabaseConfigured()) return res.status(503).json({ error: 'Supabase not configured' });
+    const supabase = getService();
+    let summary;
+    try {
+      summary = await collectAllSeoProjects(supabase);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/seo_projects|does not exist/i.test(msg)) {
+        return res.status(503).json({ error: 'Run migration 022_seo_hub_tables.sql' });
+      }
+      console.error('[cron seo-collect]', e);
+      return res.status(500).json({ error: msg });
+    }
+    console.log('[cron seo-collect]', summary.projects, 'seo profile(s)');
+    return res.json({ ok: true, ...summary });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
 
 /** Roll up yesterday (UTC) into site_analytics_daily */
 router.post('/internal/cron/rollup-site-analytics', async (req, res) => {

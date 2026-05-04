@@ -33,6 +33,7 @@ import { ExpensesPage } from '@/pages/expenses-page';
 import { TimeTrackingPage } from '@/pages/time-tracking-page';
 import { CalendarPage } from '@/pages/calendar-page';
 import { ReportsPage } from '@/pages/reports-page';
+import { SeoHubPage } from '@/pages/seo-hub-page';
 import { RbyanBrainPage } from '@/pages/rbyan-brain-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 import { RouterErrorFallback } from '@/components/layout/router-error-fallback';
@@ -79,6 +80,7 @@ export const router = createHashRouter([
       { path: 'files', element: <FilesPage /> },
       { path: 'activity', element: <ActivityPage /> },
       { path: 'reports', element: <ReportsPage /> },
+      { path: 'seo-hub', element: <SeoHubPage /> },
       { path: 'rbyan', element: <RbyanBrainPage /> },
       { path: 'ai-builder', element: <Navigate to="/rbyan" replace /> },
       { path: 'site-builder', element: <SiteBuilderRedirectPage /> },

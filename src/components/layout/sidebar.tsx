@@ -141,6 +141,7 @@ function SidebarInner({
                     icon={item.icon}
                     label={item.label}
                     navTitle={item.navTitle}
+                    showNewBadge={item.showNewBadge}
                     badge={navBadgeCount(item.badgeFromStore, unreadThreads, pendingContracts, openInvoices)}
                     onNavigate={onNavigate}
                   />

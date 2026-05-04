@@ -28,6 +28,7 @@ export function SidebarNavLink({
   label,
   navTitle,
   badge,
+  showNewBadge,
   onNavigate,
 }: {
   to: string;
@@ -36,6 +37,7 @@ export function SidebarNavLink({
   /** Tooltip + accessible name override (e.g. AI Builder subtitle). */
   navTitle?: string;
   badge?: number;
+  showNewBadge?: boolean;
   onNavigate?: () => void;
 }) {
   const location = useLocation();
@@ -66,6 +68,11 @@ export function SidebarNavLink({
           {badge}
         </span>
       )}
+      {showNewBadge ? (
+        <span className="ml-auto shrink-0 rounded-full border border-purple-200 bg-purple-100 px-2 py-0.5 text-xs font-bold text-purple-700">
+          NEW
+        </span>
+      ) : null}
     </NavLink>
   );
 }
