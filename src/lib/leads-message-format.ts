@@ -63,8 +63,28 @@ export function formatRelativeTimeReceived(iso: string | null | undefined): stri
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/** Last full word boundary at or before `maxLen`; keeps previews from chopping mid-word. */
+export function truncateAtWord(source: string, maxLen: number): string {
+  const str = typeof source === 'string' ? source : '';
+  if (!str.trim() || maxLen <= 0) return str;
+  const s = str.replace(/\s+/g, ' ').trim();
+  if (s.length <= maxLen) return s;
+  const upto = s.slice(0, maxLen);
+  const lastSpace = upto.lastIndexOf(' ');
+  const base = lastSpace > 16 ? upto.slice(0, lastSpace) : upto.trimEnd();
+  return `${base.trimEnd()}…`;
+}
+
+/** Strip www, uppercase; shorten long domains so stat tiles do not wrap (e.g. THEEYEISI.COM). */
+export function compactHostnameForStatCard(hostname: string, maxChars = 15): string {
+  if (!hostname || hostname === '—') return '—';
+  let h = hostname.trim().replace(/^www\./i, '');
+  const u = h.toUpperCase();
+  if (u.length <= maxChars) return u;
+  return `${u.slice(0, 13)}...`;
+}
+
 export function previewText(source: string, maxLen = 120): string {
-  const oneLine = source.replace(/\s+/g, ' ').trim();
-  if (oneLine.length <= maxLen) return oneLine;
-  return `${oneLine.slice(0, maxLen - 1)}…`;
+  const oneLine = (typeof source === 'string' ? source : '').replace(/\s+/g, ' ').trim();
+  return truncateAtWord(oneLine, maxLen);
 }

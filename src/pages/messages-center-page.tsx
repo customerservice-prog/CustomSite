@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { adminFetchJson, proactivelyRefreshAdminTokenIfStale } from '@/lib/admin-api';
 import {
+  compactHostnameForStatCard,
   formatRelativeTimeReceived,
   hostnameFromCurrentUrl,
   initialsFromName,
@@ -53,15 +54,16 @@ function computeStats(leads: ContactLeadApiRow[]) {
     const h = hostnameFromCurrentUrl(L.current_url);
     if (h && h !== '—') domainCounts.set(h, (domainCounts.get(h) ?? 0) + 1);
   }
-  let topDomain = '—';
+  let topDomainFull: string | null = null;
   let topN = 0;
   domainCounts.forEach((n, domain) => {
     if (n > topN) {
       topN = n;
-      topDomain = domain;
+      topDomainFull = domain;
     }
   });
-  return { total, today, unread, topDomain };
+  const topDomain = topDomainFull ? compactHostnameForStatCard(topDomainFull) : '—';
+  return { total, today, unread, topDomain, topDomainFull };
 }
 
 export function MessagesCenterPage() {
@@ -161,7 +163,12 @@ export function MessagesCenterPage() {
             { label: 'Total', value: stats.total },
             { label: 'Today', value: stats.today },
             { label: 'Unread (New)', value: stats.unread },
-            { label: 'Top source', value: stats.topDomain, mono: true },
+            {
+              label: 'Top source',
+              value: stats.topDomain,
+              mono: true,
+              title: stats.topDomainFull ?? undefined,
+            },
           ].map((s) => (
             <div
               key={s.label}
@@ -172,9 +179,9 @@ export function MessagesCenterPage() {
                 {s.label}
               </p>
               <p
-                className={cn('mt-1 text-lg font-medium', s.mono && 'truncate text-base')}
+                className={cn('mt-1 text-lg font-medium', s.mono && 'break-all text-sm leading-tight sm:text-base')}
                 style={{ color: '#f5f0e6' }}
-                title={s.mono ? String(s.value) : undefined}
+                title={s.title ?? (s.mono ? String(s.value) : undefined)}
               >
                 {s.value}
               </p>
