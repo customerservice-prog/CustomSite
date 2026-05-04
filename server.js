@@ -329,6 +329,7 @@ app.get('/', (req, res, next) => {
 
 app.get('/admin.html', (req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  res.set('Cache-Control', 'no-store');
   res.sendFile(ADMIN_SPA_HTML, (err) => {
     if (!err) return;
     if (res.headersSent) return;
@@ -340,6 +341,17 @@ app.get('/admin.html', (req, res, next) => {
     res.status(200).type('html').send(adminMissingBundleHelpHtml());
   });
 });
+
+/** Admin SPA assets — always revalidate so new Vite hashed bundles load after deploy (avoid week-long stale JS cache). */
+app.use(
+  '/dist-admin',
+  express.static(path.join(__dirname, 'dist-admin'), {
+    etag: true,
+    setHeaders(res) {
+      res.setHeader('Cache-Control', 'no-cache');
+    },
+  })
+);
 
 app.use(
   express.static(path.join(__dirname), {
