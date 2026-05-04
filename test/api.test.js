@@ -18,6 +18,25 @@ describe('HTTP API', () => {
     assert.ok(res.body.error);
   });
 
+  test('POST /api/contact with malformed project_id returns 400', async () => {
+    const res = await request(app)
+      .post('/api/contact')
+      .send({
+        name: 'Taylor',
+        email: 'taylor@example.com',
+        message: 'Hello',
+        project_id: 'not-a-valid-project-uuid',
+      })
+      .expect(400);
+    assert.strictEqual(res.body.success, false);
+    assert.strictEqual(typeof res.body.error, 'string');
+  });
+
+  test('GET /api/messages without auth returns 401', async () => {
+    const res = await request(app).get('/api/messages').expect(401);
+    assert.ok(typeof res.body.error === 'string');
+  });
+
   test('GET /api/unknown returns 404 JSON', async () => {
     const res = await request(app).get('/api/does-not-exist').expect(404);
     assert.equal(res.body.error, 'Not found');

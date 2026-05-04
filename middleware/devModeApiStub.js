@@ -361,6 +361,13 @@ function devModeApiStub(req, res, next) {
     if (hp) {
       return res.json({ success: true, id: 'filtered' });
     }
+    const UUID_V4_PROJECT =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const pidRaw =
+      body.project_id !== undefined && body.project_id !== null ? String(body.project_id).trim() : '';
+    if (pidRaw && !UUID_V4_PROJECT.test(pidRaw)) {
+      return res.status(400).json({ success: false, error: 'Invalid project reference' });
+    }
     const { name, email, message } = body;
     if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ success: false, error: 'Name is required' });
