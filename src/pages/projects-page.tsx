@@ -3,7 +3,6 @@ import {
   Activity,
   Calendar,
   Clapperboard,
-  Eye,
   FileText,
   LayoutGrid,
   Pencil,
@@ -70,52 +69,78 @@ function formatSiteTrafficLine(p: {
   const live = p.liveByProject[pr.id] ?? snap?.live ?? 0;
 
   return (
-    <>
-      <p className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] font-semibold tabular-nums text-slate-700">
-        <span className="inline-flex items-center gap-1" title="All-time views (since launch, server)">
-          <Eye className="h-3 w-3 text-slate-400" aria-hidden />
-          {(total ?? 0).toLocaleString()} total
-        </span>
-        <span className="inline-flex items-center gap-1 text-slate-300">·</span>
-        <span className="inline-flex items-center gap-1" title="Views today (UTC midnight boundary on server)">
-          <Activity className="h-3 w-3 text-slate-400" aria-hidden />
-          {(today ?? 0).toLocaleString()} today
-        </span>
-        <span className="inline-flex items-center gap-1 text-slate-300">·</span>
-        <span className="inline-flex items-center gap-1" title="Yesterday (daily rollup)">
-          <Calendar className="h-3 w-3 text-slate-400" aria-hidden />
-          {(yest ?? 0).toLocaleString()} y&apos;day
-        </span>
-        <span className="inline-flex items-center gap-1 text-slate-300">·</span>
-        <span
+    <div className="min-w-[192px] max-w-[240px] rounded-xl border border-slate-100 bg-gradient-to-b from-white via-white to-slate-50/70 p-2.5 shadow-sm ring-1 ring-slate-900/[0.04]">
+      <div className="flex items-start justify-between gap-2 border-b border-slate-100/90 pb-2">
+        <div className="min-w-0">
+          <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Total views</p>
+          <p className="mt-0.5 text-[1.35rem] font-bold leading-none tabular-nums tracking-tight text-slate-900">
+            {(total ?? 0).toLocaleString()}
+          </p>
+          <p className="mt-1 text-[9px] text-slate-400">Since launch · server count</p>
+        </div>
+        <div
           className={cn(
-            'inline-flex items-center gap-1',
-            live > 0 ? 'text-emerald-700' : 'text-slate-500',
-            live > 0 && 'animate-pulse',
+            'shrink-0 rounded-lg px-2 py-1 text-center shadow-sm ring-1',
+            live > 0 ? 'bg-emerald-50 ring-emerald-200/80' : 'bg-slate-50 ring-slate-100',
           )}
-          title="Distinct visitors seen in roughly the last 5 minutes"
+          title="Visitors in roughly the last 5 minutes"
         >
-          <Radio className="h-3 w-3 shrink-0" aria-hidden />
-          {live.toLocaleString()} live
-        </span>
-      </p>
-      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-medium tabular-nums text-slate-400">
-        <span className="inline-flex items-center gap-1">
+          <Radio
+            className={cn(
+              'mx-auto h-3 w-3',
+              live > 0 ? 'text-emerald-600' : 'text-slate-300',
+              live > 0 && 'animate-pulse',
+            )}
+            aria-hidden
+          />
+          <p
+            className={cn(
+              'mt-0.5 text-[10px] font-bold tabular-nums',
+              live > 0 ? 'text-emerald-800' : 'text-slate-500',
+            )}
+          >
+            {live}
+          </p>
+          <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-400">live</p>
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
+        <div
+          className="rounded-lg bg-white px-2 py-1.5 shadow-sm ring-1 ring-slate-100"
+          title="Views today (UTC midnight on server)"
+        >
+          <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+            <Activity className="h-3 w-3 text-violet-400" aria-hidden />
+            Today
+          </p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-slate-900">{(today ?? 0).toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg bg-white px-2 py-1.5 shadow-sm ring-1 ring-slate-100" title="Yesterday (rollup)">
+          <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+            <Calendar className="h-3 w-3 text-amber-400" aria-hidden />
+            Y&apos;day
+          </p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-slate-900">{(yest ?? 0).toLocaleString()}</p>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100/80 pt-2 text-[10px] font-medium tabular-nums text-slate-500">
+        <span className="inline-flex items-center gap-1" title="HTML pages counted on site">
           <FileText className="h-3 w-3 text-slate-300" aria-hidden />
-          {pr.sitePageCount != null ? `${pr.sitePageCount} pages` : '— pages'}
+          <span>{pr.sitePageCount != null ? `${pr.sitePageCount} pg` : '— pg'}</span>
         </span>
-        <span className="text-slate-300">·</span>
-        <span className="inline-flex items-center gap-1">
+        <span className="text-slate-200" aria-hidden>
+          ·
+        </span>
+        <span className="inline-flex items-center gap-1" title="Videos in catalog">
           <Clapperboard className="h-3 w-3 text-slate-300" aria-hidden />
-          {pr.siteVideoCount != null ? `${pr.siteVideoCount} videos` : '— videos'}
+          <span>{pr.siteVideoCount != null ? `${pr.siteVideoCount} vid` : '— vid'}</span>
         </span>
-        <span className="text-slate-300">·</span>
-        <span className="inline-flex items-center gap-1">
-          <Pencil className="h-3 w-3 text-slate-300" aria-hidden />
-          {pr.lastSiteUpdateLabel ?? '—'}
+        <span className="w-full text-[9px] font-normal not-italic leading-snug text-slate-400">
+          <Pencil className="mr-0.5 inline h-3 w-3 align-text-bottom text-slate-300" aria-hidden />
+          {pr.lastSiteUpdateLabel ?? 'No studio touch logged'}
         </span>
-      </p>
-    </>
+      </div>
+    </div>
   );
 }
 
@@ -586,17 +611,17 @@ export function ProjectsPage() {
         </TableToolbar>
       }
     >
-      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50/80 p-1">
+      <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50/95 to-white p-1 shadow-sm ring-1 ring-slate-900/[0.03]">
         {(['all', ...PROJECT_STATUSES] as const).map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => setStatus(s)}
             className={cn(
-              'rounded-lg px-3 py-2 text-sm font-semibold transition duration-150',
+              'rounded-xl px-3.5 py-2 text-sm font-semibold transition duration-150',
               status === s
-                ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-slate-900 shadow-md ring-2 ring-indigo-100'
+                : 'text-slate-600 hover:bg-white/70 hover:text-slate-900',
             )}
           >
             {s === 'all' ? 'All' : s}
@@ -611,12 +636,12 @@ export function ProjectsPage() {
       ) : view === 'table' ? (
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHeadCell>Project</TableHeadCell>
-              <TableHeadCell>Client</TableHeadCell>
-                  <TableHeadCell>Client site</TableHeadCell>
-                  <TableHeadCell>Site traffic</TableHeadCell>
-                  <TableHeadCell>Status</TableHeadCell>
+            <TableRow className="hover:bg-transparent">
+              <TableHeadCell className="min-w-[12rem] pl-5">Project</TableHeadCell>
+              <TableHeadCell className="min-w-[9rem]">Client</TableHeadCell>
+              <TableHeadCell className="min-w-[11rem]">Client site</TableHeadCell>
+              <TableHeadCell className="min-w-[15rem]">Site traffic</TableHeadCell>
+              <TableHeadCell className="min-w-[6.5rem]">Status</TableHeadCell>
               <TableHeadCell>Health</TableHeadCell>
               <TableHeadCell className="text-right">Budget</TableHeadCell>
               <TableHeadCell className="min-w-[140px]">Progress</TableHeadCell>
@@ -645,16 +670,16 @@ export function ProjectsPage() {
                   className={drawerProjectId === p.id ? 'bg-indigo-50/50' : undefined}
                   onClick={() => setDrawerProjectId(p.id)}
                 >
-                  <TableCell>
+                  <TableCell className="align-top py-3.5 pl-5">
                     <Link
                       to={`/projects/${p.id}`}
-                      className="font-semibold text-indigo-700 hover:text-indigo-900"
+                      className="inline-block max-w-[14rem] font-semibold leading-snug tracking-tight text-slate-900 decoration-indigo-400/40 underline-offset-4 transition hover:text-indigo-700 hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {p.name}
                     </Link>
                   </TableCell>
-              <TableCell>
+              <TableCell className="align-top py-3.5 text-[13px]">
                 {client ? (
                   <span className="inline-flex flex-wrap items-center gap-2">
                     <Link to={`/clients/${client.id}`} className="text-slate-800 hover:text-indigo-700" onClick={(e) => e.stopPropagation()}>
@@ -670,33 +695,35 @@ export function ProjectsPage() {
                   '—'
                 )}
               </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top py-3.5">
                     {p.deliveryFocus === 'client_site' ? (
-                      <div className="flex flex-col gap-1">
-                        <Badge
-                          variant={
-                            p.siteStatus === 'live' ? 'success' : p.siteStatus === 'review' ? 'info' : 'warning'
-                          }
-                          className="w-fit capitalize"
-                        >
-                          {p.siteStatus ?? 'draft'}
-                        </Badge>
-                        <Link
-                          to={`/projects/${p.id}/site`}
-                          className="text-[11px] font-semibold text-violet-800 hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {CONVERSION_WORKSPACE_LABEL} →
-                        </Link>
+                      <div className="max-w-[210px] rounded-xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/40 p-2.5 shadow-sm ring-1 ring-slate-900/[0.03]">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant={
+                              p.siteStatus === 'live' ? 'success' : p.siteStatus === 'review' ? 'info' : 'warning'
+                            }
+                            className="capitalize"
+                          >
+                            {p.siteStatus ?? 'draft'}
+                          </Badge>
+                          <Link
+                            to={`/projects/${p.id}/site`}
+                            className="text-xs font-semibold text-violet-700 transition hover:text-violet-900 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Studio →
+                          </Link>
+                        </div>
                         <div
                           role="group"
                           aria-label={`Downloads for ${p.name}`}
-                          className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100/90 pt-1.5"
+                          className="mt-2.5 grid grid-cols-2 gap-1.5"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
                             type="button"
-                            className="text-[10px] font-semibold text-emerald-800 underline-offset-2 hover:underline disabled:opacity-50"
+                            className="rounded-lg border border-emerald-100/90 bg-emerald-50/70 px-2 py-1.5 text-center text-[10px] font-semibold text-emerald-900 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 disabled:opacity-50"
                             disabled={siteHandoffZipBusyProjectId === p.id}
                             title={
                               import.meta.env.VITE_USE_REAL_API !== '1'
@@ -707,15 +734,10 @@ export function ProjectsPage() {
                           >
                             {siteHandoffZipBusyProjectId === p.id ? 'Zipping…' : 'Site ZIP'}
                           </button>
-                          <span className="text-slate-300" aria-hidden>
-                            ·
-                          </span>
                           <button
                             type="button"
-                            className="text-[10px] font-semibold text-indigo-800 underline-offset-2 hover:underline disabled:opacity-50"
-                            disabled={
-                              videoZipBusyProjectId === p.id || (p.siteVideoCount ?? 0) === 0
-                            }
+                            className="rounded-lg border border-indigo-100/90 bg-indigo-50/70 px-2 py-1.5 text-center text-[10px] font-semibold text-indigo-900 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 disabled:opacity-50"
+                            disabled={videoZipBusyProjectId === p.id || (p.siteVideoCount ?? 0) === 0}
                             title={
                               (p.siteVideoCount ?? 0) === 0
                                 ? 'Add videos in Site builder → Videos first'
@@ -728,30 +750,32 @@ export function ProjectsPage() {
                         </div>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400">Retainer / app</span>
+                      <span className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-500 ring-1 ring-slate-100">
+                        Retainer / app
+                      </span>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-[200px] text-[11px] text-slate-600">
+                  <TableCell className="align-top py-3.5">
                     {p.deliveryFocus === 'client_site'
                       ? (formatSiteTrafficLine({
                           project: p,
                           analyticsByProject,
                           liveByProject,
                         }) ?? (
-                          <span className="text-slate-400">
-                            {import.meta.env.VITE_USE_REAL_API === '1' ? 'Loading…' : 'Real API mode only'}
-                          </span>
+                          <div className="flex min-h-[120px] min-w-[192px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-6 text-xs text-slate-400">
+                            {import.meta.env.VITE_USE_REAL_API === '1' ? 'Loading metrics…' : 'Enable real API for traffic'}
+                          </div>
                         ))
                       : '—'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top py-3.5">
                     <Badge variant={projectStatusBadgeVariant(p.status)}>{p.status}</Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top py-3.5">
                     <Badge variant={projectHealthBadgeVariant(hl)}>{projectHealthLabel(hl)}</Badge>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">{formatCurrency(p.budget)}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-right align-top py-3.5 tabular-nums font-medium">{formatCurrency(p.budget)}</TableCell>
+                  <TableCell className="align-top py-3.5 min-w-[140px]">
                     {isClientLive ? (
                       <div className="flex flex-col gap-1">
                         <Badge variant="success" className="w-fit text-[10px] font-bold uppercase tracking-wide">
@@ -770,9 +794,9 @@ export function ProjectsPage() {
                       </>
                     )}
                   </TableCell>
-                  <TableCell className="text-slate-500">{p.due}</TableCell>
-                  <TableCell className="text-slate-600">{owner?.name}</TableCell>
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="align-top py-3.5 text-sm text-slate-500">{p.due}</TableCell>
+                  <TableCell className="align-top py-3.5 text-[13px] text-slate-600">{owner?.name}</TableCell>
+                  <TableCell className="align-top py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <ActionMenu label={`Actions for ${p.name}`} items={projectActionMenuItems(p)} />
                   </TableCell>
                 </TableRow>
@@ -846,15 +870,17 @@ export function ProjectsPage() {
                   </div>
                   <p className="mt-3 text-xs font-medium text-slate-400">Due {p.due}</p>
                   {p.deliveryFocus === 'client_site' ? (
-                    <div className="mt-2 border-t border-slate-100/90 pt-2">
+                    <div className="mt-3">
                       {formatSiteTrafficLine({
                         project: p,
                         analyticsByProject,
                         liveByProject,
                       }) ?? (
-                        <p className="text-[10px] text-slate-400">
-                          {import.meta.env.VITE_USE_REAL_API !== '1' ? 'Site traffic uses real API mode.' : ''}
-                        </p>
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/40 px-3 py-5 text-center text-[10px] text-slate-400">
+                          {import.meta.env.VITE_USE_REAL_API !== '1'
+                            ? 'Site traffic uses real API mode.'
+                            : 'Loading metrics…'}
+                        </div>
                       )}
                     </div>
                   ) : null}

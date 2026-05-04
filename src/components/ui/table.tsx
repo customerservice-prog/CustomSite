@@ -48,7 +48,7 @@ export function TableRow({
   return (
     <tr
       className={cn(
-        'h-[60px] border-b border-slate-100/90 transition-colors duration-150 ease-out hover:bg-slate-50/80',
+        'min-h-[60px] border-b border-slate-100/90 transition-colors duration-150 ease-out hover:bg-slate-50/80',
         clickable && 'cursor-pointer',
         selected && 'bg-purple-50',
         className
