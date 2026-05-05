@@ -351,7 +351,7 @@
   display: none;
   animation: fadeInUp .4s ease forwards;
 }
-.site-frame.active { display: block; }
+.site-frame.active { display: block; min-height: 100%; }
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
@@ -942,7 +942,7 @@ function renderIndustry(idx, step) {
   if (!stepsEl || !previewEl) return;
   stepsEl.innerHTML = buildStepsHTML(ind, step);
   var prevIdx = getPreviewIdx(step, ind);
-  previewEl.innerHTML = '<div class="site-frame active">' + ind.preview[prevIdx] + '</div>';
+  previewEl.innerHTML = '<div class="site-frame active">' + ind.preview[Math.min(prevIdx,ind.preview.length-1)] + '</div>';
   urlEl.textContent = ind.domain;
   progressEl.style.width = Math.round((step / (ind.steps.length - 1)) * 100) + "%";
   var toast = document.getElementById("buildToast");
