@@ -1422,12 +1422,12 @@ router.post('/projects/:projectId/deploy', async (req, res) => {
     const { data: proj, error: perr } = await supabase
       .from('projects')
       .select(
-        'id, name, launched_at, published_at, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production, railway_service_id_staging, railway_service_id_production'
+        'id, name, launched_at, custom_domain, railway_url_staging, railway_url_production, railway_project_id_staging, railway_project_id_production, railway_service_id_staging, railway_service_id_production'
       )
       .eq('id', projectId)
       .maybeSingle();
     if (perr) {
-      if (/railway_/.test(String(perr.message)) || /custom_domain/.test(String(perr.message))) {
+      if (/railway_/.test(String(perr.message)) || /custom_domain/.test(String(perr.message)) || /published_at/.test(String(perr.message))) {
         return res.status(400).json({ error: 'Run migration migration_site_builder_v2.sql' });
       }
       return res.status(500).json({ error: perr.message });
