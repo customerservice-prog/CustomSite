@@ -231,137 +231,285 @@
   </section>
 
   
-<section id="site-builder-demo" class="section site-builder-demo">
-  <div class="container">
-    <div class="section-header" style="text-align:center;margin-bottom:3rem;">
-      <span class="section-tag">HOW IT WORKS</span>
-      <h2 class="section-title" style="font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;margin:.5rem 0 1rem;">We build it in front of you.</h2>
-      <p class="section-subtitle" style="max-width:560px;margin:0 auto;color:var(--c-text-muted,#94a3b8);">From broken and leaking to fast, clear, and converting — in 2–3 weeks. Here's what the rebuild looks like.</p>
+
+<!-- SITE BUILDER DEMO SECTION -->
+<section id="site-builder-demo" style="background:#0a0e1a;padding:80px 0 100px;overflow:hidden;">
+  <div style="max-width:1100px;margin:0 auto;padding:0 24px;">
+    <div style="text-align:center;margin-bottom:56px;">
+      <div style="display:inline-block;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);border-radius:30px;padding:8px 20px;font-size:12px;font-weight:700;letter-spacing:2px;color:#818cf8;margin-bottom:20px;text-transform:uppercase;">HOW IT WORKS</div>
+      <h2 style="font-size:clamp(32px,5vw,52px);font-weight:800;color:#fff;margin:0 0 16px;line-height:1.15;">We build it in front of you.</h2>
+      <p style="font-size:18px;color:#94a3b8;max-width:560px;margin:0 auto;line-height:1.6;">From broken and leaking to fast, clear, and converting &mdash; in 2&ndash;3 weeks. Here's what the rebuild looks like.</p>
     </div>
-    <div class="builder-demo-wrap">
-      <div class="builder-editor-pane">
-        <div class="builder-editor-header">
-          <span style="width:12px;height:12px;border-radius:50%;background:#ff5f56;display:inline-block"></span>
-          <span style="width:12px;height:12px;border-radius:50%;background:#ffbd2e;display:inline-block;margin:0 4px"></span>
-          <span style="width:12px;height:12px;border-radius:50%;background:#27c93f;display:inline-block"></span>
-          <span class="builder-editor-filename">index.html</span>
+
+    <!-- Demo container -->
+    <div id="sbd-container" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;min-height:440px;">
+      
+      <!-- Left: Code editor -->
+      <div style="background:#0d1117;border-right:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;">
+        <!-- Editor title bar -->
+        <div style="background:#161b22;border-bottom:1px solid rgba(255,255,255,0.07);padding:12px 16px;display:flex;align-items:center;gap:8px;">
+          <span style="width:12px;height:12px;border-radius:50%;background:#ff5f56;display:inline-block;"></span>
+          <span style="width:12px;height:12px;border-radius:50%;background:#ffbd2e;display:inline-block;"></span>
+          <span style="width:12px;height:12px;border-radius:50%;background:#27c93f;display:inline-block;"></span>
+          <span style="font-size:12px;color:#8b949e;margin-left:8px;font-family:monospace;">index.html</span>
         </div>
-        <div class="builder-editor-body">
-          <div class="builder-line-numbers" id="builderLineNums"></div>
-          <pre class="builder-code-display" id="builderCodeDisplay"></pre>
-          <span class="builder-cursor" id="builderCursor">|</span>
+        <!-- Code area -->
+        <div style="flex:1;padding:20px;font-family:monospace;font-size:13px;line-height:1.7;overflow:hidden;position:relative;">
+          <div id="sbd-code-output" style="color:#e6edf3;"></div>
+          <span id="sbd-cursor" style="display:inline-block;width:2px;height:14px;background:#58a6ff;vertical-align:middle;animation:sbdBlink 1s step-end infinite;margin-left:1px;"></span>
         </div>
-        <div class="builder-status-bar">
-          <span id="builderStatusLabel" class="builder-status-label">● Initializing…</span>
-          <span>HTML</span>
+        <!-- Status bar -->
+        <div style="background:#161b22;border-top:1px solid rgba(255,255,255,0.07);padding:8px 16px;font-size:11px;color:#8b949e;font-family:monospace;display:flex;justify-content:space-between;">
+          <span id="sbd-status">Analyzing site...</span>
+          <span style="color:#3fb950;">UTF-8 &nbsp; HTML</span>
         </div>
       </div>
-      <div class="builder-preview-pane">
-        <div class="builder-preview-header">
-          <div style="display:flex;gap:4px;align-items:center;">
-            <span style="width:10px;height:10px;border-radius:50%;background:#ff5f56;display:inline-block"></span>
-            <span style="width:10px;height:10px;border-radius:50%;background:#ffbd2e;display:inline-block"></span>
-            <span style="width:10px;height:10px;border-radius:50%;background:#27c93f;display:inline-block"></span>
+
+      <!-- Right: Browser preview -->
+      <div style="background:#1a1f2e;display:flex;flex-direction:column;">
+        <!-- Browser chrome -->
+        <div style="background:#1e2433;border-bottom:1px solid rgba(255,255,255,0.07);padding:10px 16px;display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;gap:5px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:#363b4a;display:inline-block;"></span>
+            <span style="width:10px;height:10px;border-radius:50%;background:#363b4a;display:inline-block;"></span>
+            <span style="width:10px;height:10px;border-radius:50%;background:#363b4a;display:inline-block;"></span>
           </div>
-          <div class="builder-preview-urlbar">🔒 <span id="builderPreviewUrl">friendlypartyrental.com</span></div>
-          <span style="color:#5f6368">↺</span>
-        </div>
-        <div class="builder-preview-viewport" id="builderPreviewViewport">
-          <div id="builderPreviewSkeleton" class="builder-preview-skeleton is-loading">
-            <div class="bps-bar bps-bar--wide"></div><div class="bps-bar bps-bar--med" style="margin-top:.5rem"></div>
-            <div class="bps-hero"></div>
-            <div class="bps-grid"><div class="bps-card"></div><div class="bps-card"></div><div class="bps-card"></div></div>
+          <div style="flex:1;background:#252c3d;border-radius:6px;padding:5px 12px;font-size:11px;color:#94a3b8;font-family:monospace;display:flex;align-items:center;gap:6px;">
+            <span style="color:#3fb950;font-size:10px;">&#9679;</span>
+            <span id="sbd-url">friendlypartyrental.com</span>
           </div>
-          <div class="builder-preview-live" id="builderPreviewLive"></div>
         </div>
-        <div class="builder-preview-footer"><span id="builderPreviewStep">● Awaiting build…</span></div>
+        <!-- Preview area -->
+        <div id="sbd-preview" style="flex:1;padding:24px;display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden;">
+          <!-- Shimmer placeholder initially -->
+          <div id="sbd-shimmer" style="position:absolute;inset:0;background:#1a1f2e;display:flex;flex-direction:column;gap:14px;padding:24px;">
+            <div class="sbd-shimmer-bar" style="height:22px;width:60%;border-radius:6px;"></div>
+            <div class="sbd-shimmer-bar" style="height:14px;width:90%;border-radius:4px;"></div>
+            <div class="sbd-shimmer-bar" style="height:14px;width:75%;border-radius:4px;"></div>
+            <div class="sbd-shimmer-bar" style="height:44px;width:40%;border-radius:8px;margin-top:8px;"></div>
+          </div>
+          <!-- Live content -->
+          <div id="sbd-live" style="opacity:0;transition:opacity 0.6s ease;display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
       </div>
     </div>
-    <div class="builder-timeline" id="builderTimeline">
-      <div class="bt-step bt-step--active" data-step="0"><span class="bt-dot"></span><span class="bt-label">Audit</span></div>
-      <div class="bt-divider"></div><div class="bt-step" data-step="1"><span class="bt-dot"></span><span class="bt-label">Structure</span></div>
-      <div class="bt-divider"></div><div class="bt-step" data-step="2"><span class="bt-dot"></span><span class="bt-label">Design</span></div>
-      <div class="bt-divider"></div><div class="bt-step" data-step="3"><span class="bt-dot"></span><span class="bt-label">CTA</span></div>
-      <div class="bt-divider"></div><div class="bt-step" data-step="4"><span class="bt-dot"></span><span class="bt-label">Live</span></div>
+
+    <!-- Timeline -->
+    <div id="sbd-timeline" style="display:flex;justify-content:center;gap:0;margin-top:36px;align-items:center;">
+      <div class="sbd-step" data-step="0" style="display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;padding:0 20px;">
+        <div class="sbd-dot" style="width:14px;height:14px;border-radius:50%;background:#6366f1;border:3px solid #6366f1;transition:all 0.3s;box-shadow:0 0 12px rgba(99,102,241,0.7);"></div>
+        <span style="font-size:11px;font-weight:600;letter-spacing:1px;color:#fff;text-transform:uppercase;">Audit</span>
+      </div>
+      <div class="sbd-line" style="height:2px;width:60px;background:rgba(255,255,255,0.1);margin-bottom:20px;transition:background 0.4s;"></div>
+      <div class="sbd-step" data-step="1" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 20px;">
+        <div class="sbd-dot" style="width:14px;height:14px;border-radius:50%;background:#1e2433;border:3px solid rgba(255,255,255,0.2);transition:all 0.3s;"></div>
+        <span style="font-size:11px;font-weight:600;letter-spacing:1px;color:#64748b;text-transform:uppercase;">Structure</span>
+      </div>
+      <div class="sbd-line" style="height:2px;width:60px;background:rgba(255,255,255,0.1);margin-bottom:20px;transition:background 0.4s;"></div>
+      <div class="sbd-step" data-step="2" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 20px;">
+        <div class="sbd-dot" style="width:14px;height:14px;border-radius:50%;background:#1e2433;border:3px solid rgba(255,255,255,0.2);transition:all 0.3s;"></div>
+        <span style="font-size:11px;font-weight:600;letter-spacing:1px;color:#64748b;text-transform:uppercase;">Design</span>
+      </div>
+      <div class="sbd-line" style="height:2px;width:60px;background:rgba(255,255,255,0.1);margin-bottom:20px;transition:background 0.4s;"></div>
+      <div class="sbd-step" data-step="3" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 20px;">
+        <div class="sbd-dot" style="width:14px;height:14px;border-radius:50%;background:#1e2433;border:3px solid rgba(255,255,255,0.2);transition:all 0.3s;"></div>
+        <span style="font-size:11px;font-weight:600;letter-spacing:1px;color:#64748b;text-transform:uppercase;">CTA</span>
+      </div>
+      <div class="sbd-line" style="height:2px;width:60px;background:rgba(255,255,255,0.1);margin-bottom:20px;transition:background 0.4s;"></div>
+      <div class="sbd-step" data-step="4" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 20px;">
+        <div class="sbd-dot" style="width:14px;height:14px;border-radius:50%;background:#1e2433;border:3px solid rgba(255,255,255,0.2);transition:all 0.3s;"></div>
+        <span style="font-size:11px;font-weight:600;letter-spacing:1px;color:#64748b;text-transform:uppercase;">Live</span>
+      </div>
     </div>
   </div>
 </section>
+
 <style>
-.site-builder-demo{background:linear-gradient(180deg,#0f1120,#080d1a);padding:5rem 0;overflow:hidden}
-.builder-demo-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;max-width:960px;margin:0 auto}
-@media(max-width:680px){.builder-demo-wrap{grid-template-columns:1fr}}
-.builder-editor-pane{background:#0d1117;border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
-.builder-editor-header{display:flex;align-items:center;gap:6px;padding:.5rem 1rem;background:#161b22;border-bottom:1px solid rgba(255,255,255,.07)}
-.builder-editor-filename{margin-left:.5rem;font-size:.7rem;color:#8b949e;font-family:monospace}
-.builder-editor-body{position:relative;display:flex;min-height:260px;max-height:340px;overflow:hidden;background:#0d1117}
-.builder-line-numbers{padding:.8rem .3rem .8rem .5rem;color:#484f58;font-size:.7rem;font-family:monospace;line-height:1.6;text-align:right;min-width:1.8rem;user-select:none}
-.builder-code-display{flex:1;padding:.8rem .5rem;margin:0;font-size:.7rem;font-family:Consolas,monospace;line-height:1.6;color:#e6edf3;white-space:pre;overflow:hidden;background:transparent}
-.builder-cursor{position:absolute;bottom:.8rem;right:.8rem;color:#58a6ff;font-weight:700;animation:bdCursorBlink .8s step-end infinite}
-@keyframes bdCursorBlink{0%,100%{opacity:1}50%{opacity:0}}
-.builder-status-bar{display:flex;justify-content:space-between;padding:.25rem .8rem;background:#161b22;border-top:1px solid rgba(255,255,255,.07);font-size:.62rem;color:#8b949e;font-family:monospace}
-.builder-status-label{color:#58a6ff}
-.builder-preview-pane{background:#fff;border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
-.builder-preview-header{display:flex;align-items:center;gap:.5rem;padding:.4rem .7rem;background:#f1f3f4;border-bottom:1px solid #e0e0e0}
-.builder-preview-urlbar{flex:1;background:#fff;border:1px solid #dadce0;border-radius:20px;padding:.18rem .7rem;font-size:.62rem;color:#3c4043;display:flex;align-items:center;gap:.3rem;overflow:hidden;white-space:nowrap}
-.builder-preview-viewport{position:relative;min-height:260px;overflow:hidden;background:#fff}
-.builder-preview-skeleton{padding:1rem;position:absolute;inset:0;transition:opacity .5s}
-.bps-bar{height:10px;background:#e8eaed;border-radius:4px}.bps-bar--wide{width:70%}.bps-bar--med{width:50%}
-.bps-hero{height:80px;background:#e8eaed;border-radius:6px;margin:.7rem 0}
-.bps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-top:.7rem}
-.bps-card{height:56px;background:#e8eaed;border-radius:6px}
-.is-loading .bps-bar,.is-loading .bps-hero,.is-loading .bps-card{background:linear-gradient(90deg,#e8eaed 25%,#f5f5f5 50%,#e8eaed 75%);background-size:200%;animation:bdShimmer 1.4s infinite}
-@keyframes bdShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.builder-preview-live{position:absolute;inset:0;opacity:0;transition:opacity .7s ease;overflow:hidden}
-.builder-preview-live.is-visible{opacity:1}
-.builder-preview-footer{padding:.3rem .7rem;background:#f8f9fa;border-top:1px solid #e8eaed;font-size:.62rem;color:#1a73e8;font-family:monospace}
-.builder-timeline{display:flex;align-items:center;justify-content:center;margin:2.5rem auto 0;max-width:480px}
-.bt-step{display:flex;flex-direction:column;align-items:center;gap:.25rem;opacity:.4;transition:opacity .4s}
-.bt-step.bt-step--active{opacity:1}.bt-step.bt-step--done{opacity:.65}
-.bt-dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);transition:all .4s}
-.bt-step.bt-step--active .bt-dot{background:#4f8ef7;border-color:#4f8ef7;box-shadow:0 0 10px rgba(79,142,247,.5)}
-.bt-step.bt-step--done .bt-dot{background:#27c93f;border-color:#27c93f}
-.bt-label{font-size:.6rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-.bt-step.bt-step--active .bt-label{color:#e2e8f0}
-.bt-divider{height:2px;flex:1;background:rgba(255,255,255,.08);max-width:55px}
-.tok-tag{color:#7ee787}.tok-attr{color:#79c0ff}.tok-val{color:#a5d6ff}.tok-cmt{color:#8b949e;font-style:italic}.tok-cls{color:#f2cc60}
+@keyframes sbdBlink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+@keyframes sbdShimmer { 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
+.sbd-shimmer-bar { background:linear-gradient(90deg,#252c3d 25%,#2d364a 50%,#252c3d 75%); background-size:400px 100%; animation:sbdShimmer 1.4s infinite; }
+@media(max-width:768px) { #sbd-container { grid-template-columns:1fr !important; } #sbd-timeline { flex-wrap:wrap; gap:12px; } .sbd-line { display:none; } }
 </style>
+
 <script>
 (function(){
-var eEl=document.getElementById('builderCodeDisplay'),lEl=document.getElementById('builderLineNums'),sL=document.getElementById('builderStatusLabel'),pVP=document.getElementById('builderPreviewViewport'),pL=document.getElementById('builderPreviewLive'),pSk=document.getElementById('builderPreviewSkeleton'),pSt=document.getElementById('builderPreviewStep'),tEl=document.getElementById('builderTimeline');
-if(!eEl||!pL)return;
-var phases=[
-{s:0,status:'● Auditing current site…',pstep:'🔍 Analyzing drop-off points…',
-code:['<span class="tok-cmt">&lt;!-- AUDIT: Headline buries the offer --&gt;</span>','<span class="tok-tag">&lt;h1&gt;</span>Welcome to Friendly Party Rental<span class="tok-tag">&lt;/h1&gt;</span>','<span class="tok-cmt">&lt;!-- ↑ No clear value prop, no CTA above fold --&gt;</span>','<span class="tok-tag">&lt;p&gt;</span>We have been in business since 2008...<span class="tok-tag">&lt;/p&gt;</span>','<span class="tok-cmt">&lt;!-- ↑ Trust-building buried in paragraph 3 --&gt;</span>','<span class="tok-tag">&lt;a </span><span class="tok-attr">href</span>=<span class="tok-val">"/contact"</span><span class="tok-tag">&gt;</span>Learn More<span class="tok-tag">&lt;/a&gt;</span>','<span class="tok-cmt">&lt;!-- ↑ Weak CTA -- converts poorly --&gt;</span>'],
-ph:'<div style="padding:1rem;font-family:sans-serif;background:#fff8f0;height:100%;"><div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;padding:.4rem .7rem;font-size:.68rem;color:#991b1b;margin-bottom:.5rem;">⚠ 3 issues found</div><h2 style="font-size:.9rem;margin:.2rem 0;color:#111;">Welcome to Friendly Party Rental</h2><p style="font-size:.62rem;color:#666;margin:0;">We have been in business since 2008...</p><div style="display:flex;gap:.3rem;margin-top:.7rem;"><div style="background:#fee2e2;border-radius:4px;padding:.15rem .4rem;font-size:.52rem;color:#991b1b;">No CTA above fold</div><div style="background:#fee2e2;border-radius:4px;padding:.15rem .4rem;font-size:.52rem;color:#991b1b;">Weak headline</div></div></div>'},
-{s:1,status:'● Rebuilding structure…',pstep:'🔨 Restructuring layout…',
-code:['<span class="tok-tag">&lt;header</span> <span class="tok-attr">class</span>=<span class="tok-val">"site-header"</span><span class="tok-tag">&gt;</span>','  <span class="tok-tag">&lt;nav&gt;</span>','    <span class="tok-tag">&lt;a</span> <span class="tok-attr">href</span>=<span class="tok-val">"/"</span><span class="tok-tag">&gt;</span>Friendly Party Rental<span class="tok-tag">&lt;/a&gt;</span>','    <span class="tok-tag">&lt;a</span> <span class="tok-attr">class</span>=<span class="tok-val">"nav-cta"</span> <span class="tok-attr">href</span>=<span class="tok-val">"/quote"</span><span class="tok-tag">&gt;</span>Get a Quote<span class="tok-tag">&lt;/a&gt;</span>','  <span class="tok-tag">&lt;/nav&gt;</span>','<span class="tok-tag">&lt;/header&gt;</span>','<span class="tok-tag">&lt;section</span> <span class="tok-attr">class</span>=<span class="tok-val">"hero"</span><span class="tok-tag">&gt;</span>','  <span class="tok-tag">&lt;h1&gt;</span>Tables, Chairs &amp; Tents<span class="tok-tag">&lt;br&gt;</span>','     Delivered to Your Door<span class="tok-tag">&lt;/h1&gt;</span>'],
-ph:'<div style="font-family:sans-serif;height:100%;"><div style="background:#1e3a5f;padding:.35rem .7rem;display:flex;justify-content:space-between;align-items:center;"><span style="color:#fff;font-size:.68rem;font-weight:700;">Friendly Party Rental</span><span style="background:#4f8ef7;color:#fff;padding:.18rem .45rem;border-radius:4px;font-size:.58rem;">Get a Quote</span></div><div style="padding:.9rem;"><h1 style="font-size:1rem;font-weight:800;color:#0f172a;margin:0 0 .3rem;">Tables, Chairs &amp; Tents<br><em style="color:#4f8ef7;">Delivered to Your Door</em></h1><p style="font-size:.6rem;color:#475569;">Syracuse, NY — same week delivery</p></div></div>'},
-{s:2,status:'● Applying design system…',pstep:'🎨 Applying styles…',
-code:['<span class="tok-tag">&lt;style&gt;</span>','  <span class="tok-cls">.hero</span> {','    <span class="tok-attr">background</span>: <span class="tok-val">linear-gradient(135deg,#1e3a5f,#0f2342)</span>;','    <span class="tok-attr">padding</span>: <span class="tok-val">4rem 2rem</span>;','    <span class="tok-attr">color</span>: <span class="tok-val">#fff</span>;','  }','  <span class="tok-cls">.hero h1</span> {','    <span class="tok-attr">font-size</span>: <span class="tok-val">clamp(1.8rem,4vw,3rem)</span>;','    <span class="tok-attr">font-weight</span>: <span class="tok-val">800</span>;','  }','<span class="tok-tag">&lt;/style&gt;</span>'],
-ph:'<div style="font-family:sans-serif;height:100%;"><div style="background:#1e3a5f;padding:.35rem .7rem;display:flex;justify-content:space-between;align-items:center;"><span style="color:#fff;font-size:.68rem;font-weight:700;">Friendly Party Rental</span><span style="background:#4f8ef7;color:#fff;padding:.18rem .45rem;border-radius:4px;font-size:.58rem;">Get a Quote →</span></div><div style="background:linear-gradient(135deg,#1e3a5f,#0f2342);padding:1rem;text-align:center;"><h1 style="font-size:1.1rem;font-weight:800;color:#fff;margin:0 0 .25rem;">Tables, Chairs &amp; Tents<br><em style="color:#60a5fa;">Delivered to Your Door</em></h1><p style="font-size:.58rem;color:#93c5fd;">Syracuse, NY — same-week delivery</p></div></div>'},
-{s:3,status:'● Optimizing conversion…',pstep:'⚡ Adding conversion elements…',
-code:['<span class="tok-tag">&lt;div</span> <span class="tok-attr">class</span>=<span class="tok-val">"hero-ctas"</span><span class="tok-tag">&gt;</span>','  <span class="tok-tag">&lt;a</span> <span class="tok-attr">class</span>=<span class="tok-val">"btn-primary"</span> <span class="tok-attr">href</span>=<span class="tok-val">"/quote"</span><span class="tok-tag">&gt;</span>','    Get Your Free Quote','  <span class="tok-tag">&lt;/a&gt;</span>','  <span class="tok-tag">&lt;a</span> <span class="tok-attr">class</span>=<span class="tok-val">"btn-ghost"</span> <span class="tok-attr">href</span>=<span class="tok-val">"/gallery"</span><span class="tok-tag">&gt;</span>','    See Our Inventory →','  <span class="tok-tag">&lt;/a&gt;</span>','<span class="tok-tag">&lt;/div&gt;</span>','<span class="tok-tag">&lt;p</span> <span class="tok-attr">class</span>=<span class="tok-val">"social-proof"</span><span class="tok-tag">&gt;</span>','  ★★★★★ 200+ events served<span class="tok-tag">&lt;/p&gt;</span>'],
-ph:'<div style="font-family:sans-serif;height:100%;"><div style="background:#1e3a5f;padding:.35rem .7rem;display:flex;justify-content:space-between;align-items:center;"><span style="color:#fff;font-size:.68rem;font-weight:700;">Friendly Party Rental</span><span style="background:#4f8ef7;color:#fff;padding:.18rem .45rem;border-radius:4px;font-size:.58rem;">Get a Quote →</span></div><div style="background:linear-gradient(135deg,#1e3a5f,#0f2342);padding:.9rem;text-align:center;"><h1 style="font-size:1rem;font-weight:800;color:#fff;margin:0 0 .2rem;">Tables, Chairs &amp; Tents<br><em style="color:#60a5fa;">Delivered to Your Door</em></h1><div style="display:flex;gap:.3rem;justify-content:center;margin:.5rem 0;flex-wrap:wrap;"><a style="background:#4f8ef7;color:#fff;padding:.28rem .6rem;border-radius:5px;font-size:.58rem;font-weight:700;text-decoration:none;">Get Your Free Quote</a><a style="border:1px solid rgba(255,255,255,.4);color:#fff;padding:.28rem .6rem;border-radius:5px;font-size:.58rem;text-decoration:none;">See Inventory →</a></div><p style="font-size:.58rem;color:#fbbf24;">★★★★★ 200+ events served</p></div></div>'},
-{s:4,status:'✓ Site deployed & live',pstep:'🚀 Site is live!',
-code:['<span class="tok-cmt">&lt;!-- ✓ Build complete. Deploying… --&gt;</span>','<span class="tok-cmt">&lt;!-- Domain: friendlypartyrental.com --&gt;</span>','<span class="tok-cmt">&lt;!-- SSL: ✓ Cloudflare proxied --&gt;</span>','<span class="tok-cmt">&lt;!-- PageSpeed: 94 / 100 --&gt;</span>','<span class="tok-cmt">&lt;!-- Lighthouse: ✓ All green --&gt;</span>','','<span class="tok-tag">&lt;meta</span> <span class="tok-attr">name</span>=<span class="tok-val">"result"</span>','      <span class="tok-attr">content</span>=<span class="tok-val">"+42% more leads"</span> <span class="tok-tag">/&gt;</span>'],
-ph:'<div style="font-family:sans-serif;height:100%;"><div style="background:#1e3a5f;padding:.35rem .7rem;display:flex;justify-content:space-between;align-items:center;"><span style="color:#fff;font-size:.68rem;font-weight:700;">Friendly Party Rental</span><span style="background:#4f8ef7;color:#fff;padding:.18rem .45rem;border-radius:4px;font-size:.58rem;">Get a Quote →</span></div><div style="background:linear-gradient(135deg,#1e3a5f,#0f2342);padding:.9rem;text-align:center;"><h1 style="font-size:1rem;font-weight:800;color:#fff;margin:0 0 .2rem;">Tables, Chairs &amp; Tents<br><em style="color:#60a5fa;">Delivered to Your Door</em></h1><div style="display:flex;gap:.3rem;justify-content:center;margin:.5rem 0;flex-wrap:wrap;"><a style="background:#4f8ef7;color:#fff;padding:.28rem .6rem;border-radius:5px;font-size:.58rem;font-weight:700;text-decoration:none;">Get Your Free Quote</a><a style="border:1px solid rgba(255,255,255,.4);color:#fff;padding:.28rem .6rem;border-radius:5px;font-size:.58rem;text-decoration:none;">See Inventory →</a></div><p style="font-size:.58rem;color:#fbbf24;">★★★★★ 200+ events served</p></div><div style="background:#f0fdf4;border-top:2px solid #22c55e;padding:.4rem .7rem;display:flex;align-items:center;gap:.3rem;"><span style="font-size:.65rem;color:#166534;font-weight:700;">🚀 Live — +42% more leads</span></div></div>'}
-];
-var cur=0,timer=null;
-function setTL(i){if(!tEl)return;tEl.querySelectorAll('.bt-step').forEach(function(s,j){s.classList.remove('bt-step--active','bt-step--done');if(j<i)s.classList.add('bt-step--done');else if(j===i)s.classList.add('bt-step--active');});}
-function updateLN(n){var h='';for(var i=1;i<=n;i++)h+=i+'
-';lEl.textContent=h;}
-function showPhase(idx){if(idx>=phases.length)idx=0;cur=idx;var p=phases[idx];
-if(sL)sL.textContent=p.status;if(pSt)pSt.textContent=p.pstep;
-setTL(idx);pL.classList.remove('is-visible');if(pSk){pSk.style.opacity='1';pSk.classList.add('is-loading');}
-var li=0,ci=0;clearTimeout(timer);eEl.innerHTML='';
-function tick(){if(li>=p.code.length){updateLN(li);setTimeout(function(){if(pSk){pSk.style.opacity='0';pSk.classList.remove('is-loading');}pL.innerHTML=p.ph;pL.classList.add('is-visible');timer=setTimeout(function(){showPhase(idx+1);},3000);},300);return;}
-var ln=p.code[li];if(ci<=ln.length){var s=p.code.slice(0,li).join('
-');if(li>0)s+='
-';s+=ln.substring(0,ci);eEl.innerHTML=s;updateLN(li+1);ci++;timer=setTimeout(tick,ci%3===0?14:8);}else{li++;ci=0;timer=setTimeout(tick,35);}}
-tick();}
-if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){showPhase(0);io.disconnect();}});},{threshold:0.25});var sec=document.getElementById('site-builder-demo');if(sec)io.observe(sec);}else{setTimeout(function(){showPhase(0);},600);}
+  var phases = [
+    {
+      status: 'Analyzing site...',
+      codeLines: [
+        '<span style="color:#7ee787">&lt;!-- Audit: drop-off points --&gt;</span>',
+        '<span style="color:#79c0ff">&lt;body&gt;</span>',
+        '  <span style="color:#ff7b72">&lt;h1&gt;</span><span style="color:#a5d6ff">Friendly Party Rental</span><span style="color:#ff7b72">&lt;/h1&gt;</span>',
+        '  <span style="color:#8b949e">&lt;!-- No CTA above fold --&gt;</span>',
+        '  <span style="color:#8b949e">&lt;!-- 3 clicks to book --&gt;</span>'
+      ],
+      preview: '<div style="font-family:sans-serif;padding:12px;"><div style="height:18px;width:50%;background:#2d3748;border-radius:4px;margin-bottom:10px;"></div><div style="height:12px;width:80%;background:#2d3748;border-radius:3px;margin-bottom:7px;"></div><div style="height:12px;width:65%;background:#2d3748;border-radius:3px;"></div><div style="margin-top:20px;padding:8px 16px;background:#4a5568;border-radius:6px;font-size:11px;color:#a0aec0;display:inline-block;">Buried CTA</div></div>',
+      dotColor: '#6366f1'
+    },
+    {
+      status: 'Building structure...',
+      codeLines: [
+        '<span style="color:#7ee787">&lt;!-- Structure: semantic layout --&gt;</span>',
+        '<span style="color:#79c0ff">&lt;header&gt;</span>',
+        '  <span style="color:#79c0ff">&lt;nav&gt;</span><span style="color:#a5d6ff">Logo | Book Now</span><span style="color:#79c0ff">&lt;/nav&gt;</span>',
+        '<span style="color:#79c0ff">&lt;/header&gt;</span>',
+        '<span style="color:#79c0ff">&lt;main&gt;</span>',
+        '  <span style="color:#ff7b72">&lt;h1&gt;</span><span style="color:#a5d6ff">Party Rentals in Syracuse</span><span style="color:#ff7b72">&lt;/h1&gt;</span>'
+      ],
+      preview: '<div style="font-family:sans-serif;padding:12px;"><div style="background:#1e3a5f;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:11px;color:#63b3ed;font-weight:700;">FRIENDLY PARTY RENTAL &nbsp; | &nbsp; Book Now</div><div style="font-size:15px;font-weight:800;color:#e2e8f0;margin-bottom:6px;">Party Rentals in Syracuse</div><div style="height:10px;width:80%;background:#2d3748;border-radius:3px;"></div></div>',
+      dotColor: '#818cf8'
+    },
+    {
+      status: 'Applying design system...',
+      codeLines: [
+        '<span style="color:#7ee787">&lt;!-- Design: brand colors + spacing --&gt;</span>',
+        '<span style="color:#f2cc60">.hero</span> <span style="color:#79c0ff">{</span>',
+        '  background: <span style="color:#a5d6ff">linear-gradient(135deg,</span>',
+        '  <span style="color:#a5d6ff">#1e3a5f, #2d6a4f)</span><span style="color:#79c0ff">;</span>',
+        '  padding: <span style="color:#a5d6ff">80px 40px</span><span style="color:#79c0ff">;</span>',
+        '<span style="color:#79c0ff">}</span>'
+      ],
+      preview: '<div style="font-family:sans-serif;background:linear-gradient(135deg,#1e3a5f,#2d6a4f);padding:20px;border-radius:8px;"><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">Party Rentals in Syracuse</div><div style="font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:14px;">Tables, chairs, tents &amp; more delivered to you</div></div>',
+      dotColor: '#a78bfa'
+    },
+    {
+      status: 'Adding conversion CTA...',
+      codeLines: [
+        '<span style="color:#7ee787">&lt;!-- CTA: clear action above fold --&gt;</span>',
+        '<span style="color:#ff7b72">&lt;button</span> <span style="color:#79c0ff">class=</span><span style="color:#a5d6ff">"cta-primary"</span><span style="color:#ff7b72">&gt;</span>',
+        '  <span style="color:#a5d6ff">Get a Free Quote &amp;rarr;</span>',
+        '<span style="color:#ff7b72">&lt;/button&gt;</span>'
+      ],
+      preview: '<div style="font-family:sans-serif;background:linear-gradient(135deg,#1e3a5f,#2d6a4f);padding:20px;border-radius:8px;"><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:6px;">Party Rentals in Syracuse</div><div style="font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:16px;">Tables, chairs, tents &amp; more delivered to you</div><div style="display:flex;gap:10px;"><button style="background:#f59e0b;color:#000;border:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">Get a Free Quote &#x2192;</button><button style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.4);padding:10px 18px;border-radius:8px;font-size:13px;cursor:pointer;">See Packages</button></div></div>',
+      dotColor: '#f59e0b'
+    },
+    {
+      status: 'Site is LIVE!',
+      codeLines: [
+        '<span style="color:#7ee787">&lt;!-- LIVE: deployed to friendlypartyrental.com --&gt;</span>',
+        '<span style="color:#79c0ff">&lt;meta</span> <span style="color:#a5d6ff">name="description"</span>',
+        '  content=<span style="color:#a5d6ff">"Syracuse party rentals..."</span><span style="color:#79c0ff">/&gt;</span>',
+        '<span style="color:#3fb950">&lt;!-- Google PageSpeed: 97 --&gt;</span>',
+        '<span style="color:#3fb950">&lt;!-- Conversion rate: +42% --&gt;</span>'
+      ],
+      preview: '<div style="font-family:sans-serif;background:linear-gradient(135deg,#1e3a5f,#2d6a4f);padding:20px;border-radius:8px;position:relative;"><div style="position:absolute;top:10px;right:10px;background:#3fb950;color:#000;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">LIVE</div><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:6px;">Party Rentals in Syracuse</div><div style="font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:16px;">Tables, chairs, tents &amp; more delivered to you</div><div style="display:flex;gap:10px;margin-bottom:12px;"><button style="background:#f59e0b;color:#000;border:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">Get a Free Quote &#x2192;</button></div><div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:10px;font-size:11px;color:#a5d6ff;"><div>&#9733;&#9733;&#9733;&#9733;&#9733; &nbsp;<span style="color:#fff">On time, on spec. Exactly what we needed.</span></div><div style="color:rgba(255,255,255,0.5);margin-top:4px;">- Marcus K., Syracuse NY</div></div></div>',
+      dotColor: '#3fb950'
+    }
+  ];
+
+  var currentPhase = 0;
+  var charIndex = 0;
+  var lineIndex = 0;
+  var typingTimer = null;
+  var phaseTimer = null;
+  var started = false;
+
+  function getEl(id){ return document.getElementById(id); }
+
+  function updateTimeline(phase) {
+    var steps = document.querySelectorAll('#sbd-timeline .sbd-step');
+    var lines = document.querySelectorAll('#sbd-timeline .sbd-line');
+    steps.forEach(function(step, i) {
+      var dot = step.querySelector('.sbd-dot');
+      var label = step.querySelector('span');
+      if(i < phase) {
+        dot.style.background = '#3fb950';
+        dot.style.borderColor = '#3fb950';
+        dot.style.boxShadow = 'none';
+        label.style.color = '#3fb950';
+        if(lines[i]) lines[i].style.background = '#3fb950';
+      } else if(i === phase) {
+        dot.style.background = phases[phase].dotColor;
+        dot.style.borderColor = phases[phase].dotColor;
+        dot.style.boxShadow = '0 0 14px ' + phases[phase].dotColor;
+        label.style.color = '#fff';
+      } else {
+        dot.style.background = '#1e2433';
+        dot.style.borderColor = 'rgba(255,255,255,0.2)';
+        dot.style.boxShadow = 'none';
+        label.style.color = '#64748b';
+        if(lines[i-1] && i > phase+1) lines[i-1].style.background = 'rgba(255,255,255,0.1)';
+      }
+    });
+    var statusEl = getEl('sbd-status');
+    if(statusEl) statusEl.textContent = phases[phase].status;
+  }
+
+  function showPreview(phase) {
+    var shimmer = getEl('sbd-shimmer');
+    var live = getEl('sbd-live');
+    if(!shimmer || !live) return;
+    shimmer.style.opacity = '1';
+    shimmer.style.display = 'flex';
+    live.style.opacity = '0';
+    setTimeout(function(){
+      shimmer.style.transition = 'opacity 0.4s';
+      shimmer.style.opacity = '0';
+      setTimeout(function(){
+        shimmer.style.display = 'none';
+        live.innerHTML = phases[phase].preview;
+        live.style.opacity = '1';
+      }, 400);
+    }, 600);
+  }
+
+  function typePhase(phase) {
+    var codeEl = getEl('sbd-code-output');
+    if(!codeEl) return;
+    var lines = phases[phase].codeLines;
+    var lIdx = 0;
+    var typed = '';
+    
+    codeEl.innerHTML = '';
+    updateTimeline(phase);
+    showPreview(phase);
+
+    function typeNextLine() {
+      if(lIdx >= lines.length) {
+        return;
+      }
+      var line = lines[lIdx];
+      // Add line instantly (HTML safe) with slight delay between lines
+      setTimeout(function(){
+        typed += line + '<br>';
+        codeEl.innerHTML = typed;
+        lIdx++;
+        typeNextLine();
+      }, 180 + Math.random() * 120);
+    }
+    typeNextLine();
+  }
+
+  function runPhase(phase) {
+    if(phase >= phases.length) phase = 0;
+    currentPhase = phase;
+    typePhase(phase);
+    phaseTimer = setTimeout(function(){ runPhase(phase + 1); }, 3200);
+  }
+
+  function startDemo() {
+    if(started) return;
+    started = true;
+    runPhase(0);
+  }
+
+  // IntersectionObserver to start when visible
+  var container = getEl('sbd-container');
+  if(container && 'IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function(entries){
+      if(entries[0].isIntersecting) {
+        startDemo();
+        obs.disconnect();
+      }
+    }, { threshold: 0.3 });
+    obs.observe(container);
+  } else if(container) {
+    setTimeout(startDemo, 500);
+  }
 })();
 </script>
+<!-- END SITE BUILDER DEMO SECTION -->
+
 
 <section class="section method-system method-system--intro" id="how-we-fix" style="background: var(--light); border-top: 1px solid rgba(0,0,0,0.06); border-bottom: 1px solid rgba(0,0,0,0.06)">
     <div id="conversion-architecture" aria-hidden="true"></div>
