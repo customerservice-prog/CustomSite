@@ -813,112 +813,112 @@ body { background-color: #0a0e1a !important; color: #fff !important; }
 (function() {
 var industries = [
   {
-    name: 'Barbershop',
-    domain: 'premiumcuts.com',
-    color: '#f97316',
+    name: "Barbershop",
+    domain: "premiumcuts.com",
+    color: "#f97316",
     steps: [
-      { label: 'Brand Identity', desc: 'Logo, colors, fonts for your shop' },
-      { label: 'Hero + Booking CTA', desc: 'Bold headline & book now button above fold' },
-      { label: 'Services Menu', desc: 'Cuts, fades, lineups with prices' },
-      { label: 'Gallery Section', desc: 'Photo grid of your best work' },
-      { label: 'Reviews + Trust', desc: 'Google stars & client quotes' },
-      { label: 'Go Live', desc: 'Fast, mobile, SEO-ready' }
+      { label: "Brand Identity", desc: "Logo, colors, fonts for your shop" },
+      { label: "Hero + Booking CTA", desc: "Bold headline & book now button above fold" },
+      { label: "Services Menu", desc: "Cuts, fades, lineups with prices" },
+      { label: "Gallery Section", desc: "Photo grid of your best work" },
+      { label: "Reviews + Trust", desc: "Google stars & client quotes" },
+      { label: "Go Live", desc: "Fast, mobile, SEO-ready" }
     ],
     preview: [
-      '<div style="background:linear-gradient(135deg,#1a0a00,#2d1200);border-radius:10px;padding:32px;min-height:320px;"><div style="font-size:11px;color:#f97316;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">Premium Cuts Barbershop</div><h3 style="font-size:28px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;">Sharp fades.<br>Clean lines.<br>Every time.</h3><p style="color:#9a6a40;font-size:14px;margin-bottom:20px;">Walk-ins welcome &#8226; Syracuse, NY</p><div style="display:inline-block;background:#f97316;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;">Book Your Cut &#8594;</div></div>',
-      '<div style="background:linear-gradient(135deg,#1a0a00,#2d1200);border-radius:10px;padding:32px;"><div style="font-size:13px;font-weight:700;color:#f97316;margin-bottom:16px;">Our Services</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+['Classic Cut $25','Skin Fade $30','Lineup $15','Kids Cut $20','Full Shave $35','Beard Trim $20'].map(s=>'<div style="background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;">'+s+'</div>').join('')+'</div></div>',
-      '<div style="background:linear-gradient(135deg,#1a0a00,#2d1200);border-radius:10px;padding:32px;"><div style="font-size:13px;font-weight:700;color:#f97316;margin-bottom:16px;">What Clients Say</div>'+['Marcus T.','Jordan K.','Devon R.'].map(n=>'<div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px 14px;margin-bottom:8px;"><div style="color:#f97316;font-size:12px;margin-bottom:4px;">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div style="font-size:12px;color:#e2e8f0;">Best fade in Syracuse. Consistent every time.</div><div style="font-size:11px;color:#64748b;margin-top:4px;">&#8212; '+n+'</div></div>').join('')+'</div>',
-      '<div style="background:#10b981;border-radius:10px;padding:32px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">&#127881;</div><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">premiumcuts.com is live!</div><div style="font-size:13px;color:rgba(255,255,255,0.8);">Mobile-optimized &#8226; PageSpeed 98 &#8226; Google-indexed</div></div>'
+      "<div style=\"background:linear-gradient(135deg,#1a0a00,#2d1200);border-radius:10px;padding:32px;min-height:320px;\"><div style=\"font-size:11px;color:#f97316;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;\">Premium Cuts Barbershop</div><h3 style=\"font-size:28px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;\">Sharp fades.<br>Clean lines.<br>Every time.</h3><p style=\"color:#9a6a40;font-size:14px;margin-bottom:20px;\">Walk-ins welcome &#8226; Syracuse, NY</p><div style=\"display:inline-block;background:#f97316;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;\">Book Your Cut &#8594;</div></div>",
+      "<div style=\"background:linear-gradient(135deg,#1a0a00,#2d1200);border-radius:10px;padding:32px;\"><div style=\"font-size:13px;font-weight:700;color:#f97316;margin-bottom:16px;\">Our Services</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;\"><div style=\"background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Classic Cut $25</div><div style=\"background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Skin Fade $30</div><div style=\"background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Lineup $15</div><div style=\"background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Kids Cut $20</div><div style=\"background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Full Shave $35</div><div style=\"background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Beard Trim $20</div></div></div>",
+      "<div style=\"background:linear-gradient(135deg,#1a0a00,#2d1200);border-radius:10px;padding:32px;\"><div style=\"font-size:13px;font-weight:700;color:#f97316;margin-bottom:16px;\">What Clients Say</div><div style=\"background:rgba(255,255,255,0.04);border-radius:8px;padding:12px 14px;margin-bottom:8px;\"><div style=\"color:#f97316;font-size:12px;margin-bottom:4px;\">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div style=\"font-size:12px;color:#e2e8f0;\">Best fade in Syracuse. Consistent every time.</div><div style=\"font-size:11px;color:#64748b;margin-top:4px;\">&#8212; Marcus T.</div></div><div style=\"background:rgba(255,255,255,0.04);border-radius:8px;padding:12px 14px;margin-bottom:8px;\"><div style=\"color:#f97316;font-size:12px;margin-bottom:4px;\">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div style=\"font-size:12px;color:#e2e8f0;\">Consistent every single time. Worth every penny.</div><div style=\"font-size:11px;color:#64748b;margin-top:4px;\">&#8212; Jordan K.</div></div></div>",
+      "<div style=\"background:#10b981;border-radius:10px;padding:32px;text-align:center;\"><div style=\"font-size:40px;margin-bottom:8px;\">&#127881;</div><div style=\"font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;\">premiumcuts.com is live!</div><div style=\"font-size:13px;color:rgba(255,255,255,0.8);\">Mobile-optimized &#8226; PageSpeed 98 &#8226; Google-indexed</div></div>"
     ]
   },
   {
-    name: 'Restaurant',
-    domain: 'tableside.restaurant',
-    color: '#ef4444',
+    name: "Restaurant",
+    domain: "tableside.restaurant",
+    color: "#ef4444",
     steps: [
-      { label: 'Brand + Atmosphere', desc: 'Colors, fonts, mood for your cuisine' },
-      { label: 'Menu Showcase', desc: 'Beautiful food photography layout' },
-      { label: 'Online Reservations', desc: 'Book a table CTA & OpenTable link' },
-      { label: 'Location + Hours', desc: 'Map embed, parking, contact info' },
-      { label: 'Chef Story', desc: 'About section that builds trust' },
-      { label: 'Go Live', desc: 'Fast, mobile, SEO-ready' }
+      { label: "Brand + Atmosphere", desc: "Colors, fonts, mood for your cuisine" },
+      { label: "Menu Showcase", desc: "Beautiful food photography layout" },
+      { label: "Online Reservations", desc: "Book a table CTA & OpenTable link" },
+      { label: "Location + Hours", desc: "Map embed, parking, contact info" },
+      { label: "Chef Story", desc: "About section that builds trust" },
+      { label: "Go Live", desc: "Fast, mobile, SEO-ready" }
     ],
     preview: [
-      '<div style="background:linear-gradient(135deg,#1a0000,#2d0000);border-radius:10px;padding:32px;min-height:320px;"><div style="font-size:11px;color:#ef4444;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">Tableside Kitchen</div><h3 style="font-size:28px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;">Farm-to-table<br>dining in the<br>heart of Syracuse.</h3><p style="color:#9a4040;font-size:14px;margin-bottom:20px;">Dinner Tue&#8211;Sun &#8226; Private dining available</p><div style="display:inline-block;background:#ef4444;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;">Reserve a Table &#8594;</div></div>',
-      '<div style="background:linear-gradient(135deg,#1a0000,#2d0000);border-radius:10px;padding:32px;"><div style="font-size:13px;font-weight:700;color:#ef4444;margin-bottom:16px;">Tonight's Highlights</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+['Wagyu Steak $62','Sea Bass $48','House Pasta $32','Caesar $18','Craft Cocktails $16','Wine by Glass $14'].map(s=>'<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;">'+s+'</div>').join('')+'</div></div>',
-      '<div style="background:#10b981;border-radius:10px;padding:32px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">&#127881;</div><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">tableside.restaurant is live!</div><div style="font-size:13px;color:rgba(255,255,255,0.8);">Mobile-optimized &#8226; PageSpeed 97 &#8226; Google-indexed</div></div>'
+      "<div style=\"background:linear-gradient(135deg,#1a0000,#2d0000);border-radius:10px;padding:32px;min-height:320px;\"><div style=\"font-size:11px;color:#ef4444;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;\">Tableside Kitchen</div><h3 style=\"font-size:28px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;\">Farm-to-table<br>dining in the<br>heart of Syracuse.</h3><p style=\"color:#9a4040;font-size:14px;margin-bottom:20px;\">Dinner Tue&#8211;Sun &#8226; Private dining available</p><div style=\"display:inline-block;background:#ef4444;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;\">Reserve a Table &#8594;</div></div>",
+      "<div style=\"background:linear-gradient(135deg,#1a0000,#2d0000);border-radius:10px;padding:32px;\"><div style=\"font-size:13px;font-weight:700;color:#ef4444;margin-bottom:16px;\">Tonight&#39;s Highlights</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;\"><div style=\"background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Wagyu Steak $62</div><div style=\"background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Sea Bass $48</div><div style=\"background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">House Pasta $32</div><div style=\"background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Caesar $18</div><div style=\"background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Craft Cocktails $16</div><div style=\"background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Wine by Glass $14</div></div></div>",
+      "<div style=\"background:#10b981;border-radius:10px;padding:32px;text-align:center;\"><div style=\"font-size:40px;margin-bottom:8px;\">&#127881;</div><div style=\"font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;\">tableside.restaurant is live!</div><div style=\"font-size:13px;color:rgba(255,255,255,0.8);\">Mobile-optimized &#8226; PageSpeed 97 &#8226; Google-indexed</div></div>"
     ]
   },
   {
-    name: 'Law Firm',
-    domain: 'harrisonlaw.legal',
-    color: '#8b5cf6',
+    name: "Law Firm",
+    domain: "harrisonlaw.legal",
+    color: "#8b5cf6",
     steps: [
-      { label: 'Trust & Authority', desc: 'Professional positioning copy' },
-      { label: 'Practice Areas', desc: 'Clear service breakdown with icons' },
-      { label: 'Attorney Profiles', desc: 'Bar credentials & headshots' },
-      { label: 'Case Results', desc: 'Win highlights & testimonials' },
-      { label: 'Free Consultation CTA', desc: 'Prominent contact form & phone' },
-      { label: 'Go Live', desc: 'Fast, mobile, SEO-ready' }
+      { label: "Trust & Authority", desc: "Professional positioning copy" },
+      { label: "Practice Areas", desc: "Clear service breakdown with icons" },
+      { label: "Attorney Profiles", desc: "Bar credentials & headshots" },
+      { label: "Case Results", desc: "Win highlights & testimonials" },
+      { label: "Free Consultation CTA", desc: "Prominent contact form & phone" },
+      { label: "Go Live", desc: "Fast, mobile, SEO-ready" }
     ],
     preview: [
-      '<div style="background:linear-gradient(135deg,#0d0a1a,#1a1030);border-radius:10px;padding:32px;min-height:320px;"><div style="font-size:11px;color:#8b5cf6;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">Harrison &amp; Associates</div><h3 style="font-size:26px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;">Experienced legal<br>counsel for the<br>outcomes you need.</h3><p style="color:#7060a0;font-size:14px;margin-bottom:20px;">Personal injury &#8226; Business law &#8226; Estate planning</p><div style="display:inline-block;background:#8b5cf6;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;">Free Consultation &#8594;</div></div>',
-      '<div style="background:linear-gradient(135deg,#0d0a1a,#1a1030);border-radius:10px;padding:32px;"><div style="font-size:13px;font-weight:700;color:#8b5cf6;margin-bottom:16px;">Practice Areas</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+['Personal Injury','Business Law','Estate Planning','Real Estate','Employment','Criminal Defense'].map(s=>'<div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;">'+s+'</div>').join('')+'</div></div>',
-      '<div style="background:#10b981;border-radius:10px;padding:32px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">&#127881;</div><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">harrisonlaw.legal is live!</div><div style="font-size:13px;color:rgba(255,255,255,0.8);">Mobile-optimized &#8226; PageSpeed 98 &#8226; Google-indexed</div></div>'
+      "<div style=\"background:linear-gradient(135deg,#0d0a1a,#1a1030);border-radius:10px;padding:32px;min-height:320px;\"><div style=\"font-size:11px;color:#8b5cf6;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;\">Harrison &amp; Associates</div><h3 style=\"font-size:26px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;\">Experienced legal<br>counsel for the<br>outcomes you need.</h3><p style=\"color:#7060a0;font-size:14px;margin-bottom:20px;\">Personal injury &#8226; Business law &#8226; Estate planning</p><div style=\"display:inline-block;background:#8b5cf6;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;\">Free Consultation &#8594;</div></div>",
+      "<div style=\"background:linear-gradient(135deg,#0d0a1a,#1a1030);border-radius:10px;padding:32px;\"><div style=\"font-size:13px;font-weight:700;color:#8b5cf6;margin-bottom:16px;\">Practice Areas</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;\"><div style=\"background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Personal Injury</div><div style=\"background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Business Law</div><div style=\"background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Estate Planning</div><div style=\"background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Real Estate</div><div style=\"background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Employment</div><div style=\"background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Criminal Defense</div></div></div>",
+      "<div style=\"background:#10b981;border-radius:10px;padding:32px;text-align:center;\"><div style=\"font-size:40px;margin-bottom:8px;\">&#127881;</div><div style=\"font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;\">harrisonlaw.legal is live!</div><div style=\"font-size:13px;color:rgba(255,255,255,0.8);\">Mobile-optimized &#8226; PageSpeed 98 &#8226; Google-indexed</div></div>"
     ]
   },
   {
-    name: 'Real Estate',
-    domain: 'syrhomes.com',
-    color: '#14b8a6',
+    name: "Real Estate",
+    domain: "syrhomes.com",
+    color: "#14b8a6",
     steps: [
-      { label: 'Agent Branding', desc: 'Your face, credentials, territory' },
-      { label: 'Featured Listings', desc: 'MLS-style property cards' },
-      { label: 'Search CTA', desc: 'Home search & valuation lead form' },
-      { label: 'Market Stats', desc: 'Local market data that builds trust' },
-      { label: 'Testimonials', desc: 'Buyer + seller success stories' },
-      { label: 'Go Live', desc: 'Fast, mobile, SEO-ready' }
+      { label: "Agent Branding", desc: "Your face, credentials, territory" },
+      { label: "Featured Listings", desc: "MLS-style property cards" },
+      { label: "Search CTA", desc: "Home search & valuation lead form" },
+      { label: "Market Stats", desc: "Local market data that builds trust" },
+      { label: "Testimonials", desc: "Buyer + seller success stories" },
+      { label: "Go Live", desc: "Fast, mobile, SEO-ready" }
     ],
     preview: [
-      '<div style="background:linear-gradient(135deg,#001a18,#002820);border-radius:10px;padding:32px;min-height:320px;"><div style="font-size:11px;color:#14b8a6;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">SYR Homes &#8226; Kim Alvarez, Realtor</div><h3 style="font-size:26px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;">Find your perfect<br>home in Central<br>New York.</h3><p style="color:#20706a;font-size:14px;margin-bottom:20px;">Over 200 families moved &#8226; 15 years experience</p><div style="display:inline-block;background:#14b8a6;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;">Search Listings &#8594;</div></div>',
-      '<div style="background:linear-gradient(135deg,#001a18,#002820);border-radius:10px;padding:32px;"><div style="font-size:13px;font-weight:700;color:#14b8a6;margin-bottom:16px;">Featured Listings</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+['4BR DeWitt $449K','3BR Eastwood $299K','2BR Condo $189K','5BR Manlius $699K'].map(s=>'<div style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;">'+s+'</div>').join('')+'</div></div>',
-      '<div style="background:#10b981;border-radius:10px;padding:32px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">&#127881;</div><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">syrhomes.com is live!</div><div style="font-size:13px;color:rgba(255,255,255,0.8);">Mobile-optimized &#8226; PageSpeed 97 &#8226; Google-indexed</div></div>'
+      "<div style=\"background:linear-gradient(135deg,#001a18,#002820);border-radius:10px;padding:32px;min-height:320px;\"><div style=\"font-size:11px;color:#14b8a6;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;\">SYR Homes &#8226; Kim Alvarez, Realtor</div><h3 style=\"font-size:26px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;\">Find your perfect<br>home in Central<br>New York.</h3><p style=\"color:#20706a;font-size:14px;margin-bottom:20px;\">Over 200 families moved &#8226; 15 years experience</p><div style=\"display:inline-block;background:#14b8a6;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;\">Search Listings &#8594;</div></div>",
+      "<div style=\"background:linear-gradient(135deg,#001a18,#002820);border-radius:10px;padding:32px;\"><div style=\"font-size:13px;font-weight:700;color:#14b8a6;margin-bottom:16px;\">Featured Listings</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;\"><div style=\"background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">4BR DeWitt $449K</div><div style=\"background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">3BR Eastwood $299K</div><div style=\"background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">2BR Condo $189K</div><div style=\"background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">5BR Manlius $699K</div></div></div>",
+      "<div style=\"background:#10b981;border-radius:10px;padding:32px;text-align:center;\"><div style=\"font-size:40px;margin-bottom:8px;\">&#127881;</div><div style=\"font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;\">syrhomes.com is live!</div><div style=\"font-size:13px;color:rgba(255,255,255,0.8);\">Mobile-optimized &#8226; PageSpeed 97 &#8226; Google-indexed</div></div>"
     ]
   },
   {
-    name: 'Accounting',
-    domain: 'clearledger.cpa',
-    color: '#0ea5e9',
+    name: "Accounting",
+    domain: "clearledger.cpa",
+    color: "#0ea5e9",
     steps: [
-      { label: 'Credibility Setup', desc: 'CPA badge, years, certifications' },
-      { label: 'Services Grid', desc: 'Tax, bookkeeping, advisory cards' },
-      { label: 'Process Timeline', desc: 'How you work step by step' },
-      { label: 'Tax Savings Proof', desc: 'ROI examples & case studies' },
-      { label: 'Client Portal CTA', desc: 'Secure file upload & scheduling' },
-      { label: 'Go Live', desc: 'Fast, mobile, SEO-ready' }
+      { label: "Credibility Setup", desc: "CPA badge, years, certifications" },
+      { label: "Services Grid", desc: "Tax, bookkeeping, advisory cards" },
+      { label: "Process Timeline", desc: "How you work step by step" },
+      { label: "Tax Savings Proof", desc: "ROI examples & case studies" },
+      { label: "Client Portal CTA", desc: "Secure file upload & scheduling" },
+      { label: "Go Live", desc: "Fast, mobile, SEO-ready" }
     ],
     preview: [
-      '<div style="background:linear-gradient(135deg,#001020,#001830);border-radius:10px;padding:32px;min-height:320px;"><div style="font-size:11px;color:#0ea5e9;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">ClearLedger CPA &#8226; Syracuse, NY</div><h3 style="font-size:26px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;">Pay less tax.<br>Know your numbers.<br>Grow with confidence.</h3><p style="color:#205070;font-size:14px;margin-bottom:20px;">Small business tax & bookkeeping specialists</p><div style="display:inline-block;background:#0ea5e9;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;">Free Tax Review &#8594;</div></div>',
-      '<div style="background:linear-gradient(135deg,#001020,#001830);border-radius:10px;padding:32px;"><div style="font-size:13px;font-weight:700;color:#0ea5e9;margin-bottom:16px;">Services</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+['Business Tax Filing','Personal Tax Returns','Monthly Bookkeeping','Payroll Services','CFO Advisory','IRS Representation'].map(s=>'<div style="background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;">'+s+'</div>').join('')+'</div></div>',
-      '<div style="background:#10b981;border-radius:10px;padding:32px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">&#127881;</div><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">clearledger.cpa is live!</div><div style="font-size:13px;color:rgba(255,255,255,0.8);">Mobile-optimized &#8226; PageSpeed 98 &#8226; Google-indexed</div></div>'
+      "<div style=\"background:linear-gradient(135deg,#001020,#001830);border-radius:10px;padding:32px;min-height:320px;\"><div style=\"font-size:11px;color:#0ea5e9;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;\">ClearLedger CPA &#8226; Syracuse, NY</div><h3 style=\"font-size:26px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;\">Pay less tax.<br>Know your numbers.<br>Grow with confidence.</h3><p style=\"color:#205070;font-size:14px;margin-bottom:20px;\">Small business tax & bookkeeping specialists</p><div style=\"display:inline-block;background:#0ea5e9;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;\">Free Tax Review &#8594;</div></div>",
+      "<div style=\"background:linear-gradient(135deg,#001020,#001830);border-radius:10px;padding:32px;\"><div style=\"font-size:13px;font-weight:700;color:#0ea5e9;margin-bottom:16px;\">Services</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;\"><div style=\"background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Business Tax Filing</div><div style=\"background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Personal Tax Returns</div><div style=\"background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Monthly Bookkeeping</div><div style=\"background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Payroll Services</div><div style=\"background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">CFO Advisory</div><div style=\"background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">IRS Representation</div></div></div>",
+      "<div style=\"background:#10b981;border-radius:10px;padding:32px;text-align:center;\"><div style=\"font-size:40px;margin-bottom:8px;\">&#127881;</div><div style=\"font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;\">clearledger.cpa is live!</div><div style=\"font-size:13px;color:rgba(255,255,255,0.8);\">Mobile-optimized &#8226; PageSpeed 98 &#8226; Google-indexed</div></div>"
     ]
   },
   {
-    name: 'Med Spa',
-    domain: 'lumenspa.clinic',
-    color: '#ec4899',
+    name: "Med Spa",
+    domain: "lumenspa.clinic",
+    color: "#ec4899",
     steps: [
-      { label: 'Luxury Aesthetic', desc: 'Elegant brand identity & palette' },
-      { label: 'Treatment Menu', desc: 'Botox, fillers, laser services grid' },
-      { label: 'Before & After', desc: 'Photo gallery with consent overlay' },
-      { label: 'Booking System', desc: 'Online scheduler & deposits' },
-      { label: 'Credentials + Safety', desc: 'MD oversight & certifications' },
-      { label: 'Go Live', desc: 'Fast, mobile, SEO-ready' }
+      { label: "Luxury Aesthetic", desc: "Elegant brand identity & palette" },
+      { label: "Treatment Menu", desc: "Botox, fillers, laser services grid" },
+      { label: "Before & After", desc: "Photo gallery with consent overlay" },
+      { label: "Booking System", desc: "Online scheduler & deposits" },
+      { label: "Credentials + Safety", desc: "MD oversight & certifications" },
+      { label: "Go Live", desc: "Fast, mobile, SEO-ready" }
     ],
     preview: [
-      '<div style="background:linear-gradient(135deg,#1a0010,#2d0020);border-radius:10px;padding:32px;min-height:320px;"><div style="font-size:11px;color:#ec4899;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">Lumen Med Spa &#8226; Syracuse, NY</div><h3 style="font-size:26px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;">Look refreshed.<br>Feel confident.<br>Stay natural.</h3><p style="color:#804060;font-size:14px;margin-bottom:20px;">Medical-grade treatments &#8226; RN & MD supervised</p><div style="display:inline-block;background:#ec4899;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;">Book Consultation &#8594;</div></div>',
-      '<div style="background:linear-gradient(135deg,#1a0010,#2d0020);border-radius:10px;padding:32px;"><div style="font-size:13px;font-weight:700;color:#ec4899;margin-bottom:16px;">Treatments</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+['Botox from $12/u','Lip Filler $599','Laser Hair Removal','Hydrafacial $179','CoolSculpting','Vitamin IV Drip'].map(s=>'<div style="background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;">'+s+'</div>').join('')+'</div></div>',
-      '<div style="background:#10b981;border-radius:10px;padding:32px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">&#127881;</div><div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">lumenspa.clinic is live!</div><div style="font-size:13px;color:rgba(255,255,255,0.8);">Mobile-optimized &#8226; PageSpeed 98 &#8226; Google-indexed</div></div>'
+      "<div style=\"background:linear-gradient(135deg,#1a0010,#2d0020);border-radius:10px;padding:32px;min-height:320px;\"><div style=\"font-size:11px;color:#ec4899;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;\">Lumen Med Spa &#8226; Syracuse, NY</div><h3 style=\"font-size:26px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2;\">Look refreshed.<br>Feel confident.<br>Stay natural.</h3><p style=\"color:#804060;font-size:14px;margin-bottom:20px;\">Medical-grade treatments &#8226; RN & MD supervised</p><div style=\"display:inline-block;background:#ec4899;color:#fff;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;\">Book Consultation &#8594;</div></div>",
+      "<div style=\"background:linear-gradient(135deg,#1a0010,#2d0020);border-radius:10px;padding:32px;\"><div style=\"font-size:13px;font-weight:700;color:#ec4899;margin-bottom:16px;\">Treatments</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;\"><div style=\"background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Botox from $12/u</div><div style=\"background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Lip Filler $599</div><div style=\"background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Laser Hair Removal</div><div style=\"background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Hydrafacial $179</div><div style=\"background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">CoolSculpting</div><div style=\"background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fff;\">Vitamin IV Drip</div></div></div>",
+      "<div style=\"background:#10b981;border-radius:10px;padding:32px;text-align:center;\"><div style=\"font-size:40px;margin-bottom:8px;\">&#127881;</div><div style=\"font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;\">lumenspa.clinic is live!</div><div style=\"font-size:13px;color:rgba(255,255,255,0.8);\">Mobile-optimized &#8226; PageSpeed 98 &#8226; Google-indexed</div></div>"
     ]
   }
 ];
@@ -929,14 +929,18 @@ var stepTimer = null;
 var autoTimer = null;
 
 function buildStepsHTML(ind, activeStep) {
-  return ind.steps.map(function(s, i) {
-    var cls = i < activeStep ? 'done' : (i === activeStep ? 'active' : 'pending');
-    var icon = i < activeStep ? '&#10003;' : (i === activeStep ? (i+1).toString() : (i+1).toString());
-    return '<div class="build-step ' + cls + '">' +
+  var html = "";
+  for (var i = 0; i < ind.steps.length; i++) {
+    var s = ind.steps[i];
+    var cls = i < activeStep ? "done" : (i === activeStep ? "active" : "pending");
+    var icon = i < activeStep ? "&#10003;" : String(i + 1);
+    html += '<div class="build-step ' + cls + '">' +
       '<div class="step-icon">' + icon + '</div>' +
-      '<div class="step-text"><div class="step-label">' + s.label + '</div><div class="step-desc">' + s.desc + '</div></div>' +
+      '<div class="step-text"><div class="step-label">' + s.label + '</div>' +
+      '<div class="step-desc">' + s.desc + '</div></div>' +
       '</div>';
-  }).join('');
+  }
+  return html;
 }
 
 function getPreviewIdx(activeStep, ind) {
@@ -946,24 +950,23 @@ function getPreviewIdx(activeStep, ind) {
 
 function renderIndustry(idx, step) {
   var ind = industries[idx];
-  var stepsEl = document.getElementById('buildSteps');
-  var previewEl = document.getElementById('sitePreview');
-  var urlEl = document.getElementById('builderUrl');
-  var progressEl = document.getElementById('buildProgress');
+  var stepsEl = document.getElementById("buildSteps");
+  var previewEl = document.getElementById("sitePreview");
+  var urlEl = document.getElementById("builderUrl");
+  var progressEl = document.getElementById("buildProgress");
   if (!stepsEl || !previewEl) return;
   stepsEl.innerHTML = buildStepsHTML(ind, step);
   var prevIdx = getPreviewIdx(step, ind);
   previewEl.innerHTML = '<div class="site-frame active">' + ind.preview[prevIdx] + '</div>';
   urlEl.textContent = ind.domain;
-  var pct = Math.round((step / (ind.steps.length - 1)) * 100);
-  progressEl.style.width = pct + '%';
-  var toast = document.getElementById('buildToast');
-  var toastMsg = document.getElementById('toastMsg');
+  progressEl.style.width = Math.round((step / (ind.steps.length - 1)) * 100) + "%";
+  var toast = document.getElementById("buildToast");
+  var toastMsg = document.getElementById("toastMsg");
   if (step >= ind.steps.length - 1) {
-    toastMsg.textContent = ind.domain + ' is live!';
-    setTimeout(function() { toast.classList.add('show'); }, 400);
+    toastMsg.textContent = ind.domain + " is live!";
+    setTimeout(function() { toast.classList.add("show"); }, 400);
   } else {
-    toast.classList.remove('show');
+    toast.classList.remove("show");
   }
 }
 
@@ -987,23 +990,37 @@ function switchToIndustry(idx) {
   if (autoTimer) clearTimeout(autoTimer);
   current = idx;
   currentStep = 0;
-  var tabs = document.querySelectorAll('.btab');
-  tabs.forEach(function(t, i) { t.classList.toggle('active', i === idx); });
+  var tabs = document.querySelectorAll(".btab");
+  tabs.forEach(function(t, i) { t.classList.toggle("active", i === idx); });
   renderIndustry(idx, 0);
   stepTimer = setInterval(nextStep, 1400);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  var tabs = document.getElementById('builderTabs');
+document.addEventListener("DOMContentLoaded", function() {
+  var tabs = document.getElementById("builderTabs");
   if (!tabs) return;
-  tabs.addEventListener('click', function(e) {
-    var tab = e.target.closest('.btab');
+  tabs.addEventListener("click", function(e) {
+    var tab = e.target.closest(".btab");
     if (!tab) return;
-    var idx = parseInt(tab.getAttribute('data-industry'), 10);
+    var idx = parseInt(tab.getAttribute("data-industry"), 10);
     switchToIndustry(idx);
   });
   switchToIndustry(0);
 });
+
+// Also run immediately in case DOMContentLoaded already fired
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  var tabs = document.getElementById("builderTabs");
+  if (tabs) {
+    tabs.addEventListener("click", function(e) {
+      var tab = e.target.closest(".btab");
+      if (!tab) return;
+      var idx = parseInt(tab.getAttribute("data-industry"), 10);
+      switchToIndustry(idx);
+    });
+    switchToIndustry(0);
+  }
+}
 })();
 </script>
 </body>
