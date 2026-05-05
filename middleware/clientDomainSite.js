@@ -7,6 +7,7 @@ const {
   isPlatformHostname,
   stripPort,
   stripWww,
+  inboundRequestHost,
   customDomainLookupVariants,
 } = require('../lib/customsitePlatformHosts');
 const { stagingSlugFromHost, getStagingSitesParentHost } = require('../lib/customsiteStagingSiteHost');
@@ -81,7 +82,7 @@ function escapeHtml(s) {
 function originForClientSite(req) {
   const rawProto = req.get('x-forwarded-proto') || req.protocol || 'https';
   const proto = String(rawProto).split(',')[0].trim();
-  const host = stripPort(req.get('x-forwarded-host') || req.get('host') || '');
+  const host = inboundRequestHost(req);
   if (!host) return null;
   return `${proto}://${host}`;
 }
@@ -411,7 +412,7 @@ function buildBody(row, filePath, req, siteSettings, projectName) {
   const baseHref = origin ? `${origin.replace(/\/$/, '')}/` : null;
   const withBase = injectLiveBaseHref(raw, baseHref);
   const withSettings = injectSiteSettingsIntoHtml(withBase, filePath, siteSettings);
-  const canonOrigin = origin ? origin.replace(/\/$/, '') : `https://${stripPort(req.get('x-forwarded-host') || req.get('host') || 'localhost')}`;
+  const canonOrigin = origin ? origin.replace(/\/$/, '') : `https://${inboundRequestHost(req) || 'localhost'}`;
   const afterSeo = applyClientSiteTechnicalSeo(withSettings, {
     filePath,
     siteSettings,
@@ -428,7 +429,7 @@ async function handleClientDomain(req, res) {
     return false;
   }
 
-  const hostIncoming = stripPort(req.get('x-forwarded-host') || req.get('host') || '');
+  const hostIncoming = inboundRequestHost(req);
   if (!hostIncoming || isPlatformHostname(hostIncoming)) {
     return false;
   }

@@ -6,11 +6,46 @@ const {
   isPlatformHostname,
   customDomainLookupVariants,
   stripPort,
+  inboundRequestHost,
 } = require('../lib/customsitePlatformHosts');
+
+function reqWithHeaders(headers) {
+  return {
+    get(name) {
+      const n = String(name).toLowerCase();
+      for (const [k, v] of Object.entries(headers)) {
+        if (String(k).toLowerCase() === n) return v;
+      }
+      return undefined;
+    },
+  };
+}
 
 describe('customsitePlatformHosts', () => {
   test('stripPort removes port', () => {
     assert.equal(stripPort('EXAMPLE.com:8080'), 'example.com');
+  });
+
+  test('inboundRequestHost prefers x-forwarded-host', () => {
+    const r = reqWithHeaders({
+      'x-forwarded-host': 'client.example.org',
+      host: 'upstream.local',
+      forwarded: 'host=wrong.example;',
+    });
+    assert.equal(inboundRequestHost(r), 'client.example.org');
+  });
+
+  test('inboundRequestHost falls back to RFC7239 Forwarded host', () => {
+    const r = reqWithHeaders({
+      host: 'service.railway.internal',
+      forwarded: 'proto=https; host=client.example.org',
+    });
+    assert.equal(inboundRequestHost(r), 'client.example.org');
+  });
+
+  test('inboundRequestHost falls back to Host', () => {
+    const r = reqWithHeaders({ host: 'only-this.com' });
+    assert.equal(inboundRequestHost(r), 'only-this.com');
   });
 
   test('customDomainLookupVariants includes www and apex', () => {
