@@ -271,7 +271,8 @@
 }
 .browser-body {
   display: flex;
-  min-height: 480px;
+  min-height: 540px;
+  align-items: stretch;
 }
 /* Left: build steps panel */
 .build-panel {
@@ -352,6 +353,7 @@
   animation: fadeInUp .4s ease forwards;
 }
 .site-frame.active { display: block; min-height: 100%; }
+.site-frame > div { min-height: 520px; }
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
